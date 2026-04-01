@@ -1,0 +1,346 @@
+# ============================================
+# 多 Agent 系统配置文件
+# ============================================
+
+version: "1.0.0"
+created: "2026-04-01"
+description: "5-Agent 协作系统配置"
+
+# ============================================
+# Agent 配置
+# ============================================
+
+agents:
+  # ────────────────────────────────────────
+  # 1. 总管 Agent (12bo)
+  # ────────────────────────────────────────
+  manager:
+    name: "12bo"
+    role: "总管 / 团队主管"
+    description: "理解用户逻辑，协调多 Agent 工作，质量把控"
+    
+    # 模型配置
+    model:
+      provider: "ollama"
+      name: "qwen3.5"
+      context_window: 128000
+      temperature: 0.7
+    
+    # 运行时配置
+    runtime:
+      type: "acp"
+      mode: "session"
+      thread: true
+      cleanup: "keep"
+      persistent: true
+    
+    # 工具集
+    tools:
+      - "sessions_send"
+      - "sessions_history"
+      - "subagents"
+      - "exec"
+      - "read"
+      - "write"
+    
+    # 权限
+    permissions:
+      can_assign_tasks: true
+      can_review_work: true
+      can_access_all_agents: true
+      can_modify_workflow: true
+    
+    # 系统提示词
+    system_prompt: "prompts/00_manager_12bo.md"
+    
+    # 工作目录
+    workspace: "./agents/manager"
+    
+    # 状态
+    status: "active"
+    priority: "high"
+
+  # ────────────────────────────────────────
+  # 2. Code Agent (软件工程师)
+  # ────────────────────────────────────────
+  code:
+    name: "Code Agent"
+    role: "全栈软件工程师"
+    description: "Web/App 开发，数据库设计，部署运维"
+    
+    # 模型配置 - 代码专用模型
+    model:
+      provider: "ollama"
+      name: "qwen3.5-coder"
+      context_window: 128000
+      temperature: 0.3  # 代码需要精确
+    
+    # 运行时配置
+    runtime:
+      type: "acp"
+      mode: "session"
+      thread: true
+      cleanup: "keep"
+      persistent: true
+    
+    # 工具集
+    tools:
+      - "exec"
+      - "read"
+      - "write"
+      - "edit"
+      - "process"
+      - "ollama_web_fetch"
+      - "ollama_web_search"
+    
+    # 权限
+    permissions:
+      can_write_code: true
+      can_deploy: true
+      can_modify_database: true
+      can_access_server: true
+    
+    # 系统提示词
+    system_prompt: "prompts/01_code_agent.md"
+    
+    # 工作目录
+    workspace: "./agents/code"
+    
+    # 状态
+    status: "active"
+    priority: "high"
+
+  # ────────────────────────────────────────
+  # 3. Data Agent (数据分析师)
+  # ────────────────────────────────────────
+  data:
+    name: "Data Agent"
+    role: "数据分析师 / 投资顾问"
+    description: "财报分析，股票分析，Pokemon 卡牌价格分析"
+    
+    # 模型配置 - 分析能力强
+    model:
+      provider: "openai"
+      name: "gpt-4"
+      context_window: 128000
+      temperature: 0.5
+    
+    # 运行时配置
+    runtime:
+      type: "acp"
+      mode: "session"
+      thread: true
+      cleanup: "keep"
+      persistent: true
+    
+    # 工具集
+    tools:
+      - "exec"
+      - "read"
+      - "write"
+      - "ollama_web_fetch"
+      - "ollama_web_search"
+      - "image"  # 分析图表
+    
+    # 权限
+    permissions:
+      can_access_financial_data: true
+      can_run_analysis: true
+      can_generate_reports: true
+      can_access_price_api: true
+    
+    # 系统提示词
+    system_prompt: "prompts/02_data_agent.md"
+    
+    # 工作目录
+    workspace: "./agents/data"
+    
+    # 状态
+    status: "active"
+    priority: "medium"
+
+  # ────────────────────────────────────────
+  # 4. Sec Agent (秘书)
+  # ────────────────────────────────────────
+  sec:
+    name: "Sec Agent"
+    role: "秘书 / 行政助理"
+    description: "日程管理，会议记录，提醒，定时任务"
+    
+    # 模型配置 - 文本理解好
+    model:
+      provider: "anthropic"
+      name: "claude-3.5-sonnet"
+      context_window: 200000
+      temperature: 0.6
+    
+    # 运行时配置
+    runtime:
+      type: "acp"
+      mode: "session"
+      thread: true
+      cleanup: "keep"
+      persistent: true
+    
+    # 工具集
+    tools:
+      - "exec"
+      - "read"
+      - "write"
+      - "edit"
+      - "process"
+      - "sessions_send"  # 发送提醒
+    
+    # 权限
+    permissions:
+      can_access_calendar: true
+      can_send_reminders: true
+      can_record_meetings: true
+      can_manage_tasks: true
+      can_schedule_jobs: true
+    
+    # 系统提示词
+    system_prompt: "prompts/03_sec_agent.md"
+    
+    # 工作目录
+    workspace: "./agents/sec"
+    
+    # 状态
+    status: "active"
+    priority: "medium"
+
+  # ────────────────────────────────────────
+  # 5. Media Agent (内容创作)
+  # ────────────────────────────────────────
+  media:
+    name: "Media Agent"
+    role: "内容创作者 / 视频编辑"
+    description: "视频剪辑，文章写作，图像处理，多平台发布"
+    
+    # 模型配置 - 多模态
+    model:
+      provider: "google"
+      name: "gemini-2.0"
+      context_window: 128000
+      temperature: 0.8  # 创意需要更高温度
+    
+    # 运行时配置
+    runtime:
+      type: "acp"
+      mode: "session"
+      thread: true
+      cleanup: "keep"
+      persistent: true
+    
+    # 工具集
+    tools:
+      - "exec"
+      - "read"
+      - "write"
+      - "image"
+      - "image_generate"
+      - "ollama_web_fetch"
+      - "ollama_web_search"
+    
+    # 权限
+    permissions:
+      can_edit_video: true
+      can_generate_content: true
+      can_edit_images: true
+      can_publish_social: true
+      can_access_media_tools: true
+    
+    # 系统提示词
+    system_prompt: "prompts/04_media_agent.md"
+    
+    # 工作目录
+    workspace: "./agents/media"
+    
+    # 状态
+    status: "active"
+    priority: "medium"
+
+# ============================================
+# 协调配置
+# ============================================
+
+coordination:
+  # 总管
+  manager:
+    label: "manager"
+    session_key: "agent:manager"
+    
+  # Agent 映射
+  agents:
+    code:
+      label: "code"
+      session_key: "agent:code"
+    data:
+      label: "data"
+      session_key: "agent:data"
+    sec:
+      label: "sec"
+      session_key: "agent:sec"
+    media:
+      label: "media"
+      session_key: "agent:media"
+  
+  # 通信协议
+  protocol:
+    # 任务分配格式
+    task_format: |
+      【任务】{task_name}
+      【优先级】{priority}
+      【截止时间】{deadline}
+      【需求详情】
+      {details}
+      【技术要求】
+      {requirements}
+      【交付物】
+      {deliverables}
+    
+    # 汇报格式
+    report_format: |
+      【状态】{status}
+      【进度】{progress}%
+      【已完成】
+      {completed}
+      【遇到问题】
+      {issues}
+      【需要支持】
+      {support_needed}
+      【下一步计划】
+      {next_steps}
+    
+    # 超时设置 (秒)
+    timeout:
+      code: 3600      # 1 小时
+      data: 1800      # 30 分钟
+      sec: 900        # 15 分钟
+      media: 7200     # 2 小时
+
+# ============================================
+# 全局设置
+# ============================================
+
+global:
+  # 工作区
+  workspace: "/home/bubu/.openclaw/workspace"
+  
+  # 日志
+  logging:
+    level: "info"
+    format: "json"
+    output: "./logs/agent_system.log"
+  
+  # 监控
+  monitoring:
+    enabled: true
+    check_interval: 300  # 5 分钟
+    alert_on_failure: true
+  
+  # 备份
+  backup:
+    enabled: true
+    interval: 86400  # 每天
+    keep_days: 30

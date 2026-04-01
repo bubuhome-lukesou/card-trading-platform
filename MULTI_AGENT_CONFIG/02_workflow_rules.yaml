@@ -1,0 +1,324 @@
+# ============================================
+# 多 Agent 工作流规则
+# ============================================
+
+version: "1.0.0"
+description: "任务分配和协调规则"
+
+# ============================================
+# 任务分类和分配规则
+# ============================================
+
+task_routing:
+  # 软件开发类任务 → Code Agent
+  code_tasks:
+    keywords:
+      - "开发"
+      - "写代码"
+      - "编程"
+      - "网站"
+      - "App"
+      - "API"
+      - "数据库"
+      - "Bug"
+      - "修复"
+      - "部署"
+      - "前端"
+      - "后端"
+      - "功能"
+    
+    assign_to: "code"
+    priority_default: "medium"
+    timeout_hours: 4
+    
+    examples:
+      - "开发一个登录页面"
+      - "修复数据库连接问题"
+      - "优化 API 性能"
+
+  # 数据分析类任务 → Data Agent
+  data_tasks:
+    keywords:
+      - "分析"
+      - "财报"
+      - "股票"
+      - "数据"
+      - "投资"
+      - "对比"
+      - "趋势"
+      - "预测"
+      - "卡牌价格"
+      - "Pokemon"
+      - "估值"
+      - "报告"
+    
+    assign_to: "data"
+    priority_default: "medium"
+    timeout_hours: 2
+    
+    examples:
+      - "分析腾讯的财报"
+      - "比较任天堂和索尼的财务数据"
+      - "预测 Charizard 卡牌价格走势"
+
+  # 日程管理类任务 → Sec Agent
+  secretary_tasks:
+    keywords:
+      - "提醒"
+      - "会议"
+      - "日程"
+      - "安排"
+      - "记录"
+      - "纪要"
+      - "定时"
+      - "待办"
+      - "任务"
+      - "计划"
+    
+    assign_to: "sec"
+    priority_default: "high"
+    timeout_hours: 1
+    
+    examples:
+      - "提醒我明天下午开会"
+      - "记录这次会议内容"
+      - "每天早上 9 点抓取股票数据"
+
+  # 内容创作类任务 → Media Agent
+  media_tasks:
+    keywords:
+      - "视频"
+      - "剪辑"
+      - "文章"
+      - "写作"
+      - "内容"
+      - "文案"
+      - "设计"
+      - "图片"
+      - "封面"
+      - "发布"
+      - "社交媒体"
+    
+    assign_to: "media"
+    priority_default: "medium"
+    timeout_hours: 6
+    
+    examples:
+      - "剪辑一个产品介绍视频"
+      - "写一篇公众号文章"
+      - "设计 YouTube 封面"
+
+  # 综合类任务 → 总管协调多 Agent
+  complex_tasks:
+    keywords:
+      - "项目"
+      - "完整"
+      - "系统"
+      - "平台"
+      - "多个"
+      - "协作"
+    
+    assign_to: "manager"
+    coordination_required: true
+    timeout_hours: 24
+    
+    examples:
+      - "开发一个电商网站"
+      - "做个完整的投资分析报告"
+
+# ============================================
+# 优先级规则
+# ============================================
+
+priority_rules:
+  # 高优先级 - 立即处理
+  high:
+    conditions:
+      - "今天"
+      - "现在"
+      - "紧急"
+      - "马上"
+      - "尽快"
+      - "截止"
+      - "重要"
+    
+    response_time: "15 分钟"
+    check_interval: "30 分钟"
+    
+  # 中优先级 - 正常处理
+  medium:
+    conditions:
+      - "本周"
+      - "这几天"
+      - "有空"
+      - "需要"
+      - "想要"
+    
+    response_time: "2 小时"
+    check_interval: "2 小时"
+    
+  # 低优先级 - 计划处理
+  low:
+    conditions:
+      - "下周"
+      - "改天"
+      - "以后"
+      - "有时间"
+      - "考虑"
+    
+    response_time: "24 小时"
+    check_interval: "1 天"
+
+# ============================================
+# 协作规则
+# ============================================
+
+collaboration_rules:
+  # Code + Data 协作
+  code_data:
+    trigger: "数据可视化"
+    workflow:
+      - data: 提供数据和分析
+      - code: 开发可视化界面
+    
+  # Data + Media 协作
+  data_media:
+    trigger: "投资报告视频"
+    workflow:
+      - data: 提供分析内容
+      - media: 制作视频内容
+    
+  # Sec + All 协作
+  sec_all:
+    trigger: "项目进度跟踪"
+    workflow:
+      - sec: 设置提醒和跟踪
+      - all: 定期汇报进度
+
+# ============================================
+# 质量检查规则
+# ============================================
+
+quality_checks:
+  # Code Agent 质量检查
+  code:
+    checklist:
+      - "代码有注释"
+      - "通过测试"
+      - "符合规范"
+      - "性能优化"
+      - "安全考虑"
+    
+    review_required: true
+    test_required: true
+    
+  # Data Agent 质量检查
+  data:
+    checklist:
+      - "数据来源可靠"
+      - "分析逻辑正确"
+      - "图表清晰"
+      - "结论明确"
+      - "风险提示"
+    
+    review_required: true
+    data_verification: true
+    
+  # Sec Agent 质量检查
+  sec:
+    checklist:
+      - "信息完整"
+      - "时间准确"
+      - "分类清晰"
+      - "提醒及时"
+      - "跟踪到位"
+    
+    review_required: false
+    confirmation_required: true
+    
+  # Media Agent 质量检查
+  media:
+    checklist:
+      - "创意新颖"
+      - "质量达标"
+      - "符合平台规范"
+      - "无版权问题"
+      - "有传播点"
+    
+    review_required: true
+    version_options: 2
+
+# ============================================
+# 超时处理规则
+# ============================================
+
+timeout_handling:
+  # 即将超时预警
+  warning_threshold: 0.8  # 80% 时间
+  
+  actions:
+    - "提前 20% 时间提醒"
+    - "询问是否需要帮助"
+    - "评估是否延期"
+    - "通知总管"
+  
+  # 超时处理
+  on_timeout:
+    - "了解原因"
+    - "评估影响"
+    - "调整计划"
+    - "通知用户"
+
+# ============================================
+# 反馈和改进规则
+# ============================================
+
+feedback_loop:
+  # 用户反馈收集
+  collect_feedback:
+    after_task: true
+    after_delivery: true
+    weekly_summary: true
+  
+  # 反馈处理
+  process_feedback:
+    - "记录反馈"
+    - "分析原因"
+    - "制定改进"
+    - "执行改进"
+    - "跟踪效果"
+  
+  # 持续改进
+  continuous_improvement:
+    - "每周回顾"
+    - "月度总结"
+    - "优化流程"
+    - "更新提示词"
+
+# ============================================
+# 紧急处理规则
+# ============================================
+
+emergency_handling:
+  # 紧急情况定义
+  emergency_keywords:
+    - "崩溃"
+    - "故障"
+    - "损失"
+    - "危险"
+    - "立即"
+    - "救命"
+  
+  # 紧急处理流程
+  workflow:
+    - "立即响应"
+    - "评估影响"
+    - "调动资源"
+    - "快速解决"
+    - "事后复盘"
+  
+  # 紧急联系人
+  escalation:
+    level_1: "总管"
+    level_2: "用户"
+    response_time: "5 分钟"
