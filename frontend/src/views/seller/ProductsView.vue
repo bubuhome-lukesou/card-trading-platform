@@ -287,16 +287,12 @@ const loadProducts = async () => {
 
 onMounted(() => {
   loadProducts()
-  
-  // Check if should open modal from query param
+
+  // Check if should open create modal from URL query
   if (route.query.action === 'create') {
     openCreateModal()
-  }
-})
-
-watch(() => route.query.action, (action) => {
-  if (action === 'create') {
-    openCreateModal()
+    // Clean URL
+    router.replace({ query: {} })
   }
 })
 </script>

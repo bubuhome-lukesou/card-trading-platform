@@ -1,8 +1,11 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 
 const { t } = useI18n()
+const router = useRouter()
+const route = useRoute()
 
 interface Auction {
   id: string
@@ -191,6 +194,12 @@ const handleCancel = async (auctionId: string) => {
 
 onMounted(() => {
   loadAuctions()
+
+  // Check if should open create modal from URL query
+  if (route.query.action === 'create') {
+    handleCreateAuction()
+    router.replace({ query: {} })
+  }
 })
 </script>
 

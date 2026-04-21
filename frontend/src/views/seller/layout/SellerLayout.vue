@@ -66,8 +66,11 @@ const handleLogout = async () => {
       <header class="content-header">
         <h1 class="page-title">{{ t(`seller.${route.name?.toString().toLowerCase()}`) }}</h1>
         <div class="header-actions">
-          <router-link to="/seller/products?action=create" class="btn-primary">
+          <router-link v-if="route.path.includes('/products')" to="/seller/products?action=create" class="btn-primary">
             + {{ t('product.create') }}
+          </router-link>
+          <router-link v-if="route.path.includes('/auctions')" to="/seller/auctions?action=create" class="btn-primary">
+            + 创建拍卖
           </router-link>
         </div>
       </header>
