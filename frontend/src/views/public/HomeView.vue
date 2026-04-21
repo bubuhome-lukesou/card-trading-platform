@@ -1,10 +1,12 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { RouterLink } from 'vue-router'
 import { ArrowRight, Zap, Clock, Star } from 'lucide-vue-next'
+import { auctionApi } from '@/api/auctions'
+import { productApi } from '@/api/products'
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 
 const categories = [
   { id: 'pokemon', emoji: '🎮', name: 'home.categories.pokemon' },
@@ -17,25 +19,94 @@ const categories = [
   { id: 'other', emoji: '🎴', name: 'home.categories.other' }
 ]
 
-const hotAuctions = ref([
-  { id: 1, title: 'Pokemon 1st Edition Base Set', price: 12800, bids: 23, ends: '2h 30m', image: '' },
-  { id: 2, title: 'Yu-Gi-Oh Blue-Eyes White Dragon', price: 6800, bids: 15, ends: '5h 15m', image: '' },
-  { id: 3, title: 'MTG Black Lotus', price: 25000, bids: 8, ends: '12h', image: '' }
-])
-
-const newListings = ref([
-  { id: 4, title: 'One Piece NARUTO', price: 3200, condition: 'Near Mint', image: '' },
-  { id: 5, title: 'Doraemon Figure Collection', price: 1800, condition: 'Mint', image: '' },
-  { id: 6, title: 'Ultraman Ultra Medal Set', price: 950, condition: 'Excellent', image: '' },
-  { id: 7, title: 'Sports Card Bundle', price: 2600, condition: 'Good', image: '' },
-  { id: 8, title: 'Vintage Card Assortment', price: 4200, condition: 'Fair', image: '' }
-])
+const hotAuctions = ref<any[]>([])
+const newListings = ref<any[]>([])
+const loadingAuctions = ref(false)
+const loadingProducts = ref(false)
 
 const stats = ref([
   { value: '10,000+', label: 'auctions' },
   { value: '5,000+', label: 'users' },
   { value: '98%', label: 'satisfaction' }
 ])
+
+// Format time remaining
+const getTimeRemaining = (endTime: string) => {
+  const end = new Date(endTime)
+  const now = new Date()
+  const diff = end.getTime() - now.getTime()
+  
+  if (diff <= 0) return 'Ended'
+  
+  const hours = Math.floor(diff / (1000 * 60 * 60))
+  const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
+  
+  if (hours > 24) {
+    return `${Math.floor(hours / 24)}d ${hours % 24}h`
+  }
+  return `${hours}h ${minutes}m`
+}
+
+// Get image from product
+const getProductImage = (product: any) => {
+  if (product?.images) {
+    try {
+      const images = JSON.parse(product.images)
+      return images[0] || ''
+    } catch {
+      return product.images || ''
+    }
+  }
+  return ''
+}
+
+// Get title based on locale
+const getTitle = (product: any) => {
+  return locale.value === 'zh' ? (product.titleZh || product.titleEn) : (product.titleEn || product.titleZh)
+}
+
+const fetchHotAuctions = async () => {
+  loadingAuctions.value = true
+  try {
+    const response = await auctionApi.getAuctions({ status: 'ACTIVE', limit: 3 } as any)
+    hotAuctions.value = (response.data.data || []).map((auction: any) => ({
+      id: auction.productId,
+      auctionId: auction.id,
+      title: getTitle(auction.product),
+      price: auction.currentPrice || auction.startingPrice,
+      bids: auction.bidCount || 0,
+      ends: getTimeRemaining(auction.endTime),
+      image: getProductImage(auction.product)
+    }))
+  } catch (e) {
+    console.error('Failed to fetch auctions:', e)
+  } finally {
+    loadingAuctions.value = false
+  }
+}
+
+const fetchNewListings = async () => {
+  loadingProducts.value = true
+  try {
+    const response = await productApi.getProducts({ sortBy: 'newest', limit: 4 } as any)
+    newListings.value = (response.data.data || []).map((product: any) => ({
+      id: product.id,
+      title: getTitle(product),
+      price: product.price,
+      condition: product.condition,
+      image: getProductImage(product)
+    }))
+  } catch (e) {
+    console.error('Failed to fetch products:', e)
+  } finally {
+    loadingProducts.value = false
+  }
+}
+
+onMounted(() => {
+  fetchHotAuctions()
+  fetchNewListings()
+})
 </script>
 
 <template>
@@ -120,17 +191,18 @@ const stats = ref([
           <RouterLink
             v-for="auction in hotAuctions"
             :key="auction.id"
-            :to="`/auction/${auction.id}`"
+            :to="`/auction/${auction.auctionId}`"
             class="auction-card"
           >
             <div class="auction-image">
-              <div class="placeholder-card">🃏</div>
+              <img v-if="auction.image" :src="auction.image" :alt="auction.title" />
+              <div v-else class="placeholder-card">🃏</div>
               <div class="auction-badge hot">🔥 {{ t('home.auctionStatus.live') }}</div>
             </div>
             <div class="auction-info">
               <h3 class="auction-title">{{ auction.title }}</h3>
               <div class="auction-meta">
-                <span class="auction-price">HK$ {{ auction.price.toLocaleString() }}</span>
+                <span class="auction-price">HK$ {{ Number(auction.price).toLocaleString() }}</span>
                 <span class="auction-bids">{{ auction.bids }} {{ t('home.auctionStatus.bids') }}</span>
               </div>
               <div class="auction-timer">
@@ -164,12 +236,13 @@ const stats = ref([
             class="listing-card"
           >
             <div class="listing-image">
-              <div class="placeholder-card">🃏</div>
+              <img v-if="item.image" :src="item.image" :alt="item.title" />
+              <div v-else class="placeholder-card">🃏</div>
               <div class="listing-condition">{{ item.condition }}</div>
             </div>
             <div class="listing-info">
               <h3 class="listing-title">{{ item.title }}</h3>
-              <div class="listing-price">HK$ {{ item.price.toLocaleString() }}</div>
+              <div class="listing-price">HK$ {{ Number(item.price).toLocaleString() }}</div>
             </div>
           </RouterLink>
         </div>
@@ -436,6 +509,13 @@ const stats = ref([
   display: flex;
   align-items: center;
   justify-content: center;
+  overflow: hidden;
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
 }
 
 .placeholder-card {
@@ -535,11 +615,18 @@ const stats = ref([
 
 .listing-image {
   position: relative;
-  aspect-ratio: 1;
+  aspect-ratio: 4/3;
   background: linear-gradient(135deg, var(--bg-dark) 0%, var(--bg-elevated) 100%);
   display: flex;
   align-items: center;
   justify-content: center;
+  overflow: hidden;
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
 }
 
 .listing-condition {

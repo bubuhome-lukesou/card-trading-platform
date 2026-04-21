@@ -15,6 +15,13 @@ const router = useRouter()
 const products = ref<Product[]>([])
 const loading = ref(false)
 const showFilters = ref(true)
+const filtersExpanded = ref({
+  category: true,
+  listingType: true,
+  rarity: true,
+  condition: true,
+  price: true
+})
 
 // Filters - using any to avoid complex type issues
 const filters = ref<any>({
@@ -262,18 +269,20 @@ watch(() => route.query, () => {
               {{ t('product.filters.title') }}
             </h3>
             <button
-              v-if="activeFiltersCount > 0"
-              class="btn btn-ghost btn-sm"
-              @click="clearAllFilters"
+              class="filter-close"
+              @click="showFilters = false"
             >
-              {{ t('product.filters.clearAll') }}
+              ✕
             </button>
           </div>
 
           <!-- Category -->
           <div class="filter-section">
-            <h4 class="filter-title">{{ t('product.filters.category') }}</h4>
-            <div class="filter-options">
+            <h4 class="filter-title" @click="filtersExpanded.category = !filtersExpanded.category">
+              {{ t('product.filters.category') }}
+              <ChevronDown class="filter-chevron" :class="{ collapsed: !filtersExpanded.category }" />
+            </h4>
+            <div v-show="filtersExpanded.category" class="filter-options">
               <label
                 v-for="cat in filterOptions.categories"
                 :key="cat.value"
@@ -295,8 +304,11 @@ watch(() => route.query, () => {
 
           <!-- Listing Type -->
           <div class="filter-section">
-            <h4 class="filter-title">{{ t('product.filters.listingType') }}</h4>
-            <div class="filter-options">
+            <h4 class="filter-title" @click="filtersExpanded.listingType = !filtersExpanded.listingType">
+              {{ t('product.filters.listingType') }}
+              <ChevronDown class="filter-chevron" :class="{ collapsed: !filtersExpanded.listingType }" />
+            </h4>
+            <div v-show="filtersExpanded.listingType" class="filter-options">
               <label
                 v-for="opt in [
                   { value: 'all', label: t('product.filters.all') },
@@ -320,8 +332,11 @@ watch(() => route.query, () => {
 
           <!-- Rarity -->
           <div class="filter-section">
-            <h4 class="filter-title">{{ t('product.filters.rarity') }}</h4>
-            <div class="filter-options">
+            <h4 class="filter-title" @click="filtersExpanded.rarity = !filtersExpanded.rarity">
+              {{ t('product.filters.rarity') }}
+              <ChevronDown class="filter-chevron" :class="{ collapsed: !filtersExpanded.rarity }" />
+            </h4>
+            <div v-show="filtersExpanded.rarity" class="filter-options">
               <label
                 v-for="rarity in filterOptions.rarities"
                 :key="rarity.value"
@@ -343,8 +358,11 @@ watch(() => route.query, () => {
 
           <!-- Condition -->
           <div class="filter-section">
-            <h4 class="filter-title">{{ t('product.filters.condition') }}</h4>
-            <div class="filter-options">
+            <h4 class="filter-title" @click="filtersExpanded.condition = !filtersExpanded.condition">
+              {{ t('product.filters.condition') }}
+              <ChevronDown class="filter-chevron" :class="{ collapsed: !filtersExpanded.condition }" />
+            </h4>
+            <div v-show="filtersExpanded.condition" class="filter-options">
               <label
                 v-for="cond in filterOptions.conditions"
                 :key="cond.value"
@@ -366,8 +384,11 @@ watch(() => route.query, () => {
 
           <!-- Price Range -->
           <div class="filter-section">
-            <h4 class="filter-title">{{ t('product.filters.priceRange') }}</h4>
-            <div class="price-range">
+            <h4 class="filter-title" @click="filtersExpanded.price = !filtersExpanded.price">
+              {{ t('product.filters.priceRange') }}
+              <ChevronDown class="filter-chevron" :class="{ collapsed: !filtersExpanded.price }" />
+            </h4>
+            <div v-show="filtersExpanded.price" class="price-range">
               <input
                 v-model.number="filters.priceMin"
                 type="number"
@@ -577,6 +598,30 @@ watch(() => route.query, () => {
   }
 }
 
+.filter-close {
+  display: none;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-full);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  font-size: 16px;
+  cursor: pointer;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+
+  &:hover {
+    background: var(--bg-dark);
+    color: var(--text-primary);
+  }
+
+  @media (max-width: 1024px) {
+    display: flex;
+  }
+}
+
 .filter-section {
   padding: var(--space-4) 0;
   border-bottom: 1px solid var(--border);
@@ -585,12 +630,26 @@ watch(() => route.query, () => {
 }
 
 .filter-title {
-  font-size: var(--text-sm);
-  font-weight: 600;
-  color: var(--text-secondary);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  margin-bottom: var(--space-4);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  user-select: none;
+
+  &:hover {
+    opacity: 0.8;
+  }
+}
+
+.filter-chevron {
+  width: 16px;
+  height: 16px;
+  transition: transform 0.2s ease;
+  opacity: 0.6;
+
+  &.collapsed {
+    transform: rotate(-90deg);
+  }
 }
 
 .filter-options {

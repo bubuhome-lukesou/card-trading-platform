@@ -3,6 +3,8 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
+import { aiApi } from '@/api/ai'
+import { Loader2, ScanLine } from 'lucide-vue-next'
 
 const { t } = useI18n()
 const router = useRouter()
@@ -15,6 +17,9 @@ const editingProduct = ref<any>(null)
 const loading = ref(false)
 const products = ref<any[]>([])
 const filterStatus = ref('all')
+const scanning = ref(false)
+const scanError = ref('')
+const scanImageUrl = ref('')
 
 const categories = [
   { value: 'pokemon', label: '宝可梦', emoji: '🎮' },
@@ -80,6 +85,49 @@ const resetForm = () => {
     images: [],
   }
   editingProduct.value = null
+}
+
+// AI Scan Card Function
+const scanCardImage = async () => {
+  if (!scanImageUrl.value.trim()) {
+    scanError.value = '请输入图片 URL'
+    return
+  }
+
+  scanning.value = true
+  scanError.value = ''
+
+  try {
+    const response = await aiApi.recognizeCard(scanImageUrl.value)
+    
+    if (response.data.success && response.data.data) {
+      const data = response.data.data
+      
+      // Auto-fill form with recognized data
+      if (data.titleZh) formData.value.titleZh = data.titleZh
+      if (data.titleEn) formData.value.titleEn = data.titleEn
+      if (data.descriptionZh) formData.value.descriptionZh = data.descriptionZh
+      if (data.descriptionEn) formData.value.descriptionEn = data.descriptionEn
+      if (data.category) formData.value.category = data.category
+      if (data.rarity) formData.value.rarity = data.rarity.toLowerCase()
+      if (data.condition) formData.value.condition = data.condition
+      if (data.brand) (formData.value as any).brand = data.brand
+      if (data.series) (formData.value as any).series = data.series
+      
+      // Add image URL if recognized
+      if (scanImageUrl.value) {
+        formData.value.images = [scanImageUrl.value]
+      }
+      
+      alert('✅ 扫描成功！请检查并修改自动填充的内容')
+    } else {
+      scanError.value = response.data.error || '无法识别图片中的卡牌'
+    }
+  } catch (error: any) {
+    scanError.value = error?.response?.data?.message || '扫描失败，请重试'
+  } finally {
+    scanning.value = false
+  }
 }
 
 const openCreateModal = () => {
@@ -355,6 +403,36 @@ watch(() => route.query.action, (action) => {
         </div>
 
         <form @submit.prevent="handleSubmit" class="modal-body">
+          <!-- AI Scan Section -->
+          <div class="scan-section">
+            <div class="scan-header">
+              <ScanLine class="scan-icon" />
+              <span>🔮 AI 智能识别卡牌</span>
+            </div>
+            <div class="scan-input-row">
+              <input
+                v-model="scanImageUrl"
+                type="url"
+                placeholder="粘贴卡牌图片 URL..."
+                class="scan-input"
+              />
+              <button
+                type="button"
+                @click="scanCardImage"
+                :disabled="scanning"
+                class="btn-scan"
+              >
+                <Loader2 v-if="scanning" class="animate-spin" />
+                <ScanLine v-else />
+                {{ scanning ? '识别中...' : '扫描' }}
+              </button>
+            </div>
+            <p v-if="scanError" class="scan-error">{{ scanError }}</p>
+            <p class="scan-hint">粘贴卡牌图片 URL，AI 将自动识别并填充商品信息</p>
+          </div>
+
+          <div class="form-divider"></div>
+
           <div class="form-grid">
             <!-- Title -->
             <div class="form-group">
@@ -801,6 +879,100 @@ watch(() => route.query.action, (action) => {
 .modal-body {
   padding: var(--space-6);
   overflow-y: auto;
+}
+
+/* AI Scan Styles */
+.scan-section {
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+  border: 1px solid rgba(102, 126, 234, 0.3);
+  border-radius: var(--radius-xl);
+  padding: var(--space-5);
+  margin-bottom: var(--space-4);
+}
+
+.scan-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+  font-weight: 600;
+  color: var(--primary);
+}
+
+.scan-icon {
+  width: 20px;
+  height: 20px;
+}
+
+.scan-input-row {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.scan-input {
+  flex: 1;
+  padding: var(--space-3) var(--space-4);
+  background: var(--bg-dark);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  color: var(--text-primary);
+  font-size: var(--text-sm);
+}
+
+.scan-input:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+
+.btn-scan {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+  border: none;
+  border-radius: var(--radius-lg);
+  color: white;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.2s;
+  white-space: nowrap;
+}
+
+.btn-scan:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
+.btn-scan:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.scan-error {
+  color: var(--danger);
+  font-size: var(--text-xs);
+  margin-top: var(--space-2);
+}
+
+.scan-hint {
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+  margin-top: var(--space-2);
+}
+
+.form-divider {
+  height: 1px;
+  background: var(--border);
+  margin: var(--space-4) 0;
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
 .form-grid {

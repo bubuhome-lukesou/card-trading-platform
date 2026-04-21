@@ -11,6 +11,7 @@ import { Product } from './entities/product.entity'
 import { Auction, Bid } from './entities/auction.entity'
 import { Order } from './entities/order.entity'
 import { WebsocketModule } from './websocket/websocket.module'
+import { AiModule } from './modules/ai/ai.module'
 
 @Module({
   imports: [
@@ -29,7 +30,8 @@ import { WebsocketModule } from './websocket/websocket.module'
     ProductsModule,
     AuctionsModule,
     NotificationModule,
-    WebsocketModule
+    WebsocketModule,
+    AiModule
   ],
   controllers: [AppController],
   providers: [AppService]
