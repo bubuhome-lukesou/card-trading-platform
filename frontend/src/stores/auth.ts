@@ -11,7 +11,7 @@ export const useAuthStore = defineStore('auth', () => {
   const error = ref<string | null>(null)
 
   // Getters
-  const isAuthenticated = computed(() => !!token.value && !!user.value)
+  const isAuthenticated = computed(() => !!token.value)
   const isSeller = computed(() => user.value?.role === 'seller' || user.value?.role === 'admin')
   const isAdmin = computed(() => user.value?.role === 'admin')
   const currentUser = computed(() => user.value)
@@ -60,7 +60,7 @@ export const useAuthStore = defineStore('auth', () => {
 
     try {
       api.defaults.headers.common['Authorization'] = `Bearer ${token.value}`
-      const response = await api.get<User>('/auth/me')
+      const response = await api.get<User>('/auth/profile')
       user.value = response.data
     } catch {
       logout()

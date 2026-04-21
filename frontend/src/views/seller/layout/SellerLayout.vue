@@ -73,7 +73,7 @@ const handleLogout = async () => {
       </header>
 
       <div class="content-body">
-        <slot />
+        <router-view />
       </div>
     </main>
   </div>

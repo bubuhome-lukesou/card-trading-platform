@@ -67,7 +67,7 @@ const handleLogout = async () => {
       <header class="content-header">
         <h1 class="page-title">{{ t(`admin.${route.name?.toString().toLowerCase()}`) }}</h1>
       </header>
-      <slot />
+      <router-view />
     </main>
   </div>
 </template>

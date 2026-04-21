@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { RouterLink } from 'vue-router'
+import { RouterLink, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { LogIn } from 'lucide-vue-next'
 
 const { t } = useI18n()
 const authStore = useAuthStore()
+const router = useRouter()
 
 const email = ref('')
 const password = ref('')
@@ -21,6 +22,8 @@ const handleSubmit = async () => {
 
   if (!success) {
     error.value = authStore.error || 'Login failed'
+  } else {
+    router.push('/user')
   }
 
   loading.value = false
