@@ -53,9 +53,11 @@ export interface Auction {
   productId: string
   product?: Product
   sellerId: string
+  seller?: User
   startingPrice: number
   currentPrice: number
   reservePrice?: number
+  buyNowPrice?: number
   bidIncrement: number
   startTime: string
   endTime: string
@@ -63,6 +65,7 @@ export interface Auction {
   winnerId?: string
   winner?: User
   bidCount: number
+  bids?: Bid[]
   createdAt: string
   updatedAt: string
 }
