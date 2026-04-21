@@ -117,16 +117,22 @@ const sellerRoutes: RouteRecordRaw[] = [
 // Admin routes
 const adminRoutes: RouteRecordRaw[] = [
   {
+    path: '/admin/login',
+    name: 'AdminLogin',
+    component: () => import('@/views/admin/AdminLoginView.vue'),
+    meta: { guest: true }
+  },
+  {
     path: '/admin',
     component: () => import('@/views/admin/layout/AdminLayout.vue'),
-    meta: { requiresAuth: true, requiresAdmin: true },
+    meta: { requiresAdmin: true },
     children: [
       { path: '', name: 'AdminDashboard', component: () => import('@/views/admin/DashboardView.vue') },
       { path: 'users', name: 'AdminUsers', component: () => import('@/views/admin/UsersView.vue') },
       { path: 'sellers', name: 'AdminSellers', component: () => import('@/views/admin/SellersView.vue') },
       { path: 'products', name: 'AdminProducts', component: () => import('@/views/admin/ProductsView.vue') },
       { path: 'auctions', name: 'AdminAuctions', component: () => import('@/views/admin/AuctionsView.vue') },
-      { path: 'settings', name: 'AdminSettings', component: () => import('@/views/admin/SettingsView.vue') },
+      { path: 'settings', name: 'AdminSettings', component: () => import('@/views/admin/SettingsView.vue') }
     ]
   }
 ]
@@ -159,6 +165,18 @@ const router = createRouter({
 router.beforeEach((to, _from, next) => {
   const authStore = useAuthStore()
 
+  // Admin routes - special handling
+  if (to.path.startsWith('/admin') && !to.path.startsWith('/admin/login')) {
+    if (!authStore.isAuthenticated) {
+      next({ name: 'AdminLogin', query: { redirect: to.fullPath } })
+      return
+    }
+    if (!authStore.isAdmin) {
+      next({ name: 'Home' })
+      return
+    }
+  }
+
   // Check if route requires authentication
   if (to.meta.requiresAuth && !authStore.isAuthenticated) {
     next({ name: 'Login', query: { redirect: to.fullPath } })
@@ -179,7 +197,7 @@ router.beforeEach((to, _from, next) => {
 
   // Check admin role
   if (to.meta.requiresAdmin && !authStore.isAdmin) {
-    next({ name: 'Home' })
+    next({ name: 'AdminLogin' })
     return
   }
 
