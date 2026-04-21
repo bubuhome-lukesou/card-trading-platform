@@ -23,7 +23,14 @@ const handleSubmit = async () => {
   if (!success) {
     error.value = authStore.error || 'Login failed'
   } else {
-    router.push('/user')
+    // Redirect based on user role
+    if (authStore.isAdmin) {
+      router.push('/admin')
+    } else if (authStore.isSeller) {
+      router.push('/seller')
+    } else {
+      router.push('/user')
+    }
   }
 
   loading.value = false
