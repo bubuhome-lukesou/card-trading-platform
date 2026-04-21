@@ -1,50 +1,56 @@
 <script setup lang="ts">
+import { ref, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { RouterLink } from 'vue-router'
-import { ArrowRight, Shield, Zap, Globe, Headphones } from 'lucide-vue-next'
+import { ArrowRight, Zap, Clock, Star } from 'lucide-vue-next'
 
 const { t } = useI18n()
 
 const categories = [
-  { id: 'pokemon', emoji: '🎮', name: 'pokemon' },
-  { id: 'yugioh', emoji: '🐉', name: 'yugioh' },
-  { id: 'mtg', emoji: '🧙', name: 'mtg' },
-  { id: 'ultraman', emoji: '👾', name: 'ultraman' },
-  { id: 'onepiece', emoji: '⚔️', name: 'onepiece' },
-  { id: 'other', emoji: '🎴', name: 'other' }
+  { id: 'pokemon', emoji: '🎮', name: 'home.categories.pokemon' },
+  { id: 'yugioh', emoji: '🐉', name: 'home.categories.yugioh' },
+  { id: 'mtg', emoji: '🧙', name: 'home.categories.mtg' },
+  { id: 'ultraman', emoji: '👾', name: 'home.categories.ultraman' },
+  { id: 'onepiece', emoji: '⚔️', name: 'home.categories.onepiece' },
+  { id: 'doraemon', emoji: '🤖', name: 'home.categories.doraemon' },
+  { id: 'sports', emoji: '⚽', name: 'home.categories.sports' },
+  { id: 'other', emoji: '🎴', name: 'home.categories.other' }
 ]
 
-const features = [
-  { icon: Shield, titleKey: 'home.whyUs.security', desc: 'Secure payment protection' },
-  { icon: Zap, titleKey: 'home.whyUs.fast', desc: 'Instant transaction settlement' },
-  { icon: Globe, titleKey: 'home.whyUs.global', desc: 'Worldwide shipping available' },
-  { icon: Headphones, titleKey: 'home.whyUs.support', desc: '24/7 customer support' }
-]
+const hotAuctions = ref([
+  { id: 1, title: 'Pokemon 1st Edition Base Set', price: 12800, bids: 23, ends: '2h 30m', image: '' },
+  { id: 2, title: 'Yu-Gi-Oh Blue-Eyes White Dragon', price: 6800, bids: 15, ends: '5h 15m', image: '' },
+  { id: 3, title: 'MTG Black Lotus', price: 25000, bids: 8, ends: '12h', image: '' }
+])
+
+const newListings = ref([
+  { id: 4, title: 'One Piece NARUTO', price: 3200, condition: 'Near Mint', image: '' },
+  { id: 5, title: 'Doraemon Figure Collection', price: 1800, condition: 'Mint', image: '' },
+  { id: 6, title: 'Ultraman Ultra Medal Set', price: 950, condition: 'Excellent', image: '' },
+  { id: 7, title: 'Sports Card Bundle', price: 2600, condition: 'Good', image: '' },
+  { id: 8, title: 'Vintage Card Assortment', price: 4200, condition: 'Fair', image: '' }
+])
+
+const stats = ref([
+  { value: '10,000+', label: 'auctions' },
+  { value: '5,000+', label: 'users' },
+  { value: '98%', label: 'satisfaction' }
+])
 </script>
 
 <template>
   <div class="home">
-    <!-- Hero Section -->
-    <section class="hero">
-      <div class="hero-bg">
-        <div class="hero-gradient" />
-        <div class="floating-cards">
-          <div class="floating-card" style="--delay: 0s" />
-          <div class="floating-card" style="--delay: 1s" />
-          <div class="floating-card" style="--delay: 2s" />
-          <div class="floating-card" style="--delay: 3s" />
-        </div>
-      </div>
-
-      <div class="container hero-content">
-        <h1 class="hero-title">
+    <!-- Hero Banner -->
+    <section class="hero-banner">
+      <div class="banner-content">
+        <h1 class="banner-title">
           <span class="gradient-text">{{ t('home.hero.title') }}</span>
         </h1>
-        <p class="hero-subtitle">{{ t('home.hero.subtitle') }}</p>
-        <div class="hero-actions">
+        <p class="banner-subtitle">{{ t('home.hero.subtitle') }}</p>
+        <div class="banner-actions">
           <RouterLink to="/auctions" class="btn btn-primary btn-lg">
+            <Zap class="icon" />
             {{ t('home.hero.bidNow') }}
-            <Gavel class="icon" />
           </RouterLink>
           <RouterLink to="/marketplace" class="btn btn-outline btn-lg">
             {{ t('home.hero.browse') }}
@@ -52,12 +58,37 @@ const features = [
           </RouterLink>
         </div>
       </div>
+      <div class="banner-bg">
+        <div class="gradient-orb orb-1"></div>
+        <div class="gradient-orb orb-2"></div>
+      </div>
+    </section>
+
+    <!-- Stats -->
+    <section class="stats-bar">
+      <div class="container">
+        <div class="stats-grid">
+          <div v-for="stat in stats" :key="stat.label" class="stat-item">
+            <span class="stat-value">{{ stat.value }}</span>
+            <span class="stat-label">{{ t(`home.stats.${stat.label}`) }}</span>
+          </div>
+        </div>
+      </div>
     </section>
 
     <!-- Categories -->
-    <section class="categories">
+    <section class="section categories-section">
       <div class="container">
-        <h2 class="section-title">{{ t('home.categories.title') }}</h2>
+        <div class="section-header">
+          <h2 class="section-title">
+            <span class="emoji">📂</span>
+            {{ t('home.categories.title') }}
+          </h2>
+          <RouterLink to="/marketplace" class="see-all">
+            {{ t('home.seeAll') }}
+            <ArrowRight class="icon" />
+          </RouterLink>
+        </div>
         <div class="categories-grid">
           <RouterLink
             v-for="cat in categories"
@@ -66,23 +97,95 @@ const features = [
             class="category-card"
           >
             <span class="category-emoji">{{ cat.emoji }}</span>
-            <span class="category-name">{{ t(`home.categories.${cat.name}`) }}</span>
+            <span class="category-name">{{ t(cat.name) }}</span>
           </RouterLink>
         </div>
       </div>
     </section>
 
-    <!-- Features -->
-    <section class="features">
+    <!-- Hot Auctions -->
+    <section class="section auctions-section">
       <div class="container">
-        <h2 class="section-title">{{ t('home.whyUs.title') }}</h2>
-        <div class="features-grid">
-          <div v-for="feat in features" :key="feat.titleKey" class="feature-card">
-            <div class="feature-icon">
-              <component :is="feat.icon" />
+        <div class="section-header">
+          <h2 class="section-title">
+            <span class="emoji hot">🔥</span>
+            {{ t('home.hotAuctions.title') }}
+          </h2>
+          <RouterLink to="/auctions?status=active" class="see-all">
+            {{ t('home.seeAll') }}
+            <ArrowRight class="icon" />
+          </RouterLink>
+        </div>
+        <div class="auctions-grid">
+          <RouterLink
+            v-for="auction in hotAuctions"
+            :key="auction.id"
+            :to="`/auction/${auction.id}`"
+            class="auction-card"
+          >
+            <div class="auction-image">
+              <div class="placeholder-card">🃏</div>
+              <div class="auction-badge hot">🔥 {{ t('home.auctionStatus.live') }}</div>
             </div>
-            <h3>{{ t(feat.titleKey) }}</h3>
-            <p>{{ feat.desc }}</p>
+            <div class="auction-info">
+              <h3 class="auction-title">{{ auction.title }}</h3>
+              <div class="auction-meta">
+                <span class="auction-price">HK$ {{ auction.price.toLocaleString() }}</span>
+                <span class="auction-bids">{{ auction.bids }} {{ t('home.auctionStatus.bids') }}</span>
+              </div>
+              <div class="auction-timer">
+                <Clock class="icon" />
+                <span>{{ auction.ends }}</span>
+              </div>
+            </div>
+          </RouterLink>
+        </div>
+      </div>
+    </section>
+
+    <!-- New Listings -->
+    <section class="section listings-section">
+      <div class="container">
+        <div class="section-header">
+          <h2 class="section-title">
+            <span class="emoji new">✨</span>
+            {{ t('home.newListings.title') }}
+          </h2>
+          <RouterLink to="/marketplace?sort=newest" class="see-all">
+            {{ t('home.seeAll') }}
+            <ArrowRight class="icon" />
+          </RouterLink>
+        </div>
+        <div class="listings-grid">
+          <RouterLink
+            v-for="item in newListings"
+            :key="item.id"
+            :to="`/product/${item.id}`"
+            class="listing-card"
+          >
+            <div class="listing-image">
+              <div class="placeholder-card">🃏</div>
+              <div class="listing-condition">{{ item.condition }}</div>
+            </div>
+            <div class="listing-info">
+              <h3 class="listing-title">{{ item.title }}</h3>
+              <div class="listing-price">HK$ {{ item.price.toLocaleString() }}</div>
+            </div>
+          </RouterLink>
+        </div>
+      </div>
+    </section>
+
+    <!-- CTA -->
+    <section class="section cta-section">
+      <div class="container">
+        <div class="cta-card">
+          <div class="cta-content">
+            <h2>{{ t('home.cta.title') }}</h2>
+            <p>{{ t('home.cta.desc') }}</p>
+            <RouterLink to="/seller" class="btn btn-primary btn-lg">
+              {{ t('home.cta.button') }}
+            </RouterLink>
           </div>
         </div>
       </div>
@@ -92,55 +195,43 @@ const features = [
 
 <style scoped lang="scss">
 .home {
-  overflow-x: hidden;
+  background: var(--bg-dark);
 }
 
-// Hero
-.hero {
+// Hero Banner
+.hero-banner {
   position: relative;
-  min-height: calc(100vh - 64px);
+  padding: var(--space-16) var(--space-6);
+  min-height: 400px;
   display: flex;
   align-items: center;
-  padding: var(--space-20) 0;
-
-  &-bg {
-    position: absolute;
-    inset: 0;
-    overflow: hidden;
-  }
-
-  &-gradient {
-    position: absolute;
-    inset: 0;
-    background: radial-gradient(circle at 30% 50%, rgba(102, 126, 234, 0.15) 0%, transparent 50%),
-                radial-gradient(circle at 70% 80%, rgba(118, 75, 162, 0.1) 0%, transparent 40%);
-  }
-
-  &-content {
-    position: relative;
-    text-align: center;
-    max-width: 800px;
-    margin: 0 auto;
-  }
+  justify-content: center;
+  overflow: hidden;
+  background: linear-gradient(180deg, var(--bg-card) 0%, var(--bg-dark) 100%);
 }
 
-.hero-title {
+.banner-content {
+  position: relative;
+  z-index: 2;
+  text-align: center;
+  max-width: 700px;
+}
+
+.banner-title {
   font-family: var(--font-display);
-  font-size: clamp(2.5rem, 8vw, 4.5rem);
+  font-size: clamp(2rem, 6vw, 3.5rem);
   font-weight: 900;
-  line-height: 1.1;
-  margin-bottom: var(--space-6);
+  margin-bottom: var(--space-4);
   letter-spacing: -0.02em;
 }
 
-.hero-subtitle {
-  font-size: var(--text-xl);
+.banner-subtitle {
+  font-size: var(--text-lg);
   color: var(--text-secondary);
-  max-width: 600px;
-  margin: 0 auto var(--space-8);
+  margin-bottom: var(--space-8);
 }
 
-.hero-actions {
+.banner-actions {
   display: flex;
   gap: var(--space-4);
   justify-content: center;
@@ -152,62 +243,130 @@ const features = [
   }
 }
 
-.floating-cards {
+.banner-bg {
   position: absolute;
   inset: 0;
-  pointer-events: none;
+  overflow: hidden;
 }
 
-.floating-card {
+.gradient-orb {
   position: absolute;
-  width: 80px;
-  height: 112px;
-  background: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.02) 100%);
-  border-radius: 12px;
-  border: 1px solid rgba(255,255,255,0.1);
-  animation: float 6s ease-in-out infinite;
-  animation-delay: var(--delay);
+  border-radius: 50%;
+  filter: blur(80px);
+  opacity: 0.3;
 
-  &:nth-child(1) { top: 10%; left: 5%; }
-  &:nth-child(2) { top: 60%; left: 8%; transform: rotate(-15deg); }
-  &:nth-child(3) { top: 20%; right: 5%; transform: rotate(10deg); }
-  &:nth-child(4) { top: 70%; right: 10%; transform: rotate(-5deg); }
+  &.orb-1 {
+    width: 400px;
+    height: 400px;
+    background: var(--primary);
+    top: -100px;
+    left: -100px;
+  }
 
-  @media (max-width: 768px) {
-    display: none;
+  &.orb-2 {
+    width: 300px;
+    height: 300px;
+    background: var(--accent);
+    bottom: -50px;
+    right: -50px;
   }
 }
 
-@keyframes float {
-  0%, 100% { transform: translateY(0) rotate(0deg); }
-  50% { transform: translateY(-20px) rotate(5deg); }
+// Stats Bar
+.stats-bar {
+  background: var(--bg-card);
+  padding: var(--space-6) 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.stats-grid {
+  display: flex;
+  justify-content: center;
+  gap: var(--space-16);
+  flex-wrap: wrap;
+}
+
+.stat-item {
+  text-align: center;
+}
+
+.stat-value {
+  display: block;
+  font-family: var(--font-display);
+  font-size: var(--text-2xl);
+  font-weight: 700;
+  background: var(--primary-gradient);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.stat-label {
+  font-size: var(--text-sm);
+  color: var(--text-muted);
 }
 
 // Sections
-.section-title {
-  text-align: center;
-  font-size: var(--text-3xl);
-  font-weight: 700;
-  margin-bottom: var(--space-12);
+.section {
+  padding: var(--space-12) 0;
 }
 
-// Categories
-.categories {
-  padding: var(--space-20) 0;
-  background: var(--bg-card);
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-6);
+}
+
+.section-title {
+  font-size: var(--text-xl);
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+
+  .emoji {
+    font-size: 24px;
+    &.hot { animation: pulse 1.5s infinite; }
+    &.new { animation: sparkle 2s infinite; }
+  }
+}
+
+.see-all {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--text-sm);
+  color: var(--primary);
+  text-decoration: none;
+  transition: gap var(--transition-fast);
+
+  &:hover {
+    gap: var(--space-2);
+  }
+
+  .icon {
+    width: 16px;
+    height: 16px;
+  }
+}
+
+// Categories Grid
+.categories-section {
+  background: var(--bg-dark);
 }
 
 .categories-grid {
   display: grid;
-  grid-template-columns: repeat(6, 1fr);
-  gap: var(--space-4);
+  grid-template-columns: repeat(8, 1fr);
+  gap: var(--space-3);
 
   @media (max-width: 1024px) {
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(4, 1fr);
   }
 
   @media (max-width: 640px) {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(4, 1fr);
   }
 }
 
@@ -215,93 +374,309 @@ const features = [
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: var(--space-3);
-  padding: var(--space-6);
-  background: var(--bg-dark);
+  gap: var(--space-2);
+  padding: var(--space-4) var(--space-2);
+  background: var(--bg-card);
   border: 1px solid var(--border);
-  border-radius: var(--radius-xl);
+  border-radius: var(--radius-lg);
   text-decoration: none;
-  transition: all var(--transition-base);
+  transition: all var(--transition-fast);
 
   &:hover {
     border-color: var(--primary);
-    transform: translateY(-4px);
-    box-shadow: var(--shadow-glow);
-
-    .category-emoji {
-      transform: scale(1.1);
-    }
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
   }
 }
 
 .category-emoji {
-  font-size: 3rem;
-  transition: transform var(--transition-base);
+  font-size: 32px;
 }
 
 .category-name {
-  font-weight: 600;
-  color: var(--text-primary);
-  font-size: var(--text-sm);
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+  text-align: center;
 }
 
-// Features
-.features {
-  padding: var(--space-20) 0;
-}
-
-.features-grid {
+// Auctions Grid
+.auctions-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: var(--space-6);
 
-  @media (max-width: 1024px) {
+  @media (max-width: 768px) {
     grid-template-columns: repeat(2, 1fr);
   }
 
-  @media (max-width: 640px) {
+  @media (max-width: 480px) {
     grid-template-columns: 1fr;
   }
 }
 
-.feature-card {
-  text-align: center;
-  padding: var(--space-8);
+.auction-card {
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: var(--radius-xl);
-  transition: all var(--transition-base);
+  overflow: hidden;
+  text-decoration: none;
+  transition: all var(--transition-fast);
 
   &:hover {
     border-color: var(--primary);
     transform: translateY(-4px);
-  }
-
-  h3 {
-    font-size: var(--text-lg);
-    margin: var(--space-4) 0 var(--space-2);
-  }
-
-  p {
-    font-size: var(--text-sm);
-    color: var(--text-muted);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
   }
 }
 
-.feature-icon {
-  width: 64px;
-  height: 64px;
-  margin: 0 auto;
-  background: var(--primary-gradient);
-  border-radius: var(--radius-xl);
+.auction-image {
+  position: relative;
+  aspect-ratio: 4/3;
+  background: linear-gradient(135deg, var(--bg-dark) 0%, var(--bg-elevated) 100%);
   display: flex;
   align-items: center;
   justify-content: center;
+}
 
-  svg {
-    width: 32px;
-    height: 32px;
-    color: white;
+.placeholder-card {
+  font-size: 64px;
+  opacity: 0.5;
+}
+
+.auction-badge {
+  position: absolute;
+  top: var(--space-3);
+  left: var(--space-3);
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-full);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  background: rgba(0, 0, 0, 0.7);
+
+  &.hot {
+    background: var(--danger-gradient);
   }
+}
+
+.auction-info {
+  padding: var(--space-4);
+}
+
+.auction-title {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: var(--space-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.auction-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-2);
+}
+
+.auction-price {
+  font-family: var(--font-num);
+  font-size: var(--text-lg);
+  font-weight: 700;
+  color: var(--primary);
+}
+
+.auction-bids {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+
+.auction-timer {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--text-xs);
+  color: var(--accent);
+
+  .icon {
+    width: 14px;
+    height: 14px;
+  }
+}
+
+// Listings Grid
+.listings-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: var(--space-4);
+
+  @media (max-width: 1024px) {
+    grid-template-columns: repeat(4, 1fr);
+  }
+
+  @media (max-width: 640px) {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.listing-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  text-decoration: none;
+  transition: all var(--transition-fast);
+
+  &:hover {
+    border-color: var(--primary);
+    transform: translateY(-2px);
+  }
+}
+
+.listing-image {
+  position: relative;
+  aspect-ratio: 1;
+  background: linear-gradient(135deg, var(--bg-dark) 0%, var(--bg-elevated) 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.listing-condition {
+  position: absolute;
+  bottom: var(--space-2);
+  left: var(--space-2);
+  padding: 2px var(--space-2);
+  background: rgba(0, 0, 0, 0.7);
+  border-radius: var(--radius-sm);
+  font-size: 10px;
+  color: var(--text-muted);
+}
+
+.listing-info {
+  padding: var(--space-3);
+}
+
+.listing-title {
+  font-size: var(--text-xs);
+  color: var(--text-primary);
+  margin-bottom: var(--space-1);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.listing-price {
+  font-family: var(--font-num);
+  font-size: var(--text-sm);
+  font-weight: 700;
+  color: var(--primary);
+}
+
+// CTA Section
+.cta-card {
+  background: var(--primary-gradient);
+  border-radius: var(--radius-2xl);
+  padding: var(--space-12);
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.05'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+  }
+
+  h2 {
+    font-size: var(--text-2xl);
+    font-weight: 700;
+    color: white;
+    margin-bottom: var(--space-3);
+    position: relative;
+  }
+
+  p {
+    font-size: var(--text-base);
+    color: rgba(255, 255, 255, 0.9);
+    margin-bottom: var(--space-6);
+    position: relative;
+  }
+
+  .btn-primary {
+    background: white;
+    color: var(--primary-dark);
+
+    &:hover {
+      opacity: 0.9;
+    }
+  }
+}
+
+// Animations
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+@keyframes sparkle {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+}
+
+// Buttons
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-6);
+  border-radius: var(--radius-lg);
+  font-size: var(--text-base);
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  border: none;
+
+  &-primary {
+    background: var(--primary-gradient);
+    color: white;
+
+    &:hover {
+      opacity: 0.9;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 16px rgba(102, 126, 234, 0.4);
+    }
+  }
+
+  &-outline {
+    background: transparent;
+    border: 2px solid var(--border);
+    color: var(--text-primary);
+
+    &:hover {
+      border-color: var(--primary);
+      color: var(--primary);
+    }
+  }
+
+  &-lg {
+    padding: var(--space-4) var(--space-8);
+    font-size: var(--text-lg);
+  }
+
+  .icon {
+    width: 20px;
+    height: 20px;
+  }
+}
+
+// Container
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 var(--space-6);
 }
 </style>

@@ -2,7 +2,8 @@ import { createI18n } from 'vue-i18n'
 import zh from './locales/zh.json'
 import en from './locales/en.json'
 
-export type MessageSchema = typeof zh
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export type MessageSchema = Record<string, any>
 
 const i18n = createI18n<[MessageSchema], 'zh' | 'en'>({
   legacy: false,

@@ -46,33 +46,35 @@ const publicRoutes: RouteRecordRaw[] = [
 const userRoutes: RouteRecordRaw[] = [
   {
     path: '/user',
-    name: 'UserDashboard',
-    component: () => import('@/views/user/DashboardView.vue'),
-    meta: { requiresAuth: true }
-  },
-  {
-    path: '/user/orders',
-    name: 'UserOrders',
-    component: () => import('@/views/user/OrdersView.vue'),
-    meta: { requiresAuth: true }
-  },
-  {
-    path: '/user/favorites',
-    name: 'UserFavorites',
-    component: () => import('@/views/user/FavoritesView.vue'),
-    meta: { requiresAuth: true }
-  },
-  {
-    path: '/user/wallet',
-    name: 'UserWallet',
-    component: () => import('@/views/user/WalletView.vue'),
-    meta: { requiresAuth: true }
-  },
-  {
-    path: '/user/settings',
-    name: 'UserSettings',
-    component: () => import('@/views/user/SettingsView.vue'),
-    meta: { requiresAuth: true }
+    component: () => import('@/views/user/layout/UserLayout.vue'),
+    meta: { requiresAuth: true },
+    children: [
+      {
+        path: '',
+        name: 'UserDashboard',
+        component: () => import('@/views/user/DashboardView.vue')
+      },
+      {
+        path: 'orders',
+        name: 'UserOrders',
+        component: () => import('@/views/user/OrdersView.vue')
+      },
+      {
+        path: 'favorites',
+        name: 'UserFavorites',
+        component: () => import('@/views/user/FavoritesView.vue')
+      },
+      {
+        path: 'wallet',
+        name: 'UserWallet',
+        component: () => import('@/views/user/WalletView.vue')
+      },
+      {
+        path: 'settings',
+        name: 'UserSettings',
+        component: () => import('@/views/user/SettingsView.vue')
+      }
+    ]
   }
 ]
 
@@ -80,33 +82,35 @@ const userRoutes: RouteRecordRaw[] = [
 const sellerRoutes: RouteRecordRaw[] = [
   {
     path: '/seller',
-    name: 'SellerDashboard',
-    component: () => import('@/views/seller/DashboardView.vue'),
-    meta: { requiresAuth: true, requiresSeller: true }
-  },
-  {
-    path: '/seller/products',
-    name: 'SellerProducts',
-    component: () => import('@/views/seller/ProductsView.vue'),
-    meta: { requiresAuth: true, requiresSeller: true }
-  },
-  {
-    path: '/seller/auctions',
-    name: 'SellerAuctions',
-    component: () => import('@/views/seller/AuctionsView.vue'),
-    meta: { requiresAuth: true, requiresSeller: true }
-  },
-  {
-    path: '/seller/orders',
-    name: 'SellerOrders',
-    component: () => import('@/views/seller/OrdersView.vue'),
-    meta: { requiresAuth: true, requiresSeller: true }
-  },
-  {
-    path: '/seller/earnings',
-    name: 'SellerEarnings',
-    component: () => import('@/views/seller/EarningsView.vue'),
-    meta: { requiresAuth: true, requiresSeller: true }
+    component: () => import('@/views/seller/layout/SellerLayout.vue'),
+    meta: { requiresAuth: true, requiresSeller: true },
+    children: [
+      {
+        path: '',
+        name: 'SellerDashboard',
+        component: () => import('@/views/seller/DashboardView.vue')
+      },
+      {
+        path: 'products',
+        name: 'SellerProducts',
+        component: () => import('@/views/seller/ProductsView.vue')
+      },
+      {
+        path: 'auctions',
+        name: 'SellerAuctions',
+        component: () => import('@/views/seller/AuctionsView.vue')
+      },
+      {
+        path: 'orders',
+        name: 'SellerOrders',
+        component: () => import('@/views/seller/OrdersView.vue')
+      },
+      {
+        path: 'earnings',
+        name: 'SellerEarnings',
+        component: () => import('@/views/seller/EarningsView.vue')
+      }
+    ]
   }
 ]
 
@@ -114,33 +118,16 @@ const sellerRoutes: RouteRecordRaw[] = [
 const adminRoutes: RouteRecordRaw[] = [
   {
     path: '/admin',
-    name: 'AdminDashboard',
-    component: () => import('@/views/admin/DashboardView.vue'),
-    meta: { requiresAuth: true, requiresAdmin: true }
-  },
-  {
-    path: '/admin/users',
-    name: 'AdminUsers',
-    component: () => import('@/views/admin/UsersView.vue'),
-    meta: { requiresAuth: true, requiresAdmin: true }
-  },
-  {
-    path: '/admin/sellers',
-    name: 'AdminSellers',
-    component: () => import('@/views/admin/SellersView.vue'),
-    meta: { requiresAuth: true, requiresAdmin: true }
-  },
-  {
-    path: '/admin/products',
-    name: 'AdminProducts',
-    component: () => import('@/views/admin/ProductsView.vue'),
-    meta: { requiresAuth: true, requiresAdmin: true }
-  },
-  {
-    path: '/admin/settings',
-    name: 'AdminSettings',
-    component: () => import('@/views/admin/SettingsView.vue'),
-    meta: { requiresAuth: true, requiresAdmin: true }
+    component: () => import('@/views/admin/layout/AdminLayout.vue'),
+    meta: { requiresAuth: true, requiresAdmin: true },
+    children: [
+      { path: '', name: 'AdminDashboard', component: () => import('@/views/admin/DashboardView.vue') },
+      { path: 'users', name: 'AdminUsers', component: () => import('@/views/admin/UsersView.vue') },
+      { path: 'sellers', name: 'AdminSellers', component: () => import('@/views/admin/SellersView.vue') },
+      { path: 'products', name: 'AdminProducts', component: () => import('@/views/admin/ProductsView.vue') },
+      { path: 'auctions', name: 'AdminAuctions', component: () => import('@/views/admin/AuctionsView.vue') },
+      { path: 'settings', name: 'AdminSettings', component: () => import('@/views/admin/SettingsView.vue') },
+    ]
   }
 ]
 

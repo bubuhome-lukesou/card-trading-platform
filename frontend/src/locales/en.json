@@ -1,7 +1,8 @@
 {
   "app": {
     "name": "Card Quest",
-    "tagline": "Rare Cards at Card Quest"
+    "tagline": "Rare Cards at Card Quest",
+    "description": "Card Quest is a leading card auction platform providing a safe and transparent bidding environment for collectors worldwide."
   },
   "nav": {
     "home": "Home",
@@ -12,9 +13,23 @@
     "logout": "Logout",
     "userCenter": "My Account",
     "sellerCenter": "Seller Center",
-    "adminPanel": "Admin Panel"
+    "adminPanel": "Admin Panel",
+    "becomeSeller": "Become a Seller"
+  },
+  "footer": {
+    "platform": "Platform",
+    "support": "Support",
+    "contact": "Contact",
+    "helpCenter": "Help Center",
+    "contactUs": "Contact Us",
+    "faq": "FAQ",
+    "location": "Macao",
+    "rights": "All rights reserved"
   },
   "home": {
+    "search": {
+      "placeholder": "Search rare cards..."
+    },
     "hero": {
       "title": "Rare Cards Live Auctions",
       "subtitle": "Discover the most precious collectible cards and participate in exciting real-time auctions",
@@ -28,7 +43,32 @@
       "mtg": "Magic: The Gathering",
       "ultraman": "Ultraman",
       "onepiece": "One Piece",
+      "doraemon": "Doraemon",
+      "sports": "Sports Cards",
       "other": "Other"
+    },
+    "stats": {
+      "auctions": "Total Auctions",
+      "users": "Total Users",
+      "satisfaction": "Satisfaction"
+    },
+    "hotAuctions": {
+      "title": "Hot Auctions"
+    },
+    "auctionStatus": {
+      "live": "Live",
+      "upcoming": "Upcoming",
+      "ended": "Ended",
+      "bids": "bids"
+    },
+    "newListings": {
+      "title": "New Listings"
+    },
+    "seeAll": "See All",
+    "cta": {
+      "title": "Become a Seller & Start Trading",
+      "desc": "Open your store on Card Quest and sell your rare card collections",
+      "button": "Start Selling"
     },
     "featuredAuctions": {
       "title": "Live Auctions",

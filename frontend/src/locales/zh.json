@@ -1,7 +1,8 @@
 {
   "app": {
     "name": "Card Quest",
-    "tagline": "珍稀卡牌 尽在Card Quest"
+    "tagline": "珍稀卡牌 尽在Card Quest",
+    "description": "Card Quest 是领先的卡牌拍卖平台，为全球收藏家提供安全、透明的竞拍环境。"
   },
   "nav": {
     "home": "首页",
@@ -12,9 +13,23 @@
     "logout": "退出",
     "userCenter": "用户中心",
     "sellerCenter": "卖家中心",
-    "adminPanel": "管理后台"
+    "adminPanel": "管理后台",
+    "becomeSeller": "成为卖家"
+  },
+  "footer": {
+    "platform": "平台",
+    "support": "支持",
+    "contact": "联系方式",
+    "helpCenter": "帮助中心",
+    "contactUs": "联系我们",
+    "faq": "常见问题",
+    "location": "澳门",
+    "rights": "版权所有"
   },
   "home": {
+    "search": {
+      "placeholder": "搜索珍稀卡牌..."
+    },
     "hero": {
       "title": "珍稀卡牌 限时竞拍",
       "subtitle": "发现最珍贵的收藏卡牌，参与激动人心的实时竞拍",
@@ -28,7 +43,32 @@
       "mtg": "万智牌",
       "ultraman": "奥特曼",
       "onepiece": "海贼王",
+      "doraemon": "哆啦A梦",
+      "sports": "体育卡",
       "other": "其他"
+    },
+    "stats": {
+      "auctions": "拍卖总数",
+      "users": "用户总数",
+      "satisfaction": "满意度"
+    },
+    "hotAuctions": {
+      "title": "热门拍卖"
+    },
+    "auctionStatus": {
+      "live": "进行中",
+      "upcoming": "即将开始",
+      "ended": "已结束",
+      "bids": "次出价"
+    },
+    "newListings": {
+      "title": "最新上架"
+    },
+    "seeAll": "查看全部",
+    "cta": {
+      "title": "成为卖家，开始交易",
+      "desc": "在 Card Quest 开店，销售您的珍稀卡牌收藏",
+      "button": "立即入驻"
     },
     "featuredAuctions": {
       "title": "正在热拍",
@@ -144,7 +184,36 @@
     "earnings": "收益管理",
     "reviews": "评价管理",
     "settings": "店铺设置",
-    "apply": "申请成为卖家"
+    "apply": "申请成为卖家",
+    "createProduct": "发布新商品",
+    "editProduct": "编辑商品",
+    "totalProducts": "商品总数",
+    "activeListings": "在售商品",
+    "totalSales": "总销售额",
+    "pendingOrders": "待处理订单"
+  },
+  "product": {
+    "create": "发布商品",
+    "edit": "编辑",
+    "delete": "删除",
+    "titleZh": "商品名称（中文）",
+    "titleEn": "商品名称（英文）",
+    "descriptionZh": "商品描述（中文）",
+    "descriptionEn": "商品描述（英文）",
+    "category": "商品类别",
+    "condition": "品相",
+    "rarity": "稀有度",
+    "listingType": "销售模式",
+    "price": "售价",
+    "startingPrice": "起拍价",
+    "bidIncrement": "最低加价",
+    "images": "商品图片",
+    "status": {
+      "draft": "草稿",
+      "active": "在售",
+      "sold": "已售",
+      "removed": "已下架"
+    }
   },
   "admin": {
     "dashboard": "管理后台",
