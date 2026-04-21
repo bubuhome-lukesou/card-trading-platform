@@ -1,0 +1,200 @@
+{
+  "app": {
+    "name": "Card Quest",
+    "tagline": "Rare Cards at Card Quest"
+  },
+  "nav": {
+    "home": "Home",
+    "marketplace": "Marketplace",
+    "auctions": "Auctions",
+    "login": "Login",
+    "register": "Register",
+    "logout": "Logout",
+    "userCenter": "My Account",
+    "sellerCenter": "Seller Center",
+    "adminPanel": "Admin Panel"
+  },
+  "home": {
+    "hero": {
+      "title": "Rare Cards Live Auctions",
+      "subtitle": "Discover the most precious collectible cards and participate in exciting real-time auctions",
+      "bidNow": "Bid Now",
+      "browse": "Browse Products"
+    },
+    "categories": {
+      "title": "Quick Categories",
+      "pokemon": "Pokemon",
+      "yugioh": "Yu-Gi-Oh!",
+      "mtg": "Magic: The Gathering",
+      "ultraman": "Ultraman",
+      "onepiece": "One Piece",
+      "other": "Other"
+    },
+    "featuredAuctions": {
+      "title": "Live Auctions",
+      "viewAll": "View All"
+    },
+    "featuredProducts": {
+      "title": "Featured Cards",
+      "viewAll": "View All"
+    },
+    "whyUs": {
+      "title": "Why Choose Us",
+      "security": "Secure Transactions",
+      "fast": "Fast Settlement",
+      "global": "Global Shipping",
+      "support": "24/7 Support"
+    }
+  },
+  "product": {
+    "marketplace": "Marketplace",
+    "allProducts": "All Products",
+    "filters": {
+      "title": "Filters",
+      "category": "Category",
+      "brand": "Brand",
+      "series": "Series",
+      "rarity": "Rarity",
+      "condition": "Condition",
+      "priceRange": "Price Range",
+      "listingType": "Listing Type",
+      "all": "All",
+      "saleOnly": "Sale Only",
+      "auctionOnly": "Auction Only",
+      "clearAll": "Clear All"
+    },
+    "sort": {
+      "popular": "Popular",
+      "newest": "Newest",
+      "priceAsc": "Price: Low to High",
+      "priceDesc": "Price: High to Low",
+      "endingSoon": "Ending Soon"
+    },
+    "card": {
+      "buyNow": "Buy Now",
+      "addToCart": "Add to Cart",
+      "favorite": "Favorite",
+      "share": "Share"
+    },
+    "details": {
+      "title": "Product Details",
+      "description": "Description",
+      "seller": "Seller",
+      "condition": "Condition",
+      "brand": "Brand",
+      "series": "Series",
+      "rarity": "Rarity",
+      "price": "Price",
+      "auctionPrice": "Starting Price",
+      "currentBid": "Current Bid",
+      "yourBid": "Your Bid",
+      "placeBid": "Place Bid",
+      "timeLeft": "Time Left",
+      "bids": "bids",
+      "noBids": "No bids yet"
+    }
+  },
+  "auction": {
+    "list": "Auctions",
+    "live": "Live",
+    "upcoming": "Upcoming",
+    "ended": "Ended",
+    "status": {
+      "active": "Active",
+      "upcoming": "Upcoming",
+      "ended": "Ended",
+      "cancelled": "Cancelled"
+    }
+  },
+  "auth": {
+    "login": {
+      "title": "Login",
+      "email": "Email",
+      "password": "Password",
+      "submit": "Login",
+      "noAccount": "Don't have an account?",
+      "registerNow": "Register Now"
+    },
+    "register": {
+      "title": "Register",
+      "email": "Email",
+      "nickname": "Nickname",
+      "password": "Password",
+      "confirmPassword": "Confirm Password",
+      "submit": "Register",
+      "hasAccount": "Already have an account?",
+      "loginNow": "Login Now"
+    }
+  },
+  "user": {
+    "dashboard": "My Account",
+    "myOrders": "My Orders",
+    "myPurchases": "My Purchases",
+    "mySales": "My Sales",
+    "myBids": "My Bids",
+    "myFavorites": "My Favorites",
+    "wallet": "Wallet",
+    "settings": "Settings"
+  },
+  "seller": {
+    "dashboard": "Seller Center",
+    "products": "Products",
+    "auctions": "Auctions",
+    "orders": "Orders",
+    "earnings": "Earnings",
+    "reviews": "Reviews",
+    "settings": "Settings",
+    "apply": "Become a Seller"
+  },
+  "admin": {
+    "dashboard": "Admin Panel",
+    "users": "Users",
+    "sellers": "Sellers",
+    "products": "Product Moderation",
+    "auctions": "Auction Monitoring",
+    "reports": "Reports",
+    "settings": "Platform Settings"
+  },
+  "common": {
+    "search": "Search",
+    "searchPlaceholder": "Search card name/series/seller...",
+    "loading": "Loading...",
+    "noResults": "No results found",
+    "loadMore": "Load More",
+    "showing": "Showing",
+    "of": "of",
+    "items": "items",
+    "currency": "HK$",
+    "save": "Save",
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "delete": "Delete",
+    "edit": "Edit",
+    "add": "Add",
+    "back": "Back",
+    "next": "Next",
+    "previous": "Previous",
+    "success": "Success",
+    "error": "Error",
+    "warning": "Warning",
+    "info": "Info"
+  },
+  "conditions": {
+    "mint": "Mint",
+    "near_mint": "Near Mint",
+    "excellent": "Excellent",
+    "good": "Good",
+    "fair": "Fair"
+  },
+  "errors": {
+    "required": "This field is required",
+    "invalidEmail": "Please enter a valid email address",
+    "minLength": "Must be at least {min} characters",
+    "maxLength": "Cannot exceed {max} characters",
+    "passwordMismatch": "Passwords do not match",
+    "networkError": "Network error, please try again later",
+    "unauthorized": "Please login first",
+    "forbidden": "You do not have permission to perform this action",
+    "notFound": "The requested resource does not exist"
+  }
+}

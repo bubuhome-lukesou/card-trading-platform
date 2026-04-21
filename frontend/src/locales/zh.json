@@ -1,0 +1,200 @@
+{
+  "app": {
+    "name": "Card Quest",
+    "tagline": "珍稀卡牌 尽在Card Quest"
+  },
+  "nav": {
+    "home": "首页",
+    "marketplace": "商品市场",
+    "auctions": "拍卖列表",
+    "login": "登录",
+    "register": "注册",
+    "logout": "退出",
+    "userCenter": "用户中心",
+    "sellerCenter": "卖家中心",
+    "adminPanel": "管理后台"
+  },
+  "home": {
+    "hero": {
+      "title": "珍稀卡牌 限时竞拍",
+      "subtitle": "发现最珍贵的收藏卡牌，参与激动人心的实时竞拍",
+      "bidNow": "立即竞拍",
+      "browse": "浏览商品"
+    },
+    "categories": {
+      "title": "快速分类",
+      "pokemon": "宝可梦",
+      "yugioh": "游戏王",
+      "mtg": "万智牌",
+      "ultraman": "奥特曼",
+      "onepiece": "海贼王",
+      "other": "其他"
+    },
+    "featuredAuctions": {
+      "title": "正在热拍",
+      "viewAll": "查看全部"
+    },
+    "featuredProducts": {
+      "title": "精选商品",
+      "viewAll": "查看全部"
+    },
+    "whyUs": {
+      "title": "为什么选择我们",
+      "security": "安全交易",
+      "fast": "快速结算",
+      "global": "全球配送",
+      "support": "24/7 支持"
+    }
+  },
+  "product": {
+    "marketplace": "商品市场",
+    "allProducts": "全部商品",
+    "filters": {
+      "title": "筛选",
+      "category": "类别",
+      "brand": "品牌",
+      "series": "系列/款式",
+      "rarity": "稀有度",
+      "condition": "品相",
+      "priceRange": "价格区间",
+      "listingType": "状态",
+      "all": "全部",
+      "saleOnly": "仅销售",
+      "auctionOnly": "仅拍卖",
+      "clearAll": "清除筛选"
+    },
+    "sort": {
+      "popular": "热门",
+      "newest": "最新",
+      "priceAsc": "价格从低到高",
+      "priceDesc": "价格从高到低",
+      "endingSoon": "即将结束"
+    },
+    "card": {
+      "buyNow": "立即购买",
+      "addToCart": "加入购物车",
+      "favorite": "收藏",
+      "share": "分享"
+    },
+    "details": {
+      "title": "商品详情",
+      "description": "商品描述",
+      "seller": "卖家",
+      "condition": "品相",
+      "brand": "品牌",
+      "series": "系列",
+      "rarity": "稀有度",
+      "price": "价格",
+      "auctionPrice": "起拍价",
+      "currentBid": "当前出价",
+      "yourBid": "您的出价",
+      "placeBid": "立即出价",
+      "timeLeft": "剩余时间",
+      "bids": "次出价",
+      "noBids": "暂无出价"
+    }
+  },
+  "auction": {
+    "list": "拍卖列表",
+    "live": "正在进行",
+    "upcoming": "即将开始",
+    "ended": "已结束",
+    "status": {
+      "active": "进行中",
+      "upcoming": "即将开始",
+      "ended": "已结束",
+      "cancelled": "已取消"
+    }
+  },
+  "auth": {
+    "login": {
+      "title": "登录",
+      "email": "邮箱",
+      "password": "密码",
+      "submit": "登录",
+      "noAccount": "还没有账号？",
+      "registerNow": "立即注册"
+    },
+    "register": {
+      "title": "注册",
+      "email": "邮箱",
+      "nickname": "昵称",
+      "password": "密码",
+      "confirmPassword": "确认密码",
+      "submit": "注册",
+      "hasAccount": "已有账号？",
+      "loginNow": "立即登录"
+    }
+  },
+  "user": {
+    "dashboard": "我的账户",
+    "myOrders": "我的订单",
+    "myPurchases": "我的购买",
+    "mySales": "我的销售",
+    "myBids": "我的出价",
+    "myFavorites": "我的收藏",
+    "wallet": "钱包",
+    "settings": "设置"
+  },
+  "seller": {
+    "dashboard": "卖家中心",
+    "products": "商品管理",
+    "auctions": "拍卖管理",
+    "orders": "订单管理",
+    "earnings": "收益管理",
+    "reviews": "评价管理",
+    "settings": "店铺设置",
+    "apply": "申请成为卖家"
+  },
+  "admin": {
+    "dashboard": "管理后台",
+    "users": "用户管理",
+    "sellers": "商家管理",
+    "products": "商品审核",
+    "auctions": "拍卖监控",
+    "reports": "数据报表",
+    "settings": "平台设置"
+  },
+  "common": {
+    "search": "搜索",
+    "searchPlaceholder": "搜索卡牌名称/系列/卖家...",
+    "loading": "加载中...",
+    "noResults": "暂无结果",
+    "loadMore": "加载更多",
+    "showing": "显示",
+    "of": "共",
+    "items": "件",
+    "currency": "HK$",
+    "save": "保存",
+    "cancel": "取消",
+    "confirm": "确认",
+    "delete": "删除",
+    "edit": "编辑",
+    "add": "添加",
+    "back": "返回",
+    "next": "下一步",
+    "previous": "上一步",
+    "success": "操作成功",
+    "error": "操作失败",
+    "warning": "警告",
+    "info": "提示"
+  },
+  "conditions": {
+    "mint": "全新/Mint",
+    "near_mint": "近全新/Near Mint",
+    "excellent": "优秀/Excellent",
+    "good": "良好/Good",
+    "fair": "一般/Fair"
+  },
+  "errors": {
+    "required": "此字段为必填项",
+    "invalidEmail": "请输入有效的邮箱地址",
+    "minLength": "至少需要 {min} 个字符",
+    "maxLength": "最多只能输入 {max} 个字符",
+    "passwordMismatch": "两次输入的密码不一致",
+    "networkError": "网络错误，请稍后重试",
+    "unauthorized": "请先登录",
+    "forbidden": "您没有权限执行此操作",
+    "notFound": "请求的资源不存在"
+  }
+}
