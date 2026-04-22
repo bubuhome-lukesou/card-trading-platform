@@ -64,7 +64,7 @@ const handleLogout = async () => {
     <!-- Main Content -->
     <main class="main-content">
       <header class="content-header">
-        <h1 class="page-title">{{ t(`seller.${route.name?.toString().toLowerCase()}`) }}</h1>
+        <h1 class="page-title">{{ t(`seller.${route.name?.toString().replace('Seller', '').toLowerCase()}`) }}</h1>
         <div class="header-actions">
           <router-link v-if="route.path.includes('/products')" to="/seller/products?action=create" class="btn-primary">
             + {{ t('product.create') }}

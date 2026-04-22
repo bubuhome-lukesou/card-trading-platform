@@ -162,7 +162,7 @@ const router = createRouter({
 })
 
 // Navigation guards
-router.beforeEach((to, _from, next) => {
+router.beforeEach(async (to, _from, next) => {
   const authStore = useAuthStore()
 
   // Admin routes - special handling
@@ -190,9 +190,15 @@ router.beforeEach((to, _from, next) => {
   }
 
   // Check seller role
-  if (to.meta.requiresSeller && !authStore.isSeller) {
-    next({ name: 'Home' })
-    return
+  if (to.meta.requiresSeller) {
+    // If user not loaded yet but we have token, wait for fetchUser to complete
+    if (!authStore.user && authStore.token) {
+      await authStore.fetchUser()
+    }
+    if (!authStore.isSeller) {
+      next({ name: 'Home' })
+      return
+    }
   }
 
   // Check admin role

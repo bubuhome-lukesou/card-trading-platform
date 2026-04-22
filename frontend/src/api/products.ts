@@ -29,6 +29,6 @@ export const productApi = {
 
   // Get seller's products
   getMyProducts(params?: { page?: number; limit?: number }) {
-    return api.get<Product[]>('/products/my', { params })
+    return api.get<Product[]>('/products/seller', { params })
   }
 }

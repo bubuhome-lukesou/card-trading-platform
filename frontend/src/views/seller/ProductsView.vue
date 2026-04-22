@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
@@ -285,6 +285,16 @@ const loadProducts = async () => {
   }
 }
 
+const routeWatcher = watch(
+  () => route.query.action,
+  (action) => {
+    if (action === 'create') {
+      openCreateModal()
+      router.replace({ query: {} })
+    }
+  }
+)
+
 onMounted(() => {
   loadProducts()
 
@@ -294,6 +304,10 @@ onMounted(() => {
     // Clean URL
     router.replace({ query: {} })
   }
+})
+
+onUnmounted(() => {
+  routeWatcher()
 })
 </script>
 
