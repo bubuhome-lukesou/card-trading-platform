@@ -1,5 +1,6 @@
 import { User } from './user.entity';
 import { Product } from './product.entity';
+import { Bid } from './bid.entity';
 export declare enum AuctionStatus {
     PENDING = "pending",
     ACTIVE = "active",
@@ -27,12 +28,4 @@ export declare class Auction {
     createdAt: Date;
     updatedAt: Date;
 }
-export declare class Bid {
-    id: string;
-    auctionId: string;
-    auction: Auction;
-    bidderId: string;
-    bidder: User;
-    amount: number;
-    createdAt: Date;
-}
+export { Bid } from './bid.entity';

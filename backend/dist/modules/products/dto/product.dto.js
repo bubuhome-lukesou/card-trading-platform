@@ -8,12 +8,11 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
-var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.UpdateProductDto = exports.CreateProductDto = exports.ProductFiltersDto = void 0;
 const class_validator_1 = require("class-validator");
 const class_transformer_1 = require("class-transformer");
-const product_entity_1 = require("../../entities/product.entity");
+const product_entity_1 = require("../../../entities/product.entity");
 class ProductFiltersDto {
     constructor() {
         this.page = 1;
@@ -69,12 +68,12 @@ __decorate([
 __decorate([
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsEnum)(product_entity_1.ListingType),
-    __metadata("design:type", typeof (_a = typeof product_entity_1.ListingType !== "undefined" && product_entity_1.ListingType) === "function" ? _a : Object)
+    __metadata("design:type", String)
 ], ProductFiltersDto.prototype, "listingType", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsEnum)(product_entity_1.ProductStatus),
-    __metadata("design:type", typeof (_b = typeof product_entity_1.ProductStatus !== "undefined" && product_entity_1.ProductStatus) === "function" ? _b : Object)
+    __metadata("design:type", String)
 ], ProductFiltersDto.prototype, "status", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
@@ -109,9 +108,10 @@ class CreateProductDto {
 exports.CreateProductDto = CreateProductDto;
 __decorate([
     (0, class_validator_1.IsEnum)(product_entity_1.ProductCategory),
-    __metadata("design:type", typeof (_c = typeof product_entity_1.ProductCategory !== "undefined" && product_entity_1.ProductCategory) === "function" ? _c : Object)
+    __metadata("design:type", String)
 ], CreateProductDto.prototype, "category", void 0);
 __decorate([
+    (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
 ], CreateProductDto.prototype, "brand", void 0);
@@ -122,11 +122,11 @@ __decorate([
 ], CreateProductDto.prototype, "series", void 0);
 __decorate([
     (0, class_validator_1.IsEnum)(product_entity_1.ProductRarity),
-    __metadata("design:type", typeof (_d = typeof product_entity_1.ProductRarity !== "undefined" && product_entity_1.ProductRarity) === "function" ? _d : Object)
+    __metadata("design:type", String)
 ], CreateProductDto.prototype, "rarity", void 0);
 __decorate([
     (0, class_validator_1.IsEnum)(product_entity_1.ProductCondition),
-    __metadata("design:type", typeof (_e = typeof product_entity_1.ProductCondition !== "undefined" && product_entity_1.ProductCondition) === "function" ? _e : Object)
+    __metadata("design:type", String)
 ], CreateProductDto.prototype, "condition", void 0);
 __decorate([
     (0, class_validator_1.IsString)(),
@@ -154,8 +154,7 @@ __decorate([
 ], CreateProductDto.prototype, "price", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
-    (0, class_validator_1.IsString)(),
-    __metadata("design:type", String)
+    __metadata("design:type", Object)
 ], CreateProductDto.prototype, "images", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
@@ -168,9 +167,24 @@ __decorate([
     __metadata("design:type", String)
 ], CreateProductDto.prototype, "cardNumber", void 0);
 __decorate([
+    (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsEnum)(product_entity_1.ListingType),
-    __metadata("design:type", typeof (_f = typeof product_entity_1.ListingType !== "undefined" && product_entity_1.ListingType) === "function" ? _f : Object)
+    __metadata("design:type", String)
 ], CreateProductDto.prototype, "listingType", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_transformer_1.Type)(() => Number),
+    (0, class_validator_1.IsNumber)(),
+    (0, class_validator_1.Min)(0),
+    __metadata("design:type", Number)
+], CreateProductDto.prototype, "startingPrice", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_transformer_1.Type)(() => Number),
+    (0, class_validator_1.IsNumber)(),
+    (0, class_validator_1.Min)(1),
+    __metadata("design:type", Number)
+], CreateProductDto.prototype, "bidIncrement", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
     (0, class_transformer_1.Type)(() => Number),
@@ -184,7 +198,7 @@ exports.UpdateProductDto = UpdateProductDto;
 __decorate([
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsEnum)(product_entity_1.ProductCategory),
-    __metadata("design:type", typeof (_g = typeof product_entity_1.ProductCategory !== "undefined" && product_entity_1.ProductCategory) === "function" ? _g : Object)
+    __metadata("design:type", String)
 ], UpdateProductDto.prototype, "category", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
@@ -199,12 +213,12 @@ __decorate([
 __decorate([
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsEnum)(product_entity_1.ProductRarity),
-    __metadata("design:type", typeof (_h = typeof product_entity_1.ProductRarity !== "undefined" && product_entity_1.ProductRarity) === "function" ? _h : Object)
+    __metadata("design:type", String)
 ], UpdateProductDto.prototype, "rarity", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsEnum)(product_entity_1.ProductCondition),
-    __metadata("design:type", typeof (_j = typeof product_entity_1.ProductCondition !== "undefined" && product_entity_1.ProductCondition) === "function" ? _j : Object)
+    __metadata("design:type", String)
 ], UpdateProductDto.prototype, "condition", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
@@ -235,8 +249,7 @@ __decorate([
 ], UpdateProductDto.prototype, "price", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
-    (0, class_validator_1.IsString)(),
-    __metadata("design:type", String)
+    __metadata("design:type", Object)
 ], UpdateProductDto.prototype, "images", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
@@ -251,12 +264,26 @@ __decorate([
 __decorate([
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsEnum)(product_entity_1.ListingType),
-    __metadata("design:type", typeof (_k = typeof product_entity_1.ListingType !== "undefined" && product_entity_1.ListingType) === "function" ? _k : Object)
+    __metadata("design:type", String)
 ], UpdateProductDto.prototype, "listingType", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
+    (0, class_transformer_1.Type)(() => Number),
+    (0, class_validator_1.IsNumber)(),
+    (0, class_validator_1.Min)(0),
+    __metadata("design:type", Number)
+], UpdateProductDto.prototype, "startingPrice", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_transformer_1.Type)(() => Number),
+    (0, class_validator_1.IsNumber)(),
+    (0, class_validator_1.Min)(1),
+    __metadata("design:type", Number)
+], UpdateProductDto.prototype, "bidIncrement", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsEnum)(product_entity_1.ProductStatus),
-    __metadata("design:type", typeof (_l = typeof product_entity_1.ProductStatus !== "undefined" && product_entity_1.ProductStatus) === "function" ? _l : Object)
+    __metadata("design:type", String)
 ], UpdateProductDto.prototype, "status", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),

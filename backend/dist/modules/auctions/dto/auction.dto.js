@@ -8,12 +8,11 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
-var _a;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.PlaceBidDto = exports.CreateAuctionDto = exports.AuctionFiltersDto = void 0;
 const class_validator_1 = require("class-validator");
 const class_transformer_1 = require("class-transformer");
-const auction_entity_1 = require("../../entities/auction.entity");
+const auction_entity_1 = require("../../../entities/auction.entity");
 class AuctionFiltersDto {
     constructor() {
         this.page = 1;
@@ -42,7 +41,7 @@ __decorate([
 __decorate([
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsEnum)(auction_entity_1.AuctionStatus),
-    __metadata("design:type", typeof (_a = typeof auction_entity_1.AuctionStatus !== "undefined" && auction_entity_1.AuctionStatus) === "function" ? _a : Object)
+    __metadata("design:type", String)
 ], AuctionFiltersDto.prototype, "status", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
@@ -80,6 +79,7 @@ __decorate([
 ], AuctionFiltersDto.prototype, "sortBy", void 0);
 class CreateAuctionDto {
     constructor() {
+        this.durationHours = 24;
         this.extensionMinutes = 5;
     }
 }
@@ -109,13 +109,22 @@ __decorate([
     __metadata("design:type", Number)
 ], CreateAuctionDto.prototype, "buyNowPrice", void 0);
 __decorate([
+    (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsDateString)(),
     __metadata("design:type", String)
 ], CreateAuctionDto.prototype, "startTime", void 0);
 __decorate([
+    (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsDateString)(),
     __metadata("design:type", String)
 ], CreateAuctionDto.prototype, "endTime", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_transformer_1.Type)(() => Number),
+    (0, class_validator_1.IsNumber)(),
+    (0, class_validator_1.Min)(1),
+    __metadata("design:type", Number)
+], CreateAuctionDto.prototype, "durationHours", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
     (0, class_transformer_1.Type)(() => Number),

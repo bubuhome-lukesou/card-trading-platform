@@ -9,10 +9,10 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.AuctionsModule = void 0;
 const common_1 = require("@nestjs/common");
 const typeorm_1 = require("@nestjs/typeorm");
-const auctions_controller_1 = require("./auctions.controller");
-const auctions_service_1 = require("./auctions.service");
 const auction_entity_1 = require("../../entities/auction.entity");
 const product_entity_1 = require("../../entities/product.entity");
+const auctions_controller_1 = require("./auctions.controller");
+const auctions_service_1 = require("./auctions.service");
 let AuctionsModule = class AuctionsModule {
 };
 exports.AuctionsModule = AuctionsModule;

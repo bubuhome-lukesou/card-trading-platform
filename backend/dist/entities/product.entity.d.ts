@@ -6,13 +6,16 @@ export declare enum ProductCategory {
     MTG = "mtg",
     ULTRAMAN = "ultraman",
     ONEPiece = "onepiece",
+    DORAEMON = "doraemon",
+    SPORTS = "sports",
     OTHER = "other"
 }
 export declare enum ProductRarity {
-    SSR = "SSR",
-    SR = "SR",
-    R = "R",
-    N = "N"
+    COMMON = "common",
+    RARE = "rare",
+    SUPER_RARE = "super_rare",
+    ULTRA_RARE = "ultra_rare",
+    SECRET_RARE = "secret_rare"
 }
 export declare enum ProductCondition {
     MINT = "mint",
@@ -22,8 +25,9 @@ export declare enum ProductCondition {
     FAIR = "fair"
 }
 export declare enum ListingType {
-    SALE = "sale",
-    AUCTION = "auction"
+    BOTH = "both",
+    SALE_ONLY = "sale_only",
+    AUCTION_ONLY = "auction_only"
 }
 export declare enum ProductStatus {
     DRAFT = "draft",

@@ -16,6 +16,7 @@ exports.AuctionsService = void 0;
 const common_1 = require("@nestjs/common");
 const typeorm_1 = require("@nestjs/typeorm");
 const typeorm_2 = require("typeorm");
+const schedule_1 = require("@nestjs/schedule");
 const auction_entity_1 = require("../../entities/auction.entity");
 const product_entity_1 = require("../../entities/product.entity");
 let AuctionsService = class AuctionsService {
@@ -23,6 +24,22 @@ let AuctionsService = class AuctionsService {
         this.auctionRepo = auctionRepo;
         this.bidRepo = bidRepo;
         this.productRepo = productRepo;
+    }
+    async activatePendingAuctions() {
+        const now = new Date();
+        const pendingAuctions = await this.auctionRepo.find({
+            where: {
+                status: auction_entity_1.AuctionStatus.PENDING,
+                startTime: (0, typeorm_2.LessThanOrEqual)(now)
+            }
+        });
+        for (const auction of pendingAuctions) {
+            auction.status = auction_entity_1.AuctionStatus.ACTIVE;
+            await this.auctionRepo.save(auction);
+        }
+        if (pendingAuctions.length > 0) {
+            console.log(`[Cron] Activated ${pendingAuctions.length} pending auctions`);
+        }
     }
     async findAll(filters) {
         const queryBuilder = this.auctionRepo
@@ -102,13 +119,16 @@ let AuctionsService = class AuctionsService {
             currentPrice: dto.startingPrice,
             reservePrice: dto.reservePrice,
             buyNowPrice: dto.buyNowPrice,
-            startTime: new Date(dto.startTime),
-            endTime: new Date(dto.endTime),
+            startTime: dto.startTime ? new Date(dto.startTime) : new Date(),
+            endTime: dto.endTime ? new Date(dto.endTime) : new Date(Date.now() + (dto.durationHours || 24) * 60 * 60 * 1000),
             extensionMinutes: dto.extensionMinutes || 5,
             status: auction_entity_1.AuctionStatus.PENDING
         });
         await this.auctionRepo.save(auction);
-        product.listingType = 'auction';
+        if (new Date(dto.startTime) <= new Date()) {
+            auction.status = auction_entity_1.AuctionStatus.ACTIVE;
+            await this.auctionRepo.save(auction);
+        }
         product.status = product_entity_1.ProductStatus.ACTIVE;
         await this.productRepo.save(product);
         return auction;
@@ -191,6 +211,12 @@ let AuctionsService = class AuctionsService {
     }
 };
 exports.AuctionsService = AuctionsService;
+__decorate([
+    (0, schedule_1.Cron)('* * * * *'),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", Promise)
+], AuctionsService.prototype, "activatePendingAuctions", null);
 exports.AuctionsService = AuctionsService = __decorate([
     (0, common_1.Injectable)(),
     __param(0, (0, typeorm_1.InjectRepository)(auction_entity_1.Auction)),

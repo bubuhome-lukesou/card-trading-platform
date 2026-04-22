@@ -1,0 +1,1 @@
+import{t as e}from"./api-BG2nwjgM.js";var t={getProducts(t){return e.get(`/products`,{params:t})},getProduct(t){return e.get(`/products/${t}`)},createProduct(t){return e.post(`/products`,t)},updateProduct(t,n){return e.patch(`/products/${t}`,n)},deleteProduct(t){return e.delete(`/products/${t}`)},getMyProducts(t){return e.get(`/products/seller`,{params:t})}};export{t};

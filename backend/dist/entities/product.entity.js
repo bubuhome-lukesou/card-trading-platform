@@ -20,14 +20,17 @@ var ProductCategory;
     ProductCategory["MTG"] = "mtg";
     ProductCategory["ULTRAMAN"] = "ultraman";
     ProductCategory["ONEPiece"] = "onepiece";
+    ProductCategory["DORAEMON"] = "doraemon";
+    ProductCategory["SPORTS"] = "sports";
     ProductCategory["OTHER"] = "other";
 })(ProductCategory || (exports.ProductCategory = ProductCategory = {}));
 var ProductRarity;
 (function (ProductRarity) {
-    ProductRarity["SSR"] = "SSR";
-    ProductRarity["SR"] = "SR";
-    ProductRarity["R"] = "R";
-    ProductRarity["N"] = "N";
+    ProductRarity["COMMON"] = "common";
+    ProductRarity["RARE"] = "rare";
+    ProductRarity["SUPER_RARE"] = "super_rare";
+    ProductRarity["ULTRA_RARE"] = "ultra_rare";
+    ProductRarity["SECRET_RARE"] = "secret_rare";
 })(ProductRarity || (exports.ProductRarity = ProductRarity = {}));
 var ProductCondition;
 (function (ProductCondition) {
@@ -39,8 +42,9 @@ var ProductCondition;
 })(ProductCondition || (exports.ProductCondition = ProductCondition = {}));
 var ListingType;
 (function (ListingType) {
-    ListingType["SALE"] = "sale";
-    ListingType["AUCTION"] = "auction";
+    ListingType["BOTH"] = "both";
+    ListingType["SALE_ONLY"] = "sale_only";
+    ListingType["AUCTION_ONLY"] = "auction_only";
 })(ListingType || (exports.ListingType = ListingType = {}));
 var ProductStatus;
 (function (ProductStatus) {
@@ -71,7 +75,7 @@ __decorate([
     __metadata("design:type", String)
 ], Product.prototype, "category", void 0);
 __decorate([
-    (0, typeorm_1.Column)(),
+    (0, typeorm_1.Column)({ nullable: true }),
     __metadata("design:type", String)
 ], Product.prototype, "brand", void 0);
 __decorate([
@@ -107,7 +111,7 @@ __decorate([
     __metadata("design:type", Number)
 ], Product.prototype, "price", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ nullable: true }),
+    (0, typeorm_1.Column)({ type: 'text', nullable: true }),
     __metadata("design:type", String)
 ], Product.prototype, "images", void 0);
 __decorate([

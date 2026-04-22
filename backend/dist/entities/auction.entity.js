@@ -13,6 +13,7 @@ exports.Bid = exports.Auction = exports.AuctionStatus = void 0;
 const typeorm_1 = require("typeorm");
 const user_entity_1 = require("./user.entity");
 const product_entity_1 = require("./product.entity");
+const bid_entity_1 = require("./bid.entity");
 var AuctionStatus;
 (function (AuctionStatus) {
     AuctionStatus["PENDING"] = "pending";
@@ -91,7 +92,7 @@ __decorate([
     __metadata("design:type", user_entity_1.User)
 ], Auction.prototype, "winner", void 0);
 __decorate([
-    (0, typeorm_1.OneToMany)(() => Bid, bid => bid.auction),
+    (0, typeorm_1.OneToMany)(() => bid_entity_1.Bid, bid => bid.auction),
     __metadata("design:type", Array)
 ], Auction.prototype, "bids", void 0);
 __decorate([
@@ -105,40 +106,6 @@ __decorate([
 exports.Auction = Auction = __decorate([
     (0, typeorm_1.Entity)('auctions')
 ], Auction);
-let Bid = class Bid {
-};
-exports.Bid = Bid;
-__decorate([
-    (0, typeorm_1.PrimaryGeneratedColumn)('uuid'),
-    __metadata("design:type", String)
-], Bid.prototype, "id", void 0);
-__decorate([
-    (0, typeorm_1.Column)(),
-    __metadata("design:type", String)
-], Bid.prototype, "auctionId", void 0);
-__decorate([
-    (0, typeorm_1.ManyToOne)(() => Auction, auction => auction.bids),
-    (0, typeorm_1.JoinColumn)({ name: 'auctionId' }),
-    __metadata("design:type", Auction)
-], Bid.prototype, "auction", void 0);
-__decorate([
-    (0, typeorm_1.Column)(),
-    __metadata("design:type", String)
-], Bid.prototype, "bidderId", void 0);
-__decorate([
-    (0, typeorm_1.ManyToOne)(() => user_entity_1.User),
-    (0, typeorm_1.JoinColumn)({ name: 'bidderId' }),
-    __metadata("design:type", user_entity_1.User)
-], Bid.prototype, "bidder", void 0);
-__decorate([
-    (0, typeorm_1.Column)({ type: 'decimal', precision: 10, scale: 2 }),
-    __metadata("design:type", Number)
-], Bid.prototype, "amount", void 0);
-__decorate([
-    (0, typeorm_1.Column)(),
-    __metadata("design:type", Date)
-], Bid.prototype, "createdAt", void 0);
-exports.Bid = Bid = __decorate([
-    (0, typeorm_1.Entity)('bids')
-], Bid);
+var bid_entity_2 = require("./bid.entity");
+Object.defineProperty(exports, "Bid", { enumerable: true, get: function () { return bid_entity_2.Bid; } });
 //# sourceMappingURL=auction.entity.js.map

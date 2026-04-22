@@ -1,5 +1,5 @@
-import { AuctionStatus } from '../../entities/auction.entity';
-import { ProductRarity } from '../../entities/product.entity';
+import { AuctionStatus } from '../../../entities/auction.entity';
+import { ProductRarity } from '../../../entities/product.entity';
 export declare class AuctionFiltersDto {
     category?: string[];
     brand?: string[];
@@ -17,8 +17,9 @@ export declare class CreateAuctionDto {
     startingPrice: number;
     reservePrice?: number;
     buyNowPrice?: number;
-    startTime: string;
-    endTime: string;
+    startTime?: string;
+    endTime?: string;
+    durationHours?: number;
     extensionMinutes?: number;
 }
 export declare class PlaceBidDto {

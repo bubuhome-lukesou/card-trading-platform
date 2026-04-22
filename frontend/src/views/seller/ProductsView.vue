@@ -20,6 +20,9 @@ const filterStatus = ref('all')
 const scanning = ref(false)
 const scanError = ref('')
 const scanImageUrl = ref('')
+const imageInput = ref<HTMLInputElement | null>(null)
+const imagePreviews = ref<string[]>([])
+const pendingImageFiles = ref<File[]>([])
 
 const categories = [
   { value: 'pokemon', label: '宝可梦', emoji: '🎮' },
@@ -224,6 +227,40 @@ const getStatusBadge = (status: string) => {
   return map[status] || { class: 'default', text: status }
 }
 
+const triggerImageUpload = () => {
+  imageInput.value?.click()
+}
+
+const handleImageChange = async (event: Event) => {
+  const target = event.target as HTMLInputElement
+  if (!target.files) return
+  
+  const files = Array.from(target.files)
+  if (imagePreviews.value.length + files.length > 9) {
+    alert('最多只能上传9张图片')
+    return
+  }
+  
+  for (const file of files) {
+    if (file.size > 10 * 1024 * 1024) {
+      alert('图片大小不能超过10MB')
+      continue
+    }
+    pendingImageFiles.value.push(file)
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      imagePreviews.value.push(e.target?.result as string)
+    }
+    reader.readAsDataURL(file)
+  }
+  target.value = ''
+}
+
+const removeImage = (index: number) => {
+  imagePreviews.value.splice(index, 1)
+  pendingImageFiles.value.splice(index, 1)
+}
+
 const loadProducts = async () => {
   loading.value = true
   try {
@@ -297,13 +334,6 @@ const routeWatcher = watch(
 
 onMounted(() => {
   loadProducts()
-
-  // Check if should open create modal from URL query
-  if (route.query.action === 'create') {
-    openCreateModal()
-    // Clean URL
-    router.replace({ query: {} })
-  }
 })
 
 onUnmounted(() => {
@@ -359,10 +389,7 @@ onUnmounted(() => {
     <div v-else-if="filteredProducts.length === 0" class="empty-state">
       <div class="empty-icon">📦</div>
       <h3>暂无商品</h3>
-      <p>开始发布您的第一件商品吧！</p>
-      <button @click="openCreateModal" class="btn-primary">
-        + 发布新商品
-      </button>
+      <p>点击上方「+ 发布商品」按钮发布您的第一件商品吧！</p>
     </div>
 
     <div v-else class="products-grid">
@@ -555,11 +582,23 @@ onUnmounted(() => {
             <!-- Images -->
             <div class="form-group full-width">
               <label>商品图片</label>
-              <div class="image-upload">
-                <div class="upload-placeholder">
-                  <span class="upload-icon">📷</span>
-                  <span>点击上传图片</span>
-                  <span class="upload-hint">支持 JPG、PNG，最大 10MB</span>
+              <input
+                ref="imageInput"
+                type="file"
+                accept="image/*"
+                multiple
+                style="display: none"
+                @change="handleImageChange"
+              />
+              <label class="upload-button" for="imageInput">
+                <span class="upload-icon">📷</span>
+                <span>点击上传图片</span>
+                <span class="upload-hint">支持 JPG、PNG，最大 10MB，最多 9 张</span>
+              </label>
+              <div v-if="imagePreviews.length > 0" class="image-previews">
+                <div v-for="(img, index) in imagePreviews" :key="index" class="preview-item">
+                  <img :src="img" alt="Preview" />
+                  <button type="button" class="remove-btn" @click="removeImage(index)">×</button>
                 </div>
               </div>
             </div>

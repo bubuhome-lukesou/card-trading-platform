@@ -17,5 +17,6 @@ Object.defineProperty(exports, "__esModule", { value: true });
 __exportStar(require("./user.entity"), exports);
 __exportStar(require("./product.entity"), exports);
 __exportStar(require("./auction.entity"), exports);
+__exportStar(require("./bid.entity"), exports);
 __exportStar(require("./order.entity"), exports);
 //# sourceMappingURL=index.js.map

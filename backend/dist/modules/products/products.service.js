@@ -99,15 +99,28 @@ let ProductsService = class ProductsService {
         if (!product) {
             throw new common_1.NotFoundException('Product not found');
         }
+        if (product.images && typeof product.images === 'string') {
+            try {
+                product.images = JSON.parse(product.images);
+            }
+            catch {
+                product.images = [product.images];
+            }
+        }
         product.viewCount++;
         await this.productRepo.save(product);
         return product;
     }
     async create(dto, userId) {
+        const images = dto.images;
+        if (Array.isArray(images)) {
+            dto.images = JSON.stringify(images);
+        }
+        const status = dto.listingType ? product_entity_1.ProductStatus.ACTIVE : product_entity_1.ProductStatus.DRAFT;
         const product = this.productRepo.create({
             ...dto,
             sellerId: userId,
-            status: product_entity_1.ProductStatus.DRAFT
+            status
         });
         return this.productRepo.save(product);
     }
@@ -115,6 +128,9 @@ let ProductsService = class ProductsService {
         const product = await this.findOne(id);
         if (product.sellerId !== userId) {
             throw new common_1.ForbiddenException('You can only edit your own products');
+        }
+        if (dto.images && Array.isArray(dto.images)) {
+            dto.images = JSON.stringify(dto.images);
         }
         Object.assign(product, dto);
         return this.productRepo.save(product);
@@ -125,6 +141,23 @@ let ProductsService = class ProductsService {
             throw new common_1.ForbiddenException('You can only delete your own products');
         }
         await this.productRepo.remove(product);
+    }
+    async findBySeller(sellerId) {
+        const products = await this.productRepo.find({
+            where: { sellerId },
+            order: { createdAt: 'DESC' }
+        });
+        return products.map(p => {
+            if (p.images && typeof p.images === 'string') {
+                try {
+                    p.images = JSON.parse(p.images);
+                }
+                catch {
+                    p.images = [p.images];
+                }
+            }
+            return p;
+        });
     }
 };
 exports.ProductsService = ProductsService;

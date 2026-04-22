@@ -248,13 +248,10 @@ onMounted(() => {
       <p>加载中...</p>
     </div>
 
-    <div v-else-if="filteredAuctions.length === 0" class="empty-state">
+    <div v-if="filteredAuctions.length === 0" class="empty-state">
       <div class="empty-icon">🔨</div>
       <h3>暂无拍卖</h3>
-      <p>创建一个拍卖来销售您的商品吧！</p>
-      <button @click="handleCreateAuction" class="btn-primary">
-        + 创建拍卖
-      </button>
+      <p>点击上方「+ 创建拍卖」按钮来创建您的第一个拍卖吧！</p>
     </div>
 
     <div v-else class="auctions-table">

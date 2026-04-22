@@ -15,7 +15,8 @@ const user_entity_1 = require("./user.entity");
 const product_entity_1 = require("./product.entity");
 var OrderType;
 (function (OrderType) {
-    OrderType["PURCHASE"] = "purchase";
+    OrderType["DIRECT_PURCHASE"] = "direct_purchase";
+    OrderType["BUY_NOW"] = "buy_now";
     OrderType["AUCTION_WIN"] = "auction_win";
 })(OrderType || (exports.OrderType = OrderType = {}));
 var OrderStatus;
@@ -66,7 +67,7 @@ __decorate([
     __metadata("design:type", product_entity_1.Product)
 ], Order.prototype, "product", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: 'enum', enum: OrderType }),
+    (0, typeorm_1.Column)({ type: 'enum', enum: OrderType, default: OrderType.DIRECT_PURCHASE }),
     __metadata("design:type", String)
 ], Order.prototype, "type", void 0);
 __decorate([
@@ -76,19 +77,15 @@ __decorate([
 __decorate([
     (0, typeorm_1.Column)({ type: 'decimal', precision: 10, scale: 2 }),
     __metadata("design:type", Number)
-], Order.prototype, "amount", void 0);
+], Order.prototype, "totalPrice", void 0);
 __decorate([
     (0, typeorm_1.Column)({ type: 'decimal', precision: 10, scale: 2, nullable: true }),
     __metadata("design:type", Number)
-], Order.prototype, "shippingFee", void 0);
+], Order.prototype, "shippingCost", void 0);
 __decorate([
     (0, typeorm_1.Column)({ type: 'decimal', precision: 10, scale: 2, nullable: true }),
     __metadata("design:type", Number)
 ], Order.prototype, "platformFee", void 0);
-__decorate([
-    (0, typeorm_1.Column)({ nullable: true }),
-    __metadata("design:type", String)
-], Order.prototype, "auctionId", void 0);
 __decorate([
     (0, typeorm_1.Column)({ nullable: true }),
     __metadata("design:type", String)
@@ -99,16 +96,24 @@ __decorate([
 ], Order.prototype, "trackingNumber", void 0);
 __decorate([
     (0, typeorm_1.Column)({ nullable: true }),
-    __metadata("design:type", Date)
-], Order.prototype, "paidAt", void 0);
+    __metadata("design:type", String)
+], Order.prototype, "paymentMethod", void 0);
 __decorate([
     (0, typeorm_1.Column)({ nullable: true }),
     __metadata("design:type", Date)
-], Order.prototype, "shippedAt", void 0);
+], Order.prototype, "paymentTime", void 0);
 __decorate([
     (0, typeorm_1.Column)({ nullable: true }),
     __metadata("design:type", Date)
-], Order.prototype, "deliveredAt", void 0);
+], Order.prototype, "shippingTime", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ nullable: true }),
+    __metadata("design:type", Date)
+], Order.prototype, "deliveryTime", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ nullable: true }),
+    __metadata("design:type", String)
+], Order.prototype, "notes", void 0);
 __decorate([
     (0, typeorm_1.CreateDateColumn)(),
     __metadata("design:type", Date)

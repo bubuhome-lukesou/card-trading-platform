@@ -1,4 +1,4 @@
-import { ProductCategory, ProductRarity, ProductCondition, ListingType, ProductStatus } from '../../entities/product.entity';
+import { ProductCategory, ProductRarity, ProductCondition, ListingType, ProductStatus } from '../../../entities/product.entity';
 export declare class ProductFiltersDto {
     category?: string[];
     brand?: string[];
@@ -16,7 +16,7 @@ export declare class ProductFiltersDto {
 }
 export declare class CreateProductDto {
     category: ProductCategory;
-    brand: string;
+    brand?: string;
     series?: string;
     rarity: ProductRarity;
     condition: ProductCondition;
@@ -25,10 +25,12 @@ export declare class CreateProductDto {
     descriptionEn?: string;
     descriptionZh?: string;
     price: number;
-    images?: string;
+    images?: any;
     thumbnail?: string;
     cardNumber?: string;
-    listingType: ListingType;
+    listingType?: ListingType;
+    startingPrice?: number;
+    bidIncrement?: number;
     stock?: number;
 }
 export declare class UpdateProductDto {
@@ -42,10 +44,12 @@ export declare class UpdateProductDto {
     descriptionEn?: string;
     descriptionZh?: string;
     price?: number;
-    images?: string;
+    images?: any;
     thumbnail?: string;
     cardNumber?: string;
     listingType?: ListingType;
+    startingPrice?: number;
+    bidIncrement?: number;
     status?: ProductStatus;
     stock?: number;
 }

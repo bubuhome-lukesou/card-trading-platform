@@ -1,7 +1,8 @@
 import { User } from './user.entity';
 import { Product } from './product.entity';
 export declare enum OrderType {
-    PURCHASE = "purchase",
+    DIRECT_PURCHASE = "direct_purchase",
+    BUY_NOW = "buy_now",
     AUCTION_WIN = "auction_win"
 }
 export declare enum OrderStatus {
@@ -23,15 +24,16 @@ export declare class Order {
     product: Product;
     type: OrderType;
     status: OrderStatus;
-    amount: number;
-    shippingFee: number;
+    totalPrice: number;
+    shippingCost: number;
     platformFee: number;
-    auctionId: string;
     shippingAddress: string;
     trackingNumber: string;
-    paidAt: Date;
-    shippedAt: Date;
-    deliveredAt: Date;
+    paymentMethod: string;
+    paymentTime: Date;
+    shippingTime: Date;
+    deliveryTime: Date;
+    notes: string;
     createdAt: Date;
     updatedAt: Date;
 }
