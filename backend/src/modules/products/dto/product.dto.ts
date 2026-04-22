@@ -74,8 +74,9 @@ export class CreateProductDto {
   @IsEnum(ProductCategory)
   category: ProductCategory
 
+  @IsOptional()
   @IsString()
-  brand: string
+  brand?: string
 
   @IsOptional()
   @IsString()
@@ -107,8 +108,7 @@ export class CreateProductDto {
   price: number
 
   @IsOptional()
-  @IsString()
-  images?: string
+  images?: any
 
   @IsOptional()
   @IsString()
@@ -118,8 +118,21 @@ export class CreateProductDto {
   @IsString()
   cardNumber?: string
 
+  @IsOptional()
   @IsEnum(ListingType)
-  listingType: ListingType
+  listingType?: ListingType
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  startingPrice?: number
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(1)
+  bidIncrement?: number
 
   @IsOptional()
   @Type(() => Number)
@@ -172,8 +185,7 @@ export class UpdateProductDto {
   price?: number
 
   @IsOptional()
-  @IsString()
-  images?: string
+  images?: any
 
   @IsOptional()
   @IsString()
@@ -186,6 +198,18 @@ export class UpdateProductDto {
   @IsOptional()
   @IsEnum(ListingType)
   listingType?: ListingType
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  startingPrice?: number
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(1)
+  bidIncrement?: number
 
   @IsOptional()
   @IsEnum(ProductStatus)

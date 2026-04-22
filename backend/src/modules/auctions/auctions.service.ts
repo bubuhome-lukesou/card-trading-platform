@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common'
 import { InjectRepository } from '@nestjs/typeorm'
 import { Repository, LessThanOrEqual, MoreThanOrEqual, Not } from 'typeorm'
+import { Cron } from '@nestjs/schedule'
 import { Auction, AuctionStatus, Bid } from '../../entities/auction.entity'
 import { Product, ProductStatus } from '../../entities/product.entity'
 import { CreateAuctionDto, AuctionFiltersDto } from './dto/auction.dto'
@@ -15,6 +16,27 @@ export class AuctionsService {
     @InjectRepository(Product)
     private readonly productRepo: Repository<Product>
   ) {}
+
+  // Cron job to activate pending auctions every minute
+  @Cron('* * * * *')
+  async activatePendingAuctions() {
+    const now = new Date()
+    const pendingAuctions = await this.auctionRepo.find({
+      where: {
+        status: AuctionStatus.PENDING,
+        startTime: LessThanOrEqual(now)
+      }
+    })
+    
+    for (const auction of pendingAuctions) {
+      auction.status = AuctionStatus.ACTIVE
+      await this.auctionRepo.save(auction)
+    }
+    
+    if (pendingAuctions.length > 0) {
+      console.log(`[Cron] Activated ${pendingAuctions.length} pending auctions`)
+    }
+  }
 
   async findAll(filters: AuctionFiltersDto) {
     const queryBuilder = this.auctionRepo
@@ -110,16 +132,21 @@ export class AuctionsService {
       currentPrice: dto.startingPrice,
       reservePrice: dto.reservePrice,
       buyNowPrice: dto.buyNowPrice,
-      startTime: new Date(dto.startTime),
-      endTime: new Date(dto.endTime),
+      startTime: dto.startTime ? new Date(dto.startTime) : new Date(),
+      endTime: dto.endTime ? new Date(dto.endTime) : new Date(Date.now() + (dto.durationHours || 24) * 60 * 60 * 1000),
       extensionMinutes: dto.extensionMinutes || 5,
       status: AuctionStatus.PENDING
     })
 
     await this.auctionRepo.save(auction)
 
+    // Immediately activate if startTime has passed
+    if (new Date(dto.startTime) <= new Date()) {
+      auction.status = AuctionStatus.ACTIVE;
+      await this.auctionRepo.save(auction);
+    }
+
     // Update product status
-    product.listingType = 'auction' as any
     product.status = ProductStatus.ACTIVE
     await this.productRepo.save(product)
 
@@ -231,3 +258,4 @@ export class AuctionsService {
     return auction
   }
 }
+

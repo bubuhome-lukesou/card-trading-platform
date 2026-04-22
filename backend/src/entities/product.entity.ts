@@ -17,14 +17,17 @@ export enum ProductCategory {
   MTG = 'mtg',
   ULTRAMAN = 'ultraman',
   ONEPiece = 'onepiece',
+  DORAEMON = 'doraemon',
+  SPORTS = 'sports',
   OTHER = 'other'
 }
 
 export enum ProductRarity {
-  SSR = 'SSR',
-  SR = 'SR',
-  R = 'R',
-  N = 'N'
+  COMMON = 'common',
+  RARE = 'rare',
+  SUPER_RARE = 'super_rare',
+  ULTRA_RARE = 'ultra_rare',
+  SECRET_RARE = 'secret_rare'
 }
 
 export enum ProductCondition {
@@ -36,8 +39,9 @@ export enum ProductCondition {
 }
 
 export enum ListingType {
-  SALE = 'sale',
-  AUCTION = 'auction'
+  BOTH = 'both',
+  SALE_ONLY = 'sale_only',
+  AUCTION_ONLY = 'auction_only'
 }
 
 export enum ProductStatus {
@@ -63,7 +67,7 @@ export class Product {
   @Column({ type: 'enum', enum: ProductCategory })
   category: ProductCategory
 
-  @Column()
+  @Column({ nullable: true })
   brand: string
 
   @Column({ nullable: true })
@@ -90,7 +94,7 @@ export class Product {
   @Column({ type: 'decimal', precision: 10, scale: 2 })
   price: number
 
-  @Column({ nullable: true })
+  @Column({ type: 'text', nullable: true })
   images: string
 
   @Column({ nullable: true })

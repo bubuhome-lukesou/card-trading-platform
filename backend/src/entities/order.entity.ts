@@ -11,7 +11,8 @@ import { User } from './user.entity'
 import { Product } from './product.entity'
 
 export enum OrderType {
-  PURCHASE = 'purchase',
+  DIRECT_PURCHASE = 'direct_purchase',
+  BUY_NOW = 'buy_now',
   AUCTION_WIN = 'auction_win'
 }
 
@@ -53,23 +54,20 @@ export class Order {
   @JoinColumn({ name: 'productId' })
   product: Product
 
-  @Column({ type: 'enum', enum: OrderType })
+  @Column({ type: 'enum', enum: OrderType, default: OrderType.DIRECT_PURCHASE })
   type: OrderType
 
   @Column({ type: 'enum', enum: OrderStatus, default: OrderStatus.PENDING })
   status: OrderStatus
 
   @Column({ type: 'decimal', precision: 10, scale: 2 })
-  amount: number
+  totalPrice: number
 
   @Column({ type: 'decimal', precision: 10, scale: 2, nullable: true })
-  shippingFee: number
+  shippingCost: number
 
   @Column({ type: 'decimal', precision: 10, scale: 2, nullable: true })
   platformFee: number
-
-  @Column({ nullable: true })
-  auctionId: string
 
   @Column({ nullable: true })
   shippingAddress: string
@@ -78,13 +76,19 @@ export class Order {
   trackingNumber: string
 
   @Column({ nullable: true })
-  paidAt: Date
+  paymentMethod: string
 
   @Column({ nullable: true })
-  shippedAt: Date
+  paymentTime: Date
 
   @Column({ nullable: true })
-  deliveredAt: Date
+  shippingTime: Date
+
+  @Column({ nullable: true })
+  deliveryTime: Date
+
+  @Column({ nullable: true })
+  notes: string
 
   @CreateDateColumn()
   createdAt: Date

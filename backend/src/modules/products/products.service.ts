@@ -103,6 +103,15 @@ export class ProductsService {
       throw new NotFoundException('Product not found')
     }
 
+    // Parse images if stored as JSON string
+    if (product.images && typeof product.images === 'string') {
+      try {
+        (product as any).images = JSON.parse(product.images)
+      } catch {
+        (product as any).images = [product.images]
+      }
+    }
+
     product.viewCount++
     await this.productRepo.save(product)
 
@@ -110,10 +119,20 @@ export class ProductsService {
   }
 
   async create(dto: CreateProductDto, userId: string): Promise<Product> {
+    // Handle images - store as JSON string
+    const images = dto.images
+    if (Array.isArray(images)) {
+      dto.images = JSON.stringify(images)
+    }
+
+    // Set status to ACTIVE if listingType is provided (product is ready for marketplace)
+    // Only keep as DRAFT if listingType is not set (product not ready for listing)
+    const status = dto.listingType ? ProductStatus.ACTIVE : ProductStatus.DRAFT
+
     const product = this.productRepo.create({
       ...dto,
       sellerId: userId,
-      status: ProductStatus.DRAFT
+      status
     })
 
     return this.productRepo.save(product)
@@ -124,6 +143,11 @@ export class ProductsService {
 
     if (product.sellerId !== userId) {
       throw new ForbiddenException('You can only edit your own products')
+    }
+
+    // Handle images - store as JSON string
+    if (dto.images && Array.isArray(dto.images)) {
+      dto.images = JSON.stringify(dto.images) as any
     }
 
     Object.assign(product, dto)
@@ -138,5 +162,24 @@ export class ProductsService {
     }
 
     await this.productRepo.remove(product)
+  }
+
+  async findBySeller(sellerId: string): Promise<Product[]> {
+    const products = await this.productRepo.find({
+      where: { sellerId },
+      order: { createdAt: 'DESC' }
+    })
+
+    // Parse images for each product
+    return products.map(p => {
+      if (p.images && typeof p.images === 'string') {
+        try {
+          (p as any).images = JSON.parse(p.images)
+        } catch {
+          (p as any).images = [p.images]
+        }
+      }
+      return p
+    })
   }
 }

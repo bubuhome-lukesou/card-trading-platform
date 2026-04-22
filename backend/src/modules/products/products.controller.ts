@@ -12,6 +12,12 @@ export class ProductsController {
     return this.productsService.findAll(filters)
   }
 
+  @UseGuards(JwtAuthGuard)
+  @Get('seller')
+  async findMyProducts(@Request() req: any) {
+    return this.productsService.findBySeller(req.user.id)
+  }
+
   @Get(':id')
   async findOne(@Param('id') id: string) {
     return this.productsService.findOne(id)

@@ -3,7 +3,7 @@ import * as bcrypt from 'bcrypt';
 import { User, UserRole, UserStatus } from './entities/user.entity';
 import { Product, ProductCategory, ProductRarity, ProductCondition, ListingType, ProductStatus } from './entities/product.entity';
 import { Auction, AuctionStatus } from './entities/auction.entity';
-import { Bid } from './entities/auction.entity';
+import { Bid } from './entities/bid.entity';
 
 const AppDataSource = new DataSource({
   type: 'mysql',
@@ -19,7 +19,6 @@ const AppDataSource = new DataSource({
 async function seed() {
   await AppDataSource.initialize();
   console.log('✅ Database connected');
-
   const userRepo = AppDataSource.getRepository(User);
   const productRepo = AppDataSource.getRepository(Product);
   const auctionRepo = AppDataSource.getRepository(Auction);
@@ -50,13 +49,13 @@ async function seed() {
       descriptionEn: '1999 Pokemon 1st Edition Base Set Charizard. PSA graded 9 near mint condition. The holy grail of Pokemon cards.',
       descriptionZh: '1999年宝可梦初代喷火龙卡片。PSA评分9，近 mint 品相。宝可梦卡牌界的圣杯。',
       category: ProductCategory.POKEMON,
-      rarity: ProductRarity.SSR,
+      rarity: ProductRarity.ULTRA_RARE,
       condition: ProductCondition.NEAR_MINT,
       price: 12800,
       brand: 'Pokemon',
       series: '1st Edition Base Set',
       cardNumber: '4/102',
-      listingType: ListingType.AUCTION,
+      listingType: ListingType.AUCTION_ONLY,
       images: JSON.stringify(['https://images.unsplash.com/photo-1613771404784-3a5686aa2be3?w=400']),
       thumbnail: 'https://images.unsplash.com/photo-1613771404784-3a5686aa2be3?w=200',
       stock: 1,
@@ -69,13 +68,13 @@ async function seed() {
       descriptionEn: 'Original print Blue-Eyes White Dragon from the legendary set. Kaiba signature card.',
       descriptionZh: '初代游戏王青眼白龙。经典的龙癌卡。',
       category: ProductCategory.YUGIOH,
-      rarity: ProductRarity.SSR,
+      rarity: ProductRarity.ULTRA_RARE,
       condition: ProductCondition.MINT,
       price: 6800,
       brand: 'Konami',
       series: 'LOB',
       cardNumber: 'LOB-001',
-      listingType: ListingType.AUCTION,
+      listingType: ListingType.AUCTION_ONLY,
       images: JSON.stringify(['https://images.unsplash.com/photo-1606152421802-db97b9c7a11b?w=400']),
       thumbnail: 'https://images.unsplash.com/photo-1606152421802-db97b9c7a11b?w=200',
       stock: 1,
@@ -88,13 +87,13 @@ async function seed() {
       descriptionEn: 'The most valuable Magic: The Gathering card. Alpha edition in excellent condition.',
       descriptionZh: '最珍贵的万智牌。黑莲阿法版、品相优秀。',
       category: ProductCategory.MTG,
-      rarity: ProductRarity.SSR,
+      rarity: ProductRarity.ULTRA_RARE,
       condition: ProductCondition.EXCELLENT,
       price: 25000,
       brand: 'Wizards of the Coast',
       series: 'Alpha',
       cardNumber: 'None',
-      listingType: ListingType.AUCTION,
+      listingType: ListingType.AUCTION_ONLY,
       images: JSON.stringify(['https://images.unsplash.com/photo-1595841696677-6489ff3f8cd1?w=400']),
       thumbnail: 'https://images.unsplash.com/photo-1595841696677-6489ff3f8cd1?w=200',
       stock: 1,
@@ -107,13 +106,13 @@ async function seed() {
       descriptionEn: 'Complete set of Ultra Medal collection. Limited edition with display case.',
       descriptionZh: '完整版奥特曼勋章收藏套装。限量版含展示盒。',
       category: ProductCategory.ULTRAMAN,
-      rarity: ProductRarity.SR,
+      rarity: ProductRarity.SUPER_RARE,
       condition: ProductCondition.MINT,
       price: 3200,
       brand: 'Bandai',
       series: 'Ultra Medal Series',
       cardNumber: 'N/A',
-      listingType: ListingType.SALE,
+      listingType: ListingType.SALE_ONLY,
       images: JSON.stringify(['https://images.unsplash.com/photo-1608889175123-8ee362201f81?w=400']),
       thumbnail: 'https://images.unsplash.com/photo-1608889175123-8ee362201f81?w=200',
       stock: 5,
@@ -126,13 +125,13 @@ async function seed() {
       descriptionEn: 'Hot Toys Luffy Gear 5 figure. Brand new in box. Masterpiece series.',
       descriptionZh: 'Hot Toys 路飞五档手办。全新未拆封。 masterpiece 系列。',
       category: ProductCategory.ONEPiece,
-      rarity: ProductRarity.SR,
+      rarity: ProductRarity.SUPER_RARE,
       condition: ProductCondition.MINT,
       price: 4500,
       brand: 'Hot Toys',
       series: 'One Piece',
       cardNumber: 'N/A',
-      listingType: ListingType.SALE,
+      listingType: ListingType.SALE_ONLY,
       images: JSON.stringify(['https://images.unsplash.com/photo-1608889335941-32ac5f2041b9?w=400']),
       thumbnail: 'https://images.unsplash.com/photo-1608889335941-32ac5f2041b9?w=200',
       stock: 2,
@@ -145,13 +144,13 @@ async function seed() {
       descriptionEn: '1993 Upper Deck Michael Jordan rookie card. PSA 8 condition.',
       descriptionZh: '1993年Upper Deck乔丹新秀卡。PSA评分8。',
       category: ProductCategory.OTHER,
-      rarity: ProductRarity.SSR,
+      rarity: ProductRarity.ULTRA_RARE,
       condition: ProductCondition.EXCELLENT,
       price: 15000,
       brand: 'Upper Deck',
       series: '1993 SP',
       cardNumber: 'SP279',
-      listingType: ListingType.AUCTION,
+      listingType: ListingType.AUCTION_ONLY,
       images: JSON.stringify(['https://images.unsplash.com/photo-1546519638-68e109498ffc?w=400']),
       thumbnail: 'https://images.unsplash.com/photo-1546519638-68e109498ffc?w=200',
       stock: 1,
@@ -170,7 +169,7 @@ async function seed() {
     }
 
     // Create auction for auction-type products
-    if (product.listingType === ListingType.AUCTION) {
+    if (product.listingType === ListingType.AUCTION_ONLY) {
       let auction = await auctionRepo.findOne({ where: { productId: product.id } });
       if (!auction) {
         const startTime = new Date();
@@ -192,7 +191,6 @@ async function seed() {
       }
     }
   }
-
   console.log('🎉 Seed completed!');
   await AppDataSource.destroy();
 }

@@ -11,6 +11,7 @@ import {
 } from 'typeorm'
 import { User } from './user.entity'
 import { Product } from './product.entity'
+import { Bid } from './bid.entity'
 
 export enum AuctionStatus {
   PENDING = 'pending',
@@ -82,28 +83,5 @@ export class Auction {
   updatedAt: Date
 }
 
-@Entity('bids')
-export class Bid {
-  @PrimaryGeneratedColumn('uuid')
-  id: string
-
-  @Column()
-  auctionId: string
-
-  @ManyToOne(() => Auction, auction => auction.bids)
-  @JoinColumn({ name: 'auctionId' })
-  auction: Auction
-
-  @Column()
-  bidderId: string
-
-  @ManyToOne(() => User)
-  @JoinColumn({ name: 'bidderId' })
-  bidder: User
-
-  @Column({ type: 'decimal', precision: 10, scale: 2 })
-  amount: number
-
-  @Column()
-  createdAt: Date
-}
+// Re-export Bid so modules importing from auction.entity can get it
+export { Bid } from './bid.entity'

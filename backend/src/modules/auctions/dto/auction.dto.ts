@@ -72,11 +72,19 @@ export class CreateAuctionDto {
   @Min(0)
   buyNowPrice?: number
 
+  @IsOptional()
   @IsDateString()
-  startTime: string
+  startTime?: string
 
+  @IsOptional()
   @IsDateString()
-  endTime: string
+  endTime?: string
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(1)
+  durationHours?: number = 24
 
   @IsOptional()
   @Type(() => Number)
