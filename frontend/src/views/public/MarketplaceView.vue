@@ -123,7 +123,10 @@ const activeFiltersList = computed(() => {
 const fetchProducts = async () => {
   loading.value = true
   try {
-    const response = await productApi.getProducts(filters.value)
+    // Strip listingType if 'all' since backend only accepts 'sale'|'auction'|'both'
+    const { listingType, ...params } = filters.value
+    const cleanParams = listingType === 'all' ? params : { ...filters.value, listingType }
+    const response = await productApi.getProducts(cleanParams)
     products.value = response.data.data
     meta.value = response.data.meta
   } catch (error) {
