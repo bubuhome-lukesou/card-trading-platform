@@ -131,7 +131,7 @@ export class ProductsService {
 
     const product = this.productRepo.create({
       ...dto,
-      listingType,
+      listingType: listingType as any,
       sellerId: userId,
       status
     })
