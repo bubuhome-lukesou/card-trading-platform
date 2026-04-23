@@ -50,6 +50,11 @@ const getTimeRemaining = (endTime: string) => {
 // Get image from product
 const getProductImage = (product: any) => {
   if (product?.images) {
+    // If images is already an array, use it directly
+    if (Array.isArray(product.images)) {
+      return product.images[0] || ''
+    }
+    // Otherwise try to parse as JSON string (for backward compatibility)
     try {
       const images = JSON.parse(product.images)
       return images[0] || ''
