@@ -12,6 +12,12 @@ export class AuctionsController {
     return this.auctionsService.findAll(filters)
   }
 
+  @UseGuards(JwtAuthGuard)
+  @Get('seller/my')
+  async getMyAuctions(@Request() req: any) {
+    return this.auctionsService.findAll({ sellerId: req.user.id } as any)
+  }
+
   @Get(':id')
   async findOne(@Param('id') id: string) {
     return this.auctionsService.findOne(id)

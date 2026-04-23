@@ -49,6 +49,10 @@ export class AuctionFiltersDto {
   @IsOptional()
   @IsString()
   sortBy?: string = 'endingSoon'
+
+  @IsOptional()
+  @IsString()
+  sellerId?: string
 }
 
 export class CreateAuctionDto {

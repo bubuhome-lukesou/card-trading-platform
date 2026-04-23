@@ -40,5 +40,10 @@ export const auctionApi = {
   // Get my bids
   getMyBids() {
     return api.get<Bid[]>('/auctions/my-bids')
+  },
+
+  // Get seller's auctions (with auth)
+  getMyAuctions(params?: { page?: number; limit?: number }) {
+    return api.get<{ data: Auction[]; meta: any }>('/auctions/seller/my', { params })
   }
 }

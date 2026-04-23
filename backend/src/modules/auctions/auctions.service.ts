@@ -43,9 +43,15 @@ export class AuctionsService {
       .createQueryBuilder('auction')
       .leftJoinAndSelect('auction.product', 'product')
       .leftJoinAndSelect('auction.seller', 'seller')
-      .where('auction.status IN (:...statuses)', {
+
+    // Seller view: show all statuses; public view: only active/ended
+    if (filters.sellerId) {
+      queryBuilder.where('auction.sellerId = :sellerId', { sellerId: filters.sellerId })
+    } else {
+      queryBuilder.where('auction.status IN (:...statuses)', {
         statuses: [AuctionStatus.ACTIVE, AuctionStatus.ENDED]
       })
+    }
 
     if (filters.category?.length) {
       queryBuilder.andWhere('product.category IN (:...categories)', { categories: filters.category })
@@ -84,7 +90,8 @@ export class AuctionsService {
         queryBuilder.orderBy('auction.bidCount', 'DESC')
         break
       default:
-        queryBuilder.orderBy('auction.endTime', 'ASC')
+        // Seller view defaults to newest first
+        queryBuilder.orderBy(filters.sellerId ? 'auction.createdAt' : 'auction.endTime', 'DESC')
     }
 
     const page = filters.page || 1

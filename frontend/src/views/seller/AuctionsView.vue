@@ -2,6 +2,8 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
+import { auctionApi } from '@/api/auctions'
+import { productApi } from '@/api/products'
 
 const { t } = useI18n()
 const router = useRouter()
@@ -22,9 +24,12 @@ interface Auction {
 }
 
 const auctions = ref<Auction[]>([])
+const sellerProducts = ref<any[]>([])
 const loading = ref(true)
+const submitting = ref(false)
 const filterStatus = ref('all')
 const showModal = ref(false)
+const error = ref('')
 
 const formData = ref({
   productId: '',
@@ -102,93 +107,97 @@ const getTimeRemaining = (endTime: string) => {
 
 const loadAuctions = async () => {
   loading.value = true
+  error.value = ''
   try {
-    // Mock data
-    auctions.value = [
-      {
-        id: '1',
-        productId: '1',
-        productTitle: 'Pokemon 1st Edition Base Set',
-        category: 'pokemon',
-        startingPrice: 5000,
-        currentPrice: 12800,
-        bidCount: 23,
-        startTime: '2026-04-21 10:00',
-        endTime: '2026-04-21 18:00',
-        status: 'active',
-      },
-      {
-        id: '2',
-        productId: '2',
-        productTitle: 'Yu-Gi-Oh Blue-Eyes White Dragon',
-        category: 'yugioh',
-        startingPrice: 3000,
-        currentPrice: 6800,
-        bidCount: 15,
-        startTime: '2026-04-21 14:00',
-        endTime: '2026-04-21 22:00',
-        status: 'active',
-      },
-      {
-        id: '3',
-        productId: '3',
-        productTitle: 'MTG Black Lotus',
-        category: 'mtg',
-        startingPrice: 10000,
-        currentPrice: 25000,
-        bidCount: 8,
-        startTime: '2026-04-20 10:00',
-        endTime: '2026-04-22 10:00',
-        status: 'active',
-      },
-      {
-        id: '4',
-        productId: '4',
-        productTitle: 'Vintage Card Assortment',
-        category: 'other',
-        startingPrice: 1000,
-        currentPrice: 4200,
-        bidCount: 12,
-        startTime: '2026-04-19 10:00',
-        endTime: '2026-04-20 10:00',
-        status: 'ended',
-        winner: 'Collector_001',
-      },
-    ]
-  } catch (error) {
-    console.error('Failed to load auctions:', error)
+    const res = await auctionApi.getMyAuctions()
+    auctions.value = res.data.map((a: any) => ({
+      id: a.id,
+      productId: a.productId,
+      productTitle: a.product?.titleZh || a.product?.titleEn || '未知商品',
+      category: a.product?.category || 'other',
+      startingPrice: a.startingPrice,
+      currentPrice: a.currentPrice,
+      bidCount: a.bidCount || 0,
+      startTime: a.startTime,
+      endTime: a.endTime,
+      status: a.status?.toLowerCase() || 'active',
+      winner: a.winnerId,
+    }))
+  } catch (err: any) {
+    console.error('Failed to load auctions:', err)
+    error.value = err.response?.data?.message || '載入拍賣失敗'
   } finally {
     loading.value = false
+  }
+}
+
+const loadSellerProducts = async () => {
+  try {
+    const res = await productApi.getMyProducts({ limit: 100 })
+    sellerProducts.value = res.data || []
+  } catch (err) {
+    console.error('Failed to load seller products:', err)
   }
 }
 
 const handleCreateAuction = () => {
+  error.value = ''
+  formData.value = {
+    productId: '',
+    startingPrice: 100,
+    bidIncrement: 10,
+    reservePrice: 0,
+    startTime: '',
+    endTime: '',
+  }
+  loadSellerProducts()
   showModal.value = true
 }
 
 const handleSubmit = async () => {
-  loading.value = true
+  if (!formData.value.productId) {
+    error.value = '請選擇商品'
+    return
+  }
+  submitting.value = true
+  error.value = ''
   try {
-    // TODO: Call API
-    await new Promise(resolve => setTimeout(resolve, 1000))
+    // Set default start time to now if not provided
+    const startTime = formData.value.startTime
+      ? new Date(formData.value.startTime).toISOString()
+      : new Date().toISOString()
+    // Set default end time to 24 hours from now if not provided
+    const endTime = formData.value.endTime
+      ? new Date(formData.value.endTime).toISOString()
+      : new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
+
+    await auctionApi.createAuction({
+      productId: formData.value.productId,
+      startingPrice: formData.value.startingPrice,
+      reservePrice: formData.value.reservePrice || undefined,
+      startTime,
+      endTime,
+      durationHours: 24,
+    })
     showModal.value = false
-    loadAuctions()
-  } catch (error) {
-    console.error('Failed to create auction:', error)
+    await loadAuctions()
+  } catch (err: any) {
+    console.error('Failed to create auction:', err)
+    error.value = err.response?.data?.message || '創建拍賣失敗'
   } finally {
-    loading.value = false
+    submitting.value = false
   }
 }
 
 const handleCancel = async (auctionId: string) => {
-  if (!confirm('确定要取消此拍卖吗？')) return
-  
+  if (!confirm('確定要取消此拍賣嗎？')) return
+
   try {
-    // TODO: Call API
-    await new Promise(resolve => setTimeout(resolve, 500))
-    loadAuctions()
-  } catch (error) {
-    console.error('Failed to cancel auction:', error)
+    await auctionApi.cancelAuction(auctionId)
+    await loadAuctions()
+  } catch (err: any) {
+    console.error('Failed to cancel auction:', err)
+    alert(err.response?.data?.message || '取消失敗')
   }
 }
 
@@ -326,8 +335,9 @@ onMounted(() => {
             <label>选择商品</label>
             <select v-model="formData.productId" required>
               <option value="">请选择商品</option>
-              <option value="1">Pokemon 1st Edition Base Set</option>
-              <option value="2">Yu-Gi-Oh Blue-Eyes White Dragon</option>
+              <option v-for="product in sellerProducts" :key="product.id" :value="product.id">
+                {{ product.titleZh || product.titleEn }} ({{ product.status }})
+              </option>
             </select>
           </div>
 
@@ -386,8 +396,8 @@ onMounted(() => {
             <button type="button" @click="showModal = false" class="btn-cancel">
               取消
             </button>
-            <button type="submit" class="btn-submit" :disabled="loading">
-              {{ loading ? '创建中...' : '创建拍卖' }}
+            <button type="submit" class="btn-submit" :disabled="submitting">
+              {{ submitting ? '創建中...' : '創建拍賣' }}
             </button>
           </div>
         </form>
