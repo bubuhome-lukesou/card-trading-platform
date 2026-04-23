@@ -560,6 +560,7 @@ onUnmounted(() => {
             <div class="form-group full-width">
               <label>商品图片</label>
               <input
+                id="imageInput"
                 ref="imageInput"
                 type="file"
                 accept="image/*"
