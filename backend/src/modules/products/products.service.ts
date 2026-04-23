@@ -103,7 +103,10 @@ export class ProductsService {
       throw new NotFoundException('Product not found')
     }
 
-    // Parse images if stored as JSON string
+    // Store original images value before any parsing
+    const originalImages = product.images
+
+    // Parse images if stored as JSON string (for API response)
     if (product.images && typeof product.images === 'string') {
       try {
         (product as any).images = JSON.parse(product.images)
@@ -114,6 +117,11 @@ export class ProductsService {
 
     product.viewCount++
     await this.productRepo.save(product)
+
+    // Restore images to original format for return (save may have converted it)
+    if (originalImages !== undefined) {
+      (product as any).images = originalImages
+    }
 
     return product
   }
