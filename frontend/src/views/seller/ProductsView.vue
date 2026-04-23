@@ -223,6 +223,22 @@ const filteredProducts = computed(() => {
   return products.value.filter(p => p.status === filterStatus.value)
 })
 
+// Get image from product
+const getProductImage = (product: any) => {
+  if (product?.images) {
+    if (Array.isArray(product.images)) {
+      return product.images[0] || ''
+    }
+    try {
+      const images = JSON.parse(product.images)
+      return images[0] || ''
+    } catch {
+      return product.images || ''
+    }
+  }
+  return ''
+}
+
 const getCategoryEmoji = (category: string) => {
   return categories.find(c => c.value === category)?.emoji || '🎴'
 }
@@ -372,7 +388,8 @@ onUnmounted(() => {
     <div v-else class="products-grid">
       <div v-for="product in filteredProducts" :key="product.id" class="product-card">
         <div class="product-image">
-          <span class="category-emoji">{{ getCategoryEmoji(product.category) }}</span>
+          <img v-if="getProductImage(product)" :src="getProductImage(product)" :alt="product.titleEn" class="product-img" />
+          <span v-else class="category-emoji">{{ getCategoryEmoji(product.category) }}</span>
           <span class="status-badge" :class="getStatusBadge(product.status).class">
             {{ getStatusBadge(product.status).text }}
           </span>
@@ -725,6 +742,13 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
   position: relative;
+  overflow: hidden;
+}
+
+.product-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .category-emoji {
