@@ -1,36 +1,47 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute } from 'vue-router'
+import { productApi } from '@/api/products'
 
 const { t } = useI18n()
 const route = useRoute()
 
-const product = ref({
-  id: route.params.id,
-  titleEn: 'Loading...',
-  titleZh: '加载中...',
-  price: 0,
-  images: [],
-  category: '',
-  brand: '',
-  series: '',
-  rarity: 'SSR',
-  condition: 'near_mint',
-  descriptionEn: '',
-  descriptionZh: '',
-  seller: { nickname: '', rating: 0 }
+const loading = ref(true)
+const product = ref<any>(null)
+
+onMounted(async () => {
+  try {
+    const response = await productApi.getProduct(route.params.id as string)
+    product.value = response.data
+  } catch (error) {
+    console.error('Failed to load product:', error)
+  } finally {
+    loading.value = false
+  }
 })
 </script>
 
 <template>
   <div class="product-detail">
     <div class="container">
-      <div class="product-layout">
+      <div v-if="loading" class="loading-state">
+        <p>{{ t('common.loading') || '加载中...' }}</p>
+      </div>
+      <div v-else-if="product" class="product-layout">
         <!-- Images -->
         <div class="product-images">
           <div class="main-image">
-            <img :src="product.images[0] || '/placeholder-card.png'" :alt="product.titleEn" />
+            <img :src="product.images?.[0] || '/placeholder-card.png'" :alt="product.titleEn" />
+          </div>
+          <div v-if="product.images?.length > 1" class="thumbnail-list">
+            <img
+              v-for="(img, idx) in product.images"
+              :key="idx"
+              :src="img"
+              :alt="`${product.titleEn} ${Number(idx) + 1}`"
+              class="thumbnail"
+            />
           </div>
         </div>
 
@@ -44,12 +55,12 @@ const product = ref({
             <span class="meta-sep">•</span>
             <span class="meta-item">{{ product.series }}</span>
             <span class="meta-sep">•</span>
-            <span class="meta-item">{{ t(`conditions.${product.condition}`) }}</span>
+            <span class="meta-item">{{ t(`conditions.${product.condition}`, product.condition) }}</span>
           </div>
 
           <div class="price-section">
             <span class="price-label">{{ t('product.details.price') }}</span>
-            <span class="price">HK$ {{ product.price.toLocaleString() }}</span>
+            <span class="price">HK$ {{ Number(product.price).toLocaleString() }}</span>
           </div>
 
           <div class="action-buttons">
@@ -57,6 +68,9 @@ const product = ref({
             <button class="btn btn-outline">{{ t('product.card.addToCart') }}</button>
           </div>
         </div>
+      </div>
+      <div v-else class="error-state">
+        <p>{{ t('common.error') || '商品不存在' }}</p>
       </div>
     </div>
   </div>
@@ -93,6 +107,34 @@ const product = ref({
     height: 100%;
     object-fit: cover;
   }
+}
+
+.thumbnail-list {
+  display: flex;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+  overflow-x: auto;
+}
+
+.thumbnail {
+  width: 64px;
+  height: 64px;
+  object-fit: cover;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  opacity: 0.7;
+  transition: opacity 0.2s;
+
+  &:hover {
+    opacity: 1;
+  }
+}
+
+.loading-state,
+.error-state {
+  text-align: center;
+  padding: var(--space-16);
+  color: var(--text-muted);
 }
 
 .product-info {
