@@ -146,9 +146,13 @@ export class ProductsService {
       throw new ForbiddenException('You can only edit your own products')
     }
 
-    // Handle images - store as JSON string
-    if (dto.images && Array.isArray(dto.images)) {
-      dto.images = JSON.stringify(dto.images) as any
+    // Handle images - store as JSON string, skip if empty/undefined
+    if (dto.images !== undefined && dto.images !== null && dto.images !== '') {
+      if (Array.isArray(dto.images)) {
+        dto.images = dto.images.length > 0 ? JSON.stringify(dto.images) as any : (product.images || '')
+      } else if (typeof dto.images === 'string') {
+        // Already a string, use as-is
+      }
     }
 
     Object.assign(product, dto)
