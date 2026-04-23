@@ -19,7 +19,7 @@ export const productApi = {
 
   // Update product (seller only)
   updateProduct(id: string, data: any) {
-    return api.patch<Product>(`/products/${id}`, data)
+    return api.put<Product>(`/products/${id}`, data)
   },
 
   // Delete product (seller only)
