@@ -125,12 +125,13 @@ export class ProductsService {
       dto.images = JSON.stringify(images)
     }
 
-    // Set status to ACTIVE if listingType is provided (product is ready for marketplace)
-    // Only keep as DRAFT if listingType is not set (product not ready for listing)
-    const status = dto.listingType ? ProductStatus.ACTIVE : ProductStatus.DRAFT
+    // Default listingType to 'both' if not provided, always set to ACTIVE
+    const listingType = dto.listingType || 'both'
+    const status = ProductStatus.ACTIVE
 
     const product = this.productRepo.create({
       ...dto,
+      listingType,
       sellerId: userId,
       status
     })
