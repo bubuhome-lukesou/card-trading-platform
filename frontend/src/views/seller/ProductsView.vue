@@ -160,18 +160,42 @@ const openEditModal = (product: any) => {
 const handleSubmit = async () => {
   loading.value = true
   try {
-    // TODO: Call API to create/update product
-    console.log('Submitting product:', formData.value)
-    
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    
+    // Upload images first if any
+    const uploadedUrls: string[] = []
+    for (const file of pendingImageFiles.value) {
+      try {
+        const response = await uploadApi.uploadImage(file)
+        if (response.data.success) {
+          uploadedUrls.push(response.data.url)
+        }
+      } catch (uploadError) {
+        console.error('Image upload failed:', uploadError)
+        alert('图片上传失败，请重试')
+        loading.value = false
+        return
+      }
+    }
+
+    // Prepare product data
+    const productData = {
+      ...formData.value,
+      images: uploadedUrls,
+    }
+
+    // Create or update product
+    if (editingProduct.value) {
+      await productApi.updateProduct(editingProduct.value.id, productData)
+    } else {
+      await productApi.createProduct(productData)
+    }
+
     showModal.value = false
     resetForm()
-    // Refresh product list
     loadProducts()
-  } catch (error) {
+  } catch (error: any) {
     console.error('Failed to save product:', error)
+    const message = error?.response?.data?.message || error?.message || '保存失败，请重试'
+    alert(message)
   } finally {
     loading.value = false
   }
@@ -264,57 +288,8 @@ const removeImage = (index: number) => {
 const loadProducts = async () => {
   loading.value = true
   try {
-    // Mock data
-    products.value = [
-      {
-        id: '1',
-        titleZh: 'Pokemon 1st Edition Base Set',
-        titleEn: 'Pokemon 1st Edition Base Set',
-        category: 'pokemon',
-        condition: 'near_mint',
-        rarity: 'ultra_rare',
-        listingType: 'both',
-        price: 12800,
-        startingPrice: 5000,
-        bidIncrement: 100,
-        status: 'active',
-        images: [],
-        viewCount: 234,
-        createdAt: '2026-04-15',
-      },
-      {
-        id: '2',
-        titleZh: 'Yu-Gi-Oh 青眼白龙',
-        titleEn: 'Yu-Gi-Oh Blue-Eyes White Dragon',
-        category: 'yugioh',
-        condition: 'excellent',
-        rarity: 'super_rare',
-        listingType: 'auction_only',
-        price: 6800,
-        startingPrice: 3000,
-        bidIncrement: 50,
-        status: 'active',
-        images: [],
-        viewCount: 156,
-        createdAt: '2026-04-14',
-      },
-      {
-        id: '3',
-        titleZh: 'MTG Black Lotus',
-        titleEn: 'MTG Black Lotus',
-        category: 'mtg',
-        condition: 'fair',
-        rarity: 'secret_rare',
-        listingType: 'auction_only',
-        price: 25000,
-        startingPrice: 10000,
-        bidIncrement: 500,
-        status: 'active',
-        images: [],
-        viewCount: 456,
-        createdAt: '2026-04-10',
-      },
-    ]
+    const response = await productApi.getMyProducts()
+    products.value = response.data
   } catch (error) {
     console.error('Failed to load products:', error)
   } finally {
