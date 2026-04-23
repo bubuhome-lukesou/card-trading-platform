@@ -9,17 +9,23 @@ const route = useRoute()
 
 const loading = ref(true)
 const product = ref<any>(null)
+const currentImageIndex = ref(0)
 
 onMounted(async () => {
   try {
     const response = await productApi.getProduct(route.params.id as string)
     product.value = response.data
+    currentImageIndex.value = 0
   } catch (error) {
     console.error('Failed to load product:', error)
   } finally {
     loading.value = false
   }
 })
+
+const selectImage = (index: number) => {
+  currentImageIndex.value = index
+}
 </script>
 
 <template>
@@ -32,7 +38,7 @@ onMounted(async () => {
         <!-- Images -->
         <div class="product-images">
           <div class="main-image">
-            <img :src="product.images?.[0] || '/placeholder-card.png'" :alt="product.titleEn" />
+            <img :src="product.images?.[currentImageIndex] || '/placeholder-card.png'" :alt="product.titleEn" />
           </div>
           <div v-if="product.images?.length > 1" class="thumbnail-list">
             <img
@@ -41,6 +47,8 @@ onMounted(async () => {
               :src="img"
               :alt="`${product.titleEn} ${Number(idx) + 1}`"
               class="thumbnail"
+              :class="{ active: idx === currentImageIndex }"
+              @click="selectImage(Number(idx))"
             />
           </div>
         </div>
@@ -123,10 +131,16 @@ onMounted(async () => {
   border-radius: var(--radius-md);
   cursor: pointer;
   opacity: 0.7;
-  transition: opacity 0.2s;
+  transition: opacity 0.2s, border-color 0.2s;
+  border: 2px solid transparent;
 
   &:hover {
     opacity: 1;
+  }
+
+  &.active {
+    opacity: 1;
+    border-color: var(--primary);
   }
 }
 
