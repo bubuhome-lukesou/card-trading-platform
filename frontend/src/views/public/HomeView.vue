@@ -241,12 +241,12 @@ onMounted(() => {
             class="listing-card"
           >
             <div class="listing-image">
-              <img v-if="item.image" :src="item.image" :alt="item.title" />
+              <img v-if="getProductImage(item)" :src="getProductImage(item)" :alt="item.titleEn" />
               <div v-else class="placeholder-card">🃏</div>
               <div class="listing-condition">{{ item.condition }}</div>
             </div>
             <div class="listing-info">
-              <h3 class="listing-title">{{ item.title }}</h3>
+              <h3 class="listing-title">{{ item.titleEn || item.titleZh }}</h3>
               <div class="listing-price">HK$ {{ Number(item.price).toLocaleString() }}</div>
             </div>
           </RouterLink>
