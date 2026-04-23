@@ -4,6 +4,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
 import { aiApi } from '@/api/ai'
+import { uploadApi } from '@/api/upload'
 import { Loader2, ScanLine } from 'lucide-vue-next'
 
 const { t } = useI18n()
