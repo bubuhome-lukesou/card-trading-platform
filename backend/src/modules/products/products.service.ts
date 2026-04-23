@@ -103,11 +103,22 @@ export class ProductsService {
       throw new NotFoundException('Product not found')
     }
 
-    // Increment viewCount using update() to avoid touching images field
-    await this.productRepo.update(id, { viewCount: () => 'viewCount + 1' } as any)
+    // Increment viewCount using raw SQL to avoid TypeORM entity/dirty checking issues
+    await this.productRepo.query(
+      'UPDATE products SET viewCount = viewCount + 1 WHERE id = ?',
+      [id]
+    )
 
-    // Return the product with parsed images (re-fetch if needed for response)
-    return this.findOne(id)
+    // Parse images for response (original string is unchanged in DB)
+    if (product.images && typeof product.images === 'string') {
+      try {
+        (product as any).images = JSON.parse(product.images)
+      } catch {
+        (product as any).images = [product.images]
+      }
+    }
+
+    return product
   }
 
   async create(dto: CreateProductDto, userId: string): Promise<Product> {
