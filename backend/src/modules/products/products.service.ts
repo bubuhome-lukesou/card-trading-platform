@@ -82,8 +82,20 @@ export class ProductsService {
 
     const [data, total] = await queryBuilder.getManyAndCount()
 
+    // Parse images for each product (stored as JSON string in DB)
+    const parsedData = data.map(product => {
+      if (product.images && typeof product.images === 'string') {
+        try {
+          (product as any).images = JSON.parse(product.images)
+        } catch {
+          (product as any).images = [product.images]
+        }
+      }
+      return product
+    })
+
     return {
-      data,
+      data: parsedData,
       meta: {
         total,
         page,
