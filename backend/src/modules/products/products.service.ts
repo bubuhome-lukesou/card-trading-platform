@@ -103,27 +103,11 @@ export class ProductsService {
       throw new NotFoundException('Product not found')
     }
 
-    // Store original images value before any parsing
-    const originalImages = product.images
+    // Increment viewCount using update() to avoid touching images field
+    await this.productRepo.update(id, { viewCount: () => 'viewCount + 1' } as any)
 
-    // Parse images if stored as JSON string (for API response)
-    if (product.images && typeof product.images === 'string') {
-      try {
-        (product as any).images = JSON.parse(product.images)
-      } catch {
-        (product as any).images = [product.images]
-      }
-    }
-
-    product.viewCount++
-    await this.productRepo.save(product)
-
-    // Restore images to original format for return (save may have converted it)
-    if (originalImages !== undefined) {
-      (product as any).images = originalImages
-    }
-
-    return product
+    // Return the product with parsed images (re-fetch if needed for response)
+    return this.findOne(id)
   }
 
   async create(dto: CreateProductDto, userId: string): Promise<Product> {
