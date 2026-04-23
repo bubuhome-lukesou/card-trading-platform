@@ -25,6 +25,7 @@ const scanImageUrl = ref('')
 const imageInput = ref<HTMLInputElement | null>(null)
 const imagePreviews = ref<string[]>([])
 const pendingImageFiles = ref<File[]>([])
+const existingImageUrls = ref<string[]>([])
 
 const categories = [
   { value: 'pokemon', label: '宝可梦', emoji: '🎮' },
@@ -90,6 +91,9 @@ const resetForm = () => {
     images: [],
   }
   editingProduct.value = null
+  imagePreviews.value = []
+  pendingImageFiles.value = []
+  existingImageUrls.value = []
 }
 
 // AI Scan Card Function
@@ -142,6 +146,23 @@ const openCreateModal = () => {
 
 const openEditModal = (product: any) => {
   editingProduct.value = product
+  // Parse images (handle both array and JSON string)
+  let existingImages: string[] = []
+  if (product.images) {
+    if (Array.isArray(product.images)) {
+      existingImages = product.images
+    } else {
+      try {
+        existingImages = JSON.parse(product.images)
+      } catch {
+        existingImages = [product.images]
+      }
+    }
+  }
+  // Sync preview images with existing URLs (for display)
+  existingImageUrls.value = [...existingImages]
+  imagePreviews.value = [...existingImages]
+  pendingImageFiles.value = [] // No new files yet
   formData.value = {
     titleZh: product.titleZh,
     titleEn: product.titleEn,
@@ -154,7 +175,7 @@ const openEditModal = (product: any) => {
     price: product.price,
     startingPrice: product.startingPrice || 100,
     bidIncrement: product.bidIncrement || 10,
-    images: product.images || [],
+    images: [...existingImages],
   }
   showModal.value = true
 }
@@ -178,10 +199,10 @@ const handleSubmit = async () => {
       }
     }
 
-    // Prepare product data
+    // Prepare product data - merge existing URLs with newly uploaded URLs
     const productData = {
       ...formData.value,
-      images: uploadedUrls,
+      images: [...existingImageUrls.value, ...uploadedUrls],
     }
 
     // Create or update product
@@ -299,8 +320,25 @@ const handleImageChange = async (event: Event) => {
 }
 
 const removeImage = (index: number) => {
-  imagePreviews.value.splice(index, 1)
-  pendingImageFiles.value.splice(index, 1)
+  // If index is within existingImageUrls range, it's an existing image URL
+  if (index < existingImageUrls.value.length) {
+    existingImageUrls.value.splice(index, 1)
+  } else {
+    // It's a new pending file
+    const pendingIndex = index - existingImageUrls.value.length
+    pendingImageFiles.value.splice(pendingIndex, 1)
+  }
+  // Rebuild preview: existing URLs + new file base64 previews
+  const newFilePreviews = pendingImageFiles.value.map(file => {
+    return new Promise<string>((resolve) => {
+      const reader = new FileReader()
+      reader.onload = (e) => resolve(e.target?.result as string)
+      reader.readAsDataURL(file)
+    })
+  })
+  Promise.all(newFilePreviews).then(previews => {
+    imagePreviews.value = [...existingImageUrls.value, ...previews]
+  })
 }
 
 const loadProducts = async () => {

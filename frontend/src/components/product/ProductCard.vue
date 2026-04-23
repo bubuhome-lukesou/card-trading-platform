@@ -29,7 +29,7 @@ const price = computed(() => {
     <!-- Image -->
     <div class="card-image">
       <img
-        :src="product.images[0] || '/placeholder-card.png'"
+        :src="product.images?.[0] || '/placeholder-card.png'"
         :alt="title"
         loading="lazy"
       />

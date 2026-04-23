@@ -241,7 +241,7 @@ onMounted(() => {
             class="listing-card"
           >
             <div class="listing-image">
-              <img v-if="getProductImage(item)" :src="getProductImage(item)" :alt="item.titleEn" />
+              <img v-if="item.image" :src="item.image" :alt="item.titleEn" />
               <div v-else class="placeholder-card">🃏</div>
               <div class="listing-condition">{{ item.condition }}</div>
             </div>
