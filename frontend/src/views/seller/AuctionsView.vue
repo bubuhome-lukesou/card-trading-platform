@@ -110,7 +110,7 @@ const loadAuctions = async () => {
   error.value = ''
   try {
     const res = await auctionApi.getMyAuctions()
-    auctions.value = res.data.map((a: any) => ({
+    auctions.value = res.data.data.map((a: any) => ({
       id: a.id,
       productId: a.productId,
       productTitle: a.product?.titleZh || a.product?.titleEn || '未知商品',
