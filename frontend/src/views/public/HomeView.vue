@@ -73,7 +73,7 @@ const getTitle = (product: any) => {
 const fetchHotAuctions = async () => {
   loadingAuctions.value = true
   try {
-    const response = await auctionApi.getAuctions({ status: 'ACTIVE', limit: 3 } as any)
+    const response = await auctionApi.getAuctions({ status: 'active', limit: 3 } as any)
     hotAuctions.value = (response.data.data || []).map((auction: any) => ({
       id: auction.productId,
       auctionId: auction.id,
