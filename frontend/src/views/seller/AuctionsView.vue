@@ -203,12 +203,6 @@ const handleCancel = async (auctionId: string) => {
 
 onMounted(() => {
   loadAuctions()
-
-  // Check if should open create modal from URL query
-  if (route.query.action === 'create') {
-    handleCreateAuction()
-    router.replace({ query: {} })
-  }
 })
 </script>
 
