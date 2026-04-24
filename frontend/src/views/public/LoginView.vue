@@ -23,11 +23,15 @@ const handleSubmit = async () => {
   if (!success) {
     error.value = authStore.error || 'Login failed'
   } else {
-    // Redirect based on user role
+    // Only regular users can login here; admins and sellers must use separate portals
     if (authStore.isAdmin) {
-      router.push('/admin')
+      error.value = '管理员请访问 /admin/login'
+      authStore.logout()
+      router.push('/admin/login')
     } else if (authStore.isSeller) {
-      router.push('/seller')
+      error.value = '商家请访问 /seller/login'
+      authStore.logout()
+      router.push('/seller/login')
     } else {
       router.push('/user')
     }

@@ -86,6 +86,12 @@ const userRoutes: RouteRecordRaw[] = [
 // Seller routes
 const sellerRoutes: RouteRecordRaw[] = [
   {
+    path: '/seller/login',
+    name: 'SellerLogin',
+    component: () => import('@/views/seller/SellerLoginView.vue'),
+    meta: { guest: true }
+  },
+  {
     path: '/seller',
     component: () => import('@/views/seller/layout/SellerLayout.vue'),
     meta: { requiresAuth: true, requiresSeller: true },
@@ -191,6 +197,15 @@ router.beforeEach(async (to, _from, next) => {
 
   // Check if route is for guests only (login/register)
   if (to.meta.guest && authStore.isAuthenticated) {
+    // Admins and sellers must use their dedicated login pages
+    if (authStore.isAdmin) {
+      next({ name: 'AdminDashboard' })
+      return
+    }
+    if (authStore.isSeller) {
+      next({ name: 'SellerDashboard' })
+      return
+    }
     next({ name: 'Home' })
     return
   }

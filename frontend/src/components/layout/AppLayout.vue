@@ -44,18 +44,10 @@ const handleLogout = () => {
 const userMenuItems = computed(() => {
   const items: Array<{ to?: string; action?: string; name: string; icon: any }> = [
     { to: '/user', name: t('user.dashboard'), icon: User },
-    { to: '/user/orders', name: t('user.myOrders'), icon: Package }
-  ]
-  if (authStore.isSeller) {
-    items.push({ to: '/seller', name: t('seller.dashboard'), icon: Store })
-  }
-  if (authStore.isAdmin) {
-    items.push({ to: '/admin', name: t('admin.dashboard'), icon: Settings })
-  }
-  items.push(
+    { to: '/user/orders', name: t('user.myOrders'), icon: Package },
     { to: '/user/settings', name: t('user.settings'), icon: Settings },
     { action: 'logout', name: t('nav.logout'), icon: LogOut }
-  )
+  ]
   return items
 })
 </script>

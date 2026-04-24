@@ -12,7 +12,7 @@ export const useAuthStore = defineStore('auth', () => {
 
   // Getters
   const isAuthenticated = computed(() => !!token.value)
-  const isSeller = computed(() => user.value?.role === 'seller' || user.value?.role === 'admin')
+  const isSeller = computed(() => user.value?.role === 'seller')
   const isAdmin = computed(() => user.value?.role === 'admin')
   const currentUser = computed(() => user.value)
 

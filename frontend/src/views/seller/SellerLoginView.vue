@@ -14,8 +14,8 @@ const loading = ref(false)
 const errorMsg = ref('')
 
 onMounted(() => {
-  if (authStore.isAuthenticated && authStore.isAdmin) {
-    router.push('/admin')
+  if (authStore.isAuthenticated && authStore.isSeller) {
+    router.push('/seller')
   }
 })
 
@@ -30,10 +30,10 @@ const handleLogin = async () => {
   try {
     const success = await authStore.login({ email: loginForm.value.email, password: loginForm.value.password })
     if (success) {
-      if (authStore.isAdmin) {
-        router.push('/admin')
+      if (authStore.isSeller) {
+        router.push('/seller')
       } else {
-        errorMsg.value = '您不是管理员，无权访问后台'
+        errorMsg.value = '您不是商家，无权访问商家后台'
         authStore.logout()
       }
     } else {
@@ -48,7 +48,7 @@ const handleLogin = async () => {
 </script>
 
 <template>
-  <div class="admin-login-page">
+  <div class="seller-login-page">
     <div class="login-container">
       <div class="login-header">
         <div class="logo">
@@ -58,25 +58,25 @@ const handleLogin = async () => {
             <path d="M24 28L30 36H18L24 28Z" fill="white" opacity="0.6"/>
             <defs>
               <linearGradient id="grad" x1="0" y1="0" x2="48" y2="48">
-                <stop offset="0%" stop-color="#667eea"/>
-                <stop offset="100%" stop-color="#764ba2"/>
+                <stop offset="0%" stop-color="#f093fb"/>
+                <stop offset="100%" stop-color="#f5576c"/>
               </linearGradient>
             </defs>
           </svg>
         </div>
-        <h1>管理员登录</h1>
-        <p>Card Quest 后台管理系统</p>
+        <h1>商家登录</h1>
+        <p>Card Quest 商家管理系统</p>
       </div>
 
       <form @submit.prevent="handleLogin" class="login-form">
         <p v-if="errorMsg" class="error-msg">{{ errorMsg }}</p>
 
         <div class="form-group">
-          <label>管理员邮箱</label>
+          <label>商家邮箱</label>
           <input
             v-model="loginForm.email"
             type="email"
-            placeholder="admin@example.com"
+            placeholder="seller@example.com"
             autocomplete="username"
           />
         </div>
@@ -105,7 +105,7 @@ const handleLogin = async () => {
 </template>
 
 <style scoped>
-.admin-login-page {
+.seller-login-page {
   min-height: 100vh;
   display: flex;
   align-items: center;
@@ -197,7 +197,7 @@ const handleLogin = async () => {
   justify-content: center;
   gap: var(--space-2);
   padding: var(--space-4);
-  background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
   border: none;
   border-radius: var(--radius-lg);
   color: white;
