@@ -195,6 +195,21 @@ router.beforeEach(async (to, _from, next) => {
     return
   }
 
+  // If already logged in as admin/seller, redirect away from public pages
+  if (authStore.isAuthenticated && (authStore.isAdmin || authStore.isSeller)) {
+    // If trying to access a public page (no requiresAuth, no requiresSeller, no requiresAdmin)
+    if (!to.meta.requiresAuth && !to.meta.requiresSeller && !to.meta.requiresAdmin) {
+      if (authStore.isAdmin) {
+        next({ name: 'AdminDashboard' })
+        return
+      }
+      if (authStore.isSeller) {
+        next({ name: 'SellerDashboard' })
+        return
+      }
+    }
+  }
+
   // Check if route is for guests only (login/register)
   if (to.meta.guest && authStore.isAuthenticated) {
     // Admins and sellers must use their dedicated login pages
