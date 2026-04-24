@@ -1,0 +1,16 @@
+# Environment and secrets
+.env
+.env.*
+*.env
+
+# PM2 ecosystem files (contain secrets)
+ecosystem-webhook.json
+
+# Build outputs
+dist/
+backend/dist/
+node_modules/
+
+# OS
+.DS_Store
+Thumbs.db

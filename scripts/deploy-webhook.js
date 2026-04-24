@@ -71,8 +71,12 @@ const server = http.createServer((req, res) => {
     console.log('[WEBHOOK] Deploying...')
 
     try {
-      // Use HTTPS with GitHub token to avoid SSH key issues
-      const GITHUB_TOKEN = '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'
+      // Use HTTPS with GitHub token from environment to avoid exposing secrets
+      const GITHUB_TOKEN = process.env.GH_DEPLOY_TOKEN
+      if (!GITHUB_TOKEN) {
+        console.error('[WEBHOOK] GH_DEPLOY_TOKEN not set')
+        throw new Error('GH_DEPLOY_TOKEN not configured')
+      }
       const env = { ...process.env, GIT_ASKPASS: 'echo' }
       execSync(`git remote set-url origin https://${GITHUB_TOKEN}@github.com/bubuhome-lukesou/card-trading-platform.git`, { cwd: PROJECT_DIR, stdio: 'pipe', env })
       execSync('git checkout -- backend/ frontend/', { cwd: PROJECT_DIR, stdio: 'pipe', env })
