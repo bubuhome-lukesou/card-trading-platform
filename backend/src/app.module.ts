@@ -23,6 +23,8 @@ import { WalletModule } from './modules/wallet/wallet.module'
 import { Favorite } from './entities/favorite.entity'
 import { WalletTransaction } from './entities/wallet.entity'
 import { AdminModule } from './modules/admin/admin.module'
+import { PagesModule } from './modules/pages/pages.module'
+import { Page } from './entities/page.entity'
 
 @Module({
   imports: [
@@ -33,7 +35,7 @@ import { AdminModule } from './modules/admin/admin.module'
       username: process.env.DB_USERNAME || 'card_admin',
       password: process.env.DB_PASSWORD || 'CardAuction2026!',
       database: process.env.DB_DATABASE || 'card_auction',
-      entities: [User, Product, Auction, Bid, Order, Favorite, WalletTransaction],
+      entities: [User, Product, Auction, Bid, Order, Favorite, WalletTransaction, Page],
       synchronize: true,
       logging: process.env.NODE_ENV === 'development'
     }),
@@ -50,7 +52,8 @@ import { AdminModule } from './modules/admin/admin.module'
     BidsModule,
     FavoritesModule,
     WalletModule,
-    AdminModule
+    AdminModule,
+    PagesModule
   ],
   controllers: [AppController],
   providers: [AppService]

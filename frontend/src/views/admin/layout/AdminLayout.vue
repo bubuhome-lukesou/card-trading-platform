@@ -16,6 +16,7 @@ const navItems = [
   { path: '/admin/products', name: 'products', icon: '📦', label: 'admin.products' },
   { path: '/admin/auctions', name: 'auctions', icon: '🔨', label: 'admin.auctions' },
   { path: '/admin/settings', name: 'settings', icon: '⚙️', label: 'admin.settings' },
+  { path: '/admin/pages', name: 'pages', icon: '📄', label: 'admin.pages' },
 ]
 
 const isActive = (path: string) => route.path === path

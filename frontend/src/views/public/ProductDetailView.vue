@@ -100,8 +100,7 @@ const selectImage = (index: number) => {
 }
 
 .product-images {
-  position: sticky;
-  top: 80px;
+  /* position: sticky; top: 80px; — removed: was covering text on scroll */
 }
 
 .main-image {

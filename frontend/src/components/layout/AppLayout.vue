@@ -226,9 +226,9 @@ const userMenuItems = computed(() => {
           </div>
           <div class="footer-col">
             <h4>{{ t('footer.support') }}</h4>
-            <a href="#">{{ t('footer.helpCenter') }}</a>
-            <a href="#">{{ t('footer.contactUs') }}</a>
-            <a href="#">{{ t('footer.faq') }}</a>
+            <RouterLink to="/help">{{ t('footer.helpCenter') }}</RouterLink>
+            <RouterLink to="/contact">{{ t('footer.contactUs') }}</RouterLink>
+            <RouterLink to="/faq">{{ t('footer.faq') }}</RouterLink>
           </div>
           <div class="footer-col">
             <h4>{{ t('footer.contact') }}</h4>

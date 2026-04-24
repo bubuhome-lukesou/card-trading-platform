@@ -29,6 +29,11 @@ const publicRoutes: RouteRecordRaw[] = [
     component: () => import('@/views/public/AuctionDetailView.vue')
   },
   {
+    path: '/:type(help|contact|faq)',
+    name: 'Page',
+    component: () => import('@/views/public/PageView.vue')
+  },
+  {
     path: '/login',
     name: 'Login',
     component: () => import('@/views/public/LoginView.vue'),
@@ -132,7 +137,8 @@ const adminRoutes: RouteRecordRaw[] = [
       { path: 'sellers', name: 'AdminSellers', component: () => import('@/views/admin/SellersView.vue') },
       { path: 'products', name: 'AdminProducts', component: () => import('@/views/admin/ProductsView.vue') },
       { path: 'auctions', name: 'AdminAuctions', component: () => import('@/views/admin/AuctionsView.vue') },
-      { path: 'settings', name: 'AdminSettings', component: () => import('@/views/admin/SettingsView.vue') }
+      { path: 'settings', name: 'AdminSettings', component: () => import('@/views/admin/SettingsView.vue') },
+      { path: 'pages', name: 'AdminPages', component: () => import('@/views/admin/PagesEditorView.vue') }
     ]
   }
 ]
