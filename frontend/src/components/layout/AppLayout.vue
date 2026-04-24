@@ -101,8 +101,8 @@ const userMenuItems = computed(() => {
               <Bell class="icon" />
             </button>
 
-            <!-- Orders -->
-            <RouterLink to="/user/orders" class="action-btn">
+            <!-- Orders — seller goes to seller orders, others to buyer orders -->
+            <RouterLink :to="authStore.isSeller ? '/seller/orders' : '/user/orders'" class="action-btn">
               <ShoppingCart class="icon" />
             </RouterLink>
 
@@ -178,8 +178,8 @@ const userMenuItems = computed(() => {
             <RouterLink to="/user" class="mobile-link" @click="mobileMenuOpen = false">
               {{ t('user.dashboard') }}
             </RouterLink>
-            <RouterLink to="/user/orders" class="mobile-link" @click="mobileMenuOpen = false">
-              {{ t('user.myOrders') }}
+            <RouterLink :to="authStore.isSeller ? '/seller/orders' : '/user/orders'" class="mobile-link" @click="mobileMenuOpen = false">
+              {{ authStore.isSeller ? t('seller.orders') : t('user.myOrders') }}
             </RouterLink>
           </template>
         </nav>

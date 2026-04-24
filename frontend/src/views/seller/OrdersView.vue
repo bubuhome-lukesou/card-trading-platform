@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { ordersApi } from '@/api/orders'
 
 const { t } = useI18n()
 
@@ -11,11 +12,12 @@ interface Order {
   buyerNickname: string
   buyerEmail: string
   amount: number
-  status: 'pending_paid' | 'paid' | 'shipped' | 'delivered' | 'cancelled' | 'refunded'
-  type: 'purchase' | 'auction'
+  status: string
+  type: string
   createdAt: string
   paidAt?: string
   shippedAt?: string
+  trackingNumber?: string
 }
 
 const orders = ref<Order[]>([])
@@ -27,16 +29,47 @@ const filteredOrders = computed(() => {
   return orders.value.filter(o => o.status === filterStatus.value)
 })
 
+const loadOrders = async () => {
+  loading.value = true
+  try {
+    const res = await ordersApi.getSellerOrders()
+    orders.value = (res.data.data || []).map((o: any) => ({
+      id: o.id,
+      orderNumber: o.orderNumber,
+      productTitle: o.product?.title || '-',
+      buyerNickname: o.buyer?.nickname || '-',
+      buyerEmail: o.buyer?.email || '-',
+      amount: o.totalPrice || 0,
+      status: o.status,
+      type: o.type,
+      createdAt: o.createdAt,
+      paidAt: o.paidAt,
+      shippedAt: o.shippedAt,
+      trackingNumber: o.trackingNumber,
+    }))
+  } catch (e) {
+    console.error('Failed to load orders', e)
+    orders.value = []
+  } finally {
+    loading.value = false
+  }
+}
+
+const handleUpdateStatus = async (id: string, newStatus: string) => {
+  try {
+    await ordersApi.updateStatus(id, newStatus)
+    await loadOrders()
+  } catch (e) {
+    alert('操作失败')
+  }
+}
+
 const formatPrice = (price: number) => {
-  return new Intl.NumberFormat('zh-HK', {
-    style: 'currency',
-    currency: 'HKD',
-    minimumFractionDigits: 0,
-  }).format(price)
+  return new Intl.NumberFormat('zh-HK', { style: 'currency', currency: 'HKD', minimumFractionDigits: 0 }).format(price)
 }
 
 const formatDate = (dateStr: string) => {
-  return new Date(dateStr).toLocaleDateString('zh-CN')
+  return dateStr ? new Date(dateStr).toLocaleDateString('zh-CN') : '-'
 }
 
 const getStatusBadge = (status: string) => {
@@ -51,120 +84,22 @@ const getStatusBadge = (status: string) => {
   return map[status] || { class: 'default', text: status }
 }
 
-const loadOrders = async () => {
-  loading.value = true
-  try {
-    orders.value = [
-      {
-        id: '1',
-        orderNumber: 'ORD-2026-001',
-        productTitle: 'Pokemon 1st Edition Base Set',
-        buyerNickname: 'Collector_001',
-        buyerEmail: 'collector@email.com',
-        amount: 12800,
-        status: 'paid',
-        type: 'auction',
-        createdAt: '2026-04-21',
-        paidAt: '2026-04-21',
-      },
-      {
-        id: '2',
-        orderNumber: 'ORD-2026-002',
-        productTitle: 'Yu-Gi-Oh Blue-Eyes White Dragon',
-        buyerNickname: 'DragonMaster',
-        buyerEmail: 'dragon@email.com',
-        amount: 6800,
-        status: 'shipped',
-        type: 'auction',
-        createdAt: '2026-04-20',
-        paidAt: '2026-04-20',
-        shippedAt: '2026-04-21',
-      },
-      {
-        id: '3',
-        orderNumber: 'ORD-2026-003',
-        productTitle: 'MTG Black Lotus',
-        buyerNickname: 'MagicPlayer',
-        buyerEmail: 'magic@email.com',
-        amount: 25000,
-        status: 'pending_paid',
-        type: 'auction',
-        createdAt: '2026-04-19',
-      },
-      {
-        id: '4',
-        orderNumber: 'ORD-2026-004',
-        productTitle: 'Doraemon Figure Collection',
-        buyerNickname: 'DoraFan',
-        buyerEmail: 'dora@email.com',
-        amount: 1800,
-        status: 'delivered',
-        type: 'purchase',
-        createdAt: '2026-04-15',
-        paidAt: '2026-04-15',
-        shippedAt: '2026-04-16',
-      },
-    ]
-  } catch (error) {
-    console.error('Failed to load orders:', error)
-  } finally {
-    loading.value = false
-  }
-}
-
-const handleMarkShipped = async (orderId: string) => {
-  // TODO: Call API
-  await new Promise(resolve => setTimeout(resolve, 500))
-  loadOrders()
-}
-
-onMounted(() => {
-  loadOrders()
-})
+onMounted(() => loadOrders())
 </script>
 
 <template>
   <div class="orders-management">
-    <!-- Header -->
-    <div class="section-header">
-      <div class="filter-tabs">
-        <button 
-          class="tab" 
-          :class="{ active: filterStatus === 'all' }"
-          @click="filterStatus = 'all'"
-        >
-          全部 ({{ orders.length }})
-        </button>
-        <button 
-          class="tab" 
-          :class="{ active: filterStatus === 'pending_paid' }"
-          @click="filterStatus = 'pending_paid'"
-        >
-          待付款 ({{ orders.filter(o => o.status === 'pending_paid').length }})
-        </button>
-        <button 
-          class="tab" 
-          :class="{ active: filterStatus === 'paid' }"
-          @click="filterStatus = 'paid'"
-        >
-          已付款 ({{ orders.filter(o => o.status === 'paid').length }})
-        </button>
-        <button 
-          class="tab" 
-          :class="{ active: filterStatus === 'shipped' }"
-          @click="filterStatus = 'shipped'"
-        >
-          已发货 ({{ orders.filter(o => o.status === 'shipped').length }})
-        </button>
-      </div>
+    <!-- Tabs -->
+    <div class="tabs">
+      <button :class="{ active: filterStatus === 'all' }" @click="filterStatus = 'all'">全部 ({{ orders.length }})</button>
+      <button :class="{ active: filterStatus === 'pending_paid' }" @click="filterStatus = 'pending_paid'">待付款 ({{ orders.filter(o => o.status === 'pending_paid').length }})</button>
+      <button :class="{ active: filterStatus === 'paid' }" @click="filterStatus = 'paid'">已付款 ({{ orders.filter(o => o.status === 'paid').length }})</button>
+      <button :class="{ active: filterStatus === 'shipped' }" @click="filterStatus = 'shipped'">已发货 ({{ orders.filter(o => o.status === 'shipped').length }})</button>
+      <button :class="{ active: filterStatus === 'delivered' }" @click="filterStatus = 'delivered'">已完成 ({{ orders.filter(o => o.status === 'delivered').length }})</button>
     </div>
 
-    <!-- Orders Table -->
-    <div v-if="loading" class="loading-state">
-      <div class="spinner"></div>
-      <p>加载中...</p>
-    </div>
-
+    <div v-if="loading" class="loading-state">加载中...</div>
+    <div v-else-if="!filteredOrders.length" class="empty-state">暂无订单</div>
     <div v-else class="orders-table">
       <table>
         <thead>
@@ -173,9 +108,8 @@ onMounted(() => {
             <th>商品</th>
             <th>买家</th>
             <th>金额</th>
-            <th>类型</th>
             <th>状态</th>
-            <th>日期</th>
+            <th>时间</th>
             <th>操作</th>
           </tr>
         </thead>
@@ -184,34 +118,27 @@ onMounted(() => {
             <td class="order-number">{{ order.orderNumber }}</td>
             <td class="product-title">{{ order.productTitle }}</td>
             <td>
-              <div class="buyer-info">
-                <span>{{ order.buyerNickname }}</span>
-                <span class="buyer-email">{{ order.buyerEmail }}</span>
-              </div>
+              <div>{{ order.buyerNickname }}</div>
+              <div class="buyer-email">{{ order.buyerEmail }}</div>
             </td>
             <td class="amount">{{ formatPrice(order.amount) }}</td>
-            <td>
-              <span class="type-badge" :class="order.type">
-                {{ order.type === 'auction' ? '拍卖' : '购买' }}
-              </span>
-            </td>
             <td>
               <span class="status-badge" :class="getStatusBadge(order.status).class">
                 {{ getStatusBadge(order.status).text }}
               </span>
             </td>
-            <td>{{ formatDate(order.createdAt) }}</td>
+            <td class="date">{{ formatDate(order.createdAt) }}</td>
             <td>
-              <button 
+              <button
                 v-if="order.status === 'paid'"
-                class="btn-action"
-                @click="handleMarkShipped(order.id)"
-              >
-                确认发货
-              </button>
-              <span v-else-if="order.status === 'shipped' || order.status === 'delivered'" class="action-done">
-                已处理
-              </span>
+                @click="handleUpdateStatus(order.id, 'shipped')"
+                class="btn-action ship"
+              >发货</button>
+              <button
+                v-if="order.status === 'pending_paid'"
+                @click="handleUpdateStatus(order.id, 'cancelled')"
+                class="btn-action cancel"
+              >取消</button>
             </td>
           </tr>
         </tbody>
@@ -221,200 +148,34 @@ onMounted(() => {
 </template>
 
 <style scoped>
-.orders-management {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-6);
+.orders-management { display: flex; flex-direction: column; gap: var(--space-4); }
+.tabs { display: flex; gap: var(--space-2); flex-wrap: wrap; }
+.tabs button {
+  padding: var(--space-2) var(--space-4); background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: var(--radius-lg); color: var(--text-secondary); cursor: pointer; font-size: var(--text-sm); transition: all 0.2s;
 }
-
-.section-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+.tabs button.active { background: var(--primary-gradient); color: white; border-color: transparent; }
+.orders-table, .empty-state, .loading-state {
+  background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-xl);
 }
-
-.filter-tabs {
-  display: flex;
-  gap: var(--space-2);
-}
-
-.tab {
-  padding: var(--space-2) var(--space-4);
-  border-radius: var(--radius-lg);
-  font-size: var(--text-sm);
-  font-weight: 500;
-  color: var(--text-secondary);
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  cursor: pointer;
-  transition: all var(--transition-fast);
-}
-
-.tab:hover {
-  border-color: var(--primary);
-}
-
-.tab.active {
-  background: var(--primary-gradient);
-  border: none;
-  color: white;
-}
-
-.loading-state {
-  text-align: center;
-  padding: var(--space-16);
-  color: var(--text-secondary);
-}
-
-.spinner {
-  width: 40px;
-  height: 40px;
-  border: 3px solid var(--border);
-  border-top-color: var(--primary);
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-  margin: 0 auto var(--space-4);
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-
-.orders-table {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-xl);
-  overflow: hidden;
-}
-
-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-th, td {
-  padding: var(--space-4);
-  text-align: left;
-  border-bottom: 1px solid var(--border);
-}
-
-th {
-  font-size: var(--text-sm);
-  font-weight: 500;
-  color: var(--text-secondary);
-  background: var(--bg-elevated);
-}
-
-td {
-  font-size: var(--text-sm);
-  color: var(--text-primary);
-}
-
-tr:last-child td {
-  border-bottom: none;
-}
-
-.order-number {
-  font-family: var(--font-num);
-  font-size: var(--text-xs);
-  color: var(--text-secondary);
-}
-
-.product-title {
-  max-width: 180px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.buyer-info {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.buyer-email {
-  font-size: var(--text-xs);
-  color: var(--text-muted);
-}
-
-.amount {
-  font-family: var(--font-num);
-  font-weight: 700;
-  color: var(--primary);
-}
-
-.type-badge {
-  padding: 2px 8px;
-  border-radius: var(--radius-full);
-  font-size: var(--text-xs);
-}
-
-.type-badge.auction {
-  background: #667eea33;
-  color: #667eea;
-}
-
-.type-badge.purchase {
-  background: #10b98133;
-  color: #10b981;
-}
-
-.status-badge {
-  padding: 2px 10px;
-  border-radius: var(--radius-full);
-  font-size: var(--text-xs);
-  font-weight: 600;
-}
-
-.status-badge.pending {
-  background: #f59e0b4d;
-  color: #f59e0b;
-}
-
-.status-badge.paid {
-  background: #3b82f64d;
-  color: #3b82f6;
-}
-
-.status-badge.shipped {
-  background: #8b5cf64d;
-  color: #8b5cf6;
-}
-
-.status-badge.delivered {
-  background: #10b9814d;
-  color: #10b981;
-}
-
-.status-badge.cancelled {
-  background: #ef44444d;
-  color: #ef4444;
-}
-
-.status-badge.refunded {
-  background: #6b72804d;
-  color: #6b7280;
-}
-
-.btn-action {
-  padding: var(--space-2) var(--space-3);
-  background: var(--primary-gradient);
-  border: none;
-  border-radius: var(--radius-md);
-  color: white;
-  font-size: var(--text-xs);
-  font-weight: 500;
-  cursor: pointer;
-  transition: all var(--transition-fast);
-}
-
-.btn-action:hover {
-  opacity: 0.9;
-}
-
-.action-done {
-  font-size: var(--text-xs);
-  color: var(--text-muted);
-}
+.empty-state, .loading-state { text-align: center; padding: var(--space-12); color: var(--text-muted); }
+table { width: 100%; border-collapse: collapse; }
+th, td { padding: var(--space-4); text-align: left; border-bottom: 1px solid var(--border); }
+th { font-size: var(--text-xs); font-weight: 500; color: var(--text-secondary); background: var(--bg-elevated); }
+td { font-size: var(--text-sm); color: var(--text-primary); }
+tr:last-child td { border-bottom: none; }
+.order-number { font-family: var(--font-num); font-size: var(--text-xs); color: var(--text-muted); }
+.product-title { max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.buyer-email { font-size: var(--text-xs); color: var(--text-muted); }
+.amount { font-family: var(--font-num); font-weight: 600; color: var(--primary); }
+.date { font-size: var(--text-xs); color: var(--text-muted); }
+.status-badge { padding: 2px 8px; border-radius: var(--radius-full); font-size: var(--text-xs); font-weight: 500; }
+.status-badge.pending { background: #f59e0b33; color: #f59e0b; }
+.status-badge.paid { background: #3b82f633; color: #3b82f6; }
+.status-badge.shipped { background: #8b5cf633; color: #8b5cf6; }
+.status-badge.delivered { background: #10b98133; color: #10b981; }
+.status-badge.cancelled, .status-badge.refunded { background: #ef444433; color: #ef4444; }
+.btn-action { padding: var(--space-1) var(--space-3); border-radius: var(--radius-md); font-size: var(--text-xs); border: none; cursor: pointer; }
+.btn-action.ship { background: #10b981; color: white; }
+.btn-action.cancel { background: #ef444433; color: #ef4444; }
 </style>
