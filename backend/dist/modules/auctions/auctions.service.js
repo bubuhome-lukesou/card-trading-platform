@@ -41,6 +41,29 @@ let AuctionsService = class AuctionsService {
             console.log(`[Cron] Activated ${pendingAuctions.length} pending auctions`);
         }
     }
+    async endExpiredAuctions() {
+        const now = new Date();
+        const expiredAuctions = await this.auctionRepo.find({
+            where: {
+                status: auction_entity_1.AuctionStatus.ACTIVE,
+                endTime: (0, typeorm_2.LessThanOrEqual)(now)
+            }
+        });
+        for (const auction of expiredAuctions) {
+            auction.status = auction_entity_1.AuctionStatus.ENDED;
+            if (auction.bidCount > 0) {
+                const highestBid = await this.bidRepo.findOne({
+                    where: { auctionId: auction.id },
+                    order: { amount: 'DESC' }
+                });
+                auction.winnerId = highestBid?.bidderId;
+            }
+            await this.auctionRepo.save(auction);
+        }
+        if (expiredAuctions.length > 0) {
+            console.log(`[Cron] Ended ${expiredAuctions.length} expired auctions`);
+        }
+    }
     async findAll(filters) {
         const queryBuilder = this.auctionRepo
             .createQueryBuilder('auction')
@@ -70,7 +93,7 @@ let AuctionsService = class AuctionsService {
             queryBuilder.andWhere('auction.currentPrice <= :priceMax', { priceMax: filters.priceMax });
         }
         if (filters.search) {
-            queryBuilder.andWhere('(product.titleEn ILIKE :search OR product.titleZh ILIKE :search)', { search: `%${filters.search}%` });
+            queryBuilder.andWhere('(product.titleEn LIKE :search OR product.titleZh LIKE :search)', { search: `%${filters.search}%` });
         }
         switch (filters.sortBy) {
             case 'endingSoon':
@@ -222,6 +245,12 @@ __decorate([
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", Promise)
 ], AuctionsService.prototype, "activatePendingAuctions", null);
+__decorate([
+    (0, schedule_1.Cron)('* * * * *'),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", Promise)
+], AuctionsService.prototype, "endExpiredAuctions", null);
 exports.AuctionsService = AuctionsService = __decorate([
     (0, common_1.Injectable)(),
     __param(0, (0, typeorm_1.InjectRepository)(auction_entity_1.Auction)),

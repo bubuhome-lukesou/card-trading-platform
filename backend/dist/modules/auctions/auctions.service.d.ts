@@ -8,6 +8,7 @@ export declare class AuctionsService {
     private readonly productRepo;
     constructor(auctionRepo: Repository<Auction>, bidRepo: Repository<Bid>, productRepo: Repository<Product>);
     activatePendingAuctions(): Promise<void>;
+    endExpiredAuctions(): Promise<void>;
     findAll(filters: AuctionFiltersDto): Promise<{
         data: Auction[];
         meta: {

@@ -27,14 +27,42 @@ export class AuctionsService {
         startTime: LessThanOrEqual(now)
       }
     })
-    
+
     for (const auction of pendingAuctions) {
       auction.status = AuctionStatus.ACTIVE
       await this.auctionRepo.save(auction)
     }
-    
+
     if (pendingAuctions.length > 0) {
       console.log(`[Cron] Activated ${pendingAuctions.length} pending auctions`)
+    }
+  }
+
+  // Cron job to end expired auctions every minute
+  @Cron('* * * * *')
+  async endExpiredAuctions() {
+    const now = new Date()
+    const expiredAuctions = await this.auctionRepo.find({
+      where: {
+        status: AuctionStatus.ACTIVE,
+        endTime: LessThanOrEqual(now)
+      }
+    })
+
+    for (const auction of expiredAuctions) {
+      auction.status = AuctionStatus.ENDED
+      if (auction.bidCount > 0) {
+        const highestBid = await this.bidRepo.findOne({
+          where: { auctionId: auction.id },
+          order: { amount: 'DESC' }
+        })
+        auction.winnerId = highestBid?.bidderId
+      }
+      await this.auctionRepo.save(auction)
+    }
+
+    if (expiredAuctions.length > 0) {
+      console.log(`[Cron] Ended ${expiredAuctions.length} expired auctions`)
     }
   }
 
@@ -70,7 +98,7 @@ export class AuctionsService {
     }
     if (filters.search) {
       queryBuilder.andWhere(
-        '(product.titleEn ILIKE :search OR product.titleZh ILIKE :search)',
+        '(product.titleEn LIKE :search OR product.titleZh LIKE :search)',
         { search: `%${filters.search}%` }
       )
     }
