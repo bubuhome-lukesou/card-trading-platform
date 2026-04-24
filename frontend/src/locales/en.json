@@ -201,6 +201,7 @@
     "loading": "Loading...",
     "noResults": "No results found",
     "loadMore": "Load More",
+    "allLoaded": "— All {total} items loaded —",
     "showing": "Showing",
     "of": "of",
     "items": "items",

@@ -230,6 +230,7 @@
     "loading": "加载中...",
     "noResults": "暂无结果",
     "loadMore": "加载更多",
+    "allLoaded": "— 已载入全部 {total} 件商品 —",
     "showing": "显示",
     "of": "共",
     "items": "件",

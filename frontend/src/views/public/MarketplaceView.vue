@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import { Search, SlidersHorizontal, X, ChevronDown, Loader2 } from 'lucide-vue-next'
@@ -14,7 +14,11 @@ const router = useRouter()
 // State
 const products = ref<Product[]>([])
 const loading = ref(false)
+const loadingMore = ref(false)
 const showFilters = ref(true)
+const hasMore = computed(() => products.value.length < meta.value.total)
+const sentinelRef = ref<HTMLElement | null>(null)
+let observer: IntersectionObserver | null = null
 const filtersExpanded = ref({
   category: true,
   listingType: true,
@@ -120,19 +124,28 @@ const activeFiltersList = computed(() => {
 })
 
 // Methods
-const fetchProducts = async () => {
-  loading.value = true
+const fetchProducts = async (append = false) => {
+  if (append) {
+    loadingMore.value = true
+  } else {
+    loading.value = true
+  }
   try {
     // Strip listingType if 'all' since backend only accepts 'sale'|'auction'|'both'
     const { listingType, ...params } = filters.value
     const cleanParams = listingType === 'all' ? params : { ...filters.value, listingType }
     const response = await productApi.getProducts(cleanParams)
-    products.value = response.data.data
+    if (append) {
+      products.value = [...products.value, ...response.data.data]
+    } else {
+      products.value = response.data.data
+    }
     meta.value = response.data.meta
   } catch (error) {
     console.error('Failed to fetch products:', error)
   } finally {
     loading.value = false
+    loadingMore.value = false
   }
 }
 
@@ -240,8 +253,9 @@ const parseUrlFilters = () => {
 }
 
 const loadMore = () => {
+  if (loadingMore.value || !hasMore.value) return
   filters.value.page++
-  fetchProducts()
+  fetchProducts(true)
 }
 
 const handleSearch = () => {
@@ -254,6 +268,25 @@ const handleSearch = () => {
 onMounted(() => {
   parseUrlFilters()
   fetchProducts()
+
+  // Infinite scroll observer
+  observer = new IntersectionObserver(
+    (entries) => {
+      if (entries[0].isIntersecting && hasMore.value && !loadingMore.value) {
+        loadMore()
+      }
+    },
+    { rootMargin: '200px' }
+  )
+  if (sentinelRef.value) {
+    observer.observe(sentinelRef.value)
+  }
+})
+
+onUnmounted(() => {
+  if (observer) {
+    observer.disconnect()
+  }
 })
 
 watch(() => route.query, () => {
@@ -512,12 +545,17 @@ watch(() => route.query, () => {
             />
           </div>
 
-          <!-- Load More -->
-          <div v-if="products.length < meta.total" class="load-more">
-            <button class="btn btn-outline" :disabled="loading" @click="loadMore">
-              <Loader2 v-if="loading" class="spinner" />
-              {{ loading ? t('common.loading') : t('common.loadMore') }}
-            </button>
+          <!-- Infinite Scroll Sentinel -->
+          <div v-if="hasMore" ref="sentinelRef" class="infinite-scroll-sentinel">
+            <div v-if="loadingMore" class="loading-more">
+              <Loader2 class="spinner" />
+              <span>{{ t('common.loading') }}</span>
+            </div>
+          </div>
+
+          <!-- All Loaded -->
+          <div v-else-if="products.length > 0" class="all-loaded">
+            <span>{{ t('common.allLoaded', { total: meta.total }) }}</span>
           </div>
         </div>
       </div>
@@ -922,5 +960,29 @@ watch(() => route.query, () => {
   display: flex;
   justify-content: center;
   margin-top: var(--space-8);
+}
+
+.infinite-scroll-sentinel {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: var(--space-8) 0;
+  min-height: 80px;
+}
+
+.loading-more {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+
+.all-loaded {
+  display: flex;
+  justify-content: center;
+  padding: var(--space-8) 0;
+  color: var(--text-muted);
+  font-size: var(--text-sm);
 }
 </style>
