@@ -7,13 +7,15 @@ export const useAuthStore = defineStore('auth', () => {
   // State
   const user = ref<User | null>(null)
   const token = ref<string | null>(localStorage.getItem('token'))
+  // Persist role so it survives page reload (avoids race condition with fetchUser)
+  const role = ref<User['role'] | null>((localStorage.getItem('role') as User['role']) || null)
   const loading = ref(false)
   const error = ref<string | null>(null)
 
   // Getters
   const isAuthenticated = computed(() => !!token.value)
-  const isSeller = computed(() => user.value?.role === 'seller')
-  const isAdmin = computed(() => user.value?.role === 'admin')
+  const isSeller = computed(() => role.value === 'seller')
+  const isAdmin = computed(() => role.value === 'admin')
   const currentUser = computed(() => user.value)
 
   // Actions
@@ -25,7 +27,9 @@ export const useAuthStore = defineStore('auth', () => {
       const response = await api.post<{ accessToken: string; user: User }>('/auth/login', credentials)
       token.value = response.data.accessToken
       user.value = response.data.user
+      role.value = response.data.user.role
       localStorage.setItem('token', response.data.accessToken)
+      localStorage.setItem('role', response.data.user.role)
       api.defaults.headers.common['Authorization'] = `Bearer ${response.data.accessToken}`
       return true
     } catch (err: any) {
@@ -44,7 +48,9 @@ export const useAuthStore = defineStore('auth', () => {
       const response = await api.post<{ accessToken: string; user: User }>('/auth/register', data)
       token.value = response.data.accessToken
       user.value = response.data.user
+      role.value = response.data.user.role
       localStorage.setItem('token', response.data.accessToken)
+      localStorage.setItem('role', response.data.user.role)
       api.defaults.headers.common['Authorization'] = `Bearer ${response.data.accessToken}`
       return true
     } catch (err: any) {
@@ -62,6 +68,7 @@ export const useAuthStore = defineStore('auth', () => {
       api.defaults.headers.common['Authorization'] = `Bearer ${token.value}`
       const response = await api.get<User>('/auth/profile')
       user.value = response.data
+      role.value = response.data.role
     } catch {
       logout()
     }
@@ -86,7 +93,9 @@ export const useAuthStore = defineStore('auth', () => {
   function logout() {
     user.value = null
     token.value = null
+    role.value = null
     localStorage.removeItem('token')
+    localStorage.removeItem('role')
     delete api.defaults.headers.common['Authorization']
   }
 
