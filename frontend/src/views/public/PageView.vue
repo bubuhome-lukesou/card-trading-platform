@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute } from 'vue-router'
 import { pagesApi } from '@/api/pages'
@@ -24,7 +24,8 @@ const pageContent = computed(() => {
     : pageData.value.contentEn || pageData.value.contentZh
 })
 
-onMounted(async () => {
+const loadPage = async () => {
+  loading.value = true
   try {
     const type = route.path.replace('/', '') // help, contact, or faq
     const response = await pagesApi.getPage(type, locale.value)
@@ -34,7 +35,12 @@ onMounted(async () => {
   } finally {
     loading.value = false
   }
-})
+}
+
+onMounted(loadPage)
+
+// Reload when route changes (Vue reuses component instance on route param change)
+watch(() => route.path, loadPage)
 </script>
 
 <template>
