@@ -6,6 +6,7 @@ import { useAuthStore } from '@/stores/auth'
 import {
   Search,
   Bell,
+  ShoppingCart,
   User,
   Menu,
   X,
@@ -99,6 +100,11 @@ const userMenuItems = computed(() => {
             <button class="action-btn">
               <Bell class="icon" />
             </button>
+
+            <!-- Orders — seller goes to seller orders, others to buyer orders -->
+            <RouterLink :to="authStore.isSeller ? '/seller/orders' : '/user/orders'" class="action-btn">
+              <ShoppingCart class="icon" />
+            </RouterLink>
 
             <!-- User Menu -->
             <div class="user-menu" @click.stop>
