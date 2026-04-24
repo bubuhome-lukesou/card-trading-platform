@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common'
 import { InjectRepository } from '@nestjs/typeorm'
 import { Repository } from 'typeorm'
-import { Page, PageType } from '../../../entities/page.entity'
+import { Page, PageType } from '../../entities/page.entity'
 import { UpdatePageDto } from './dto/update-page.dto'
 
 @Injectable()
@@ -11,32 +11,32 @@ export class PagesService {
     private readonly pageRepo: Repository<Page>,
   ) {}
 
-  async findAll(): Promise<Page[]> {
+  async findAll(): Promise<any[]> {
     return this.pageRepo.find()
   }
 
-  async findByType(type: PageType, locale: string = 'zh'): Promise<Page> {
-    const page = await this.pageRepo.findOne({ where: { type } })
+  async findByType(type: PageType, locale: string = 'zh'): Promise<any> {
+    const page = await this.pageRepo.findOne({ where: { type } as any })
     if (!page) {
       return this.getDefaultPage(type)
     }
     return page
   }
 
-  async update(dto: UpdatePageDto): Promise<Page> {
-    let page = await this.pageRepo.findOne({ where: { type: dto.type } })
+  async update(dto: UpdatePageDto): Promise<any> {
+    let page: any = await this.pageRepo.findOne({ where: { type: dto.type } })
     if (!page) {
-      page = this.pageRepo.create(dto as any)
+      page = this.pageRepo.create(dto)
     } else {
       Object.assign(page, dto)
     }
     return this.pageRepo.save(page)
   }
 
-  private getDefaultPage(type: PageType): Page {
-    const defaults: Record<PageType, Page> = {
+  private getDefaultPage(type: PageType): any {
+    const defaults: Record<PageType, any> = {
       [PageType.HELP]: {
-        id: '',
+        id: 0,
         type: PageType.HELP,
         titleZh: '帮助中心',
         titleEn: 'Help Center',
@@ -46,7 +46,7 @@ export class PagesService {
         updatedAt: new Date(),
       },
       [PageType.CONTACT]: {
-        id: '',
+        id: 0,
         type: PageType.CONTACT,
         titleZh: '联系我们',
         titleEn: 'Contact Us',
@@ -56,7 +56,7 @@ export class PagesService {
         updatedAt: new Date(),
       },
       [PageType.FAQ]: {
-        id: '',
+        id: 0,
         type: PageType.FAQ,
         titleZh: '常见问题',
         titleEn: 'FAQ',

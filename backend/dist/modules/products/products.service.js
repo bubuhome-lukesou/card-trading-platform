@@ -62,7 +62,7 @@ let ProductsService = class ProductsService {
             queryBuilder.andWhere('product.brand IN (:...brands)', { brands: filters.brand });
         }
         if (filters.search) {
-            queryBuilder.andWhere('(product.titleEn ILIKE :search OR product.titleZh ILIKE :search OR product.brand ILIKE :search)', { search: `%${filters.search}%` });
+            queryBuilder.andWhere('(product.titleEn LIKE :search OR product.titleZh LIKE :search OR product.brand LIKE :search)', { search: `%${filters.search}%` });
         }
         switch (filters.sortBy) {
             case 'price_asc':
@@ -81,8 +81,19 @@ let ProductsService = class ProductsService {
         const limit = filters.limit || 20;
         queryBuilder.skip((page - 1) * limit).take(limit);
         const [data, total] = await queryBuilder.getManyAndCount();
+        const parsedData = data.map(product => {
+            if (product.images && typeof product.images === 'string') {
+                try {
+                    product.images = JSON.parse(product.images);
+                }
+                catch {
+                    product.images = [product.images];
+                }
+            }
+            return product;
+        });
         return {
-            data,
+            data: parsedData,
             meta: {
                 total,
                 page,
@@ -99,6 +110,7 @@ let ProductsService = class ProductsService {
         if (!product) {
             throw new common_1.NotFoundException('Product not found');
         }
+        await this.productRepo.query('UPDATE products SET viewCount = viewCount + 1 WHERE id = ?', [id]);
         if (product.images && typeof product.images === 'string') {
             try {
                 product.images = JSON.parse(product.images);
@@ -107,8 +119,6 @@ let ProductsService = class ProductsService {
                 product.images = [product.images];
             }
         }
-        product.viewCount++;
-        await this.productRepo.save(product);
         return product;
     }
     async create(dto, userId) {
@@ -116,9 +126,11 @@ let ProductsService = class ProductsService {
         if (Array.isArray(images)) {
             dto.images = JSON.stringify(images);
         }
-        const status = dto.listingType ? product_entity_1.ProductStatus.ACTIVE : product_entity_1.ProductStatus.DRAFT;
+        const listingType = dto.listingType || 'both';
+        const status = product_entity_1.ProductStatus.ACTIVE;
         const product = this.productRepo.create({
             ...dto,
+            listingType: listingType,
             sellerId: userId,
             status
         });
@@ -129,8 +141,12 @@ let ProductsService = class ProductsService {
         if (product.sellerId !== userId) {
             throw new common_1.ForbiddenException('You can only edit your own products');
         }
-        if (dto.images && Array.isArray(dto.images)) {
-            dto.images = JSON.stringify(dto.images);
+        if (dto.images !== undefined && dto.images !== null && dto.images !== '') {
+            if (Array.isArray(dto.images)) {
+                dto.images = dto.images.length > 0 ? JSON.stringify(dto.images) : (product.images || '');
+            }
+            else if (typeof dto.images === 'string') {
+            }
         }
         Object.assign(product, dto);
         return this.productRepo.save(product);

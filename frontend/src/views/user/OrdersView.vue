@@ -1,8 +1,11 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { ordersApi } from '@/api/orders'
+import { useRouter } from 'vue-router'
 
 const { t } = useI18n()
+const router = useRouter()
 
 interface Order {
   id: string
@@ -11,8 +14,8 @@ interface Order {
   productImage?: string
   sellerNickname: string
   amount: number
-  status: 'pending_paid' | 'paid' | 'shipped' | 'delivered' | 'cancelled' | 'refunded'
-  type: 'purchase' | 'auction'
+  status: 'pending' | 'paid' | 'shipped' | 'delivered' | 'cancelled' | 'refunded'
+  type: 'direct_purchase' | 'buy_now' | 'auction_win'
   createdAt: string
 }
 
@@ -39,7 +42,7 @@ const formatDate = (dateStr: string) => {
 
 const getStatusBadge = (status: string) => {
   const map: Record<string, { class: string; text: string }> = {
-    pending_paid: { class: 'pending', text: '待付款' },
+    pending: { class: 'pending', text: '待付款' },
     paid: { class: 'paid', text: '已付款' },
     shipped: { class: 'shipped', text: '已发货' },
     delivered: { class: 'delivered', text: '已完成' },
@@ -49,28 +52,66 @@ const getStatusBadge = (status: string) => {
   return map[status] || { class: 'default', text: status }
 }
 
+const getTypeText = (type: string) => {
+  const map: Record<string, string> = {
+    direct_purchase: '直购',
+    buy_now: '立即购买',
+    auction_win: '拍卖赢取',
+  }
+  return map[type] || type
+}
+
 const loadOrders = async () => {
   loading.value = true
   try {
-    orders.value = [
-      { id: '1', orderNumber: 'ORD-2026-001', productTitle: 'Pokemon 1st Edition Base Set', sellerNickname: 'CardMaster', amount: 12800, status: 'delivered', type: 'auction', createdAt: '2026-04-21' },
-      { id: '2', orderNumber: 'ORD-2026-002', productTitle: 'Yu-Gi-Oh Blue-Eyes White Dragon', sellerNickname: 'DragonSeller', amount: 6800, status: 'shipped', type: 'auction', createdAt: '2026-04-20' },
-      { id: '3', orderNumber: 'ORD-2026-003', productTitle: 'MTG Black Lotus', sellerNickname: 'MagicCards', amount: 25000, status: 'pending_paid', type: 'auction', createdAt: '2026-04-19' },
-      { id: '4', orderNumber: 'ORD-2026-004', productTitle: 'Doraemon Figure Collection', sellerNickname: 'AnimeSeller', amount: 1800, status: 'paid', type: 'purchase', createdAt: '2026-04-18' },
-    ]
+    const res = await ordersApi.getMyOrders()
+    const list = Array.isArray(res.data) ? res.data : (res.data?.data || [])
+    orders.value = list.map((o: any) => {
+      // Parse product images (stored as JSON string)
+      let images: string[] = []
+      try {
+        images = typeof o.product?.images === 'string'
+          ? JSON.parse(o.product.images)
+          : (Array.isArray(o.product?.images) ? o.product.images : [])
+      } catch {}
+      return {
+        id: o.id,
+        orderNumber: o.orderNumber,
+        productTitle: o.product?.titleZh || o.product?.titleEn || '未知商品',
+        productImage: images[0] || '',
+        sellerNickname: o.seller?.nickname || o.seller?.username || (o.sellerId ? `卖家${o.sellerId.slice(0,8)}` : '未知卖家'),
+        amount: Number(o.totalPrice) || 0,
+        status: o.status,
+        type: o.type,
+        createdAt: o.createdAt,
+      }
+    })
   } catch (error) {
     console.error('Failed to load orders:', error)
+    orders.value = []
   } finally {
     loading.value = false
   }
 }
 
-const handlePay = (orderId: string) => {
-  alert(`支付订单 ${orderId} - 功能开发中`)
+const handlePay = async (orderId: string) => {
+  try {
+    await ordersApi.updateStatus(orderId, 'paid')
+    await loadOrders()
+  } catch (error) {
+    console.error('Payment failed:', error)
+    alert('支付失败，请重试')
+  }
 }
 
-const handleReceive = (orderId: string) => {
-  alert(`确认收货 ${orderId} - 功能开发中`)
+const handleReceive = async (orderId: string) => {
+  try {
+    await ordersApi.updateStatus(orderId, 'delivered')
+    await loadOrders()
+  } catch (error) {
+    console.error('Confirm failed:', error)
+    alert('操作失败，请重试')
+  }
 }
 
 onMounted(() => {
@@ -93,8 +134,8 @@ onMounted(() => {
       </button>
       <button 
         class="tab" 
-        :class="{ active: filterStatus === 'pending_paid' }"
-        @click="filterStatus = 'pending_paid'"
+        :class="{ active: filterStatus === 'pending' }"
+        @click="filterStatus = 'pending'"
       >
         待付款
       </button>
@@ -138,7 +179,7 @@ onMounted(() => {
         <div class="order-header">
           <span class="order-number">{{ order.orderNumber }}</span>
           <span class="type-badge" :class="order.type">
-            {{ order.type === 'auction' ? '拍卖' : '购买' }}
+            {{ getTypeText(order.type) }}
           </span>
           <span class="status-badge" :class="getStatusBadge(order.status).class">
             {{ getStatusBadge(order.status).text }}
@@ -147,7 +188,8 @@ onMounted(() => {
 
         <div class="order-body">
           <div class="product-image">
-            <span class="placeholder-emoji">🃏</span>
+            <img v-if="order.productImage" :src="order.productImage" :alt="order.productTitle" />
+            <span v-else class="placeholder-emoji">🃏</span>
           </div>
           <div class="product-info">
             <div class="product-title">{{ order.productTitle }}</div>
@@ -163,7 +205,7 @@ onMounted(() => {
 
         <div class="order-actions">
           <button 
-            v-if="order.status === 'pending_paid'" 
+            v-if="order.status === 'pending'" 
             class="btn-pay"
             @click="handlePay(order.id)"
           >
@@ -323,6 +365,21 @@ onMounted(() => {
   color: #10b981;
 }
 
+.type-badge.direct_purchase {
+  background: #10b98133;
+  color: #10b981;
+}
+
+.type-badge.buy_now {
+  background: #f59e0b33;
+  color: #f59e0b;
+}
+
+.type-badge.auction_win {
+  background: #667eea33;
+  color: #667eea;
+}
+
 .status-badge {
   padding: 2px 10px;
   border-radius: var(--radius-full);
@@ -365,6 +422,13 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
+  overflow: hidden;
+}
+
+.product-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .placeholder-emoji {

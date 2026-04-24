@@ -8,23 +8,23 @@ export enum PageType {
 
 @Entity('pages')
 export class Page {
-  @PrimaryGeneratedColumn('uuid')
-  id: string
+  @PrimaryGeneratedColumn()
+  id: number
 
-  @Column({ type: 'enum', enum: PageType, unique: true })
-  type: PageType
+  @Column({ type: 'varchar', length: 20, unique: true })
+  type: string
 
-  @Column({ type: 'text', default: '' })
-  contentZh: string
-
-  @Column({ type: 'text', default: '' })
-  contentEn: string
-
-  @Column({ type: 'varchar', length: 255, default: '' })
+  @Column({ type: 'text', nullable: true })
   titleZh: string
 
-  @Column({ type: 'varchar', length: 255, default: '' })
+  @Column({ type: 'text', nullable: true })
   titleEn: string
+
+  @Column({ type: 'text', nullable: true })
+  contentZh: string
+
+  @Column({ type: 'text', nullable: true })
+  contentEn: string
 
   @CreateDateColumn()
   createdAt: Date

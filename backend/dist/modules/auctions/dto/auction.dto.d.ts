@@ -11,6 +11,7 @@ export declare class AuctionFiltersDto {
     page?: number;
     limit?: number;
     sortBy?: string;
+    sellerId?: string;
 }
 export declare class CreateAuctionDto {
     productId: string;

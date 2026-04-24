@@ -4,8 +4,11 @@ import { ProductCategory, ProductRarity, ProductCondition, ListingType, ProductS
 
 export class ProductFiltersDto {
   @IsOptional()
-  @IsArray()
-  @IsString({ each: true })
+  @Transform(({ value }) => {
+    if (typeof value === 'string') return value.split(',').map(s => s.trim())
+    if (Array.isArray(value)) return value.flatMap(v => typeof v === 'string' ? v.split(',').map(s => s.trim()) : v)
+    return undefined
+  })
   category?: string[]
 
   @IsOptional()
@@ -19,13 +22,19 @@ export class ProductFiltersDto {
   series?: string[]
 
   @IsOptional()
-  @IsArray()
-  @IsEnum(ProductRarity, { each: true })
+  @Transform(({ value }) => {
+    if (typeof value === 'string') return value.split(',').map(s => s.trim())
+    if (Array.isArray(value)) return value.flatMap(v => typeof v === 'string' ? v.split(',').map(s => s.trim()) : v)
+    return undefined
+  })
   rarity?: ProductRarity[]
 
   @IsOptional()
-  @IsArray()
-  @IsEnum(ProductCondition, { each: true })
+  @Transform(({ value }) => {
+    if (typeof value === 'string') return value.split(',').map(s => s.trim())
+    if (Array.isArray(value)) return value.flatMap(v => typeof v === 'string' ? v.split(',').map(s => s.trim()) : v)
+    return undefined
+  })
   condition?: ProductCondition[]
 
   @IsOptional()

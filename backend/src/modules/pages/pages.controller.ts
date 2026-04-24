@@ -1,10 +1,9 @@
-import { Controller, Get, Patch, Body, Param, Query } from '@nestjs/common'
+import { Controller, Get, Patch, Body, Param, Query, UseGuards } from '@nestjs/common'
 import { PagesService } from './pages.service'
 import { UpdatePageDto } from './dto/update-page.dto'
-import { PageType } from '../../../entities/page.entity'
+import { PageType } from '../../entities/page.entity'
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard'
-import { AdminGuard } from '../admin/guards/admin.guard'
-import { UseGuards } from '@nestjs/common'
+import { RolesGuard, Roles } from '../auth/guards/roles.guard'
 
 @Controller('pages')
 export class PagesController {
@@ -17,14 +16,15 @@ export class PagesController {
 
   @Get(':type')
   findOne(
-    @Param('type') type: PageType,
+    @Param('type') type: string,
     @Query('locale') locale: string = 'zh',
   ) {
-    return this.pagesService.findByType(type, locale)
+    return this.pagesService.findByType(type as PageType, locale)
   }
 
   @Patch()
-  @UseGuards(JwtAuthGuard, AdminGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin')
   update(@Body() dto: UpdatePageDto) {
     return this.pagesService.update(dto)
   }

@@ -7,6 +7,21 @@ const api: AxiosInstance = axios.create({
   timeout: 30000,
   headers: {
     'Content-Type': 'application/json'
+  },
+  // Use comma-separated array format (e.g. category=pokemon,yugioh)
+  // instead of bracket notation (e.g. category[]=pokemon&category[]=yugioh)
+  paramsSerializer: (params) => {
+    const parts: string[] = []
+    for (const key of Object.keys(params)) {
+      const val = (params as any)[key]
+      if (val === undefined || val === null) continue
+      if (Array.isArray(val)) {
+        parts.push(`${key}=${val.map(v => encodeURIComponent(String(v))).join(',')}`)
+      } else {
+        parts.push(`${key}=${encodeURIComponent(String(val))}`)
+      }
+    }
+    return parts.join('&')
   }
 })
 

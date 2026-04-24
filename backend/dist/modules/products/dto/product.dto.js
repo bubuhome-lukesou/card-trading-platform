@@ -23,8 +23,13 @@ class ProductFiltersDto {
 exports.ProductFiltersDto = ProductFiltersDto;
 __decorate([
     (0, class_validator_1.IsOptional)(),
-    (0, class_validator_1.IsArray)(),
-    (0, class_validator_1.IsString)({ each: true }),
+    (0, class_transformer_1.Transform)(({ value }) => {
+        if (typeof value === 'string')
+            return value.split(',').map(s => s.trim());
+        if (Array.isArray(value))
+            return value.flatMap(v => typeof v === 'string' ? v.split(',').map(s => s.trim()) : v);
+        return undefined;
+    }),
     __metadata("design:type", Array)
 ], ProductFiltersDto.prototype, "category", void 0);
 __decorate([
@@ -41,14 +46,24 @@ __decorate([
 ], ProductFiltersDto.prototype, "series", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
-    (0, class_validator_1.IsArray)(),
-    (0, class_validator_1.IsEnum)(product_entity_1.ProductRarity, { each: true }),
+    (0, class_transformer_1.Transform)(({ value }) => {
+        if (typeof value === 'string')
+            return value.split(',').map(s => s.trim());
+        if (Array.isArray(value))
+            return value.flatMap(v => typeof v === 'string' ? v.split(',').map(s => s.trim()) : v);
+        return undefined;
+    }),
     __metadata("design:type", Array)
 ], ProductFiltersDto.prototype, "rarity", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
-    (0, class_validator_1.IsArray)(),
-    (0, class_validator_1.IsEnum)(product_entity_1.ProductCondition, { each: true }),
+    (0, class_transformer_1.Transform)(({ value }) => {
+        if (typeof value === 'string')
+            return value.split(',').map(s => s.trim());
+        if (Array.isArray(value))
+            return value.flatMap(v => typeof v === 'string' ? v.split(',').map(s => s.trim()) : v);
+        return undefined;
+    }),
     __metadata("design:type", Array)
 ], ProductFiltersDto.prototype, "condition", void 0);
 __decorate([

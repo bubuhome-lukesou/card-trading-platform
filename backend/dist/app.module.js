@@ -32,6 +32,8 @@ const wallet_module_1 = require("./modules/wallet/wallet.module");
 const favorite_entity_1 = require("./entities/favorite.entity");
 const wallet_entity_1 = require("./entities/wallet.entity");
 const admin_module_1 = require("./modules/admin/admin.module");
+const pages_module_1 = require("./modules/pages/pages.module");
+const page_entity_1 = require("./entities/page.entity");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -45,7 +47,7 @@ exports.AppModule = AppModule = __decorate([
                 username: process.env.DB_USERNAME || 'card_admin',
                 password: process.env.DB_PASSWORD || 'CardAuction2026!',
                 database: process.env.DB_DATABASE || 'card_auction',
-                entities: [user_entity_1.User, product_entity_1.Product, auction_entity_1.Auction, bid_entity_1.Bid, order_entity_1.Order, favorite_entity_1.Favorite, wallet_entity_1.WalletTransaction],
+                entities: [user_entity_1.User, product_entity_1.Product, auction_entity_1.Auction, bid_entity_1.Bid, order_entity_1.Order, favorite_entity_1.Favorite, wallet_entity_1.WalletTransaction, page_entity_1.Page],
                 synchronize: true,
                 logging: process.env.NODE_ENV === 'development'
             }),
@@ -62,7 +64,8 @@ exports.AppModule = AppModule = __decorate([
             bids_module_1.BidsModule,
             favorites_module_1.FavoritesModule,
             wallet_module_1.WalletModule,
-            admin_module_1.AdminModule
+            admin_module_1.AdminModule,
+            pages_module_1.PagesModule
         ],
         controllers: [app_controller_1.AppController],
         providers: [app_service_1.AppService]

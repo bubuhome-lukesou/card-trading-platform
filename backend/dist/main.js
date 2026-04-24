@@ -39,12 +39,27 @@ const common_1 = require("@nestjs/common");
 const express = __importStar(require("express"));
 async function bootstrap() {
     const app = await core_1.NestFactory.create(app_module_1.AppModule);
+    app.enableCors({
+        origin: '*',
+        methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
+        credentials: true,
+    });
     app.useGlobalPipes(new common_1.ValidationPipe({
         whitelist: true,
         transform: true,
         forbidNonWhitelisted: false,
     }));
     const expressApp = app.getHttpAdapter().getInstance();
+    expressApp.use((req, res, next) => {
+        const bracketKeys = Object.keys(req.query).filter(k => k.endsWith('[]'));
+        for (const key of bracketKeys) {
+            const normalized = key.slice(0, -2);
+            const val = req.query[key];
+            req.query[normalized] = Array.isArray(val) ? val : [val];
+            delete req.query[key];
+        }
+        next();
+    });
     expressApp.use(express.json({ limit: '50mb' }));
     await app.listen(process.env.PORT ?? 3000);
 }

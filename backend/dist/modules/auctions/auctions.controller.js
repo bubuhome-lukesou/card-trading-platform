@@ -24,6 +24,9 @@ let AuctionsController = class AuctionsController {
     async findAll(filters) {
         return this.auctionsService.findAll(filters);
     }
+    async getMyAuctions(req) {
+        return this.auctionsService.findAll({ sellerId: req.user.id });
+    }
     async findOne(id) {
         return this.auctionsService.findOne(id);
     }
@@ -45,6 +48,14 @@ __decorate([
     __metadata("design:paramtypes", [auction_dto_1.AuctionFiltersDto]),
     __metadata("design:returntype", Promise)
 ], AuctionsController.prototype, "findAll", null);
+__decorate([
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, common_1.Get)('seller/my'),
+    __param(0, (0, common_1.Request)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", Promise)
+], AuctionsController.prototype, "getMyAuctions", null);
 __decorate([
     (0, common_1.Get)(':id'),
     __param(0, (0, common_1.Param)('id')),

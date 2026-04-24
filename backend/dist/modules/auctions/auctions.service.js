@@ -45,10 +45,15 @@ let AuctionsService = class AuctionsService {
         const queryBuilder = this.auctionRepo
             .createQueryBuilder('auction')
             .leftJoinAndSelect('auction.product', 'product')
-            .leftJoinAndSelect('auction.seller', 'seller')
-            .where('auction.status IN (:...statuses)', {
-            statuses: [auction_entity_1.AuctionStatus.ACTIVE, auction_entity_1.AuctionStatus.ENDED]
-        });
+            .leftJoinAndSelect('auction.seller', 'seller');
+        if (filters.sellerId) {
+            queryBuilder.where('auction.sellerId = :sellerId', { sellerId: filters.sellerId });
+        }
+        else {
+            queryBuilder.where('auction.status IN (:...statuses)', {
+                statuses: [auction_entity_1.AuctionStatus.ACTIVE, auction_entity_1.AuctionStatus.ENDED]
+            });
+        }
         if (filters.category?.length) {
             queryBuilder.andWhere('product.category IN (:...categories)', { categories: filters.category });
         }
@@ -81,7 +86,7 @@ let AuctionsService = class AuctionsService {
                 queryBuilder.orderBy('auction.bidCount', 'DESC');
                 break;
             default:
-                queryBuilder.orderBy('auction.endTime', 'ASC');
+                queryBuilder.orderBy(filters.sellerId ? 'auction.createdAt' : 'auction.endTime', 'DESC');
         }
         const page = filters.page || 1;
         const limit = filters.limit || 20;

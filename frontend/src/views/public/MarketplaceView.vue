@@ -85,21 +85,21 @@ const activeFiltersCount = computed(() => {
 })
 
 const activeFiltersList = computed(() => {
-  const list: { key: string; value: string }[] = []
+  const list: { key: string; value: string; rawValue?: string }[] = []
 
   filters.value.category?.forEach((c: string) => {
     const cat = filterOptions.value.categories.find(x => x.value === c)
-    list.push({ key: 'category', value: locale.value === 'zh' ? cat?.label || c : cat?.labelEn || c })
+    list.push({ key: 'category', value: locale.value === 'zh' ? cat?.label || c : cat?.labelEn || c, rawValue: c })
   })
 
   filters.value.rarity?.forEach((r: string) => {
     const rarity = filterOptions.value.rarities.find(x => x.value === r)
-    list.push({ key: 'rarity', value: rarity?.label || r })
+    list.push({ key: 'rarity', value: rarity?.label || r, rawValue: r })
   })
 
   filters.value.condition?.forEach((c: string) => {
     const cond = filterOptions.value.conditions.find(x => x.value === c)
-    list.push({ key: 'condition', value: locale.value === 'zh' ? `${cond?.labelZh} (${cond?.label})` : cond?.label || c })
+    list.push({ key: 'condition', value: locale.value === 'zh' ? `${cond?.labelZh} (${cond?.label})` : cond?.label || c, rawValue: c })
   })
 
   if (filters.value.priceMin || filters.value.priceMax) {
@@ -162,8 +162,30 @@ const removeFilter = (key: string, value?: string) => {
     filters.value.listingType = 'all'
   } else if (value) {
     const arr = filters.value[key] || []
+    // Find the actual value to remove (might be stored as rawValue in activeFiltersList)
     const index = arr.indexOf(value)
-    if (index !== -1) arr.splice(index, 1)
+    if (index === -1) {
+      // value might be the display label, find by iterating
+      for (let i = 0; i < arr.length; i++) {
+        const displayValue = key === 'category'
+          ? (locale.value === 'zh'
+              ? filterOptions.value.categories.find(x => x.value === arr[i])?.label
+              : filterOptions.value.categories.find(x => x.value === arr[i])?.labelEn) || arr[i]
+          : key === 'rarity'
+          ? filterOptions.value.rarities.find(x => x.value === arr[i])?.label || arr[i]
+          : key === 'condition'
+          ? (locale.value === 'zh'
+              ? `${filterOptions.value.conditions.find(x => x.value === arr[i])?.labelZh} (${filterOptions.value.conditions.find(x => x.value === arr[i])?.label})`
+              : filterOptions.value.conditions.find(x => x.value === arr[i])?.label) || arr[i]
+          : arr[i]
+        if (displayValue === value) {
+          arr.splice(i, 1)
+          break
+        }
+      }
+    } else {
+      arr.splice(index, 1)
+    }
   }
   filters.value.page = 1
   updateUrl()
@@ -457,7 +479,7 @@ watch(() => route.query, () => {
               {{ f.value }}
               <X
                 class="filter-tag-remove"
-                @click="removeFilter(f.key, f.value)"
+                @click="removeFilter(f.key, f.rawValue || f.value)"
               />
             </span>
           </div>

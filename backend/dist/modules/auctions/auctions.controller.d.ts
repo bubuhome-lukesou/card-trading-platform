@@ -12,6 +12,15 @@ export declare class AuctionsController {
             totalPages: number;
         };
     }>;
+    getMyAuctions(req: any): Promise<{
+        data: import("../../entities").Auction[];
+        meta: {
+            total: number;
+            page: number;
+            limit: number;
+            totalPages: number;
+        };
+    }>;
     findOne(id: string): Promise<import("../../entities").Auction>;
     create(dto: CreateAuctionDto, req: any): Promise<import("../../entities").Auction>;
     placeBid(id: string, dto: PlaceBidDto, req: any): Promise<{

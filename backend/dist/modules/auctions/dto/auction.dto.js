@@ -77,6 +77,11 @@ __decorate([
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
 ], AuctionFiltersDto.prototype, "sortBy", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], AuctionFiltersDto.prototype, "sellerId", void 0);
 class CreateAuctionDto {
     constructor() {
         this.durationHours = 24;

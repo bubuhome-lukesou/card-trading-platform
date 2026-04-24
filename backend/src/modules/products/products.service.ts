@@ -56,7 +56,7 @@ export class ProductsService {
     }
     if (filters.search) {
       queryBuilder.andWhere(
-        '(product.titleEn ILIKE :search OR product.titleZh ILIKE :search OR product.brand ILIKE :search)',
+        '(product.titleEn LIKE :search OR product.titleZh LIKE :search OR product.brand LIKE :search)',
         { search: `%${filters.search}%` }
       )
     }
