@@ -25,32 +25,28 @@ __decorate([
     (0, class_validator_1.IsOptional)(),
     (0, class_transformer_1.Transform)(({ value }) => {
         if (typeof value === 'string')
-            return value.split(',').map(s => s.trim());
+            return value.split(',').map(s => s.trim()).filter(Boolean);
         if (Array.isArray(value))
-            return value.flatMap(v => typeof v === 'string' ? v.split(',').map(s => s.trim()) : v);
+            return value.flatMap(v => typeof v === 'string' ? v.split(',').map(s => s.trim()) : v).filter(Boolean);
         return undefined;
     }),
     __metadata("design:type", Array)
 ], ProductFiltersDto.prototype, "category", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
-    (0, class_validator_1.IsArray)(),
-    (0, class_validator_1.IsString)({ each: true }),
     __metadata("design:type", Array)
 ], ProductFiltersDto.prototype, "brand", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
-    (0, class_validator_1.IsArray)(),
-    (0, class_validator_1.IsString)({ each: true }),
     __metadata("design:type", Array)
 ], ProductFiltersDto.prototype, "series", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
     (0, class_transformer_1.Transform)(({ value }) => {
         if (typeof value === 'string')
-            return value.split(',').map(s => s.trim());
+            return value.split(',').map(s => s.trim()).filter(Boolean);
         if (Array.isArray(value))
-            return value.flatMap(v => typeof v === 'string' ? v.split(',').map(s => s.trim()) : v);
+            return value.flatMap(v => typeof v === 'string' ? v.split(',').map(s => s.trim()) : v).filter(Boolean);
         return undefined;
     }),
     __metadata("design:type", Array)
@@ -59,9 +55,9 @@ __decorate([
     (0, class_validator_1.IsOptional)(),
     (0, class_transformer_1.Transform)(({ value }) => {
         if (typeof value === 'string')
-            return value.split(',').map(s => s.trim());
+            return value.split(',').map(s => s.trim()).filter(Boolean);
         if (Array.isArray(value))
-            return value.flatMap(v => typeof v === 'string' ? v.split(',').map(s => s.trim()) : v);
+            return value.flatMap(v => typeof v === 'string' ? v.split(',').map(s => s.trim()) : v).filter(Boolean);
         return undefined;
     }),
     __metadata("design:type", Array)

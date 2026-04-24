@@ -5,34 +5,30 @@ import { ProductCategory, ProductRarity, ProductCondition, ListingType, ProductS
 export class ProductFiltersDto {
   @IsOptional()
   @Transform(({ value }) => {
-    if (typeof value === 'string') return value.split(',').map(s => s.trim())
-    if (Array.isArray(value)) return value.flatMap(v => typeof v === 'string' ? v.split(',').map(s => s.trim()) : v)
+    if (typeof value === 'string') return value.split(',').map(s => s.trim()).filter(Boolean)
+    if (Array.isArray(value)) return value.flatMap(v => typeof v === 'string' ? v.split(',').map(s => s.trim()) : v).filter(Boolean)
     return undefined
   })
   category?: string[]
 
   @IsOptional()
-  @IsArray()
-  @IsString({ each: true })
   brand?: string[]
 
   @IsOptional()
-  @IsArray()
-  @IsString({ each: true })
   series?: string[]
 
   @IsOptional()
   @Transform(({ value }) => {
-    if (typeof value === 'string') return value.split(',').map(s => s.trim())
-    if (Array.isArray(value)) return value.flatMap(v => typeof v === 'string' ? v.split(',').map(s => s.trim()) : v)
+    if (typeof value === 'string') return value.split(',').map(s => s.trim()).filter(Boolean)
+    if (Array.isArray(value)) return value.flatMap(v => typeof v === 'string' ? v.split(',').map(s => s.trim()) : v).filter(Boolean)
     return undefined
   })
   rarity?: ProductRarity[]
 
   @IsOptional()
   @Transform(({ value }) => {
-    if (typeof value === 'string') return value.split(',').map(s => s.trim())
-    if (Array.isArray(value)) return value.flatMap(v => typeof v === 'string' ? v.split(',').map(s => s.trim()) : v)
+    if (typeof value === 'string') return value.split(',').map(s => s.trim()).filter(Boolean)
+    if (Array.isArray(value)) return value.flatMap(v => typeof v === 'string' ? v.split(',').map(s => s.trim()) : v).filter(Boolean)
     return undefined
   })
   condition?: ProductCondition[]
