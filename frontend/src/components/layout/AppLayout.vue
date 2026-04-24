@@ -42,12 +42,25 @@ const handleLogout = () => {
 }
 
 const userMenuItems = computed(() => {
-  const items: Array<{ to?: string; action?: string; name: string; icon: any }> = [
-    { to: '/user', name: t('user.dashboard'), icon: User },
-    { to: '/user/orders', name: t('user.myOrders'), icon: Package },
-    { to: '/user/settings', name: t('user.settings'), icon: Settings },
-    { action: 'logout', name: t('nav.logout'), icon: LogOut }
-  ]
+  const items: Array<{ to?: string; action?: string; name: string; icon: any }> = []
+
+  // Admins and sellers should not see buyer purchase pages
+  if (!authStore.isAdmin && !authStore.isSeller) {
+    items.push(
+      { to: '/user', name: t('user.dashboard'), icon: User },
+      { to: '/user/orders', name: t('user.myOrders'), icon: Package },
+      { to: '/user/settings', name: t('user.settings'), icon: Settings },
+    )
+  } else if (authStore.isSeller) {
+    // Sellers see their seller dashboard and settings only
+    items.push(
+      { to: '/seller', name: t('seller.dashboard'), icon: Store },
+      { to: '/user/settings', name: t('user.settings'), icon: Settings },
+    )
+  }
+  // Admins see no user menu items beyond logout
+
+  items.push({ action: 'logout', name: t('nav.logout'), icon: LogOut })
   return items
 })
 </script>
@@ -96,13 +109,8 @@ const userMenuItems = computed(() => {
           </template>
 
           <template v-else>
-            <!-- Notifications -->
-            <button class="action-btn">
-              <Bell class="icon" />
-            </button>
-
-            <!-- Orders — seller goes to seller orders, others to buyer orders -->
-            <RouterLink :to="authStore.isSeller ? '/seller/orders' : '/user/orders'" class="action-btn">
+            <!-- Orders — only for regular users (not admin/seller) -->
+            <RouterLink v-if="!authStore.isAdmin && !authStore.isSeller" to="/user/orders" class="action-btn">
               <ShoppingCart class="icon" />
             </RouterLink>
 
@@ -175,11 +183,14 @@ const userMenuItems = computed(() => {
             </RouterLink>
           </template>
           <template v-else>
-            <RouterLink to="/user" class="mobile-link" @click="mobileMenuOpen = false">
+            <RouterLink v-if="!authStore.isAdmin && !authStore.isSeller" to="/user" class="mobile-link" @click="mobileMenuOpen = false">
               {{ t('user.dashboard') }}
             </RouterLink>
-            <RouterLink :to="authStore.isSeller ? '/seller/orders' : '/user/orders'" class="mobile-link" @click="mobileMenuOpen = false">
-              {{ authStore.isSeller ? t('seller.orders') : t('user.myOrders') }}
+            <RouterLink v-if="!authStore.isAdmin && !authStore.isSeller" :to="'/user/orders'" class="mobile-link" @click="mobileMenuOpen = false">
+              {{ t('user.myOrders') }}
+            </RouterLink>
+            <RouterLink v-if="authStore.isSeller" to="/seller" class="mobile-link" @click="mobileMenuOpen = false">
+              {{ t('seller.dashboard') }}
             </RouterLink>
           </template>
         </nav>
