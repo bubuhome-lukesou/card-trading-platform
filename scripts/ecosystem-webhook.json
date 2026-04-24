@@ -1,0 +1,11 @@
+{
+  "name": "deploy-webhook",
+  "script": "/var/www/card-auction-platform/scripts/deploy-webhook.js",
+  "instances": 1,
+  "autorestart": true,
+  "watch": false,
+  "env": {
+    "NODE_ENV": "production",
+    "DEPLOY_SECRET": "card-auction-webhook-2026-luke"
+  }
+}
