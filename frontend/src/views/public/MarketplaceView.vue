@@ -18,7 +18,6 @@ const loadingMore = ref(false)
 const showFilters = ref(true)
 const hasMore = computed(() => products.value.length < meta.value.total)
 const sentinelRef = ref<HTMLElement | null>(null)
-let observer: IntersectionObserver | null = null
 const filtersExpanded = ref({
   category: true,
   listingType: true,
@@ -269,25 +268,22 @@ onMounted(() => {
   parseUrlFilters()
   fetchProducts()
 
-  // Infinite scroll observer
-  observer = new IntersectionObserver(
-    (entries) => {
-      if (entries[0].isIntersecting && hasMore.value && !loadingMore.value) {
-        loadMore()
-      }
-    },
-    { rootMargin: '200px' }
-  )
-  if (sentinelRef.value) {
-    observer.observe(sentinelRef.value)
-  }
+  // Infinite scroll via scroll event
+  window.addEventListener('scroll', handleScroll)
 })
 
 onUnmounted(() => {
-  if (observer) {
-    observer.disconnect()
-  }
+  window.removeEventListener('scroll', handleScroll)
 })
+
+const handleScroll = () => {
+  if (loadingMore.value || !hasMore.value) return
+  const scrollBottom = document.documentElement.scrollTop + window.innerHeight
+  const threshold = document.documentElement.scrollHeight - 200
+  if (scrollBottom >= threshold) {
+    loadMore()
+  }
+}
 
 watch(() => route.query, () => {
   parseUrlFilters()
