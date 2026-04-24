@@ -4,7 +4,7 @@ import api from '@/api'
 
 const users = ref<any[]>([])
 const loading = ref(false)
-const filterRole = ref('all')
+const filterRole = ref('user')
 const filterStatus = ref('all')
 const currentPage = ref(1)
 const total = ref(0)
@@ -73,7 +73,7 @@ onMounted(() => fetchUsers())
     <div class="filters">
       <select v-model="filterRole" @change="handlePageChange(1)">
         <option value="all">全部角色</option>
-        <option value="user">用户</option>
+        <option value="user">普通用户</option>
         <option value="seller">商家</option>
         <option value="admin">管理员</option>
       </select>
