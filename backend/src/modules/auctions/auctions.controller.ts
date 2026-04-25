@@ -30,7 +30,7 @@ export class AuctionsController {
   }
 
   @UseGuards(JwtAuthGuard)
-  @Post(':id/bid')
+  @Post(':id/bids')
   async placeBid(@Param('id') id: string, @Body() dto: PlaceBidDto, @Request() req: any) {
     return this.auctionsService.placeBid(id, dto.amount, req.user.id)
   }

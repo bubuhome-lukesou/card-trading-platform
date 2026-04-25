@@ -195,6 +195,11 @@ export class AuctionsService {
       throw new ForbiddenException('Sellers cannot bid on their own auctions')
     }
 
+    // Prevent highest bidder from bidding again
+    if (auction.winnerId === userId) {
+      throw new BadRequestException('You are already the highest bidder')
+    }
+
     if (auction.status !== AuctionStatus.ACTIVE) {
       throw new BadRequestException('Auction is not active')
     }
@@ -220,26 +225,32 @@ export class AuctionsService {
     })
     await this.bidRepo.save(bid)
 
-    // Update auction
-    auction.currentPrice = amount
-    auction.bidCount++
+    // Update auction — use update() to reliably persist scalar fields
+    const updateData: any = {
+      currentPrice: amount,
+      bidCount: auction.bidCount + 1,
+      winnerId: userId  // the new highest bidder
+    }
 
     // Bid extension: if bid placed within last 5 minutes, extend by extensionMinutes
     const timeLeft = auction.endTime.getTime() - now.getTime()
     const extensionThreshold = 5 * 60 * 1000 // 5 minutes in ms
 
     if (timeLeft < extensionThreshold) {
-      auction.endTime = new Date(now.getTime() + auction.extensionMinutes * 60 * 1000)
+      updateData.endTime = new Date(now.getTime() + auction.extensionMinutes * 60 * 1000)
     }
 
-    await this.auctionRepo.save(auction)
+    await this.auctionRepo.update(auctionId, updateData)
+
+    // Reload to get updated endTime if extended
+    const updatedAuction = await this.auctionRepo.findOne({ where: { id: auctionId } })
 
     return {
       bid,
       auction: {
-        currentPrice: auction.currentPrice,
-        endTime: auction.endTime,
-        bidCount: auction.bidCount
+        currentPrice: updatedAuction.currentPrice,
+        endTime: updatedAuction.endTime,
+        bidCount: updatedAuction.bidCount
       }
     }
   }
