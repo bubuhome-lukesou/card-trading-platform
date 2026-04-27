@@ -57,6 +57,18 @@ const price = computed(() => {
         <span class="meta-item">{{ t(`conditions.${product.condition}`) }}</span>
       </div>
 
+      <!-- Tags -->
+      <div v-if="product.tags?.length" class="card-tags">
+        <span
+          v-for="tag in product.tags.slice(0, 3)"
+          :key="tag.id"
+          class="tag-badge"
+          :style="tag.color ? { backgroundColor: tag.color + '20', color: tag.color, borderColor: tag.color } : {}"
+        >
+          {{ tag.name }}
+        </span>
+      </div>
+
       <div class="card-price">
         <span class="price">{{ price }}</span>
       </div>
@@ -187,6 +199,24 @@ const price = computed(() => {
 
 .meta-sep {
   opacity: 0.5;
+}
+
+.card-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  margin-bottom: var(--space-2);
+}
+
+.tag-badge {
+  display: inline-block;
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  font-size: 10px;
+  font-weight: 500;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
 }
 
 .card-price {

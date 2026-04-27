@@ -73,6 +73,14 @@ export class ProductFiltersDto {
   @IsOptional()
   @IsString()
   sortBy?: string = 'newest'
+
+  @IsOptional()
+  @Transform(({ value }) => {
+    if (typeof value === 'string') return value.split(',').map(s => s.trim()).filter(Boolean)
+    if (Array.isArray(value)) return value.flatMap(v => typeof v === 'string' ? v.split(',').map(s => s.trim()) : v).filter(Boolean)
+    return undefined
+  })
+  tags?: string[]
 }
 
 export class CreateProductDto {
@@ -144,6 +152,11 @@ export class CreateProductDto {
   @IsNumber()
   @Min(0)
   stock?: number = 1
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  tags?: string[]
 }
 
 export class UpdateProductDto {
@@ -225,4 +238,9 @@ export class UpdateProductDto {
   @IsNumber()
   @Min(0)
   stock?: number
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  tags?: string[]
 }

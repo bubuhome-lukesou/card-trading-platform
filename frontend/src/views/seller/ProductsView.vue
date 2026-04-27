@@ -6,6 +6,7 @@ import { useAuthStore } from '@/stores/auth'
 import { aiApi } from '@/api/ai'
 import { uploadApi } from '@/api/upload'
 import { productApi } from '@/api/products'
+import { tagApi } from '@/api/tags'
 import { Loader2, ScanLine } from 'lucide-vue-next'
 
 const { t } = useI18n()
@@ -26,6 +27,8 @@ const imageInput = ref<HTMLInputElement | null>(null)
 const imagePreviews = ref<string[]>([])
 const pendingImageFiles = ref<File[]>([])
 const existingImageUrls = ref<string[]>([])
+const availableTags = ref<any[]>([])
+const selectedTags = ref<number[]>([])
 
 const categories = [
   { value: 'pokemon', label: '宝可梦', emoji: '🎮' },
@@ -54,12 +57,7 @@ const rarities = [
   { value: 'secret_rare', label: '秘密稀有' },
 ]
 
-const listingTypes = [
-  { value: 'both', label: '拍卖+销售' },
-  { value: 'sale_only', label: '仅销售' },
-  { value: 'auction_only', label: '仅拍卖' },
-]
-
+// 预设仅销售模式，隐藏拍卖相关字段
 const formData = ref({
   titleZh: '',
   titleEn: '',
@@ -68,11 +66,9 @@ const formData = ref({
   category: 'pokemon',
   condition: 'near_mint',
   rarity: 'rare',
-  listingType: 'both',
   price: 0,
-  startingPrice: 100,
-  bidIncrement: 10,
   images: [] as string[],
+  tags: [] as number[],
 })
 
 const resetForm = () => {
@@ -84,16 +80,14 @@ const resetForm = () => {
     category: 'pokemon',
     condition: 'near_mint',
     rarity: 'rare',
-    listingType: 'both',
     price: 0,
-    startingPrice: 100,
-    bidIncrement: 10,
     images: [],
+    tags: [],
   }
-  editingProduct.value = null
   imagePreviews.value = []
   pendingImageFiles.value = []
   existingImageUrls.value = []
+  selectedTags.value = []
 }
 
 // AI Scan Card Function
@@ -163,6 +157,8 @@ const openEditModal = (product: any) => {
   existingImageUrls.value = [...existingImages]
   imagePreviews.value = [...existingImages]
   pendingImageFiles.value = [] // No new files yet
+  // Load existing tags
+  selectedTags.value = (product.tags || []).map((t: any) => typeof t === 'number' ? t : t.id)
   formData.value = {
     titleZh: product.titleZh,
     titleEn: product.titleEn,
@@ -171,11 +167,9 @@ const openEditModal = (product: any) => {
     category: product.category,
     condition: product.condition,
     rarity: product.rarity,
-    listingType: product.listingType,
     price: product.price,
-    startingPrice: product.startingPrice || 100,
-    bidIncrement: product.bidIncrement || 10,
     images: [...existingImages],
+    tags: [...selectedTags.value],
   }
   showModal.value = true
 }
@@ -200,9 +194,12 @@ const handleSubmit = async () => {
     }
 
     // Prepare product data - merge existing URLs with newly uploaded URLs
+    // 预设仅销售模式
     const productData = {
       ...formData.value,
+      listingType: 'sale_only',
       images: [...existingImageUrls.value, ...uploadedUrls],
+      tags: selectedTags.value,
     }
 
     // Create or update product
@@ -341,6 +338,25 @@ const removeImage = (index: number) => {
   })
 }
 
+// Tag functions
+const toggleTag = (tagId: number) => {
+  const index = selectedTags.value.indexOf(tagId)
+  if (index === -1) {
+    selectedTags.value.push(tagId)
+  } else {
+    selectedTags.value.splice(index, 1)
+  }
+}
+
+const loadTags = async () => {
+  try {
+    const response = await tagApi.getTags()
+    availableTags.value = response.data
+  } catch (error) {
+    console.error('Failed to load tags:', error)
+  }
+}
+
 const loadProducts = async () => {
   loading.value = true
   try {
@@ -365,6 +381,7 @@ const routeWatcher = watch(
 
 onMounted(() => {
   loadProducts()
+  loadTags()
 })
 
 onUnmounted(() => {
@@ -446,9 +463,6 @@ onUnmounted(() => {
           <div class="product-price">
             <span class="price-label">售价</span>
             <span class="price-value">{{ formatPrice(product.price) }}</span>
-          </div>
-          <div v-if="product.listingType !== 'sale_only'" class="product-auction">
-            <span class="auction-label">起拍价 {{ formatPrice(product.startingPrice) }}</span>
           </div>
         </div>
 
@@ -571,16 +585,7 @@ onUnmounted(() => {
               </select>
             </div>
 
-            <div class="form-group">
-              <label>销售模式</label>
-              <select v-model="formData.listingType">
-                <option v-for="type in listingTypes" :key="type.value" :value="type.value">
-                  {{ type.label }}
-                </option>
-              </select>
-            </div>
-
-            <!-- Prices -->
+            <!-- 售价 -->
             <div class="form-group">
               <label>售价 (HK$)</label>
               <input 
@@ -588,26 +593,6 @@ onUnmounted(() => {
                 type="number" 
                 min="1"
                 placeholder="0"
-              />
-            </div>
-
-            <div v-if="formData.listingType !== 'sale_only'" class="form-group">
-              <label>起拍价 (HK$)</label>
-              <input 
-                v-model.number="formData.startingPrice" 
-                type="number" 
-                min="1"
-                placeholder="100"
-              />
-            </div>
-
-            <div v-if="formData.listingType !== 'sale_only'" class="form-group">
-              <label>最低加价 (HK$)</label>
-              <input 
-                v-model.number="formData.bidIncrement" 
-                type="number" 
-                min="1"
-                placeholder="10"
               />
             </div>
 
@@ -634,6 +619,24 @@ onUnmounted(() => {
                   <button type="button" class="remove-btn" @click="removeImage(index)">×</button>
                 </div>
               </div>
+            </div>
+
+            <!-- Tags -->
+            <div class="form-group full-width">
+              <label>商品标签</label>
+              <div class="tags-container">
+                <button
+                  v-for="tag in availableTags"
+                  :key="tag.id"
+                  type="button"
+                  class="tag-button"
+                  :class="{ selected: selectedTags.includes(tag.id) }"
+                  @click="toggleTag(tag.id)"
+                >
+                  {{ tag.name }}
+                </button>
+              </div>
+              <p class="form-hint">选择适合商品的标签，可多选</p>
             </div>
           </div>
 
@@ -1221,6 +1224,37 @@ onUnmounted(() => {
 .btn-submit:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+/* Tag styles */
+.tags-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+
+.tag-button {
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-full);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--text-secondary);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.tag-button:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.tag-button.selected {
+  background: var(--primary-gradient);
+  border: none;
+  color: white;
 }
 
 @media (max-width: 1024px) {

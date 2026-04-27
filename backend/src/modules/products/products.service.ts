@@ -1,36 +1,23 @@
 import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common'
 import { InjectRepository } from '@nestjs/typeorm'
-import { Repository, FindOptionsWhere, ILike } from 'typeorm'
+import { Repository, FindOptionsWhere, ILike, Any } from 'typeorm'
 import { Product, ProductStatus } from '../../entities/product.entity'
+import { Tag } from '../../entities/tag.entity'
 import { CreateProductDto, UpdateProductDto, ProductFiltersDto } from './dto/product.dto'
 
 @Injectable()
 export class ProductsService {
   constructor(
     @InjectRepository(Product)
-    private readonly productRepo: Repository<Product>
+    private readonly productRepo: Repository<Product>,
+    @InjectRepository(Tag)
+    private readonly tagRepo: Repository<Tag>
   ) {}
 
   async findAll(filters: ProductFiltersDto) {
-    const where: FindOptionsWhere<Product> = {
-      status: filters.status || ProductStatus.ACTIVE
-    }
-
-    if (filters.category?.length) {
-      where.category = filters.category as any
-    }
-    if (filters.rarity?.length) {
-      where.rarity = filters.rarity as any
-    }
-    if (filters.condition?.length) {
-      where.condition = filters.condition as any
-    }
-    if (filters.listingType) {
-      where.listingType = filters.listingType
-    }
-
     const queryBuilder = this.productRepo
       .createQueryBuilder('product')
+      .leftJoinAndSelect('product.tags', 'tag')
       .where('product.status = :status', { status: filters.status || ProductStatus.ACTIVE })
 
     if (filters.category?.length) {
@@ -59,6 +46,13 @@ export class ProductsService {
         '(product.titleEn LIKE :search OR product.titleZh LIKE :search OR product.brand LIKE :search)',
         { search: `%${filters.search}%` }
       )
+    }
+    // Filter by tags
+    if (filters.tags?.length) {
+      const tagIds = filters.tags.map(t => parseInt(t)).filter(t => !isNaN(t))
+      if (tagIds.length > 0) {
+        queryBuilder.andWhere('tag.id IN (:...tagIds)', { tagIds })
+      }
     }
 
     // Sorting
@@ -108,7 +102,7 @@ export class ProductsService {
   async findOne(id: string): Promise<Product> {
     const product = await this.productRepo.findOne({
       where: { id },
-      relations: ['seller']
+      relations: ['seller', 'tags']
     })
 
     if (!product) {
@@ -144,11 +138,18 @@ export class ProductsService {
     const listingType = dto.listingType || 'both'
     const status = ProductStatus.ACTIVE
 
+    // Handle tags - find or create tags by name
+    let tags: Tag[] = []
+    if (dto.tags && dto.tags.length > 0) {
+      tags = await this.tagRepo.findByIds(dto.tags)
+    }
+
     const product = this.productRepo.create({
       ...dto,
       listingType: listingType as any,
       sellerId: userId,
-      status
+      status,
+      tags
     })
 
     return this.productRepo.save(product)
@@ -167,6 +168,17 @@ export class ProductsService {
         dto.images = dto.images.length > 0 ? JSON.stringify(dto.images) as any : (product.images || '')
       } else if (typeof dto.images === 'string') {
         // Already a string, use as-is
+      }
+    }
+
+    // Handle tags
+    if (dto.tags !== undefined) {
+      if (dto.tags && dto.tags.length > 0) {
+        const tags = await this.tagRepo.findByIds(dto.tags)
+        product.tags = tags
+        delete dto.tags
+      } else {
+        product.tags = []
       }
     }
 

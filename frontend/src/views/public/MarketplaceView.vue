@@ -4,7 +4,8 @@ import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import { Search, SlidersHorizontal, X, ChevronDown, Loader2 } from 'lucide-vue-next'
 import { productApi } from '@/api/products'
-import type { Product } from '@/types'
+import { tagApi } from '@/api/tags'
+import type { Product, Tag } from '@/types'
 import ProductCard from '@/components/product/ProductCard.vue'
 
 const { t, locale } = useI18n()
@@ -23,7 +24,8 @@ const filtersExpanded = ref({
   listingType: true,
   rarity: true,
   condition: true,
-  price: true
+  price: true,
+  tags: true
 })
 
 // Filters - using any to avoid complex type issues
@@ -38,6 +40,7 @@ const filters = ref<any>({
   priceMax: undefined as number | undefined,
   listingType: 'all',
   sortBy: 'newest',
+  tags: [] as string[],
   page: 1,
   limit: 20
 })
@@ -65,7 +68,8 @@ const filterOptions = ref({
     { value: 'excellent', label: 'Excellent', labelZh: '优秀' },
     { value: 'good', label: 'Good', labelZh: '良好' },
     { value: 'fair', label: 'Fair', labelZh: '一般' }
-  ]
+  ],
+  tags: [] as Tag[]
 })
 
 const sortOptions = [
@@ -84,6 +88,7 @@ const activeFiltersCount = computed(() => {
   if (filters.value.condition?.length) count += filters.value.condition.length
   if (filters.value.priceMin || filters.value.priceMax) count++
   if (filters.value.listingType !== 'all') count++
+  if (filters.value.tags?.length) count += filters.value.tags.length
   return count
 })
 
@@ -118,6 +123,11 @@ const activeFiltersList = computed(() => {
       value: filters.value.listingType === 'sale' ? '仅销售' : '仅拍卖'
     })
   }
+
+  filters.value.tags?.forEach((tagId: string) => {
+    const tag = filterOptions.value.tags.find(x => String(x.id) === tagId)
+    list.push({ key: 'tags', value: tag?.name || tagId, rawValue: tagId })
+  })
 
   return list
 })
@@ -233,6 +243,7 @@ const updateUrl = () => {
   if (filters.value.priceMax) query.priceMax = String(filters.value.priceMax)
   if (filters.value.listingType !== 'all') query.listing = filters.value.listingType
   if (filters.value.sortBy !== 'newest') query.sort = filters.value.sortBy
+  if (filters.value.tags?.length) query.tags = filters.value.tags.join(',')
   if (filters.value.page !== 1) query.page = String(filters.value.page)
 
   router.replace({ query })
@@ -248,6 +259,7 @@ const parseUrlFilters = () => {
   if (query.priceMax) filters.value.priceMax = Number(query.priceMax)
   if (query.listing) filters.value.listingType = query.listing as 'all' | 'sale' | 'auction'
   if (query.sort) filters.value.sortBy = query.sort as string
+  if (query.tags) filters.value.tags = (query.tags as string).split(',')
   if (query.page) filters.value.page = Number(query.page)
 }
 
@@ -263,10 +275,20 @@ const handleSearch = () => {
   fetchProducts()
 }
 
+const loadTags = async () => {
+  try {
+    const response = await tagApi.getTags()
+    filterOptions.value.tags = response.data
+  } catch (error) {
+    console.error('Failed to load tags:', error)
+  }
+}
+
 // Lifecycle
 onMounted(() => {
   parseUrlFilters()
   fetchProducts()
+  loadTags()
 
   // Infinite scroll via scroll event
   window.addEventListener('scroll', handleScroll)
@@ -458,6 +480,30 @@ watch(() => route.query, () => {
                 placeholder="Max"
                 @change="updateFilter('priceMax', filters.priceMax)"
               />
+            </div>
+          </div>
+
+          <!-- Tags -->
+          <div class="filter-section">
+            <h4 class="filter-title" @click="filtersExpanded.tags = !filtersExpanded.tags">
+              标签
+              <ChevronDown class="filter-chevron" :class="{ collapsed: !filtersExpanded.tags }" />
+            </h4>
+            <div v-show="filtersExpanded.tags" class="filter-options">
+              <label
+                v-for="tag in filterOptions.tags"
+                :key="tag.id"
+                class="filter-option"
+                :class="{ active: filters.tags.includes(String(tag.id)) }"
+              >
+                <input
+                  type="checkbox"
+                  :checked="filters.tags.includes(String(tag.id))"
+                  @change="toggleArrayFilter('tags', String(tag.id))"
+                />
+                <span class="checkmark" />
+                <span class="filter-label">{{ tag.name }}</span>
+              </label>
             </div>
           </div>
         </aside>

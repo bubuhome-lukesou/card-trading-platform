@@ -16,6 +16,15 @@ export interface User {
   createdAt: string
 }
 
+// Tag types
+export interface Tag {
+  id: number
+  name: string
+  slug?: string
+  color?: string
+  sortOrder: number
+}
+
 // Product types
 export type ProductCategory = 'pokemon' | 'yugioh' | 'mtg' | 'ultraman' | 'onepiece' | 'other'
 export type ProductRarity = 'SSR' | 'SR' | 'R' | 'N'
@@ -39,6 +48,7 @@ export interface Product {
   price: number
   currency: string
   images: string[]
+  tags?: Tag[]
   status: ProductStatus
   hasAuction: boolean
   createdAt: string
@@ -126,6 +136,7 @@ export interface ProductFilters {
   priceMax?: number
   listingType?: 'all' | 'sale' | 'auction'
   sortBy?: 'popular' | 'newest' | 'price_asc' | 'price_desc' | 'ending_soon'
+  tags?: string[]
   page?: number
   limit?: number
 }

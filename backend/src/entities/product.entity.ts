@@ -6,10 +6,13 @@ import {
   UpdateDateColumn,
   ManyToOne,
   OneToMany,
-  JoinColumn
+  ManyToMany,
+  JoinColumn,
+  JoinTable
 } from 'typeorm'
 import { User } from './user.entity'
 import { Auction } from './auction.entity'
+import { Tag } from './tag.entity'
 
 export enum ProductCategory {
   POKEMON = 'pokemon',
@@ -120,6 +123,14 @@ export class Product {
 
   @OneToMany(() => Auction, auction => auction.product)
   auctions: Auction[]
+
+  @ManyToMany(() => Tag, tag => tag.products)
+  @JoinTable({
+    name: 'product_tags',
+    joinColumn: { name: 'productId', referencedColumnName: 'id' },
+    inverseJoinColumn: { name: 'tagId', referencedColumnName: 'id' }
+  })
+  tags: Tag[]
 
   @CreateDateColumn()
   createdAt: Date
