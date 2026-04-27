@@ -166,6 +166,9 @@ let AuctionsService = class AuctionsService {
         if (auction.sellerId === userId) {
             throw new common_1.ForbiddenException('Sellers cannot bid on their own auctions');
         }
+        if (auction.winnerId === userId) {
+            throw new common_1.BadRequestException('You are already the highest bidder');
+        }
         if (auction.status !== auction_entity_1.AuctionStatus.ACTIVE) {
             throw new common_1.BadRequestException('Auction is not active');
         }
@@ -185,20 +188,24 @@ let AuctionsService = class AuctionsService {
             amount
         });
         await this.bidRepo.save(bid);
-        auction.currentPrice = amount;
-        auction.bidCount++;
+        const updateData = {
+            currentPrice: amount,
+            bidCount: auction.bidCount + 1,
+            winnerId: userId
+        };
         const timeLeft = auction.endTime.getTime() - now.getTime();
         const extensionThreshold = 5 * 60 * 1000;
         if (timeLeft < extensionThreshold) {
-            auction.endTime = new Date(now.getTime() + auction.extensionMinutes * 60 * 1000);
+            updateData.endTime = new Date(now.getTime() + auction.extensionMinutes * 60 * 1000);
         }
-        await this.auctionRepo.save(auction);
+        await this.auctionRepo.update(auctionId, updateData);
+        const updatedAuction = await this.auctionRepo.findOne({ where: { id: auctionId } });
         return {
             bid,
             auction: {
-                currentPrice: auction.currentPrice,
-                endTime: auction.endTime,
-                bidCount: auction.bidCount
+                currentPrice: updatedAuction.currentPrice,
+                endTime: updatedAuction.endTime,
+                bidCount: updatedAuction.bidCount
             }
         };
     }

@@ -45,16 +45,28 @@ export const useAuthStore = defineStore('auth', () => {
     error.value = null
 
     try {
-      const response = await api.post<{ accessToken: string; user: User }>('/auth/register', data)
-      token.value = response.data.accessToken
-      user.value = response.data.user
-      role.value = response.data.user.role
-      localStorage.setItem('token', response.data.accessToken)
-      localStorage.setItem('role', response.data.user.role)
-      api.defaults.headers.common['Authorization'] = `Bearer ${response.data.accessToken}`
+      const response = await api.post('/auth/register', data)
+      // Support both {accessToken, user} and {data: {accessToken, user}} formats
+      const result = (response.data as any)?.data || response.data
+      const accessToken = result.accessToken
+      const userData = result.user
+      
+      if (!accessToken) {
+        console.error('Register: No accessToken in response', response.data)
+        error.value = 'Registration failed: No token received'
+        return false
+      }
+      
+      token.value = accessToken
+      user.value = userData
+      role.value = userData.role
+      localStorage.setItem('token', accessToken)
+      localStorage.setItem('role', userData.role)
+      api.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`
       return true
     } catch (err: any) {
-      error.value = err.response?.data?.message || 'Registration failed'
+      console.error('Register error:', err)
+      error.value = err.response?.data?.message || err.message || 'Registration failed'
       return false
     } finally {
       loading.value = false
