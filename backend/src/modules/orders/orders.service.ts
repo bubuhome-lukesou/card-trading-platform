@@ -83,6 +83,8 @@ export class OrdersService {
     const order = await this.findOne(orderId);
     order.transferReceipt = receiptUrl;
     order.transferTime = new Date();
+    // Auto-change status to 'paid' so seller can confirm
+    order.status = OrderStatus.PAID;
     return this.orderRepo.save(order);
   }
 
