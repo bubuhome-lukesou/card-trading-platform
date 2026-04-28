@@ -91,6 +91,9 @@ export class Order {
   @Column({ nullable: true })
   notes: string
 
+  @Column({ default: 1 })
+  quantity: number
+
   @Column({ nullable: true })
   transferReceipt: string
 

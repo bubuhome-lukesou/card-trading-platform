@@ -15,7 +15,8 @@ interface Order {
   productImage?: string
   sellerNickname: string
   amount: number
-  status: 'pending' | 'paid' | 'shipped' | 'delivered' | 'cancelled' | 'refunded' | 'pending_paid'
+  quantity: number
+  status: 'pending' | 'paid' | 'shipped' | 'delivered' | 'cancelled' | 'refunded' | 'pending_paid' | 'confirmed'
   type: 'direct_purchase' | 'buy_now' | 'auction_win'
   createdAt: string
   transferReceipt?: string

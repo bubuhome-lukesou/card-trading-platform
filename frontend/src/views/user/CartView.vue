@@ -71,16 +71,28 @@ const loadCart = async () => {
 const updateQuantity = async (item: CartItem, newQuantity: number) => {
   if (newQuantity < 1) return
   if (isOutOfStock(item)) return
-  
+
+  // Check stock limit
+  const maxStock = item.product?.quantity ?? 0
+  if (newQuantity > maxStock) {
+    alert(`库存不足！当前最多只能购买 ${maxStock} 件`)
+    return
+  }
+
   processing.value = true
   try {
     // Remove and re-add with new quantity
     await cartApi.removeItem(item.id)
     await cartApi.addItem(item.product.id, newQuantity)
     await loadCart()
-  } catch (error) {
+  } catch (error: any) {
     console.error('Failed to update quantity:', error)
-    alert('更新数量失败，请重试')
+    const msg = error?.response?.data?.message || error?.message || ''
+    if (msg.includes('available') || msg.includes('Out of stock')) {
+      alert(`库存不足！当前最多只能购买 ${maxStock} 件`)
+    } else {
+      alert('更新数量失败，请重试')
+    }
   } finally {
     processing.value = false
   }

@@ -27,14 +27,29 @@ export class CartService {
       throw new NotFoundException('Product not found');
     }
 
+    // Check stock limit
+    const currentQty = product.quantity ?? 0;
+    if (currentQty <= 0) {
+      throw new NotFoundException('Out of stock');
+    }
+
     // Check if item already in cart
     const existing = await this.cartRepo.findOne({
       where: { user: { id: userId } as any, product: { id: productId } as any },
     });
 
     if (existing) {
-      existing.quantity += quantity;
+      const newQty = existing.quantity + quantity;
+      if (newQty > currentQty) {
+        throw new NotFoundException(`Only ${currentQty} items available`);
+      }
+      existing.quantity = newQty;
       return this.cartRepo.save(existing);
+    }
+
+    // Check if requested quantity exceeds stock
+    if (quantity > currentQty) {
+      throw new NotFoundException(`Only ${currentQty} items available`);
     }
 
     const cartItem = this.cartRepo.create({

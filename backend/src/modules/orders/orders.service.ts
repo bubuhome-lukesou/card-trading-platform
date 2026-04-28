@@ -66,7 +66,8 @@ export class OrdersService {
 
     // Decrease product quantity after order is created
     if (data.productId) {
-      await this.productsService.decreaseQuantity(data.productId, 1);
+      const qty = data.quantity || 1;
+      await this.productsService.decreaseQuantity(data.productId, qty);
     }
 
     return savedOrder;
