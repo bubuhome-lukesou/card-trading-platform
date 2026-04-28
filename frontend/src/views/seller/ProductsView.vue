@@ -29,6 +29,25 @@ const pendingImageFiles = ref<File[]>([])
 const existingImageUrls = ref<string[]>([])
 const availableTags = ref<any[]>([])
 const selectedTags = ref<number[]>([])
+const tagSearch = ref('')
+const showTagCreate = ref(false)
+const newTagName = ref('')
+const newTagColor = ref('#6366f1')
+const creatingTag = ref(false)
+
+const filteredTags = computed(() => {
+  if (!tagSearch.value.trim()) return availableTags.value
+  const q = tagSearch.value.toLowerCase()
+  return availableTags.value.filter(tag =>
+    tag.name.toLowerCase().includes(q)
+  )
+})
+
+watch(showTagCreate, (val) => {
+  if (val && tagSearch.value.trim()) {
+    newTagName.value = tagSearch.value.trim()
+  }
+})
 
 const categories = [
   { value: 'pokemon', label: '宝可梦', emoji: '🎮' },
@@ -352,6 +371,25 @@ const toggleTag = (tagId: number) => {
   }
 }
 
+const createNewTag = async () => {
+  if (!newTagName.value.trim()) return
+  creatingTag.value = true
+  try {
+    const response = await tagApi.createTag({
+      name: newTagName.value.trim(),
+      color: newTagColor.value,
+    })
+    availableTags.value.push(response.data)
+    selectedTags.value.push(response.data.id)
+    newTagName.value = ''
+    showTagCreate.value = false
+  } catch (error) {
+    console.error('Failed to create tag:', error)
+  } finally {
+    creatingTag.value = false
+  }
+}
+
 const loadTags = async () => {
   try {
     const response = await tagApi.getTags()
@@ -639,17 +677,69 @@ onUnmounted(() => {
             <!-- Tags -->
             <div class="form-group full-width">
               <label>商品标签</label>
-              <div class="tags-container">
-                <button
-                  v-for="tag in availableTags"
-                  :key="tag.id"
-                  type="button"
-                  class="tag-button"
-                  :class="{ selected: selectedTags.includes(tag.id) }"
-                  @click="toggleTag(tag.id)"
+              <!-- Selected tags display -->
+              <div v-if="selectedTags.length" class="tags-selected">
+                <span
+                  v-for="tagId in selectedTags"
+                  :key="tagId"
+                  class="tag-badge-selected"
                 >
-                  {{ tag.name }}
-                </button>
+                  {{ availableTags.find(t => t.id === tagId)?.name }}
+                  <button type="button" @click="toggleTag(tagId)" class="tag-remove">×</button>
+                </span>
+              </div>
+              <!-- Tag search dropdown -->
+              <div class="tag-search-wrapper">
+                <input
+                  v-model="tagSearch"
+                  type="text"
+                  class="tag-search-input"
+                  placeholder="搜索标签..."
+                />
+                <div v-if="showTagCreate" class="tag-create-form">
+                  <input
+                    v-model="newTagName"
+                    type="text"
+                    placeholder="新标签名称"
+                    class="tag-create-input"
+                  />
+                  <input
+                    v-model="newTagColor"
+                    type="color"
+                    class="tag-create-color"
+                  />
+                  <button
+                    type="button"
+                    @click="createNewTag"
+                    :disabled="creatingTag || !newTagName.trim()"
+                    class="tag-create-btn"
+                  >
+                    {{ creatingTag ? '...' : '创建' }}
+                  </button>
+                  <button type="button" @click="showTagCreate = false; newTagName = ''" class="tag-create-cancel">×</button>
+                </div>
+                <div v-if="tagSearch && !filteredTags.find(t => t.name.toLowerCase().includes(tagSearch.toLowerCase()))" class="tag-create-hint">
+                  <button type="button" @click="newTagName = tagSearch; showTagCreate = true" class="tag-create-link">
+                    + 创建新标签「{{ tagSearch }}」
+                  </button>
+                </div>
+                <div v-else class="tag-list-dropdown">
+                  <button
+                    v-for="tag in filteredTags"
+                    :key="tag.id"
+                    type="button"
+                    class="tag-option"
+                    :class="{ selected: selectedTags.includes(tag.id) }"
+                    @click="toggleTag(tag.id)"
+                  >
+                    <span
+                      class="tag-color-dot"
+                      :style="{ backgroundColor: tag.color || '#6366f1' }"
+                    ></span>
+                    {{ tag.name }}
+                    <span v-if="selectedTags.includes(tag.id)" class="tag-check">✓</span>
+                  </button>
+                </div>
               </div>
               <p class="form-hint">选择适合商品的标签，可多选</p>
             </div>
@@ -1241,7 +1331,178 @@ onUnmounted(() => {
   cursor: not-allowed;
 }
 
-/* Tag styles */
+/* Tag styles - new searchable dropdown */
+.tags-selected {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+
+.tag-badge-selected {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border-radius: var(--radius-full);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  background: var(--primary-gradient);
+  color: white;
+}
+
+.tag-remove {
+  background: none;
+  border: none;
+  color: white;
+  cursor: pointer;
+  font-size: 14px;
+  padding: 0 2px;
+  opacity: 0.7;
+}
+
+.tag-remove:hover {
+  opacity: 1;
+}
+
+.tag-search-wrapper {
+  position: relative;
+  margin-top: var(--space-2);
+}
+
+.tag-search-input {
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-size: var(--text-sm);
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+}
+
+.tag-create-form {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+  padding: var(--space-2);
+  background: var(--bg-elevated);
+  border: 1px dashed var(--primary);
+  border-radius: var(--radius);
+}
+
+.tag-create-input {
+  flex: 1;
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-sm);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+}
+
+.tag-create-color {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.tag-create-btn {
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  background: var(--primary-gradient);
+  color: white;
+  border: none;
+  cursor: pointer;
+}
+
+.tag-create-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.tag-create-cancel {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 18px;
+}
+
+.tag-create-hint {
+  margin-top: var(--space-2);
+}
+
+.tag-create-link {
+  background: none;
+  border: none;
+  color: var(--primary);
+  font-size: var(--text-sm);
+  cursor: pointer;
+  padding: 0;
+}
+
+.tag-create-link:hover {
+  text-decoration: underline;
+}
+
+.tag-list-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  max-height: 200px;
+  overflow-y: auto;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-lg);
+  z-index: 10;
+  margin-top: 4px;
+}
+
+.tag-option {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  border: none;
+  background: none;
+  text-align: left;
+  font-size: var(--text-sm);
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+
+.tag-option:hover {
+  background: var(--bg-primary);
+}
+
+.tag-option.selected {
+  background: var(--primary) + '15';
+  color: var(--primary);
+}
+
+.tag-color-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.tag-check {
+  margin-left: auto;
+  font-weight: bold;
+}
+
+/* Old tag styles - kept for compatibility */
 .tags-container {
   display: flex;
   flex-wrap: wrap;

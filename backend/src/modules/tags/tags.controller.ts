@@ -21,7 +21,7 @@ export class TagsController {
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.SELLER)
   @Post()
   async create(@Body() dto: CreateTagDto) {
     return this.tagsService.create(dto)
