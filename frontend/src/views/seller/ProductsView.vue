@@ -136,6 +136,7 @@ const scanCardImage = async () => {
 }
 
 const openCreateModal = () => {
+  editingProduct.value = null
   resetForm()
   showModal.value = true
 }

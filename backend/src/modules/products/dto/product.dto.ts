@@ -246,6 +246,12 @@ export class UpdateProductDto {
   stock?: number
 
   @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  quantity?: number
+
+  @IsOptional()
   @IsArray()
   @IsString({ each: true })
   tags?: string[]

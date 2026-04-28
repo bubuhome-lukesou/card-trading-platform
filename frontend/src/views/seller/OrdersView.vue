@@ -190,7 +190,7 @@ onMounted(() => loadOrders())
                 </div>
               </template>
               <button
-                v-if="order.status === 'confirmed' || order.status === 'shipped' || order.status === 'delivered'"
+                v-if="order.status === 'confirmed'"
                 @click="handleUpdateStatus(order.id, 'shipped')"
                 class="btn-action ship"
               >
