@@ -2,6 +2,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { ordersApi } from '@/api/orders'
+import { cartApi } from '@/api/cart'
 import { useRouter } from 'vue-router'
 
 const { t } = useI18n()
@@ -14,14 +15,19 @@ interface Order {
   productImage?: string
   sellerNickname: string
   amount: number
-  status: 'pending' | 'paid' | 'shipped' | 'delivered' | 'cancelled' | 'refunded'
+  status: 'pending' | 'paid' | 'shipped' | 'delivered' | 'cancelled' | 'refunded' | 'pending_paid'
   type: 'direct_purchase' | 'buy_now' | 'auction_win'
   createdAt: string
+  transferReceipt?: string
+  transferTime?: string
 }
 
 const orders = ref<Order[]>([])
 const loading = ref(true)
 const filterStatus = ref('all')
+const uploadingReceipt = ref<string | null>(null)
+const showReceiptModal = ref(false)
+const receiptImageUrl = ref('')
 
 const filteredOrders = computed(() => {
   if (filterStatus.value === 'all') return orders.value
@@ -84,6 +90,8 @@ const loadOrders = async () => {
         status: o.status,
         type: o.type,
         createdAt: o.createdAt,
+        transferReceipt: o.transferReceipt,
+        transferTime: o.transferTime,
       }
     })
   } catch (error) {
@@ -112,6 +120,38 @@ const handleReceive = async (orderId: string) => {
     console.error('Confirm failed:', error)
     alert('操作失败，请重试')
   }
+}
+
+const handleUploadReceipt = async (orderId: string, file: File) => {
+  uploadingReceipt.value = orderId
+  try {
+    await cartApi.uploadTransferReceipt(orderId, file)
+    alert('上传成功！')
+    await loadOrders()
+  } catch (error) {
+    console.error('Upload failed:', error)
+    alert('上传失败，请重试')
+  } finally {
+    uploadingReceipt.value = null
+  }
+}
+
+const triggerReceiptUpload = (orderId: string) => {
+  const input = document.createElement('input')
+  input.type = 'file'
+  input.accept = 'image/*'
+  input.onchange = (e: Event) => {
+    const target = e.target as HTMLInputElement
+    if (target.files?.[0]) {
+      handleUploadReceipt(orderId, target.files[0])
+    }
+  }
+  input.click()
+}
+
+const viewReceipt = (url: string) => {
+  receiptImageUrl.value = url
+  showReceiptModal.value = true
 }
 
 onMounted(() => {
@@ -212,6 +252,21 @@ onMounted(() => {
             立即支付
           </button>
           <button 
+            v-if="order.status === 'pending' || order.status === 'pending_paid'" 
+            class="btn-upload"
+            @click="triggerReceiptUpload(order.id)"
+            :disabled="uploadingReceipt === order.id"
+          >
+            {{ uploadingReceipt === order.id ? '上传中...' : '上传转账凭证' }}
+          </button>
+          <img 
+            v-if="order.transferReceipt" 
+            :src="order.transferReceipt" 
+            class="receipt-thumbnail"
+            @click="viewReceipt(order.transferReceipt)"
+            alt="转账凭证"
+          />
+          <button 
             v-if="order.status === 'shipped'" 
             class="btn-receive"
             @click="handleReceive(order.id)"
@@ -222,6 +277,19 @@ onMounted(() => {
             订单详情
           </router-link>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Receipt Modal -->
+  <div v-if="showReceiptModal" class="modal-overlay" @click.self="showReceiptModal = false">
+    <div class="receipt-modal">
+      <div class="modal-header">
+        <h3>转账凭证</h3>
+        <button @click="showReceiptModal = false" class="modal-close">✕</button>
+      </div>
+      <div class="modal-body">
+        <img :src="receiptImageUrl" alt="转账凭证" class="receipt-image" />
       </div>
     </div>
   </div>
@@ -497,6 +565,33 @@ onMounted(() => {
   opacity: 0.9;
 }
 
+.btn-upload {
+  background: #f59e0b;
+  color: white;
+}
+
+.btn-upload:hover:not(:disabled) {
+  background: #d97706;
+}
+
+.btn-upload:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.receipt-thumbnail {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-md);
+  object-fit: cover;
+  cursor: pointer;
+  border: 2px solid var(--border);
+}
+
+.receipt-thumbnail:hover {
+  border-color: var(--primary);
+}
+
 .btn-receive {
   background: #10b981;
   color: white;
@@ -509,5 +604,55 @@ onMounted(() => {
 
 .btn-detail:hover {
   background: var(--border);
+}
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.receipt-modal {
+  background: var(--bg-card);
+  border-radius: var(--radius-xl);
+  max-width: 600px;
+  width: 90%;
+  max-height: 90vh;
+  overflow: hidden;
+}
+
+.receipt-modal .modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-4);
+  border-bottom: 1px solid var(--border);
+}
+
+.receipt-modal .modal-header h3 {
+  font-size: var(--text-lg);
+  font-weight: 600;
+}
+
+.modal-close {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-md);
+  border: none;
+  background: var(--bg-elevated);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.receipt-image {
+  width: 100%;
+  height: auto;
+  display: block;
 }
 </style>

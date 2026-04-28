@@ -3,15 +3,19 @@ import { computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
+import { cartApi } from '@/api/cart'
+import { ref, onMounted } from 'vue'
 
 const { t } = useI18n()
 const router = useRouter()
 const route = useRoute()
 const authStore = useAuthStore()
+const cartCount = ref(0)
 
 const navItems = [
   { path: '/user', name: 'dashboard', icon: '👤', label: 'user.dashboard' },
   { path: '/user/orders', name: 'orders', icon: '📦', label: 'user.myOrders' },
+  { path: '/user/cart', name: 'cart', icon: '🛒', label: '购物车' },
   { path: '/user/favorites', name: 'favorites', icon: '❤️', label: 'user.myFavorites' },
   { path: '/user/wallet', name: 'wallet', icon: '💳', label: 'user.wallet' },
   { path: '/user/settings', name: 'settings', icon: '⚙️', label: 'user.settings' },
@@ -23,6 +27,19 @@ const handleLogout = async () => {
   await authStore.logout()
   router.push('/')
 }
+
+const loadCartCount = async () => {
+  try {
+    const res = await cartApi.getCart()
+    cartCount.value = res.data?.length || 0
+  } catch (e) {
+    cartCount.value = 0
+  }
+}
+
+onMounted(() => {
+  loadCartCount()
+})
 </script>
 
 <template>
@@ -49,6 +66,9 @@ const handleLogout = async () => {
         >
           <span class="nav-icon">{{ item.icon }}</span>
           <span class="nav-label">{{ t(item.label) }}</span>
+          <span v-if="item.name === 'cart' && cartCount > 0" class="cart-badge">
+            {{ cartCount > 99 ? '99+' : cartCount }}
+          </span>
         </router-link>
       </nav>
 
@@ -177,6 +197,18 @@ const handleLogout = async () => {
 
 .nav-label {
   font-weight: 500;
+}
+
+.cart-badge {
+  margin-left: auto;
+  background: var(--danger);
+  color: white;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 10px;
+  min-width: 18px;
+  text-align: center;
 }
 
 .nav-item.logout:hover {

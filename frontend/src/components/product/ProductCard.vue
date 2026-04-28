@@ -34,6 +34,11 @@ const price = computed(() => {
         loading="lazy"
       />
 
+      <!-- Out of Stock Overlay -->
+      <div v-if="product.quantity === 0" class="out-of-stock-overlay">
+        <span class="out-of-stock-text">Out of Stock</span>
+      </div>
+
       <!-- Listing Type Badge -->
       <span class="listing-badge" :class="product.hasAuction ? 'is-auction' : 'is-sale'">
         <Gavel v-if="product.hasAuction" class="badge-icon" />
@@ -123,6 +128,25 @@ const price = computed(() => {
     object-fit: cover;
     transition: transform var(--transition-slow);
   }
+}
+
+.out-of-stock-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.out-of-stock-text {
+  background: var(--danger);
+  color: white;
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm);
+  font-weight: 700;
+  text-transform: uppercase;
 }
 
 .listing-badge {

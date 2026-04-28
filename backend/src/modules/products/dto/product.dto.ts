@@ -154,6 +154,12 @@ export class CreateProductDto {
   stock?: number = 1
 
   @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  quantity?: number = 1
+
+  @IsOptional()
   @IsArray()
   @IsString({ each: true })
   tags?: string[]

@@ -165,7 +165,7 @@ const updateFilter = (key: string, value: any) => {
   fetchProducts()
 }
 
-const toggleArrayFilter = (key: 'category' | 'rarity' | 'condition', value: string) => {
+const toggleArrayFilter = (key: 'category' | 'rarity' | 'condition' | 'tags', value: string) => {
   const arr = filters.value[key] || []
   const index = arr.indexOf(value)
   if (index === -1) {

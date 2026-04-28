@@ -46,6 +46,7 @@ export interface Product {
   rarity: ProductRarity
   condition: ProductCondition
   price: number
+  quantity?: number
   currency: string
   images: string[]
   tags?: Tag[]
@@ -91,7 +92,7 @@ export interface Bid {
 
 // Order types
 export type OrderType = 'purchase' | 'auction'
-export type OrderStatus = 'pending_paid' | 'paid' | 'shipped' | 'delivered' | 'cancelled' | 'refunded'
+export type OrderStatus = 'pending_paid' | 'paid' | 'shipped' | 'delivered' | 'cancelled' | 'refunded' | 'confirmed'
 
 export interface Order {
   id: string
@@ -108,6 +109,8 @@ export interface Order {
   amount: number
   status: OrderStatus
   shippingAddress: ShippingAddress
+  transferReceipt?: string
+  transferTime?: string
   paidAt?: string
   shippedAt?: string
   deliveredAt?: string

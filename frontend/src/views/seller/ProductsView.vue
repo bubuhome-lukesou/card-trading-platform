@@ -67,6 +67,7 @@ const formData = ref({
   condition: 'near_mint',
   rarity: 'rare',
   price: 0,
+  quantity: 1,
   images: [] as string[],
   tags: [] as number[],
 })
@@ -81,6 +82,7 @@ const resetForm = () => {
     condition: 'near_mint',
     rarity: 'rare',
     price: 0,
+    quantity: 1,
     images: [],
     tags: [],
   }
@@ -168,6 +170,7 @@ const openEditModal = (product: any) => {
     condition: product.condition,
     rarity: product.rarity,
     price: product.price,
+    quantity: product.quantity || 1,
     images: [...existingImages],
     tags: [...selectedTags.value],
   }
@@ -593,6 +596,17 @@ onUnmounted(() => {
                 type="number" 
                 min="1"
                 placeholder="0"
+              />
+            </div>
+
+            <!-- 数量 -->
+            <div class="form-group">
+              <label>数量</label>
+              <input 
+                v-model.number="formData.quantity" 
+                type="number" 
+                min="1"
+                placeholder="1"
               />
             </div>
 

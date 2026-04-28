@@ -19,6 +19,7 @@ export enum OrderType {
 export enum OrderStatus {
   PENDING = 'pending',
   PAID = 'paid',
+  CONFIRMED = 'confirmed',
   SHIPPED = 'shipped',
   DELIVERED = 'delivered',
   CANCELLED = 'cancelled',
@@ -89,6 +90,12 @@ export class Order {
 
   @Column({ nullable: true })
   notes: string
+
+  @Column({ nullable: true })
+  transferReceipt: string
+
+  @Column({ nullable: true })
+  transferTime: Date
 
   @CreateDateColumn()
   createdAt: Date

@@ -60,6 +60,11 @@ const userRoutes: RouteRecordRaw[] = [
         component: () => import('@/views/user/DashboardView.vue')
       },
       {
+        path: 'cart',
+        name: 'cart',
+        component: () => import('@/views/user/CartView.vue')
+      },
+      {
         path: 'orders',
         name: 'UserOrders',
         component: () => import('@/views/user/OrdersView.vue')

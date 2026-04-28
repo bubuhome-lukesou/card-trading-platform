@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common'
+import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common'
 import { InjectRepository } from '@nestjs/typeorm'
 import { Repository, FindOptionsWhere, ILike, Any } from 'typeorm'
 import { Product, ProductStatus } from '../../entities/product.entity'
@@ -146,6 +146,7 @@ export class ProductsService {
 
     const product = this.productRepo.create({
       ...dto,
+      quantity: dto.quantity ?? 1,
       listingType: listingType as any,
       sellerId: userId,
       status,
@@ -213,5 +214,17 @@ export class ProductsService {
       }
       return p
     })
+  }
+
+  async decreaseQuantity(productId: string, amount: number): Promise<void> {
+    const product = await this.productRepo.findOne({ where: { id: productId } })
+    if (!product) {
+      throw new NotFoundException('Product not found')
+    }
+    const currentQty = product.quantity ?? 1
+    if (currentQty - amount < 0) {
+      throw new BadRequestException('Out of stock')
+    }
+    await this.productRepo.update(productId, { quantity: currentQty - amount })
   }
 }

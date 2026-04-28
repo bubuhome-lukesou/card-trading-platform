@@ -2,6 +2,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { ordersApi } from '@/api/orders'
+import { cartApi } from '@/api/cart'
 
 const { t } = useI18n()
 
@@ -18,11 +19,16 @@ interface Order {
   paidAt?: string
   shippedAt?: string
   trackingNumber?: string
+  transferReceipt?: string
+  transferTime?: string
 }
 
 const orders = ref<Order[]>([])
 const loading = ref(true)
 const filterStatus = ref('all')
+const processingId = ref<string | null>(null)
+const showReceiptModal = ref(false)
+const receiptImageUrl = ref('')
 
 const filteredOrders = computed(() => {
   if (filterStatus.value === 'all') return orders.value
@@ -46,6 +52,8 @@ const loadOrders = async () => {
       paidAt: o.paidAt,
       shippedAt: o.shippedAt,
       trackingNumber: o.trackingNumber,
+      transferReceipt: o.transferReceipt,
+      transferTime: o.transferTime,
     }))
   } catch (e) {
     console.error('Failed to load orders', e)
@@ -64,6 +72,27 @@ const handleUpdateStatus = async (id: string, newStatus: string) => {
   }
 }
 
+const handleConfirmPayment = async (orderId: string) => {
+  if (!confirm('确认已收到付款？')) return
+  
+  processingId.value = orderId
+  try {
+    await cartApi.confirmPayment(orderId)
+    await loadOrders()
+    alert('确认收款成功！')
+  } catch (e) {
+    console.error('Failed to confirm payment:', e)
+    alert('操作失败，请重试')
+  } finally {
+    processingId.value = null
+  }
+}
+
+const viewReceipt = (url: string) => {
+  receiptImageUrl.value = url
+  showReceiptModal.value = true
+}
+
 const formatPrice = (price: number) => {
   return new Intl.NumberFormat('zh-HK', { style: 'currency', currency: 'HKD', minimumFractionDigits: 0 }).format(price)
 }
@@ -80,6 +109,7 @@ const getStatusBadge = (status: string) => {
     delivered: { class: 'delivered', text: '已完成' },
     cancelled: { class: 'cancelled', text: '已取消' },
     refunded: { class: 'refunded', text: '已退款' },
+    confirmed: { class: 'confirmed', text: '已确认' },
   }
   return map[status] || { class: 'default', text: status }
 }
@@ -130,19 +160,59 @@ onMounted(() => loadOrders())
             <td class="date">{{ formatDate(order.createdAt) }}</td>
             <td>
               <button
-                v-if="order.status === 'paid'"
+                v-if="order.status === 'pending_paid'"
+                class="btn-warning"
+                @click="handleUpdateStatus(order.id, 'cancelled')"
+              >
+                取消
+              </button>
+              <div v-if="order.status === 'pending_paid'" class="warning-text">
+                ⚠️ 买家未付款
+              </div>
+              <template v-if="order.status === 'paid'">
+                <img 
+                  v-if="order.transferReceipt" 
+                  :src="order.transferReceipt" 
+                  class="receipt-thumbnail"
+                  @click="viewReceipt(order.transferReceipt)"
+                  alt="转账凭证"
+                />
+                <button
+                  v-if="order.transferReceipt"
+                  class="btn-action confirm"
+                  @click="handleConfirmPayment(order.id)"
+                  :disabled="processingId === order.id"
+                >
+                  {{ processingId === order.id ? '处理中...' : '确认收款' }}
+                </button>
+                <div v-else class="warning-text">
+                  ⏳ 等待买家上传凭证
+                </div>
+              </template>
+              <button
+                v-if="order.status === 'confirmed' || order.status === 'shipped' || order.status === 'delivered'"
                 @click="handleUpdateStatus(order.id, 'shipped')"
                 class="btn-action ship"
-              >发货</button>
-              <button
-                v-if="order.status === 'pending_paid'"
-                @click="handleUpdateStatus(order.id, 'cancelled')"
-                class="btn-action cancel"
-              >取消</button>
+              >
+                发货
+              </button>
             </td>
           </tr>
         </tbody>
       </table>
+    </div>
+  </div>
+
+  <!-- Receipt Modal -->
+  <div v-if="showReceiptModal" class="modal-overlay" @click.self="showReceiptModal = false">
+    <div class="receipt-modal">
+      <div class="modal-header">
+        <h3>转账凭证</h3>
+        <button @click="showReceiptModal = false" class="modal-close">✕</button>
+      </div>
+      <div class="modal-body">
+        <img :src="receiptImageUrl" alt="转账凭证" class="receipt-image" />
+      </div>
     </div>
   </div>
 </template>
@@ -175,7 +245,63 @@ tr:last-child td { border-bottom: none; }
 .status-badge.shipped { background: #8b5cf633; color: #8b5cf6; }
 .status-badge.delivered { background: #10b98133; color: #10b981; }
 .status-badge.cancelled, .status-badge.refunded { background: #ef444433; color: #ef4444; }
+.status-badge.confirmed { background: #10b98133; color: #10b981; }
 .btn-action { padding: var(--space-1) var(--space-3); border-radius: var(--radius-md); font-size: var(--text-xs); border: none; cursor: pointer; }
 .btn-action.ship { background: #10b981; color: white; }
 .btn-action.cancel { background: #ef444433; color: #ef4444; }
+.btn-action.confirm { background: #10b981; color: white; margin-top: var(--space-2); }
+.btn-warning { background: #ef444433; color: #ef4444; padding: var(--space-1) var(--space-3); border-radius: var(--radius-md); font-size: var(--text-xs); border: none; cursor: pointer; }
+.warning-text { font-size: var(--text-xs); color: var(--text-muted); margin-top: var(--space-2); }
+.receipt-thumbnail { width: 40px; height: 40px; border-radius: var(--radius-md); object-fit: cover; cursor: pointer; border: 2px solid var(--border); display: block; margin-bottom: var(--space-2); }
+.receipt-thumbnail:hover { border-color: var(--primary); }
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.receipt-modal {
+  background: var(--bg-card);
+  border-radius: var(--radius-xl);
+  max-width: 600px;
+  width: 90%;
+  max-height: 90vh;
+  overflow: hidden;
+}
+
+.receipt-modal .modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-4);
+  border-bottom: 1px solid var(--border);
+}
+
+.receipt-modal .modal-header h3 {
+  font-size: var(--text-lg);
+  font-weight: 600;
+}
+
+.modal-close {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-md);
+  border: none;
+  background: var(--bg-elevated);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.receipt-image {
+  width: 100%;
+  height: auto;
+  display: block;
+}
 </style>

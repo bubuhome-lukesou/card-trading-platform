@@ -1,9 +1,10 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, forwardRef, Inject } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Order } from '../../entities/order.entity';
 import { Product } from '../../entities/product.entity';
 import { OrderStatus } from '../../entities/order.entity';
+import { ProductsService } from '../products/products.service';
 
 @Injectable()
 export class OrdersService {
@@ -12,6 +13,8 @@ export class OrdersService {
     private orderRepo: Repository<Order>,
     @InjectRepository(Product)
     private productRepo: Repository<Product>,
+    @Inject(forwardRef(() => ProductsService))
+    private productsService: ProductsService,
   ) {}
 
   async findByBuyer(buyerId: string, page = 1, limit = 20) {
@@ -59,6 +62,27 @@ export class OrdersService {
     if (data.platformFee === undefined) data.platformFee = 0;
     if (!data.status) data.status = OrderStatus.PENDING;
     const order = this.orderRepo.create(data);
+    const savedOrder = await this.orderRepo.save(order);
+
+    // Decrease product quantity after order is created
+    if (data.productId) {
+      await this.productsService.decreaseQuantity(data.productId, 1);
+    }
+
+    return savedOrder;
+  }
+
+  async confirmPayment(orderId: string): Promise<Order> {
+    const order = await this.findOne(orderId);
+    order.status = OrderStatus.CONFIRMED;
+    order.paymentTime = new Date();
+    return this.orderRepo.save(order);
+  }
+
+  async updateTransferReceipt(orderId: string, receiptUrl: string): Promise<Order> {
+    const order = await this.findOne(orderId);
+    order.transferReceipt = receiptUrl;
+    order.transferTime = new Date();
     return this.orderRepo.save(order);
   }
 

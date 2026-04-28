@@ -121,6 +121,9 @@ export class Product {
   @Column({ type: 'int', default: 0 })
   stock: number
 
+  @Column({ type: 'int', nullable: true, default: 1 })
+  quantity: number
+
   @OneToMany(() => Auction, auction => auction.product)
   auctions: Auction[]
 

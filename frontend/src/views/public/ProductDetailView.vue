@@ -3,7 +3,7 @@ import { ref, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import { productApi } from '@/api/products'
-import { ordersApi } from '@/api/orders'
+import { cartApi } from '@/api/cart'
 import { useAuthStore } from '@/stores/auth'
 
 const { t } = useI18n()
@@ -34,22 +34,33 @@ const selectImage = (index: number) => {
   currentImageIndex.value = index
 }
 
+const isOutOfStock = () => {
+  return product.value && (product.value.quantity === 0 || product.value.quantity === undefined)
+}
+
 const handleBuyNow = async () => {
   if (!authStore.isAuthenticated) {
     router.push('/login')
     return
   }
   if (!product.value) return
+  if (isOutOfStock()) {
+    message.value = '商品已售罄'
+    messageType.value = 'error'
+    return
+  }
 
   processing.value = true
   message.value = ''
   try {
+    // For direct purchase, create order directly
     const orderData = {
       productId: product.value.id,
       type: 'direct_purchase' as const,
       quantity: 1,
       totalPrice: product.value.price,
     }
+    const { ordersApi } = await import('@/api/orders')
     const response = await ordersApi.createOrder(orderData)
     message.value = t('product.buySuccess') || '購買成功！即將跳轉...'
     messageType.value = 'success'
@@ -70,22 +81,20 @@ const handleAddToCart = async () => {
     return
   }
   if (!product.value) return
+  if (isOutOfStock()) {
+    message.value = '商品已售罄'
+    messageType.value = 'error'
+    return
+  }
 
   processing.value = true
   message.value = ''
   try {
-    // 直接創建 direct_purchase 訂單作爲購物車行爲
-    const orderData = {
-      productId: product.value.id,
-      type: 'direct_purchase' as const,
-      quantity: 1,
-      totalPrice: product.value.price,
-    }
-    await ordersApi.createOrder(orderData)
+    await cartApi.addItem(product.value.id, 1)
     message.value = t('product.addToCartSuccess') || '已加入購物車！'
     messageType.value = 'success'
     setTimeout(() => {
-      router.push('/user/orders')
+      router.push('/user/cart')
     }, 1500)
   } catch (error: any) {
     message.value = error?.response?.data?.message || (t('common.error') || '操作失敗')
@@ -137,6 +146,10 @@ const handleAddToCart = async () => {
           <div class="price-section">
             <span class="price-label">{{ t('product.details.price') }}</span>
             <span class="price">HK$ {{ Number(product.price).toLocaleString() }}</span>
+            <div v-if="product.quantity !== undefined" class="stock-info">
+              <span v-if="product.quantity === 0" class="out-of-stock-badge">Out of Stock</span>
+              <span v-else class="stock-count">库存: {{ product.quantity }}</span>
+            </div>
           </div>
 
           <!-- Message -->
@@ -147,14 +160,14 @@ const handleAddToCart = async () => {
           <div class="action-buttons">
             <button
               class="btn btn-primary btn-lg"
-              :disabled="processing"
+              :disabled="processing || isOutOfStock()"
               @click="handleBuyNow"
             >
               {{ processing ? (t('common.loading') || '處理中...') : (t('product.card.buyNow') || '立即購買') }}
             </button>
             <button
               class="btn btn-outline"
-              :disabled="processing"
+              :disabled="processing || isOutOfStock()"
               @click="handleAddToCart"
             >
               {{ t('product.card.addToCart') || '加入購物車' }}
