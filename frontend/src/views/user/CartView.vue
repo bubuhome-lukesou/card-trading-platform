@@ -81,18 +81,12 @@ const updateQuantity = async (item: CartItem, newQuantity: number) => {
 
   processing.value = true
   try {
-    // Remove and re-add with new quantity
-    await cartApi.removeItem(item.id)
-    await cartApi.addItem(item.product.id, newQuantity)
+    await cartApi.updateItem(item.id, newQuantity)
     await loadCart()
   } catch (error: any) {
     console.error('Failed to update quantity:', error)
     const msg = error?.response?.data?.message || error?.message || ''
-    if (msg.includes('available') || msg.includes('Out of stock')) {
-      alert(`库存不足！当前最多只能购买 ${maxStock} 件`)
-    } else {
-      alert('更新数量失败，请重试')
-    }
+    alert(msg || '修改数量失败')
   } finally {
     processing.value = false
   }
@@ -244,7 +238,7 @@ onMounted(() => {
             <button 
               class="qty-btn" 
               @click="updateQuantity(item, item.quantity + 1)"
-              :disabled="processing || isOutOfStock(item)"
+              :disabled="processing || isOutOfStock(item) || item.quantity >= (item.product?.quantity ?? 0)"
             >
               <Plus :size="14" />
             </button>

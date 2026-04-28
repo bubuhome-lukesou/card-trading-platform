@@ -17,6 +17,7 @@ const currentImageIndex = ref(0)
 const processing = ref(false)
 const message = ref('')
 const messageType = ref<'success' | 'error'>('success')
+const selectedQuantity = ref(1)
 
 onMounted(async () => {
   try {
@@ -38,6 +39,22 @@ const isOutOfStock = () => {
   return product.value && (product.value.quantity === 0 || product.value.quantity === undefined)
 }
 
+const getMaxQuantity = () => {
+  return product.value?.quantity ?? 1
+}
+
+const decreaseQuantity = () => {
+  if (selectedQuantity.value > 1) {
+    selectedQuantity.value--
+  }
+}
+
+const increaseQuantity = () => {
+  if (selectedQuantity.value < getMaxQuantity()) {
+    selectedQuantity.value++
+  }
+}
+
 const handleBuyNow = async () => {
   if (!authStore.isAuthenticated) {
     router.push('/login')
@@ -49,6 +66,11 @@ const handleBuyNow = async () => {
     messageType.value = 'error'
     return
   }
+  if (selectedQuantity.value > getMaxQuantity()) {
+    message.value = `库存不足！最多只能购买 ${getMaxQuantity()} 件`
+    messageType.value = 'error'
+    return
+  }
 
   processing.value = true
   message.value = ''
@@ -57,8 +79,8 @@ const handleBuyNow = async () => {
     const orderData = {
       productId: product.value.id,
       type: 'direct_purchase' as const,
-      quantity: 1,
-      totalPrice: product.value.price,
+      quantity: selectedQuantity.value,
+      totalPrice: product.value.price * selectedQuantity.value,
     }
     const { ordersApi } = await import('@/api/orders')
     const response = await ordersApi.createOrder(orderData)
@@ -90,7 +112,13 @@ const handleAddToCart = async () => {
   processing.value = true
   message.value = ''
   try {
-    await cartApi.addItem(product.value.id, 1)
+    if (selectedQuantity.value > getMaxQuantity()) {
+      message.value = `库存不足！最多只能购买 ${getMaxQuantity()} 件`
+      messageType.value = 'error'
+      processing.value = false
+      return
+    }
+    await cartApi.addItem(product.value.id, selectedQuantity.value)
     message.value = t('product.addToCartSuccess') || '已加入購物車！'
     messageType.value = 'success'
     setTimeout(() => {
@@ -149,6 +177,16 @@ const handleAddToCart = async () => {
             <div v-if="product.quantity !== undefined" class="stock-info">
               <span v-if="product.quantity === 0" class="out-of-stock-badge">Out of Stock</span>
               <span v-else class="stock-count">库存: {{ product.quantity }}</span>
+            </div>
+          </div>
+
+          <!-- Quantity Selector -->
+          <div v-if="product.quantity > 0" class="quantity-selector">
+            <span class="qty-label">购买数量:</span>
+            <div class="qty-controls">
+              <button class="qty-btn" @click="decreaseQuantity" :disabled="selectedQuantity <= 1">−</button>
+              <span class="qty-value">{{ selectedQuantity }}</span>
+              <button class="qty-btn" @click="increaseQuantity" :disabled="selectedQuantity >= getMaxQuantity()">+</button>
             </div>
           </div>
 

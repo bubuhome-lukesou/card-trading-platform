@@ -74,6 +74,31 @@ export class CartService {
     await this.cartRepo.remove(item);
   }
 
+  async updateItem(id: string, userId: string, quantity: number): Promise<CartItem> {
+    if (quantity < 1) {
+      throw new NotFoundException('Quantity must be at least 1');
+    }
+
+    const item = await this.cartRepo.findOne({
+      where: { id },
+      relations: ['user', 'product'],
+    });
+    if (!item) {
+      throw new NotFoundException('Cart item not found');
+    }
+    if (item.user.id !== userId) {
+      throw new NotFoundException('Cart item not found');
+    }
+
+    const currentQty = item.product.quantity ?? 0;
+    if (quantity > currentQty) {
+      throw new NotFoundException(`Only ${currentQty} items available`);
+    }
+
+    item.quantity = quantity;
+    return this.cartRepo.save(item);
+  }
+
   async clearCart(userId: string): Promise<void> {
     const items = await this.cartRepo.find({
       where: { user: { id: userId } as any },
