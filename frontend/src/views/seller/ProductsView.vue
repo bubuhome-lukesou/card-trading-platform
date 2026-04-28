@@ -181,6 +181,8 @@ const openEditModal = (product: any) => {
   pendingImageFiles.value = [] // No new files yet
   // Load existing tags
   selectedTags.value = (product.tags || []).map((t: any) => typeof t === 'number' ? t : t.id)
+  // Force Vue reactivity update for selected tags
+  selectedTags.value = [...selectedTags.value]
   formData.value = {
     titleZh: product.titleZh,
     titleEn: product.titleEn,
