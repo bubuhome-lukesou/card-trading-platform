@@ -68,9 +68,13 @@ const price = computed(() => {
           v-for="tag in product.tags.slice(0, 3)"
           :key="tag.id"
           class="tag-badge"
-          :style="tag.color ? { backgroundColor: tag.color + '20', color: tag.color, borderColor: tag.color } : {}"
+          :style="tag.color ? { backgroundColor: tag.color + '18', color: tag.color, borderColor: tag.color + '40' } : {}"
         >
+          <span class="tag-dot" :style="{ backgroundColor: tag.color || '#6366f1' }"></span>
           {{ tag.name }}
+        </span>
+        <span v-if="product.tags.length > 3" class="tag-badge tag-more">
+          +{{ product.tags.length - 3 }}
         </span>
       </div>
 
@@ -233,14 +237,35 @@ const price = computed(() => {
 }
 
 .tag-badge {
-  display: inline-block;
-  padding: 2px 6px;
-  border-radius: var(--radius-sm);
-  font-size: 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  font-size: 11px;
   font-weight: 500;
   background: var(--bg-elevated);
   border: 1px solid var(--border);
   color: var(--text-muted);
+  transition: all 0.2s;
+
+  &:hover {
+    transform: scale(1.05);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  }
+}
+
+.tag-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.tag-more {
+  background: var(--bg-elevated);
+  color: var(--text-muted);
+  font-weight: 600;
 }
 
 .card-price {

@@ -171,6 +171,20 @@ const handleAddToCart = async () => {
             <span class="meta-item">{{ t(`conditions.${product.condition}`, product.condition) }}</span>
           </div>
 
+          <!-- Tags -->
+          <div v-if="product.tags?.length" class="product-tags">
+            <span
+              v-for="tag in product.tags"
+              :key="tag.id"
+              class="product-tag"
+              :style="tag.color ? { backgroundColor: tag.color + '18', color: tag.color, borderColor: tag.color + '50' } : {}"
+              @click="router.push({ path: '/marketplace', query: { search: tag.name } })"
+            >
+              <span class="tag-dot" :style="{ backgroundColor: tag.color || '#6366f1' }"></span>
+              {{ tag.name }}
+            </span>
+          </div>
+
           <div class="price-section">
             <span class="price-label">{{ t('product.details.price') }}</span>
             <span class="price">HK$ {{ Number(product.price).toLocaleString() }}</span>
@@ -290,11 +304,45 @@ const handleAddToCart = async () => {
     gap: var(--space-2);
     color: var(--text-secondary);
     font-size: var(--text-sm);
-    margin-bottom: var(--space-6);
+    margin-bottom: var(--space-4);
 
     .meta-sep {
       color: var(--text-muted);
     }
+  }
+
+  .product-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    margin-bottom: var(--space-6);
+  }
+
+  .product-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    border-radius: var(--radius-full);
+    font-size: var(--text-sm);
+    font-weight: 600;
+    border: 1.5px solid;
+    background: var(--bg-elevated);
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.2s;
+
+    &:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+  }
+
+  .tag-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
   }
 
   .price-section {

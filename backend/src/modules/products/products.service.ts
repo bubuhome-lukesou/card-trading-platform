@@ -43,7 +43,7 @@ export class ProductsService {
     }
     if (filters.search) {
       queryBuilder.andWhere(
-        '(product.titleEn LIKE :search OR product.titleZh LIKE :search OR product.brand LIKE :search)',
+        '(product.titleEn LIKE :search OR product.titleZh LIKE :search OR product.brand LIKE :search OR EXISTS (SELECT 1 FROM tags t WHERE t.id IN (SELECT pt.tagId FROM product_tags pt WHERE pt.productId = product.id) AND t.name LIKE :search))',
         { search: `%${filters.search}%` }
       )
     }
