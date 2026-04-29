@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
@@ -160,7 +160,7 @@ const openCreateModal = () => {
   showModal.value = true
 }
 
-const openEditModal = (product: any) => {
+const openEditModal = async (product: any) => {
   editingProduct.value = product
   // Parse images (handle both array and JSON string)
   let existingImages: string[] = []
@@ -179,10 +179,18 @@ const openEditModal = (product: any) => {
   existingImageUrls.value = [...existingImages]
   imagePreviews.value = [...existingImages]
   pendingImageFiles.value = [] // No new files yet
-  // Load existing tags
-  selectedTags.value = (product.tags || []).map((t: any) => typeof t === 'number' ? t : t.id)
-  // Force Vue reactivity update for selected tags
-  selectedTags.value = [...selectedTags.value]
+  // Load existing tags - use nextTick to ensure DOM is ready after modal opens
+  const ids = (product.tags || []).map((t: any) => typeof t === 'number' ? t : t.id)
+  _tagSelectedSnapshot = [...ids]
+  selectedTags.value = [...ids]
+  // Ensure availableTags is loaded before modal opens
+  await loadTags()
+  nextTick().then(() => {
+    // Verify reactivity - if still not showing selected, force update
+    if (selectedTags.value.length !== ids.length) {
+      selectedTags.value = [...ids]
+    }
+  })
   formData.value = {
     titleZh: product.titleZh,
     titleEn: product.titleEn,
@@ -364,13 +372,19 @@ const removeImage = (index: number) => {
 }
 
 // Tag functions
+let _tagSelectedSnapshot: number[] = []
+
+const isTagSelected = (tagId: number) => _tagSelectedSnapshot.includes(tagId)
+
 const toggleTag = (tagId: number) => {
-  const index = selectedTags.value.indexOf(tagId)
+  const index = _tagSelectedSnapshot.indexOf(tagId)
   if (index === -1) {
-    selectedTags.value.push(tagId)
+    _tagSelectedSnapshot.push(tagId)
   } else {
-    selectedTags.value.splice(index, 1)
+    _tagSelectedSnapshot.splice(index, 1)
   }
+  // Sync back to reactive ref for computed usage
+  selectedTags.value = [..._tagSelectedSnapshot]
 }
 
 const createNewTag = async () => {
@@ -382,7 +396,8 @@ const createNewTag = async () => {
       color: newTagColor.value,
     })
     availableTags.value.push(response.data)
-    selectedTags.value.push(response.data.id)
+    _tagSelectedSnapshot.push(response.data.id)
+    selectedTags.value = [..._tagSelectedSnapshot]
     newTagName.value = ''
     showTagCreate.value = false
   } catch (error) {
@@ -691,13 +706,16 @@ onUnmounted(() => {
                 </span>
               </div>
               <!-- Tag search dropdown -->
+              <!-- Tag search dropdown - positioned below the input -->
               <div class="tag-search-wrapper">
                 <input
                   v-model="tagSearch"
                   type="text"
                   class="tag-search-input"
                   placeholder="搜索标签..."
+                  @focus="tagSearch = tagSearch"
                 />
+                <!-- Show create form when creating new tag -->
                 <div v-if="showTagCreate" class="tag-create-form">
                   <input
                     v-model="newTagName"
@@ -720,18 +738,20 @@ onUnmounted(() => {
                   </button>
                   <button type="button" @click="showTagCreate = false; newTagName = ''" class="tag-create-cancel">×</button>
                 </div>
-                <div v-if="tagSearch && !filteredTags.find(t => t.name.toLowerCase().includes(tagSearch.toLowerCase()))" class="tag-create-hint">
+                <!-- Show hint to create new tag when no match -->
+                <div v-else-if="tagSearch && !filteredTags.find(t => t.name.toLowerCase().includes(tagSearch.toLowerCase()))" class="tag-create-hint">
                   <button type="button" @click="newTagName = tagSearch; showTagCreate = true" class="tag-create-link">
                     + 创建新标签「{{ tagSearch }}」
                   </button>
                 </div>
-                <div v-else class="tag-list-dropdown">
+                <!-- Show dropdown when has search or tags available -->
+                <div v-else-if="tagSearch || availableTags.length > 0" class="tag-list-dropdown">
                   <button
                     v-for="tag in filteredTags"
                     :key="tag.id"
                     type="button"
                     class="tag-option"
-                    :class="{ selected: selectedTags.includes(tag.id) }"
+                    :class="{ selected: isTagSelected(tag.id) }"
                     @click="toggleTag(tag.id)"
                   >
                     <span
@@ -739,7 +759,7 @@ onUnmounted(() => {
                       :style="{ backgroundColor: tag.color || '#6366f1' }"
                     ></span>
                     {{ tag.name }}
-                    <span v-if="selectedTags.includes(tag.id)" class="tag-check">✓</span>
+                    <span v-if="isTagSelected(tag.id)" class="tag-check">✓</span>
                   </button>
                 </div>
               </div>
@@ -1370,6 +1390,7 @@ onUnmounted(() => {
 .tag-search-wrapper {
   position: relative;
   margin-top: var(--space-2);
+  margin-bottom: var(--space-6);
 }
 
 .tag-search-input {

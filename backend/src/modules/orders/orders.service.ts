@@ -52,10 +52,22 @@ export class OrdersService {
     if (!data.orderNumber) {
       data.orderNumber = 'ORD-' + Date.now().toString(36).toUpperCase() + '-' + Math.random().toString(36).substring(2,6).toUpperCase();
     }
+    
+    // If productId is provided but totalPrice is not set, calculate from product
+    if (!data.totalPrice && data.totalPrice !== 0 && data.productId) {
+      const product = await this.productRepo.findOne({ where: { id: data.productId } });
+      if (product) {
+        data.totalPrice = product.price * (data.quantity || 1);
+        data.sellerId = product.sellerId;
+      }
+    }
+    
+    // Set sellerId from product if not provided
     if (!data.sellerId && data.productId) {
       const product = await this.productRepo.findOne({ where: { id: data.productId } });
       if (product) data.sellerId = product.sellerId;
     }
+    
     // Set required MySQL fields that TypeORM treats as optional
     if (!data.totalPrice && data.totalPrice !== 0) data.totalPrice = 0;
     if (data.shippingCost === undefined) data.shippingCost = 0;
