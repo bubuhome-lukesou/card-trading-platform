@@ -228,12 +228,14 @@ const handleSubmit = async () => {
 
     // Prepare product data - merge existing URLs with newly uploaded URLs
     // 预设仅销售模式
+    console.log('[DEBUG] selectedTags:', selectedTags.value, 'formData.tags:', formData.value.tags)
     const productData = {
       ...formData.value,
       listingType: 'sale_only',
       images: [...existingImageUrls.value, ...uploadedUrls],
       tags: selectedTags.value,
     }
+    console.log('[DEBUG] productData.tags:', productData.tags)
 
     // Create or update product
     if (editingProduct.value) {
