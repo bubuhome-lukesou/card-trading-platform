@@ -200,6 +200,7 @@ export class ProductsService {
   async findBySeller(sellerId: string): Promise<Product[]> {
     const products = await this.productRepo.find({
       where: { sellerId },
+      relations: ['tags'],
       order: { createdAt: 'DESC' }
     })
 
