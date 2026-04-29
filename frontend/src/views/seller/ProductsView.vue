@@ -746,8 +746,8 @@ onUnmounted(() => {
                     + 创建新标签「{{ tagSearch }}」
                   </button>
                 </div>
-                <!-- Show dropdown when has search or tags available -->
-                <div v-else-if="tagSearch || availableTags.length > 0" class="tag-list-dropdown">
+                <!-- Show dropdown only when user types something -->
+                <div v-if="tagSearch && (filteredTags.length > 0 || tagSearch)" class="tag-list-dropdown">
                   <button
                     v-for="tag in filteredTags"
                     :key="tag.id"
