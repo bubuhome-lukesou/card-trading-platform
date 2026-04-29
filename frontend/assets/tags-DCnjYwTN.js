@@ -1,0 +1,1 @@
+import{o as e}from"./index-D8V94s8y.js";var t={getTags(){return e.get(`/tags`)},getTag(t){return e.get(`/tags/${t}`)},createTag(t){return e.post(`/tags`,t)},updateTag(t,n){return e.put(`/tags/${t}`,n)},deleteTag(t){return e.delete(`/tags/${t}`)}};export{t};

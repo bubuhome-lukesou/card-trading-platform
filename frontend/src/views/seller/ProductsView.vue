@@ -36,6 +36,10 @@ const newTagName = ref('')
 const newTagColor = ref('#6366f1')
 const creatingTag = ref(false)
 
+const closeTagDropdown = () => {
+  setTimeout(() => { showTagDropdown.value = false }, 200)
+}
+
 const filteredTags = computed(() => {
   if (!tagSearch.value.trim()) return availableTags.value
   const q = tagSearch.value.toLowerCase()
@@ -717,7 +721,7 @@ onUnmounted(() => {
                   class="tag-search-input"
                   placeholder="搜索标签..."
                   @focus="showTagDropdown = true"
-                  @blur="setTimeout(() => showTagDropdown = false, 200)"
+                  @blur="closeTagDropdown"
                 />
                 <!-- Show create form when creating new tag -->
                 <div v-if="showTagCreate" class="tag-create-form">
@@ -748,8 +752,8 @@ onUnmounted(() => {
                     + 创建新标签「{{ tagSearch }}」
                   </button>
                 </div>
-                <!-- Show dropdown only when user clicks and has content -->
-                <div v-if="showTagDropdown && tagSearch" class="tag-list-dropdown">
+                <!-- Show dropdown only when user types in search box -->
+                <div v-if="tagSearch.trim() && filteredTags.length > 0" class="tag-list-dropdown">
                   <button
                     v-for="tag in filteredTags"
                     :key="tag.id"
