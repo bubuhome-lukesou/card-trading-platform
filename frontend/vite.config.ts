@@ -10,6 +10,13 @@ export default defineConfig({
       '@': resolve(__dirname, 'src')
     }
   },
+  css: {
+    preprocessorOptions: {
+      scss: {
+        inject: true
+      }
+    }
+  },
   server: {
     port: 3000,
     proxy: {
