@@ -261,17 +261,25 @@ const userMenuItems = computed(() => {
 .header {
   position: sticky;
   top: 0;
+  width: 100%;
+  overflow: hidden;
   background: var(--bg-card);
   border-bottom: 1px solid var(--border);
   z-index: 100;
 
   &-content {
+    width: 100%;
     max-width: 1200px;
     margin: 0 auto;
     padding: var(--space-3) var(--space-6);
     display: flex;
     align-items: center;
     gap: var(--space-6);
+
+    @media (max-width: 768px) {
+      padding: var(--space-2) var(--space-4);
+      gap: var(--space-3);
+    }
   }
 }
 
@@ -295,6 +303,15 @@ const userMenuItems = computed(() => {
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
+  }
+
+  @media (max-width: 768px) {
+    .logo-icon {
+      font-size: 22px;
+    }
+    .logo-text {
+      font-size: var(--text-lg);
+    }
   }
 }
 
@@ -347,6 +364,10 @@ const userMenuItems = computed(() => {
       height: 18px;
     }
   }
+
+  @media (max-width: 640px) {
+    display: none;
+  }
 }
 
 // Header Actions
@@ -378,12 +399,24 @@ const userMenuItems = computed(() => {
     width: 22px;
     height: 22px;
   }
+
+  @media (max-width: 768px) {
+    padding: var(--space-1);
+    .icon {
+      width: 20px;
+      height: 20px;
+    }
+  }
 }
 
 .lang-toggle {
   padding: var(--space-1) var(--space-3);
   font-size: var(--text-sm);
   font-weight: 500;
+
+  @media (max-width: 768px) {
+    display: none;
+  }
 }
 
 // User Menu
@@ -703,6 +736,11 @@ const userMenuItems = computed(() => {
 
   &-sm {
     padding: var(--space-1) var(--space-3);
+    font-size: var(--text-xs);
+  }
+
+  @media (max-width: 768px) {
+    padding: var(--space-1) var(--space-2);
     font-size: var(--text-xs);
   }
 }
