@@ -264,12 +264,12 @@ td { font-size: var(--text-sm); color: var(--text-primary); }
 tr:last-child td { border-bottom: none; }
 .order-number { font-family: var(--font-num); font-size: var(--text-xs); color: var(--text-muted); }
 .product-cell { display: flex; align-items: center; gap: var(--space-3); }
-.product-link { display: flex; align-items: center; gap: var(--space-3); text-decoration: none; color: inherit; }
+.product-link { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-1); text-decoration: none; color: inherit; }
 .product-link:hover .product-name { color: var(--primary); text-decoration: underline; }
-.product-image { width: 48px; height: 48px; border-radius: var(--radius-md); overflow: hidden; background: var(--bg-elevated); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.product-image { width: 56px; height: 56px; border-radius: var(--radius-md); overflow: hidden; background: var(--bg-elevated); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
 .product-image img { width: 100%; height: 100%; object-fit: cover; }
-.placeholder-emoji { font-size: 24px; }
-.product-name { max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--text-sm); transition: color 0.2s; }
+.placeholder-emoji { font-size: 28px; }
+.product-name { max-width: 80px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--text-xs); transition: color 0.2s; }
 .quantity { font-family: var(--font-num); font-size: var(--text-sm); color: var(--text-secondary); }
 .unit-price { font-family: var(--font-num); font-size: var(--text-sm); color: var(--text-secondary); }
 .buyer-email { font-size: var(--text-xs); color: var(--text-muted); }
