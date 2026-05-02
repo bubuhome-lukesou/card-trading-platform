@@ -33,6 +33,9 @@ const filterStatus = ref('all')
 const processingId = ref<string | null>(null)
 const showReceiptModal = ref(false)
 const receiptImageUrl = ref('')
+const showImageModal = ref(false)
+const modalImageUrl = ref('')
+const modalImageTitle = ref('')
 
 const filteredOrders = computed(() => {
   if (filterStatus.value === 'all') return orders.value
@@ -109,6 +112,13 @@ const viewReceipt = (url: string) => {
   showReceiptModal.value = true
 }
 
+const openImageModal = (url: string | undefined, title: string) => {
+  if (!url) return
+  modalImageUrl.value = url
+  modalImageTitle.value = title
+  showImageModal.value = true
+}
+
 const formatPrice = (price: number) => {
   return new Intl.NumberFormat('zh-HK', { style: 'currency', currency: 'HKD', minimumFractionDigits: 0 }).format(price)
 }
@@ -165,13 +175,13 @@ onMounted(() => loadOrders())
           <tr v-for="order in filteredOrders" :key="order.id">
             <td class="order-number">{{ order.orderNumber }}</td>
             <td class="product-cell">
-              <router-link :to="`/product/${order.productId}`" class="product-link">
+              <div class="product-link" @click="openImageModal(order.productImage, order.productTitle)">
                 <div class="product-image">
                   <img v-if="order.productImage" :src="order.productImage" :alt="order.productTitle" />
                   <span v-else class="placeholder-emoji">🃏</span>
                 </div>
                 <span class="product-name">{{ order.productTitle }}</span>
-              </router-link>
+              </div>
             </td>
             <td class="quantity">x{{ order.quantity }}</td>
             <td class="unit-price">{{ formatPrice(order.unitPrice) }}</td>
@@ -243,6 +253,19 @@ onMounted(() => loadOrders())
       </div>
     </div>
   </div>
+
+  <!-- Product Image Modal -->
+  <div v-if="showImageModal" class="modal-overlay" @click.self="showImageModal = false">
+    <div class="image-modal">
+      <div class="modal-header">
+        <h3>{{ modalImageTitle }}</h3>
+        <button @click="showImageModal = false" class="modal-close">✕</button>
+      </div>
+      <div class="modal-body">
+        <img :src="modalImageUrl" :alt="modalImageTitle" class="full-image" />
+      </div>
+    </div>
+  </div>
 </template>
 
 <style scoped>
@@ -264,7 +287,7 @@ td { font-size: var(--text-sm); color: var(--text-primary); }
 tr:last-child td { border-bottom: none; }
 .order-number { font-family: var(--font-num); font-size: var(--text-xs); color: var(--text-muted); }
 .product-cell { display: flex; align-items: center; gap: var(--space-3); }
-.product-link { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-1); text-decoration: none; color: inherit; }
+.product-link { display: flex; flex-direction: column; align-items: center; gap: var(--space-1); text-decoration: none; color: inherit; cursor: pointer; }
 .product-link:hover .product-name { color: var(--primary); text-decoration: underline; }
 .product-image { width: 56px; height: 56px; border-radius: var(--radius-md); overflow: hidden; background: var(--bg-elevated); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
 .product-image img { width: 100%; height: 100%; object-fit: cover; }
@@ -339,5 +362,40 @@ tr:last-child td { border-bottom: none; }
   width: 100%;
   height: auto;
   display: block;
+}
+
+.image-modal {
+  background: var(--bg-card);
+  border-radius: var(--radius-xl);
+  max-width: 800px;
+  width: 90%;
+  max-height: 90vh;
+  overflow: hidden;
+}
+
+.image-modal .modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-4);
+  border-bottom: 1px solid var(--border);
+}
+
+.image-modal .modal-header h3 {
+  font-size: var(--text-lg);
+  font-weight: 600;
+}
+
+.image-modal .modal-body {
+  padding: var(--space-4);
+  overflow-y: auto;
+  max-height: calc(90vh - 60px);
+}
+
+.full-image {
+  width: 100%;
+  height: auto;
+  display: block;
+  border-radius: var(--radius-md);
 }
 </style>
