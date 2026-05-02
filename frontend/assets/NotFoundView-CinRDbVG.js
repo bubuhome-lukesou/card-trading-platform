@@ -1,0 +1,1 @@
+import{G as e,ft as t,h as n,s as r,u as i,w as a}from"./runtime-core.esm-bundler-8Rk7oXP6.js";import{c as o}from"./index-C0jQnm9F.js";var s={class:`page`},c={class:`container`},l=n({__name:`NotFoundView`,setup(n){let{t:l}=o();return(n,o)=>(a(),i(`div`,s,[r(`div`,c,[r(`h1`,null,t(e(l)(`common.noResults`)),1)])]))}});export{l as default};

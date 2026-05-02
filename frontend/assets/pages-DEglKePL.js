@@ -1,0 +1,1 @@
+import{o as e}from"./index-C0jQnm9F.js";var t={getPage(t,n=`zh`){return e.get(`/pages/${t}`,{params:{locale:n}})},getAllPages(){return e.get(`/pages`)},updatePage(t){return e.patch(`/pages`,t)}};export{t};

@@ -1,0 +1,1 @@
+import{o as e}from"./index-C0jQnm9F.js";var t={getProducts(t){return e.get(`/products`,{params:t})},getProduct(t){return e.get(`/products/${t}`)},createProduct(t){return e.post(`/products`,t)},updateProduct(t,n){return e.put(`/products/${t}`,n)},deleteProduct(t){return e.delete(`/products/${t}`)},getMyProducts(t){return e.get(`/products/seller`,{params:t})}};export{t};

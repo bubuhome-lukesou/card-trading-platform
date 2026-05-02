@@ -257,12 +257,12 @@ const userMenuItems = computed(() => {
   background: var(--bg-dark);
 }
 
-// Header
+  // Header
 .header {
   position: sticky;
   top: 0;
   width: 100%;
-  overflow: hidden;
+  overflow: visible;
   background: var(--bg-card);
   border-bottom: 1px solid var(--border);
   z-index: 100;
@@ -277,8 +277,8 @@ const userMenuItems = computed(() => {
     gap: var(--space-6);
 
     @media (max-width: 768px) {
-      padding: var(--space-2) var(--space-4);
-      gap: var(--space-3);
+      padding: var(--space-2) var(--space-3);
+      gap: var(--space-2);
     }
   }
 }
@@ -376,6 +376,10 @@ const userMenuItems = computed(() => {
   align-items: center;
   gap: var(--space-3);
   flex-shrink: 0;
+
+  @media (max-width: 768px) {
+    gap: var(--space-1);
+  }
 }
 
 .action-btn {
@@ -403,8 +407,8 @@ const userMenuItems = computed(() => {
   @media (max-width: 768px) {
     padding: var(--space-1);
     .icon {
-      width: 20px;
-      height: 20px;
+      width: 18px;
+      height: 18px;
     }
   }
 }
@@ -517,15 +521,15 @@ const userMenuItems = computed(() => {
 
 .mobile-toggle {
   display: none;
-  padding: var(--space-2);
+  padding: var(--space-1);
   background: none;
   border: none;
   color: var(--text-primary);
   cursor: pointer;
 
   .icon {
-    width: 24px;
-    height: 24px;
+    width: 22px;
+    height: 22px;
   }
 
   @media (max-width: 768px) {
@@ -741,7 +745,7 @@ const userMenuItems = computed(() => {
 
   @media (max-width: 768px) {
     padding: var(--space-1) var(--space-2);
-    font-size: var(--text-xs);
+    font-size: 10px;
   }
 }
 </style>
