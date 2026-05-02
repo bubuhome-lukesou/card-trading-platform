@@ -1,5 +1,6 @@
 import { User } from './user.entity';
 import { Auction } from './auction.entity';
+import { Tag } from './tag.entity';
 export declare enum ProductCategory {
     POKEMON = "pokemon",
     YUGIOH = "yugioh",
@@ -58,7 +59,9 @@ export declare class Product {
     viewCount: number;
     favoriteCount: number;
     stock: number;
+    quantity: number;
     auctions: Auction[];
+    tags: Tag[];
     createdAt: Date;
     updatedAt: Date;
 }

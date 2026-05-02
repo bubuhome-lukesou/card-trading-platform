@@ -13,6 +13,7 @@ exports.Product = exports.ProductStatus = exports.ListingType = exports.ProductC
 const typeorm_1 = require("typeorm");
 const user_entity_1 = require("./user.entity");
 const auction_entity_1 = require("./auction.entity");
+const tag_entity_1 = require("./tag.entity");
 var ProductCategory;
 (function (ProductCategory) {
     ProductCategory["POKEMON"] = "pokemon";
@@ -143,9 +144,22 @@ __decorate([
     __metadata("design:type", Number)
 ], Product.prototype, "stock", void 0);
 __decorate([
+    (0, typeorm_1.Column)({ type: 'int', nullable: true, default: 1 }),
+    __metadata("design:type", Number)
+], Product.prototype, "quantity", void 0);
+__decorate([
     (0, typeorm_1.OneToMany)(() => auction_entity_1.Auction, auction => auction.product),
     __metadata("design:type", Array)
 ], Product.prototype, "auctions", void 0);
+__decorate([
+    (0, typeorm_1.ManyToMany)(() => tag_entity_1.Tag, tag => tag.products),
+    (0, typeorm_1.JoinTable)({
+        name: 'product_tags',
+        joinColumn: { name: 'productId', referencedColumnName: 'id' },
+        inverseJoinColumn: { name: 'tagId', referencedColumnName: 'id' }
+    }),
+    __metadata("design:type", Array)
+], Product.prototype, "tags", void 0);
 __decorate([
     (0, typeorm_1.CreateDateColumn)(),
     __metadata("design:type", Date)

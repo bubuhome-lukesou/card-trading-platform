@@ -19,10 +19,12 @@ const typeorm_2 = require("typeorm");
 const order_entity_1 = require("../../entities/order.entity");
 const product_entity_1 = require("../../entities/product.entity");
 const order_entity_2 = require("../../entities/order.entity");
+const products_service_1 = require("../products/products.service");
 let OrdersService = class OrdersService {
-    constructor(orderRepo, productRepo) {
+    constructor(orderRepo, productRepo, productsService) {
         this.orderRepo = orderRepo;
         this.productRepo = productRepo;
+        this.productsService = productsService;
     }
     async findByBuyer(buyerId, page = 1, limit = 20) {
         const [data, total] = await this.orderRepo.findAndCount({
@@ -37,7 +39,7 @@ let OrdersService = class OrdersService {
     async findBySeller(sellerId, page = 1, limit = 20) {
         const [data, total] = await this.orderRepo.findAndCount({
             where: { sellerId },
-            relations: ['product'],
+            relations: ['product', 'buyer'],
             order: { createdAt: 'DESC' },
             skip: (page - 1) * limit,
             take: limit,
@@ -57,6 +59,13 @@ let OrdersService = class OrdersService {
         if (!data.orderNumber) {
             data.orderNumber = 'ORD-' + Date.now().toString(36).toUpperCase() + '-' + Math.random().toString(36).substring(2, 6).toUpperCase();
         }
+        if (!data.totalPrice && data.totalPrice !== 0 && data.productId) {
+            const product = await this.productRepo.findOne({ where: { id: data.productId } });
+            if (product) {
+                data.totalPrice = product.price * (data.quantity || 1);
+                data.sellerId = product.sellerId;
+            }
+        }
         if (!data.sellerId && data.productId) {
             const product = await this.productRepo.findOne({ where: { id: data.productId } });
             if (product)
@@ -71,6 +80,24 @@ let OrdersService = class OrdersService {
         if (!data.status)
             data.status = order_entity_2.OrderStatus.PENDING;
         const order = this.orderRepo.create(data);
+        const savedOrder = await this.orderRepo.save(order);
+        if (data.productId) {
+            const qty = data.quantity || 1;
+            await this.productsService.decreaseQuantity(data.productId, qty);
+        }
+        return savedOrder;
+    }
+    async confirmPayment(orderId) {
+        const order = await this.findOne(orderId);
+        order.status = order_entity_2.OrderStatus.CONFIRMED;
+        order.paymentTime = new Date();
+        return this.orderRepo.save(order);
+    }
+    async updateTransferReceipt(orderId, receiptUrl) {
+        const order = await this.findOne(orderId);
+        order.transferReceipt = receiptUrl;
+        order.transferTime = new Date();
+        order.status = order_entity_2.OrderStatus.PAID;
         return this.orderRepo.save(order);
     }
     async updateStatus(id, status) {
@@ -84,7 +111,9 @@ exports.OrdersService = OrdersService = __decorate([
     (0, common_1.Injectable)(),
     __param(0, (0, typeorm_1.InjectRepository)(order_entity_1.Order)),
     __param(1, (0, typeorm_1.InjectRepository)(product_entity_1.Product)),
+    __param(2, (0, common_1.Inject)((0, common_1.forwardRef)(() => products_service_1.ProductsService))),
     __metadata("design:paramtypes", [typeorm_2.Repository,
-        typeorm_2.Repository])
+        typeorm_2.Repository,
+        products_service_1.ProductsService])
 ], OrdersService);
 //# sourceMappingURL=orders.service.js.map

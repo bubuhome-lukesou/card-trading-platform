@@ -34,9 +34,9 @@ const formatPrice = (price: number) => {
 
 const getStatusBadge = (status: string) => {
   const map: Record<string, { class: string; text: string }> = {
-    pending: { class: 'warning', text: '待审核' },
-    approved: { class: 'success', text: '已通过' },
-    rejected: { class: 'danger', text: '已拒绝' },
+    pending: { class: 'warning', text: '待審核' },
+    approved: { class: 'success', text: '已通過' },
+    rejected: { class: 'danger', text: '已拒絕' },
     active: { class: 'success', text: '正常' },
     suspended: { class: 'danger', text: '已封禁' },
   }
@@ -54,7 +54,7 @@ onMounted(() => {})
         <div class="stat-icon users">👥</div>
         <div class="stat-content">
           <div class="stat-value">{{ stats.totalUsers.toLocaleString() }}</div>
-          <div class="stat-label">总用户</div>
+          <div class="stat-label">總用戶</div>
         </div>
       </div>
       <div class="stat-card">
@@ -75,21 +75,21 @@ onMounted(() => {})
         <div class="stat-icon auctions">🔨</div>
         <div class="stat-content">
           <div class="stat-value">{{ stats.activeAuctions }}</div>
-          <div class="stat-label">进行中拍卖</div>
+          <div class="stat-label">進行中拍賣</div>
         </div>
       </div>
       <div class="stat-card highlight">
         <div class="stat-icon revenue">💰</div>
         <div class="stat-content">
           <div class="stat-value">{{ formatPrice(stats.totalRevenue) }}</div>
-          <div class="stat-label">平台总收入</div>
+          <div class="stat-label">平台總收入</div>
         </div>
       </div>
       <div class="stat-card">
         <div class="stat-icon pending">⏳</div>
         <div class="stat-content">
           <div class="stat-value">{{ stats.pendingProducts }}</div>
-          <div class="stat-label">待审核商品</div>
+          <div class="stat-label">待審核商品</div>
         </div>
       </div>
     </div>
@@ -99,21 +99,21 @@ onMounted(() => {})
       <!-- Pending Products -->
       <div class="card">
         <div class="card-header">
-          <h3>📋 待审核商品</h3>
+          <h3>📋 待審核商品</h3>
           <router-link to="/admin/products" class="see-all">查看全部</router-link>
         </div>
         <div class="card-body">
           <div v-for="product in recentProducts" :key="product.id" class="item-row">
             <div class="item-info">
               <div class="item-title">{{ product.title }}</div>
-              <div class="item-meta">卖家: {{ product.seller }}</div>
+              <div class="item-meta">賣家: {{ product.seller }}</div>
             </div>
             <div class="item-actions">
               <span class="status-badge" :class="getStatusBadge(product.status).class">
                 {{ getStatusBadge(product.status).text }}
               </span>
-              <button v-if="product.status === 'pending'" class="btn-approve">通过</button>
-              <button v-if="product.status === 'pending'" class="btn-reject">拒绝</button>
+              <button v-if="product.status === 'pending'" class="btn-approve">通過</button>
+              <button v-if="product.status === 'pending'" class="btn-reject">拒絕</button>
             </div>
           </div>
         </div>
@@ -122,7 +122,7 @@ onMounted(() => {})
       <!-- Recent Users -->
       <div class="card">
         <div class="card-header">
-          <h3>👥 最新用户</h3>
+          <h3>👥 最新用戶</h3>
           <router-link to="/admin/users" class="see-all">查看全部</router-link>
         </div>
         <div class="card-body">
@@ -146,19 +146,19 @@ onMounted(() => {})
     <div class="quick-actions">
       <router-link to="/admin/users" class="action-card">
         <span class="action-icon">👥</span>
-        <span class="action-text">用户管理</span>
+        <span class="action-text">用戶管理</span>
       </router-link>
       <router-link to="/admin/sellers" class="action-card">
         <span class="action-icon">🏪</span>
-        <span class="action-text">商家审核</span>
+        <span class="action-text">商家審核</span>
       </router-link>
       <router-link to="/admin/products" class="action-card">
         <span class="action-icon">📦</span>
-        <span class="action-text">商品审核</span>
+        <span class="action-text">商品審核</span>
       </router-link>
       <router-link to="/admin/auctions" class="action-card">
         <span class="action-icon">🔨</span>
-        <span class="action-text">拍卖监控</span>
+        <span class="action-text">拍賣監控</span>
       </router-link>
     </div>
   </div>

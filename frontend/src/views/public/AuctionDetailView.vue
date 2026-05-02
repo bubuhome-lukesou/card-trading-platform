@@ -36,15 +36,15 @@ const timeRemaining = computed(() => {
   const now = new Date()
   const diff = end.getTime() - now.getTime()
   
-  if (diff <= 0) return '已结束'
+  if (diff <= 0) return '已結束'
   
   const days = Math.floor(diff / (1000 * 60 * 60 * 24))
   const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
   const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
   const seconds = Math.floor((diff % (1000 * 60)) / 1000)
   
-  if (days > 0) return `${days}天 ${hours}小时`
-  if (hours > 0) return `${hours}小时 ${minutes}分`
+  if (days > 0) return `${days}天 ${hours}小時`
+  if (hours > 0) return `${hours}小時 ${minutes}分`
   return `${minutes}分 ${seconds}秒`
 })
 
@@ -93,7 +93,7 @@ const loadAuction = async () => {
     bids.value = response.data.bids || []
     bidAmount.value = Number(response.data.currentPrice || response.data.startingPrice) + 10
   } catch (err: any) {
-    error.value = err?.response?.data?.message || '无法加载拍卖详情'
+    error.value = err?.response?.data?.message || '無法加載拍賣詳情'
   } finally {
     loading.value = false
   }
@@ -106,7 +106,7 @@ const handlePlaceBid = async () => {
   }
   
   if (bidAmount.value < minimumBid.value) {
-    bidError.value = `最低出价金额为 ${formatPrice(minimumBid.value)}`
+    bidError.value = `最低出價金額為 ${formatPrice(minimumBid.value)}`
     return
   }
   
@@ -116,11 +116,11 @@ const handlePlaceBid = async () => {
   
   try {
     const response = await auctionApi.placeBid(auctionId.value, bidAmount.value)
-    bidSuccess.value = '出价成功！'
+    bidSuccess.value = '出價成功！'
     await loadAuction()
     setTimeout(() => bidSuccess.value = '', 3000)
   } catch (err: any) {
-    bidError.value = err?.response?.data?.message || '出价失败，请重试'
+    bidError.value = err?.response?.data?.message || '出價失敗，請重試'
   } finally {
     placingBid.value = false
   }
@@ -144,14 +144,14 @@ onUnmounted(() => {
     <!-- Loading -->
     <div v-if="loading" class="loading-container">
       <div class="spinner"></div>
-      <p>加载中...</p>
+      <p>加載中...</p>
     </div>
 
     <!-- Error -->
     <div v-else-if="error" class="error-container">
       <div class="error-icon">⚠️</div>
       <h2>{{ error }}</h2>
-      <button @click="loadAuction" class="btn-retry">重试</button>
+      <button @click="loadAuction" class="btn-retry">重試</button>
     </div>
 
     <!-- Auction Detail -->
@@ -175,7 +175,7 @@ onUnmounted(() => {
           <div class="auction-header">
             <span class="category-badge">{{ auction.product?.category || '其他' }}</span>
             <span class="status-badge" :class="auction.status">
-              {{ auction.status === 'active' ? '🔥 进行中' : auction.status === 'ended' ? '已结束' : '⏳ 待开始' }}
+              {{ auction.status === 'active' ? '🔥 進行中' : auction.status === 'ended' ? '已結束' : '⏳ 待開始' }}
             </span>
           </div>
 
@@ -183,7 +183,7 @@ onUnmounted(() => {
           <p class="product-subtitle">{{ auction.product?.titleZh }}</p>
 
           <div class="product-description">
-            {{ auction.product?.descriptionEn || auction.product?.descriptionZh || '暂无描述' }}
+            {{ auction.product?.descriptionEn || auction.product?.descriptionZh || '暫無描述' }}
           </div>
 
           <!-- Specs -->
@@ -197,7 +197,7 @@ onUnmounted(() => {
               <span class="spec-value">{{ auction.product?.condition || '-' }}</span>
             </div>
             <div class="spec-item">
-              <span class="spec-label">卖家</span>
+              <span class="spec-label">賣家</span>
               <span class="spec-value">{{ auction.seller?.nickname || '未知' }}</span>
             </div>
           </div>
@@ -209,13 +209,13 @@ onUnmounted(() => {
         <!-- Current Price -->
         <div class="price-card">
           <div class="price-info">
-            <span class="price-label">当前价格</span>
+            <span class="price-label">當前價格</span>
             <span class="current-price">{{ formatPrice(currentPrice) }}</span>
-            <span class="bid-count">{{ auction.bidCount || 0 }} 次出价</span>
+            <span class="bid-count">{{ auction.bidCount || 0 }} 次出價</span>
           </div>
 
           <div class="time-info">
-            <span class="time-label">剩余时间</span>
+            <span class="time-label">剩餘時間</span>
             <span class="time-value" :class="{ 'ending-soon': timeRemaining.includes('分') && !timeRemaining.includes('天') }">
               ⏱️ {{ timeRemaining }}
             </span>
@@ -234,7 +234,7 @@ onUnmounted(() => {
               class="bid-input"
             />
           </div>
-          <p class="bid-hint">最低出价: {{ formatPrice(minimumBid) }}</p>
+          <p class="bid-hint">最低出價: {{ formatPrice(minimumBid) }}</p>
           
           <p v-if="bidError" class="bid-error">{{ bidError }}</p>
           <p v-if="bidSuccess" class="bid-success">{{ bidSuccess }}</p>
@@ -245,28 +245,28 @@ onUnmounted(() => {
             :disabled="placingBid || !authStore.isAuthenticated"
           >
             <span v-if="placingBid" class="spinner-small"></span>
-            {{ placingBid ? '出价中...' : '立即出价' }}
+            {{ placingBid ? '出價中...' : '立即出價' }}
           </button>
           
           <p v-if="!authStore.isAuthenticated" class="login-hint">
-            请先 <router-link to="/login">登录</router-link> 才能出价
+            請先 <router-link to="/login">登入</router-link> 才能出價
           </p>
         </div>
 
         <!-- Seller View -->
         <div v-else-if="isSeller" class="seller-notice">
-          <p>这是您的拍卖商品</p>
+          <p>這是您的拍賣商品</p>
         </div>
 
         <!-- Auction Ended -->
         <div v-else-if="isEnded" class="ended-notice">
-          <p v-if="auction.winner">🏆 成交价: {{ formatPrice(auction.currentPrice) }}</p>
-          <p v-else>拍卖已结束</p>
+          <p v-if="auction.winner">🏆 成交價: {{ formatPrice(auction.currentPrice) }}</p>
+          <p v-else>拍賣已結束</p>
         </div>
 
         <!-- Bid History -->
         <div v-if="bids.length > 0" class="bid-history">
-          <h3>出价记录</h3>
+          <h3>出價記錄</h3>
           <div class="bids-list">
             <div v-for="bid in bids.slice().reverse()" :key="bid.id" class="bid-item">
               <div class="bidder-info">

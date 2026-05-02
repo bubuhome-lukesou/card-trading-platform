@@ -58,9 +58,9 @@ const loadData = async () => {
 const getBidStatusBadge = (status: string) => {
   const map: Record<string, { class: string; text: string }> = {
     outbid: { class: 'danger', text: '已出局' },
-    winning: { class: 'success', text: '领先中' },
-    won: { class: 'primary', text: '已中标' },
-    ended: { class: 'default', text: '已结束' },
+    winning: { class: 'success', text: '領先中' },
+    won: { class: 'primary', text: '已中標' },
+    ended: { class: 'default', text: '已結束' },
   }
   return map[status] || { class: 'default', text: status }
 }
@@ -74,8 +74,8 @@ onMounted(() => {
   <div class="user-dashboard">
     <!-- Welcome -->
     <div class="welcome-section">
-      <h1>欢迎回来，{{ authStore.user?.nickname || '收藏家' }}！</h1>
-      <p>发现珍稀卡牌，参与精彩竞拍</p>
+      <h1>歡迎回來，{{ authStore.user?.nickname || '收藏家' }}！</h1>
+      <p>發現珍稀卡牌，參與精彩競拍</p>
     </div>
 
     <!-- Stats -->
@@ -84,28 +84,28 @@ onMounted(() => {
         <div class="stat-icon">🎯</div>
         <div class="stat-content">
           <div class="stat-value">{{ stats.totalBids }}</div>
-          <div class="stat-label">总出价次数</div>
+          <div class="stat-label">總出價次數</div>
         </div>
       </div>
       <div class="stat-card">
         <div class="stat-icon">🔥</div>
         <div class="stat-content">
           <div class="stat-value">{{ stats.activeBids }}</div>
-          <div class="stat-label">进行中的出价</div>
+          <div class="stat-label">進行中的出價</div>
         </div>
       </div>
       <div class="stat-card">
         <div class="stat-icon">🏆</div>
         <div class="stat-content">
           <div class="stat-value">{{ stats.wonAuctions }}</div>
-          <div class="stat-label">赢得的拍卖</div>
+          <div class="stat-label">贏得的拍賣</div>
         </div>
       </div>
       <div class="stat-card">
         <div class="stat-icon">💰</div>
         <div class="stat-content">
           <div class="stat-value">{{ formatPrice(stats.totalSpent) }}</div>
-          <div class="stat-label">总消费</div>
+          <div class="stat-label">總消費</div>
         </div>
       </div>
     </div>
@@ -115,7 +115,7 @@ onMounted(() => {
       <!-- My Bids -->
       <div class="card">
         <div class="card-header">
-          <h3>🎯 我的出价</h3>
+          <h3>🎯 我的出價</h3>
           <router-link to="/user/orders" class="see-all">查看全部</router-link>
         </div>
         <div class="card-body">
@@ -123,11 +123,11 @@ onMounted(() => {
             <div class="bid-info">
               <div class="bid-title">{{ bid.auctionTitle }}</div>
               <div class="bid-meta">
-                您的出价: {{ formatPrice(bid.yourBid) }}
+                您的出價: {{ formatPrice(bid.yourBid) }}
               </div>
             </div>
             <div class="bid-status">
-              <div class="current-bid">当前: {{ formatPrice(bid.currentBid) }}</div>
+              <div class="current-bid">目前: {{ formatPrice(bid.currentBid) }}</div>
               <span class="status-badge" :class="getBidStatusBadge(bid.status).class">
                 {{ getBidStatusBadge(bid.status).text }}
               </span>
@@ -139,7 +139,7 @@ onMounted(() => {
       <!-- My Orders -->
       <div class="card">
         <div class="card-header">
-          <h3>📦 我的订单</h3>
+          <h3>📦 我的訂單</h3>
           <router-link to="/user/orders" class="see-all">查看全部</router-link>
         </div>
         <div class="card-body">
@@ -151,7 +151,7 @@ onMounted(() => {
             <div class="order-status">
               <div class="order-amount">{{ formatPrice(order.amount) }}</div>
               <span class="status-badge" :class="order.status">
-                {{ order.status === 'delivered' ? '已送达' : order.status === 'shipped' ? '已发货' : '处理中' }}
+                {{ order.status === 'delivered' ? '已送達' : order.status === 'shipped' ? '已發貨' : '處理中' }}
               </span>
             </div>
           </div>
@@ -163,11 +163,11 @@ onMounted(() => {
     <div class="quick-actions">
       <router-link to="/auctions" class="action-card">
         <span class="action-icon">🔨</span>
-        <span class="action-text">参与拍卖</span>
+        <span class="action-text">參與拍賣</span>
       </router-link>
       <router-link to="/marketplace" class="action-card">
         <span class="action-icon">🛒</span>
-        <span class="action-text">商品市场</span>
+        <span class="action-text">商品市場</span>
       </router-link>
       <router-link to="/user/favorites" class="action-card">
         <span class="action-icon">❤️</span>
@@ -175,7 +175,7 @@ onMounted(() => {
       </router-link>
       <router-link to="/user/wallet" class="action-card">
         <span class="action-icon">💳</span>
-        <span class="action-text">我的钱包</span>
+        <span class="action-text">我的錢包</span>
       </router-link>
     </div>
   </div>

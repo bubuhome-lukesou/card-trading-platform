@@ -57,8 +57,8 @@ const loadData = async () => {
   try {
     transactions.value = [
       { id: '1', type: 'deposit', amount: 20000, description: '充值', createdAt: '2026-04-20' },
-      { id: '2', type: 'payment', amount: -12800, description: '购买 Pokemon 1st Edition Base Set', createdAt: '2026-04-21' },
-      { id: '3', type: 'payment', amount: -6800, description: '购买 Yu-Gi-Oh Blue-Eyes White Dragon', createdAt: '2026-04-20' },
+      { id: '2', type: 'payment', amount: -12800, description: '購買 Pokemon 1st Edition Base Set', createdAt: '2026-04-21' },
+      { id: '3', type: 'payment', amount: -6800, description: '購買 Yu-Gi-Oh Blue-Eyes White Dragon', createdAt: '2026-04-20' },
       { id: '4', type: 'refund', amount: 500, description: '退款', createdAt: '2026-04-19' },
     ]
   } catch (error) {
@@ -70,20 +70,20 @@ const loadData = async () => {
 
 const handleWithdraw = () => {
   if (withdrawAmount.value <= 0) {
-    alert('请输入有效金额')
+    alert('請輸入有效金額')
     return
   }
   if (withdrawAmount.value > balance.value) {
-    alert('余额不足')
+    alert('餘額不足')
     return
   }
-  alert(`提现 ${formatPrice(withdrawAmount.value)} - 功能开发中`)
+  alert(`提現 ${formatPrice(withdrawAmount.value)} - 功能開發中`)
   showWithdrawModal.value = false
   withdrawAmount.value = 0
 }
 
 const handleDeposit = () => {
-  alert('充值功能开发中...')
+  alert('充值功能開發中...')
 }
 
 onMounted(() => {
@@ -93,19 +93,19 @@ onMounted(() => {
 
 <template>
   <div class="wallet-page">
-    <h1 class="page-title">我的钱包</h1>
+    <h1 class="page-title">我的錢包</h1>
 
     <!-- Balance Cards -->
     <div class="balance-grid">
       <div class="balance-card primary">
-        <div class="balance-label">总余额</div>
+        <div class="balance-label">總餘額</div>
         <div class="balance-value">{{ formatPrice(balance) }}</div>
-        <div class="balance-hint">可提现</div>
+        <div class="balance-hint">可提現</div>
       </div>
       <div class="balance-card">
-        <div class="balance-label">待确认</div>
+        <div class="balance-label">待確認</div>
         <div class="balance-value secondary">{{ formatPrice(pendingBalance) }}</div>
-        <div class="balance-hint">预计 7 天后到账</div>
+        <div class="balance-hint">預計 7 天後到賬</div>
       </div>
     </div>
 
@@ -115,20 +115,20 @@ onMounted(() => {
         💰 充值
       </button>
       <button class="btn-withdraw" @click="showWithdrawModal = true">
-        🏧 提现
+        🏧 提現
       </button>
     </div>
 
     <!-- Transaction History -->
     <div class="transactions-section">
-      <h3 class="section-title">💳 交易记录</h3>
+      <h3 class="section-title">💳 交易記錄</h3>
 
       <div v-if="loading" class="loading-state">
         <div class="spinner"></div>
       </div>
 
       <div v-else-if="transactions.length === 0" class="empty-state">
-        <p>暂无交易记录</p>
+        <p>暫無交易記錄</p>
       </div>
 
       <div v-else class="transactions-list">
@@ -151,31 +151,31 @@ onMounted(() => {
     <div v-if="showWithdrawModal" class="modal-overlay" @click.self="showWithdrawModal = false">
       <div class="modal">
         <div class="modal-header">
-          <h2>提现</h2>
+          <h2>提現</h2>
           <button @click="showWithdrawModal = false" class="modal-close">✕</button>
         </div>
         <div class="modal-body">
           <div class="balance-info">
-            当前可提现余额: <strong>{{ formatPrice(balance) }}</strong>
+            目前可提現餘額: <strong>{{ formatPrice(balance) }}</strong>
           </div>
           <div class="form-group">
-            <label>提现金额 (HK$)</label>
+            <label>提現金額 (HK$)</label>
             <input 
               v-model.number="withdrawAmount" 
               type="number" 
               :max="balance"
               min="1"
-              placeholder="请输入提现金额"
+              placeholder="請輸入提現金額"
             />
           </div>
           <div class="withdraw-info">
-            <p>⚠️ 提现将在 1-3 个工作日内到账</p>
-            <p>收款账户: **** **** **** 5678</p>
+            <p>⚠️ 提現將在 1-3 個工作日內到賬</p>
+            <p>收款賬戶: **** **** **** 5678</p>
           </div>
         </div>
         <div class="modal-footer">
           <button @click="showWithdrawModal = false" class="btn-cancel">取消</button>
-          <button @click="handleWithdraw" class="btn-submit">确认提现</button>
+          <button @click="handleWithdraw" class="btn-submit">確認提現</button>
         </div>
       </div>
     </div>

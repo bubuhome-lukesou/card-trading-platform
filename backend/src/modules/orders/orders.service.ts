@@ -31,7 +31,7 @@ export class OrdersService {
   async findBySeller(sellerId: string, page = 1, limit = 20) {
     const [data, total] = await this.orderRepo.findAndCount({
       where: { sellerId },
-      relations: ['product'],
+      relations: ['product', 'buyer'],
       order: { createdAt: 'DESC' },
       skip: (page - 1) * limit,
       take: limit,

@@ -42,7 +42,7 @@ const loadOrders = async () => {
     orders.value = (res.data.data || []).map((o: any) => ({
       id: o.id,
       orderNumber: o.orderNumber,
-      productTitle: o.product?.title || '-',
+      productTitle: o.product?.titleZh || o.product?.titleEn || '未知商品',
       buyerNickname: o.buyer?.nickname || '-',
       buyerEmail: o.buyer?.email || '-',
       amount: o.totalPrice || 0,
@@ -68,21 +68,21 @@ const handleUpdateStatus = async (id: string, newStatus: string) => {
     await ordersApi.updateStatus(id, newStatus)
     await loadOrders()
   } catch (e) {
-    alert('操作失败')
+    alert('操作失敗')
   }
 }
 
 const handleConfirmPayment = async (orderId: string) => {
-  if (!confirm('确认已收到付款？')) return
+  if (!confirm('確認已收到付款？')) return
   
   processingId.value = orderId
   try {
     await cartApi.confirmPayment(orderId)
     await loadOrders()
-    alert('确认收款成功！')
+    alert('確認收款成功！')
   } catch (e) {
     console.error('Failed to confirm payment:', e)
-    alert('操作失败，请重试')
+    alert('操作失敗，請重試')
   } finally {
     processingId.value = null
   }
@@ -105,11 +105,11 @@ const getStatusBadge = (status: string) => {
   const map: Record<string, { class: string; text: string }> = {
     pending_paid: { class: 'pending', text: '待付款' },
     paid: { class: 'paid', text: '已付款' },
-    shipped: { class: 'shipped', text: '已发货' },
+    shipped: { class: 'shipped', text: '已發貨' },
     delivered: { class: 'delivered', text: '已完成' },
     cancelled: { class: 'cancelled', text: '已取消' },
     refunded: { class: 'refunded', text: '已退款' },
-    confirmed: { class: 'confirmed', text: '已确认' },
+    confirmed: { class: 'confirmed', text: '已確認' },
   }
   return map[status] || { class: 'default', text: status }
 }
@@ -124,22 +124,22 @@ onMounted(() => loadOrders())
       <button :class="{ active: filterStatus === 'all' }" @click="filterStatus = 'all'">全部 ({{ orders.length }})</button>
       <button :class="{ active: filterStatus === 'pending_paid' }" @click="filterStatus = 'pending_paid'">待付款 ({{ orders.filter(o => o.status === 'pending_paid').length }})</button>
       <button :class="{ active: filterStatus === 'paid' }" @click="filterStatus = 'paid'">已付款 ({{ orders.filter(o => o.status === 'paid').length }})</button>
-      <button :class="{ active: filterStatus === 'shipped' }" @click="filterStatus = 'shipped'">已发货 ({{ orders.filter(o => o.status === 'shipped').length }})</button>
+      <button :class="{ active: filterStatus === 'shipped' }" @click="filterStatus = 'shipped'">已發貨 ({{ orders.filter(o => o.status === 'shipped').length }})</button>
       <button :class="{ active: filterStatus === 'delivered' }" @click="filterStatus = 'delivered'">已完成 ({{ orders.filter(o => o.status === 'delivered').length }})</button>
     </div>
 
-    <div v-if="loading" class="loading-state">加载中...</div>
-    <div v-else-if="!filteredOrders.length" class="empty-state">暂无订单</div>
+    <div v-if="loading" class="loading-state">載入中...</div>
+    <div v-else-if="!filteredOrders.length" class="empty-state">暫無訂單</div>
     <div v-else class="orders-table">
       <table>
         <thead>
           <tr>
-            <th>订单号</th>
+            <th>訂單號</th>
             <th>商品</th>
-            <th>买家</th>
-            <th>金额</th>
-            <th>状态</th>
-            <th>时间</th>
+            <th>買家</th>
+            <th>金額</th>
+            <th>狀態</th>
+            <th>時間</th>
             <th>操作</th>
           </tr>
         </thead>
@@ -167,7 +167,7 @@ onMounted(() => loadOrders())
                 取消
               </button>
               <div v-if="order.status === 'pending_paid'" class="warning-text">
-                ⚠️ 买家未付款
+                ⚠️ 買家未付款
               </div>
               <template v-if="order.status === 'paid'">
                 <img 
@@ -175,7 +175,7 @@ onMounted(() => loadOrders())
                   :src="order.transferReceipt" 
                   class="receipt-thumbnail"
                   @click="viewReceipt(order.transferReceipt)"
-                  alt="转账凭证"
+                  alt="轉帳憑證"
                 />
                 <button
                   v-if="order.transferReceipt"
@@ -183,10 +183,10 @@ onMounted(() => loadOrders())
                   @click="handleConfirmPayment(order.id)"
                   :disabled="processingId === order.id"
                 >
-                  {{ processingId === order.id ? '处理中...' : '确认收款' }}
+                  {{ processingId === order.id ? '處理中...' : '確認收款' }}
                 </button>
                 <div v-else class="warning-text">
-                  ⏳ 等待买家上传凭证
+                  ⏳ 等待買家上傳憑證
                 </div>
               </template>
               <button
@@ -194,7 +194,7 @@ onMounted(() => loadOrders())
                 @click="handleUpdateStatus(order.id, 'shipped')"
                 class="btn-action ship"
               >
-                发货
+                發貨
               </button>
             </td>
           </tr>
@@ -207,11 +207,11 @@ onMounted(() => loadOrders())
   <div v-if="showReceiptModal" class="modal-overlay" @click.self="showReceiptModal = false">
     <div class="receipt-modal">
       <div class="modal-header">
-        <h3>转账凭证</h3>
+        <h3>轉帳憑證</h3>
         <button @click="showReceiptModal = false" class="modal-close">✕</button>
       </div>
       <div class="modal-body">
-        <img :src="receiptImageUrl" alt="转账凭证" class="receipt-image" />
+        <img :src="receiptImageUrl" alt="轉帳憑證" class="receipt-image" />
       </div>
     </div>
   </div>

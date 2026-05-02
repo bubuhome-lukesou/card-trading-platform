@@ -49,7 +49,7 @@ const formatPrice = (price: number) => {
 
 const getOrderStatusText = (status: string) => {
   const map: Record<string, string> = {
-    pending_paid: '待付款', paid: '已付款', shipped: '已发货',
+    pending_paid: '待付款', paid: '已付款', shipped: '已發貨',
     delivered: '已完成', cancelled: '已取消',
   }
   return map[status] || status
@@ -90,7 +90,7 @@ const formatDate = (date: string) => {
         <div class="stat-icon">📋</div>
         <div class="stat-content">
           <div class="stat-value">{{ stats.pendingOrders }}</div>
-          <div class="stat-label">待处理订单</div>
+          <div class="stat-label">待處理訂單</div>
         </div>
       </div>
       <div class="stat-card highlight">
@@ -106,15 +106,15 @@ const formatDate = (date: string) => {
     <div class="quick-actions">
       <router-link to="/seller/products?action=create" class="action-card">
         <span class="action-icon">➕</span>
-        <span class="action-text">发布新商品</span>
+        <span class="action-text">發布新商品</span>
       </router-link>
       <router-link to="/seller/auctions?action=create" class="action-card">
         <span class="action-icon">🔨</span>
-        <span class="action-text">创建拍卖</span>
+        <span class="action-text">創建拍賣</span>
       </router-link>
       <router-link to="/seller/orders" class="action-card">
         <span class="action-icon">📦</span>
-        <span class="action-text">处理订单</span>
+        <span class="action-text">處理訂單</span>
       </router-link>
       <router-link to="/seller/earnings" class="action-card">
         <span class="action-icon">💳</span>
@@ -127,15 +127,15 @@ const formatDate = (date: string) => {
       <!-- Recent Orders -->
       <div class="card">
         <div class="card-header">
-          <h3 class="card-title">📋 最新订单</h3>
+          <h3 class="card-title">📋 最新訂單</h3>
           <router-link to="/seller/orders" class="see-all">查看全部</router-link>
         </div>
         <div class="card-body">
-          <div v-if="loading" class="loading">加载中...</div>
-          <div v-else-if="!recentOrders.length" class="empty">暂无订单</div>
+          <div v-if="loading" class="loading">加載中...</div>
+          <div v-else-if="!recentOrders.length" class="empty">暫無訂單</div>
           <table v-else class="data-table">
             <thead>
-              <tr><th>订单号</th><th>商品</th><th>买家</th><th>金额</th><th>状态</th></tr>
+              <tr><th>訂單號</th><th>商品</th><th>買家</th><th>金額</th><th>狀態</th></tr>
             </thead>
             <tbody>
               <tr v-for="order in recentOrders" :key="order.id">
@@ -157,12 +157,12 @@ const formatDate = (date: string) => {
       <!-- Active Auctions -->
       <div class="card">
         <div class="card-header">
-          <h3 class="card-title">🔥 进行中拍卖</h3>
+          <h3 class="card-title">🔥 進行中拍賣</h3>
           <router-link to="/seller/auctions" class="see-all">查看全部</router-link>
         </div>
         <div class="card-body">
-          <div v-if="loading" class="loading">加载中...</div>
-          <div v-else-if="!recentAuctions.length" class="empty">暂无进行中拍卖</div>
+          <div v-if="loading" class="loading">加載中...</div>
+          <div v-else-if="!recentAuctions.length" class="empty">暫無進行中拍賣</div>
           <div v-else class="auction-list">
             <div v-for="auction in recentAuctions" :key="auction.id" class="auction-item">
               <div class="auction-info">
@@ -175,7 +175,7 @@ const formatDate = (date: string) => {
               </div>
               <div class="auction-price">
                 <div class="current-price">{{ formatPrice(auction.currentPrice || 0) }}</div>
-                <div class="price-label">当前价格</div>
+                <div class="price-label">當前價格</div>
               </div>
             </div>
           </div>

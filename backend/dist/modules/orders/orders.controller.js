@@ -16,6 +16,7 @@ exports.OrdersController = void 0;
 const common_1 = require("@nestjs/common");
 const jwt_auth_guard_1 = require("../auth/guards/jwt-auth.guard");
 const orders_service_1 = require("./orders.service");
+const platform_express_1 = require("@nestjs/platform-express");
 let OrdersController = class OrdersController {
     constructor(ordersService) {
         this.ordersService = ordersService;
@@ -32,8 +33,18 @@ let OrdersController = class OrdersController {
     createOrder(req, body) {
         return this.ordersService.create({ ...body, buyerId: req.user.id });
     }
+    confirmPayment(id) {
+        return this.ordersService.confirmPayment(id);
+    }
     updateStatus(id, status) {
         return this.ordersService.updateStatus(id, status);
+    }
+    uploadTransferReceipt(id, file) {
+        if (!file) {
+            return { success: false, error: 'No file uploaded' };
+        }
+        const receiptUrl = `/uploads/${file.filename}`;
+        return this.ordersService.updateTransferReceipt(id, receiptUrl);
     }
 };
 exports.OrdersController = OrdersController;
@@ -71,6 +82,13 @@ __decorate([
     __metadata("design:returntype", void 0)
 ], OrdersController.prototype, "createOrder", null);
 __decorate([
+    (0, common_1.Post)(':id/confirm-payment'),
+    __param(0, (0, common_1.Param)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", void 0)
+], OrdersController.prototype, "confirmPayment", null);
+__decorate([
     (0, common_1.Patch)(':id/status'),
     __param(0, (0, common_1.Param)('id')),
     __param(1, (0, common_1.Body)('status')),
@@ -78,6 +96,15 @@ __decorate([
     __metadata("design:paramtypes", [String, String]),
     __metadata("design:returntype", void 0)
 ], OrdersController.prototype, "updateStatus", null);
+__decorate([
+    (0, common_1.Post)(':id/transfer-receipt'),
+    (0, common_1.UseInterceptors)((0, platform_express_1.FileInterceptor)('receipt')),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.UploadedFile)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:returntype", void 0)
+], OrdersController.prototype, "uploadTransferReceipt", null);
 exports.OrdersController = OrdersController = __decorate([
     (0, common_1.Controller)('orders'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),

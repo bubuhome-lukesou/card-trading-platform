@@ -17,5 +17,10 @@ export declare class OrdersController {
     }>;
     getOrder(id: string): Promise<Order>;
     createOrder(req: any, body: Partial<Order>): Promise<Order>;
+    confirmPayment(id: string): Promise<Order>;
     updateStatus(id: string, status: string): Promise<Order>;
+    uploadTransferReceipt(id: string, file: Express.Multer.File): Promise<Order> | {
+        success: boolean;
+        error: string;
+    };
 }

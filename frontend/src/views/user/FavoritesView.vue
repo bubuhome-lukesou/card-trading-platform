@@ -75,9 +75,9 @@ onMounted(() => {
 
     <div v-else-if="favorites.length === 0" class="empty-state">
       <div class="empty-icon">❤️</div>
-      <h3>暂无收藏</h3>
-      <p>快去收藏您喜欢的卡牌吧！</p>
-      <router-link to="/marketplace" class="btn-primary">浏览商品</router-link>
+      <h3>暫無收藏</h3>
+      <p>快去收藏您喜歡的卡牌吧！</p>
+      <router-link to="/marketplace" class="btn-primary">瀏覽商品</router-link>
     </div>
 
     <div v-else class="favorites-grid">
@@ -88,14 +88,14 @@ onMounted(() => {
         </div>
         <div class="card-info">
           <h3 class="card-title">{{ item.title }}</h3>
-          <div class="card-meta">卖家: {{ item.sellerNickname }}</div>
+          <div class="card-meta">賣家: {{ item.sellerNickname }}</div>
           <div class="card-price">
             <span class="price-value">{{ formatPrice(item.price) }}</span>
           </div>
         </div>
         <div class="card-actions">
           <router-link :to="`/product/${item.productId}`" class="btn-view">
-            查看详情
+            檢視詳情
           </router-link>
         </div>
       </div>

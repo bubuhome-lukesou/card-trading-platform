@@ -44,11 +44,11 @@ const handleReject = (id: string) => {
             <td>{{ product.seller }}</td>
             <td>{{ product.category }}</td>
             <td>{{ formatPrice(product.price) }}</td>
-            <td><span class="status-badge" :class="product.status">{{ product.status === 'approved' ? '已通过' : product.status === 'pending' ? '待审核' : '已拒绝' }}</span></td>
+            <td><span class="status-badge" :class="product.status">{{ product.status === 'approved' ? '已通過' : product.status === 'pending' ? '待審核' : '已拒絕' }}</span></td>
             <td>{{ product.createdAt }}</td>
             <td>
-              <button v-if="product.status === 'pending'" @click="handleApprove(product.id)" class="btn-action approve">通过</button>
-              <button v-if="product.status === 'pending'" @click="handleReject(product.id)" class="btn-action reject">拒绝</button>
+              <button v-if="product.status === 'pending'" @click="handleApprove(product.id)" class="btn-action approve">通過</button>
+              <button v-if="product.status === 'pending'" @click="handleReject(product.id)" class="btn-action reject">拒絕</button>
               <button v-if="product.status !== 'pending'" class="btn-action view">查看</button>
             </td>
           </tr>

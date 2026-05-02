@@ -9,17 +9,34 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.OrdersModule = void 0;
 const common_1 = require("@nestjs/common");
 const typeorm_1 = require("@nestjs/typeorm");
+const platform_express_1 = require("@nestjs/platform-express");
+const multer_1 = require("multer");
+const path_1 = require("path");
+const uuid_1 = require("uuid");
 const order_entity_1 = require("../../entities/order.entity");
 const product_entity_1 = require("../../entities/product.entity");
 const user_entity_1 = require("../../entities/user.entity");
 const orders_controller_1 = require("./orders.controller");
 const orders_service_1 = require("./orders.service");
+const products_module_1 = require("../products/products.module");
 let OrdersModule = class OrdersModule {
 };
 exports.OrdersModule = OrdersModule;
 exports.OrdersModule = OrdersModule = __decorate([
     (0, common_1.Module)({
-        imports: [typeorm_1.TypeOrmModule.forFeature([order_entity_1.Order, user_entity_1.User, product_entity_1.Product])],
+        imports: [
+            typeorm_1.TypeOrmModule.forFeature([order_entity_1.Order, user_entity_1.User, product_entity_1.Product]),
+            products_module_1.ProductsModule,
+            platform_express_1.MulterModule.register({
+                storage: (0, multer_1.diskStorage)({
+                    destination: './uploads',
+                    filename: (req, file, callback) => {
+                        const uniqueName = `${(0, uuid_1.v4)()}${(0, path_1.extname)(file.originalname)}`;
+                        callback(null, uniqueName);
+                    },
+                }),
+            }),
+        ],
         controllers: [orders_controller_1.OrdersController],
         providers: [orders_service_1.OrdersService],
         exports: [orders_service_1.OrdersService],

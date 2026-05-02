@@ -18,57 +18,57 @@ const handleSave = async () => {
   saving.value = true
   await new Promise(resolve => setTimeout(resolve, 1000))
   saving.value = false
-  alert('设置已保存')
+  alert('設置已保存')
 }
 </script>
 
 <template>
   <div class="settings-page">
     <div class="settings-card">
-      <h3 class="section-title">平台信息</h3>
+      <h3 class="section-title">平台資訊</h3>
       <div class="form-grid">
         <div class="form-group">
-          <label>平台名称</label>
+          <label>平台名稱</label>
           <input v-model="settings.platformName" type="text" />
         </div>
         <div class="form-group">
-          <label>平台网址</label>
+          <label>平台網址</label>
           <input v-model="settings.platformUrl" type="url" />
         </div>
         <div class="form-group">
-          <label>支持邮箱</label>
+          <label>支援郵箱</label>
           <input v-model="settings.supportEmail" type="email" />
         </div>
         <div class="form-group">
-          <label>支持电话</label>
+          <label>支援電話</label>
           <input v-model="settings.supportPhone" type="tel" />
         </div>
       </div>
     </div>
 
     <div class="settings-card">
-      <h3 class="section-title">费用设置</h3>
+      <h3 class="section-title">費用設置</h3>
       <div class="form-grid">
         <div class="form-group">
-          <label>平台费率 (%)</label>
+          <label>平台費率 (%)</label>
           <input v-model.number="settings.platformFee" type="number" min="0" max="100" />
         </div>
         <div class="form-group">
-          <label>最低提现金额 (HK$)</label>
+          <label>最低提現金額 (HK$)</label>
           <input v-model.number="settings.minWithdraw" type="number" min="1" />
         </div>
       </div>
     </div>
 
     <div class="settings-card">
-      <h3 class="section-title">拍卖设置</h3>
+      <h3 class="section-title">拍賣設置</h3>
       <div class="form-grid">
         <div class="form-group">
-          <label>最长拍卖时长 (小时)</label>
+          <label>最長拍賣時長 (小時)</label>
           <input v-model.number="settings.maxAuctionDuration" type="number" min="1" />
         </div>
         <div class="form-group">
-          <label>默认最低加价 (HK$)</label>
+          <label>預設最低加價 (HK$)</label>
           <input v-model.number="settings.defaultBidIncrement" type="number" min="1" />
         </div>
       </div>
@@ -76,7 +76,7 @@ const handleSave = async () => {
 
     <div class="actions">
       <button @click="handleSave" class="btn-save" :disabled="saving">
-        {{ saving ? '保存中...' : '保存设置' }}
+        {{ saving ? '儲存中...' : '儲存設置' }}
       </button>
     </div>
   </div>

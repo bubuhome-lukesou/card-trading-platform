@@ -13,6 +13,7 @@ export declare class ProductFiltersDto {
     page?: number;
     limit?: number;
     sortBy?: string;
+    tags?: string[];
 }
 export declare class CreateProductDto {
     category: ProductCategory;
@@ -32,6 +33,8 @@ export declare class CreateProductDto {
     startingPrice?: number;
     bidIncrement?: number;
     stock?: number;
+    quantity?: number;
+    tags?: string[];
 }
 export declare class UpdateProductDto {
     category?: ProductCategory;
@@ -52,4 +55,6 @@ export declare class UpdateProductDto {
     bidIncrement?: number;
     status?: ProductStatus;
     stock?: number;
+    quantity?: number;
+    tags?: number[];
 }

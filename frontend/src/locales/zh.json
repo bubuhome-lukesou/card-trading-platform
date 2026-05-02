@@ -8,9 +8,9 @@
     "home": "首頁",
     "marketplace": "商品市場",
     "auctions": "拍賣列表",
-    "login": "登錄",
-    "register": "注冊",
-    "logout": "退出",
+    "login": "登入",
+    "register": "註冊",
+    "logout": "登出",
     "userCenter": "用戶中心",
     "sellerCenter": "賣家中心",
     "adminPanel": "管理後台",
@@ -19,27 +19,27 @@
   "footer": {
     "platform": "平台",
     "support": "支持",
-    "contact": "聯系方式",
+    "contact": "聯絡方式",
     "helpCenter": "幫助中心",
-    "contactUs": "聯系我們",
+    "contactUs": "聯絡我們",
     "faq": "常見問題",
     "location": "澳門",
     "rights": "版權所有"
   },
   "home": {
     "search": {
-      "placeholder": "搜索珍稀卡牌..."
+      "placeholder": "搜尋珍稀卡牌..."
     },
     "hero": {
       "title": "珍稀卡牌 限時競拍",
-      "subtitle": "發現最珍貴的收藏卡牌，參與激動人心的實時競拍",
+      "subtitle": "發現最珍貴的收藏卡牌，參與激動人心的即時競拍",
       "bidNow": "立即競拍",
       "browse": "瀏覽商品"
     },
     "categories": {
       "title": "快速分類",
       "pokemon": "寶可夢",
-      "yugioh": "游戲王",
+      "yugioh": "遊戲王",
       "mtg": "萬智牌",
       "ultraman": "奧特曼",
       "onepiece": "海賊王",
@@ -107,6 +107,25 @@
       "active": "在售",
       "sold": "已售",
       "removed": "已下架"
+    },
+    "marketplace": "商品市場",
+    "filters": {
+      "title": "篩選",
+      "category": "類別",
+      "listingType": "銷售模式",
+      "all": "全部",
+      "saleOnly": "僅銷售",
+      "auctionOnly": "僅拍賣",
+      "rarity": "稀有度",
+      "condition": "品相",
+      "priceRange": "價格範圍"
+    },
+    "sort": {
+      "newest": "最新上架",
+      "popular": "熱門暢銷",
+      "priceAsc": "價格由低到高",
+      "priceDesc": "價格由高到低",
+      "endingSoon": "即將結束"
     }
   },
   "auction": {
@@ -123,33 +142,33 @@
   },
   "auth": {
     "login": {
-      "title": "登錄",
-      "email": "郵箱",
+      "title": "登入",
+      "email": "電郵",
       "password": "密碼",
-      "submit": "登錄",
-      "noAccount": "還沒有賬號？",
-      "registerNow": "立即注冊"
+      "submit": "登入",
+      "noAccount": "還沒有帳號？",
+      "registerNow": "立即註冊"
     },
     "register": {
-      "title": "注冊",
-      "email": "郵箱",
+      "title": "註冊",
+      "email": "電郵",
       "nickname": "暱稱",
       "password": "密碼",
       "confirmPassword": "確認密碼",
-      "submit": "注冊",
-      "hasAccount": "已有賬號？",
-      "loginNow": "立即登錄"
+      "submit": "註冊",
+      "hasAccount": "已有帳號？",
+      "loginNow": "立即登入"
     }
   },
   "user": {
-    "dashboard": "我的賬戶",
+    "dashboard": "我的帳戶",
     "myOrders": "我的訂單",
     "myPurchases": "我的購買",
     "mySales": "我的銷售",
     "myBids": "我的出價",
     "myFavorites": "我的收藏",
     "wallet": "錢包",
-    "settings": "設置"
+    "settings": "設定"
   },
   "seller": {
     "dashboard": "賣家中心",
@@ -158,7 +177,7 @@
     "orders": "訂單管理",
     "earnings": "收益管理",
     "reviews": "評價管理",
-    "settings": "店鋪設置",
+    "settings": "店鋪設定",
     "apply": "申請成為賣家",
     "createProduct": "發布新商品",
     "editProduct": "編輯商品",
@@ -174,25 +193,25 @@
     "products": "商品審核",
     "auctions": "拍賣監控",
     "reports": "數據報表",
-    "settings": "平台設置"
+    "settings": "平台設定"
   },
   "common": {
-    "search": "搜索",
-    "searchPlaceholder": "搜索卡牌名稱/系列/賣家...",
-    "loading": "加載中...",
+    "search": "搜尋",
+    "searchPlaceholder": "搜尋卡牌名稱/系列/賣家...",
+    "loading": "載入中...",
     "noResults": "暫無結果",
-    "loadMore": "加載更多",
+    "loadMore": "載入更多",
     "allLoaded": "— 已載入全部 {total} 件商品 —",
     "showing": "顯示",
     "of": "共",
     "items": "件",
     "currency": "HK$",
-    "save": "保存",
+    "save": "儲存",
     "cancel": "取消",
     "confirm": "確認",
     "delete": "刪除",
     "edit": "編輯",
-    "add": "添加",
+    "add": "新增",
     "back": "返回",
     "next": "下一步",
     "previous": "上一步",
@@ -209,13 +228,13 @@
     "fair": "一般/Fair"
   },
   "errors": {
-    "required": "此字段為必填項",
-    "invalidEmail": "請輸入有效的郵箱地址",
+    "required": "此欄位為必填項",
+    "invalidEmail": "請輸入有效的電郵地址",
     "minLength": "至少需要 {min} 個字符",
     "maxLength": "最多只能輸入 {max} 個字符",
     "passwordMismatch": "兩次輸入的密碼不一致",
     "networkError": "網絡錯誤，請稍後重試",
-    "unauthorized": "請先登錄",
+    "unauthorized": "請先登入",
     "forbidden": "您沒有權限執行此操作",
     "notFound": "請求的資源不存在"
   }

@@ -17,28 +17,16 @@ const common_1 = require("@nestjs/common");
 const typeorm_1 = require("@nestjs/typeorm");
 const typeorm_2 = require("typeorm");
 const product_entity_1 = require("../../entities/product.entity");
+const tag_entity_1 = require("../../entities/tag.entity");
 let ProductsService = class ProductsService {
-    constructor(productRepo) {
+    constructor(productRepo, tagRepo) {
         this.productRepo = productRepo;
+        this.tagRepo = tagRepo;
     }
     async findAll(filters) {
-        const where = {
-            status: filters.status || product_entity_1.ProductStatus.ACTIVE
-        };
-        if (filters.category?.length) {
-            where.category = filters.category;
-        }
-        if (filters.rarity?.length) {
-            where.rarity = filters.rarity;
-        }
-        if (filters.condition?.length) {
-            where.condition = filters.condition;
-        }
-        if (filters.listingType) {
-            where.listingType = filters.listingType;
-        }
         const queryBuilder = this.productRepo
             .createQueryBuilder('product')
+            .leftJoinAndSelect('product.tags', 'tag')
             .where('product.status = :status', { status: filters.status || product_entity_1.ProductStatus.ACTIVE });
         if (filters.category?.length) {
             queryBuilder.andWhere('product.category IN (:...categories)', { categories: filters.category });
@@ -62,7 +50,13 @@ let ProductsService = class ProductsService {
             queryBuilder.andWhere('product.brand IN (:...brands)', { brands: filters.brand });
         }
         if (filters.search) {
-            queryBuilder.andWhere('(product.titleEn LIKE :search OR product.titleZh LIKE :search OR product.brand LIKE :search)', { search: `%${filters.search}%` });
+            queryBuilder.andWhere('(product.titleEn LIKE :search OR product.titleZh LIKE :search OR product.brand LIKE :search OR EXISTS (SELECT 1 FROM tags t WHERE t.id IN (SELECT pt.tagId FROM product_tags pt WHERE pt.productId = product.id) AND t.name LIKE :search))', { search: `%${filters.search}%` });
+        }
+        if (filters.tags?.length) {
+            const tagIds = filters.tags.map(t => parseInt(t)).filter(t => !isNaN(t));
+            if (tagIds.length > 0) {
+                queryBuilder.andWhere('tag.id IN (:...tagIds)', { tagIds });
+            }
         }
         switch (filters.sortBy) {
             case 'price_asc':
@@ -105,7 +99,7 @@ let ProductsService = class ProductsService {
     async findOne(id) {
         const product = await this.productRepo.findOne({
             where: { id },
-            relations: ['seller']
+            relations: ['seller', 'tags']
         });
         if (!product) {
             throw new common_1.NotFoundException('Product not found');
@@ -128,11 +122,17 @@ let ProductsService = class ProductsService {
         }
         const listingType = dto.listingType || 'both';
         const status = product_entity_1.ProductStatus.ACTIVE;
+        let tags = [];
+        if (dto.tags && dto.tags.length > 0) {
+            tags = await this.tagRepo.findByIds(dto.tags);
+        }
         const product = this.productRepo.create({
             ...dto,
+            quantity: dto.quantity ?? 1,
             listingType: listingType,
             sellerId: userId,
-            status
+            status,
+            tags
         });
         return this.productRepo.save(product);
     }
@@ -148,6 +148,16 @@ let ProductsService = class ProductsService {
             else if (typeof dto.images === 'string') {
             }
         }
+        if (dto.tags !== undefined) {
+            if (dto.tags && dto.tags.length > 0) {
+                const tags = await this.tagRepo.findByIds(dto.tags);
+                product.tags = tags;
+                delete dto.tags;
+            }
+            else {
+                product.tags = [];
+            }
+        }
         Object.assign(product, dto);
         return this.productRepo.save(product);
     }
@@ -161,6 +171,7 @@ let ProductsService = class ProductsService {
     async findBySeller(sellerId) {
         const products = await this.productRepo.find({
             where: { sellerId },
+            relations: ['tags'],
             order: { createdAt: 'DESC' }
         });
         return products.map(p => {
@@ -175,11 +186,24 @@ let ProductsService = class ProductsService {
             return p;
         });
     }
+    async decreaseQuantity(productId, amount) {
+        const product = await this.productRepo.findOne({ where: { id: productId } });
+        if (!product) {
+            throw new common_1.NotFoundException('Product not found');
+        }
+        const currentQty = product.quantity ?? 1;
+        if (currentQty - amount < 0) {
+            throw new common_1.BadRequestException('Out of stock');
+        }
+        await this.productRepo.update(productId, { quantity: currentQty - amount });
+    }
 };
 exports.ProductsService = ProductsService;
 exports.ProductsService = ProductsService = __decorate([
     (0, common_1.Injectable)(),
     __param(0, (0, typeorm_1.InjectRepository)(product_entity_1.Product)),
-    __metadata("design:paramtypes", [typeorm_2.Repository])
+    __param(1, (0, typeorm_1.InjectRepository)(tag_entity_1.Tag)),
+    __metadata("design:paramtypes", [typeorm_2.Repository,
+        typeorm_2.Repository])
 ], ProductsService);
 //# sourceMappingURL=products.service.js.map

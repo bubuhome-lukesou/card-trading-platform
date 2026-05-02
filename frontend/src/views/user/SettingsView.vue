@@ -43,7 +43,7 @@ const handleProfileUpdate = async () => {
   loading.value = true
   try {
     await new Promise(resolve => setTimeout(resolve, 1000))
-    successMessage.value = '个人资料已更新'
+    successMessage.value = '個人資料已更新'
     setTimeout(() => successMessage.value = '', 3000)
   } catch (error) {
     console.error('Failed to update profile:', error)
@@ -54,13 +54,13 @@ const handleProfileUpdate = async () => {
 
 const handlePasswordChange = async () => {
   if (passwordData.value.newPassword !== passwordData.value.confirmPassword) {
-    alert('两次输入的密码不一致')
+    alert('兩次輸入的密碼不一致')
     return
   }
   loading.value = true
   try {
     await new Promise(resolve => setTimeout(resolve, 1000))
-    successMessage.value = '密码已修改'
+    successMessage.value = '密碼已修改'
     passwordData.value = { currentPassword: '', newPassword: '', confirmPassword: '' }
     setTimeout(() => successMessage.value = '', 3000)
   } catch (error) {
@@ -81,7 +81,7 @@ onMounted(() => {
 
 <template>
   <div class="settings-page">
-    <h1 class="page-title">账户设置</h1>
+    <h1 class="page-title">賬戶設置</h1>
 
     <div v-if="successMessage" class="success-toast">
       ✅ {{ successMessage }}
@@ -89,19 +89,19 @@ onMounted(() => {
 
     <!-- Profile Section -->
     <div class="settings-section">
-      <h3 class="section-title">👤 个人资料</h3>
+      <h3 class="section-title">👤 個人資料</h3>
       <div class="settings-card">
         <div class="form-grid">
           <div class="form-group">
-            <label>昵称</label>
+            <label>暱稱</label>
             <input v-model="formData.nickname" type="text" />
           </div>
           <div class="form-group">
-            <label>邮箱</label>
+            <label>郵箱</label>
             <input v-model="formData.email" type="email" disabled />
           </div>
           <div class="form-group">
-            <label>电话</label>
+            <label>電話</label>
             <input v-model="formData.phone" type="tel" />
           </div>
           <div class="form-group">
@@ -110,43 +110,43 @@ onMounted(() => {
           </div>
         </div>
         <button @click="handleProfileUpdate" class="btn-save" :disabled="loading">
-          {{ loading ? '保存中...' : '保存修改' }}
+          {{ loading ? '儲存中...' : '儲存修改' }}
         </button>
       </div>
     </div>
 
     <!-- Password Section -->
     <div class="settings-section">
-      <h3 class="section-title">🔐 修改密码</h3>
+      <h3 class="section-title">🔐 修改密碼</h3>
       <div class="settings-card">
         <div class="form-grid">
           <div class="form-group">
-            <label>当前密码</label>
+            <label>當前密碼</label>
             <input v-model="passwordData.currentPassword" type="password" />
           </div>
           <div class="form-group">
-            <label>新密码</label>
+            <label>新密碼</label>
             <input v-model="passwordData.newPassword" type="password" />
           </div>
           <div class="form-group">
-            <label>确认新密码</label>
+            <label>確認新密碼</label>
             <input v-model="passwordData.confirmPassword" type="password" />
           </div>
         </div>
         <button @click="handlePasswordChange" class="btn-save" :disabled="loading">
-          修改密码
+          修改密碼
         </button>
       </div>
     </div>
 
     <!-- Notifications Section -->
     <div class="settings-section">
-      <h3 class="section-title">🔔 通知设置</h3>
+      <h3 class="section-title">🔔 通知設置</h3>
       <div class="settings-card">
         <div class="setting-item">
           <div class="setting-info">
-            <div class="setting-label">邮件通知</div>
-            <div class="setting-desc">接收邮件通知</div>
+            <div class="setting-label">郵件通知</div>
+            <div class="setting-desc">接收郵件通知</div>
           </div>
           <label class="toggle">
             <input type="checkbox" v-model="notificationSettings.emailNotifications" />
@@ -156,7 +156,7 @@ onMounted(() => {
         <div class="setting-item">
           <div class="setting-info">
             <div class="setting-label">微信通知</div>
-            <div class="setting-desc">通过微信接收通知</div>
+            <div class="setting-desc">通過微信接收通知</div>
           </div>
           <label class="toggle">
             <input type="checkbox" v-model="notificationSettings.wechatNotifications" />
@@ -165,8 +165,8 @@ onMounted(() => {
         </div>
         <div class="setting-item">
           <div class="setting-info">
-            <div class="setting-label">出价更新</div>
-            <div class="setting-desc">拍卖出价变化时通知</div>
+            <div class="setting-label">出價更新</div>
+            <div class="setting-desc">拍賣出價變化時通知</div>
           </div>
           <label class="toggle">
             <input type="checkbox" v-model="notificationSettings.bidUpdates" />
@@ -176,7 +176,7 @@ onMounted(() => {
         <div class="setting-item">
           <div class="setting-info">
             <div class="setting-label">出局提醒</div>
-            <div class="setting-desc">您的出价被超过时通知</div>
+            <div class="setting-desc">您的出價被超過時通知</div>
           </div>
           <label class="toggle">
             <input type="checkbox" v-model="notificationSettings.outbidAlerts" />
@@ -185,8 +185,8 @@ onMounted(() => {
         </div>
         <div class="setting-item">
           <div class="setting-info">
-            <div class="setting-label">拍卖结束提醒</div>
-            <div class="setting-desc">您参与的拍卖即将结束时通知</div>
+            <div class="setting-label">拍賣結束提醒</div>
+            <div class="setting-desc">您參與的拍賣即將結束時通知</div>
           </div>
           <label class="toggle">
             <input type="checkbox" v-model="notificationSettings.auctionEnding" />
@@ -198,12 +198,12 @@ onMounted(() => {
 
     <!-- Language Section -->
     <div class="settings-section">
-      <h3 class="section-title">🌐 语言设置</h3>
+      <h3 class="section-title">🌐 語言設置</h3>
       <div class="settings-card">
         <div class="setting-item">
           <div class="setting-info">
-            <div class="setting-label">界面语言</div>
-            <div class="setting-desc">选择您偏好的语言</div>
+            <div class="setting-label">介面語言</div>
+            <div class="setting-desc">選擇您偏好的語言</div>
           </div>
           <button @click="toggleLanguage" class="btn-language">
             {{ locale === 'zh' ? '🇨🇳 中文' : '🇬🇧 English' }}

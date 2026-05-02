@@ -8,6 +8,7 @@ export declare enum OrderType {
 export declare enum OrderStatus {
     PENDING = "pending",
     PAID = "paid",
+    CONFIRMED = "confirmed",
     SHIPPED = "shipped",
     DELIVERED = "delivered",
     CANCELLED = "cancelled",
@@ -34,6 +35,9 @@ export declare class Order {
     shippingTime: Date;
     deliveryTime: Date;
     notes: string;
+    quantity: number;
+    transferReceipt: string;
+    transferTime: Date;
     createdAt: Date;
     updatedAt: Date;
 }

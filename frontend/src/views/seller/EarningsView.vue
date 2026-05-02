@@ -59,7 +59,7 @@ const formatDate = (dateStr: string) => {
 }
 
 const handleWithdraw = () => {
-  alert('提现功能开发中...')
+  alert('提現功能開發中...')
 }
 
 onMounted(() => loadData())
@@ -71,45 +71,45 @@ onMounted(() => loadData())
     <div class="stats-grid">
       <div class="stat-card primary">
         <div class="stat-header">
-          <span class="stat-label">总收入</span>
+          <span class="stat-label">總收入</span>
           <span class="stat-icon">💰</span>
         </div>
         <div class="stat-value">{{ formatPrice(stats.totalEarnings) }}</div>
-        <div class="stat-meta">已完成 {{ stats.totalOrders }} 笔订单</div>
+        <div class="stat-meta">已完成 {{ stats.totalOrders }} 筆記單</div>
       </div>
       <div class="stat-card">
         <div class="stat-header">
-          <span class="stat-label">待结算</span>
+          <span class="stat-label">待結算</span>
           <span class="stat-icon">⏳</span>
         </div>
         <div class="stat-value">{{ formatPrice(stats.pendingBalance) }}</div>
-        <div class="stat-meta">买家付款后到账</div>
+        <div class="stat-meta">買家付款後到帳</div>
       </div>
       <div class="stat-card success">
         <div class="stat-header">
-          <span class="stat-label">可提现</span>
+          <span class="stat-label">可提現</span>
           <span class="stat-icon">✅</span>
         </div>
         <div class="stat-value">{{ formatPrice(stats.availableBalance) }}</div>
-        <button @click="handleWithdraw" class="withdraw-btn">立即提现</button>
+        <button @click="handleWithdraw" class="withdraw-btn">立即提現</button>
       </div>
     </div>
 
     <!-- Transaction History -->
     <div class="transactions-section">
-      <h3 class="section-title">💳 交易记录</h3>
+      <h3 class="section-title">💳 交易記錄</h3>
       <div v-if="loading" class="loading-state"><div class="spinner"></div></div>
-      <div v-else-if="!transactions.length" class="empty-state">暂无交易记录</div>
+      <div v-else-if="!transactions.length" class="empty-state">暫無交易記錄</div>
       <div v-else class="transactions-table">
         <table>
           <thead>
             <tr>
-              <th>订单号</th>
+              <th>訂單號</th>
               <th>商品</th>
-              <th>销售额</th>
-              <th>平台费 (5%)</th>
-              <th>实际收入</th>
-              <th>状态</th>
+              <th>銷售額</th>
+              <th>平台費 (5%)</th>
+              <th>實際收入</th>
+              <th>狀態</th>
               <th>日期</th>
             </tr>
           </thead>
@@ -122,7 +122,7 @@ onMounted(() => loadData())
               <td class="net-amount">{{ formatPrice(tx.netAmount) }}</td>
               <td>
                 <span class="status-badge" :class="tx.status">
-                  {{ tx.status === 'completed' ? '已完成' : '处理中' }}
+                  {{ tx.status === 'completed' ? '已完成' : '處理中' }}
                 </span>
               </td>
               <td>{{ formatDate(tx.createdAt) }}</td>

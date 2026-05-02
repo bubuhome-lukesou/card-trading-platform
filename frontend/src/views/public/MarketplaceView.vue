@@ -16,7 +16,7 @@ const router = useRouter()
 const products = ref<Product[]>([])
 const loading = ref(false)
 const loadingMore = ref(false)
-const showFilters = ref(true)
+const showFilters = ref(false)
 const hasMore = computed(() => products.value.length < meta.value.total)
 const sentinelRef = ref<HTMLElement | null>(null)
 const filtersExpanded = ref({
@@ -337,6 +337,13 @@ watch(() => route.query, () => {
       </div>
 
       <div class="marketplace-layout">
+        <!-- Backdrop overlay for mobile filter -->
+        <div
+          v-if="showFilters"
+          class="filter-backdrop"
+          @click="showFilters = false"
+        />
+
         <!-- Filters Sidebar -->
         <aside class="filter-sidebar" :class="{ 'is-open': showFilters }">
           <div class="filter-header">
@@ -663,22 +670,37 @@ watch(() => route.query, () => {
   }
 }
 
+.filter-backdrop {
+  display: none;
+  @media (max-width: 1024px) {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: calc(var(--z-modal) - 1);
+  }
+}
+
 .filter-sidebar {
   @media (max-width: 1024px) {
     position: fixed;
-    top: 0;
     left: 0;
+    right: 0;
     bottom: 0;
-    width: 300px;
+    top: auto;
+    width: 100%;
+    max-height: 85vh;
     z-index: var(--z-modal);
     background: var(--bg-dark);
     padding: var(--space-6);
-    transform: translateX(-100%);
+    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+    transform: translateY(100%);
     transition: transform 0.3s ease;
     overflow-y: auto;
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.3);
 
     &.is-open {
-      transform: translateX(0);
+      transform: translateY(0);
     }
   }
 }

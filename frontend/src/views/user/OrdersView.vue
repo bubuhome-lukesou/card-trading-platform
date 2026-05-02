@@ -51,7 +51,7 @@ const getStatusBadge = (status: string) => {
   const map: Record<string, { class: string; text: string }> = {
     pending: { class: 'pending', text: '待付款' },
     paid: { class: 'paid', text: '已付款' },
-    shipped: { class: 'shipped', text: '已发货' },
+    shipped: { class: 'shipped', text: '已發貨' },
     delivered: { class: 'delivered', text: '已完成' },
     cancelled: { class: 'cancelled', text: '已取消' },
     refunded: { class: 'refunded', text: '已退款' },
@@ -61,9 +61,9 @@ const getStatusBadge = (status: string) => {
 
 const getTypeText = (type: string) => {
   const map: Record<string, string> = {
-    direct_purchase: '直购',
-    buy_now: '立即购买',
-    auction_win: '拍卖赢取',
+    direct_purchase: '直購',
+    buy_now: '立即購買',
+    auction_win: '拍賣贏取',
   }
   return map[type] || type
 }
@@ -86,7 +86,7 @@ const loadOrders = async () => {
         orderNumber: o.orderNumber,
         productTitle: o.product?.titleZh || o.product?.titleEn || '未知商品',
         productImage: images[0] || '',
-        sellerNickname: o.seller?.nickname || o.seller?.username || (o.sellerId ? `卖家${o.sellerId.slice(0,8)}` : '未知卖家'),
+        sellerNickname: o.seller?.nickname || o.seller?.username || (o.sellerId ? `賣家${o.sellerId.slice(0,8)}` : '未知賣家'),
         amount: Number(o.totalPrice) || 0,
         status: o.status,
         type: o.type,
@@ -109,7 +109,7 @@ const handlePay = async (orderId: string) => {
     await loadOrders()
   } catch (error) {
     console.error('Payment failed:', error)
-    alert('支付失败，请重试')
+    alert('支付失敗，請重試')
   }
 }
 
@@ -119,7 +119,19 @@ const handleReceive = async (orderId: string) => {
     await loadOrders()
   } catch (error) {
     console.error('Confirm failed:', error)
-    alert('操作失败，请重试')
+    alert('操作失敗，請重試')
+  }
+}
+
+const handleReserve = async (orderId: string) => {
+  try {
+    // 預約拿貨 — 改為 confirmed 狀態表示已預約
+    await ordersApi.updateStatus(orderId, 'confirmed')
+    await loadOrders()
+    alert('預約拿貨成功！')
+  } catch (error) {
+    console.error('Reserve failed:', error)
+    alert('操作失敗，請重試')
   }
 }
 
@@ -127,11 +139,11 @@ const handleUploadReceipt = async (orderId: string, file: File) => {
   uploadingReceipt.value = orderId
   try {
     await cartApi.uploadTransferReceipt(orderId, file)
-    alert('上传成功！')
+    alert('上傳成功！')
     await loadOrders()
   } catch (error) {
     console.error('Upload failed:', error)
-    alert('上传失败，请重试')
+    alert('上傳失敗，請重試')
   } finally {
     uploadingReceipt.value = null
   }
@@ -162,7 +174,7 @@ onMounted(() => {
 
 <template>
   <div class="orders-page">
-    <h1 class="page-title">我的订单</h1>
+    <h1 class="page-title">我的訂單</h1>
 
     <!-- Filter Tabs -->
     <div class="filter-tabs">
@@ -192,7 +204,7 @@ onMounted(() => {
         :class="{ active: filterStatus === 'shipped' }"
         @click="filterStatus = 'shipped'"
       >
-        已发货
+        已發貨
       </button>
       <button 
         class="tab" 
@@ -210,9 +222,9 @@ onMounted(() => {
 
     <div v-else-if="filteredOrders.length === 0" class="empty-state">
       <div class="empty-icon">📦</div>
-      <h3>暂无订单</h3>
-      <p>快去参与竞拍或购买吧！</p>
-      <router-link to="/auctions" class="btn-primary">浏览拍卖</router-link>
+      <h3>暫無訂單</h3>
+      <p>快去參與競拍或購買吧！</p>
+      <router-link to="/auctions" class="btn-primary">瀏覽拍賣</router-link>
     </div>
 
     <div v-else class="orders-list">
@@ -235,47 +247,55 @@ onMounted(() => {
           <div class="product-info">
             <div class="product-title">{{ order.productTitle }}</div>
             <div class="product-meta">
-              卖家: {{ order.sellerNickname }} | {{ formatDate(order.createdAt) }}
+              賣家: {{ order.sellerNickname }} | {{ formatDate(order.createdAt) }}
             </div>
           </div>
           <div class="order-amount">
-            <div class="amount-label">金额</div>
+            <div class="amount-label">金額</div>
             <div class="amount-value">{{ formatPrice(order.amount) }}</div>
           </div>
         </div>
 
         <div class="order-actions">
-          <button 
-            v-if="order.status === 'pending'" 
+          <button
+            v-if="order.status === 'pending'"
             class="btn-pay"
             @click="handlePay(order.id)"
+            disabled
           >
             立即支付
           </button>
-          <button 
-            v-if="order.status === 'pending' || order.status === 'pending_paid'" 
+          <button
+            v-if="order.status === 'pending'"
+            class="btn-reserve"
+            @click="handleReserve(order.id)"
+          >
+            預約拿貨
+          </button>
+          <button
+            v-if="order.status === 'pending' || order.status === 'pending_paid'"
             class="btn-upload"
             @click="triggerReceiptUpload(order.id)"
             :disabled="uploadingReceipt === order.id"
           >
-            {{ uploadingReceipt === order.id ? '上传中...' : '上传转账凭证' }}
+            {{ uploadingReceipt === order.id ? '上傳中...' : '上傳轉帳憑證' }}
           </button>
           <img 
             v-if="order.transferReceipt" 
             :src="order.transferReceipt" 
             class="receipt-thumbnail"
             @click="viewReceipt(order.transferReceipt)"
-            alt="转账凭证"
+            alt="轉帳憑證"
           />
           <button 
             v-if="order.status === 'shipped'" 
             class="btn-receive"
             @click="handleReceive(order.id)"
           >
-            确认收货
+            確認收貨
           </button>
           <router-link :to="`/product/${order.id}`" class="btn-detail">
-            订单详情
+            訂單詳情
           </router-link>
         </div>
       </div>
@@ -286,11 +306,11 @@ onMounted(() => {
   <div v-if="showReceiptModal" class="modal-overlay" @click.self="showReceiptModal = false">
     <div class="receipt-modal">
       <div class="modal-header">
-        <h3>转账凭证</h3>
+        <h3>轉帳憑證</h3>
         <button @click="showReceiptModal = false" class="modal-close">✕</button>
       </div>
       <div class="modal-body">
-        <img :src="receiptImageUrl" alt="转账凭证" class="receipt-image" />
+        <img :src="receiptImageUrl" alt="轉帳憑證" class="receipt-image" />
       </div>
     </div>
   </div>
@@ -564,6 +584,22 @@ onMounted(() => {
 
 .btn-pay:hover {
   opacity: 0.9;
+}
+
+.btn-pay:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background: var(--bg-elevated);
+  color: var(--text-muted);
+}
+
+.btn-reserve {
+  background: #8b5cf6;
+  color: white;
+}
+
+.btn-reserve:hover {
+  background: #7c3aed;
 }
 
 .btn-upload {
