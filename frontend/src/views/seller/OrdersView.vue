@@ -129,6 +129,7 @@ const formatDate = (dateStr: string) => {
 
 const getStatusBadge = (status: string) => {
   const map: Record<string, { class: string; text: string }> = {
+    pending: { class: 'pending', text: '待付款' },
     pending_paid: { class: 'pending', text: '待付款' },
     paid: { class: 'paid', text: '已付款' },
     shipped: { class: 'shipped', text: '已發貨' },
