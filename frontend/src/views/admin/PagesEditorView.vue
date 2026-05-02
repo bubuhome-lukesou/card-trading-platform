@@ -66,10 +66,10 @@ const savePage = async () => {
       type: activePage.value,
       ...formData.value,
     })
-    alert(t('admin.pages.saveSuccess') || '保存成功')
+    alert(t('admin.pages.saveSuccess') || '儲存成功')
   } catch (error) {
     console.error('Failed to save:', error)
-    alert(t('admin.pages.saveFailed') || '保存失败')
+    alert(t('admin.pages.saveFailed') || '儲存失敗')
   } finally {
     saving.value = false
   }
@@ -77,7 +77,7 @@ const savePage = async () => {
 
 const pageLabels: Record<string, string> = {
   help: '帮助中心',
-  contact: '联系我们',
+  contact: '聯絡我們',
   faq: '常见问题',
 }
 </script>

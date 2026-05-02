@@ -75,7 +75,7 @@ const updateQuantity = async (item: CartItem, newQuantity: number) => {
   // Check stock limit
   const maxStock = item.product?.quantity ?? 0
   if (newQuantity > maxStock) {
-    alert(`库存不足！当前最多只能购买 ${maxStock} 件`)
+    alert(`庫存不足！當前最多只能購買 ${maxStock} 件`)
     return
   }
 
@@ -86,7 +86,7 @@ const updateQuantity = async (item: CartItem, newQuantity: number) => {
   } catch (error: any) {
     console.error('Failed to update quantity:', error)
     const msg = error?.response?.data?.message || error?.message || ''
-    alert(msg || '修改数量失败')
+    alert(msg || '修改數量失敗')
   } finally {
     processing.value = false
   }
@@ -101,7 +101,7 @@ const removeItem = async (itemId: string) => {
     cartItems.value = cartItems.value.filter(i => i.id !== itemId)
   } catch (error) {
     console.error('Failed to remove item:', error)
-    alert('移除失败，请重试')
+    alert('移除失敗，請重試')
   } finally {
     processing.value = false
   }
@@ -115,7 +115,7 @@ const handleCheckout = async () => {
     // Create orders for each cart item
     for (const item of cartItems.value) {
       if (item.product?.quantity === 0) {
-        alert(`商品 "${item.product.titleZh || item.product.titleEn}" 已售罄，请先移除`)
+        alert(`商品「${item.product.titleZh || item.product.titleEn}」已售罄，請先移除`)
         processing.value = false
         return
       }
@@ -133,11 +133,11 @@ const handleCheckout = async () => {
     await cartApi.clearCart()
     cartItems.value = []
     
-    alert('下单成功！即将跳转到订单页面...')
+    alert('下單成功！即將跳轉到訂單頁面...')
     router.push('/user/orders')
   } catch (error: any) {
     console.error('Checkout failed:', error)
-    alert(error?.response?.data?.message || '结算失败，请重试')
+    alert(error?.response?.data?.message || '結算失敗，請重試')
   } finally {
     processing.value = false
   }
@@ -147,11 +147,11 @@ const handleUploadReceipt = async (orderId: string, file: File) => {
   receiptUploadLoading.value = orderId
   try {
     await cartApi.uploadTransferReceipt(orderId, file)
-    alert('上传成功！')
+    alert('上傳成功！')
     await loadCart()
   } catch (error) {
     console.error('Upload failed:', error)
-    alert('上传失败，请重试')
+    alert('上傳失敗，請重試')
   } finally {
     receiptUploadLoading.value = null
   }

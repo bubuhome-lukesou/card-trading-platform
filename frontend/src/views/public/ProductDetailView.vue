@@ -67,7 +67,7 @@ const handleBuyNow = async () => {
     return
   }
   if (selectedQuantity.value > getMaxQuantity()) {
-    message.value = `库存不足！最多只能购买 ${getMaxQuantity()} 件`
+    message.value = `庫存不足！最多只能購買 ${getMaxQuantity()} 件`
     messageType.value = 'error'
     return
   }
@@ -113,7 +113,7 @@ const handleAddToCart = async () => {
   message.value = ''
   try {
     if (selectedQuantity.value > getMaxQuantity()) {
-      message.value = `库存不足！最多只能购买 ${getMaxQuantity()} 件`
+      message.value = `庫存不足！最多只能購買 ${getMaxQuantity()} 件`
       messageType.value = 'error'
       processing.value = false
       return
@@ -190,13 +190,13 @@ const handleAddToCart = async () => {
             <span class="price">HK$ {{ Number(product.price).toLocaleString() }}</span>
             <div v-if="product.quantity !== undefined" class="stock-info">
               <span v-if="product.quantity === 0" class="out-of-stock-badge">Out of Stock</span>
-              <span v-else class="stock-count">库存: {{ product.quantity }}</span>
+              <span v-else class="stock-count">庫存: {{ product.quantity }}</span>
             </div>
           </div>
 
           <!-- Quantity Selector -->
           <div v-if="product.quantity > 0" class="quantity-selector">
-            <span class="qty-label">购买数量:</span>
+            <span class="qty-label">購買數量:</span>
             <div class="qty-controls">
               <button class="qty-btn" @click="decreaseQuantity" :disabled="selectedQuantity <= 1">−</button>
               <span class="qty-value">{{ selectedQuantity }}</span>

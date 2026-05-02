@@ -40,7 +40,7 @@ const handleSuspend = async (id: string, currentStatus: string) => {
     await api.patch(`/admin/users/${id}`, { status: newStatus })
     await fetchUsers()
   } catch (e) {
-    alert('操作失败')
+    alert('操作失敗')
   }
 }
 
@@ -53,7 +53,7 @@ const handleChangeRole = async (id: string, currentRole: string) => {
     await api.patch(`/admin/users/${id}`, { role: nextRole })
     await fetchUsers()
   } catch (e) {
-    alert('操作失败')
+    alert('操作失敗')
   }
 }
 
@@ -100,7 +100,7 @@ onMounted(() => fetchUsers())
         </thead>
         <tbody>
           <tr v-if="loading"><td colspan="7" class="loading">加载中...</td></tr>
-          <tr v-else-if="!filteredUsers.length"><td colspan="7" class="empty">暂无数据</td></tr>
+          <tr v-else-if="!filteredUsers.length"><td colspan="7" class="empty">暫無數據</td></tr>
           <tr v-for="user in filteredUsers" :key="user.id">
             <td class="nickname">{{ user.nickname || '-' }}</td>
             <td>{{ user.email }}</td>

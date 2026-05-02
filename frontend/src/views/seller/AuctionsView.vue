@@ -41,11 +41,11 @@ const formData = ref({
 })
 
 const categories = [
-  { value: 'pokemon', label: '宝可梦', emoji: '🎮' },
-  { value: 'yugioh', label: '游戏王', emoji: '🐉' },
-  { value: 'mtg', label: '万智牌', emoji: '🧙' },
-  { value: 'ultraman', label: '奥特曼', emoji: '👾' },
-  { value: 'onepiece', label: '海贼王', emoji: '⚔️' },
+  { value: 'pokemon', label: '寶可夢', emoji: '🎮' },
+  { value: 'yugioh', label: '遊戲王', emoji: '🐉' },
+  { value: 'mtg', label: '萬智牌', emoji: '🧙' },
+  { value: 'ultraman', label: '奧特曼', emoji: '👾' },
+  { value: 'onepiece', label: '海賊王', emoji: '⚔️' },
   { value: 'doraemon', label: '哆啦A梦', emoji: '🤖' },
   { value: 'sports', label: '体育卡', emoji: '⚽' },
   { value: 'other', label: '其他', emoji: '🎴' },
@@ -253,7 +253,7 @@ onMounted(() => {
 
     <div v-if="filteredAuctions.length === 0" class="empty-state">
       <div class="empty-icon">🔨</div>
-      <h3>暂无拍卖</h3>
+      <h3>暫無拍賣</h3>
       <p>点击上方「+ 创建拍卖」按钮来创建您的第一个拍卖吧！</p>
     </div>
 

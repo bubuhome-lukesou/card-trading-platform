@@ -7,10 +7,12 @@ import { productApi } from '@/api/products'
 import { tagApi } from '@/api/tags'
 import type { Product, Tag } from '@/types'
 import ProductCard from '@/components/product/ProductCard.vue'
+import { useFavoritesStore } from '@/stores/favorites'
 
 const { t, locale } = useI18n()
 const route = useRoute()
 const router = useRouter()
+const favoritesStore = useFavoritesStore()
 
 // State
 const products = ref<Product[]>([])
@@ -289,6 +291,7 @@ onMounted(() => {
   parseUrlFilters()
   fetchProducts()
   loadTags()
+  favoritesStore.loadFavorites()
 
   // Infinite scroll via scroll event
   window.addEventListener('scroll', handleScroll)

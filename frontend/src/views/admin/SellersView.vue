@@ -31,7 +31,7 @@ const handleUpdateStatus = async (id: string, status: string) => {
     await api.patch(`/admin/users/${id}`, { status })
     await fetchSellers()
   } catch (e) {
-    alert('操作失败')
+    alert('操作失敗')
   }
 }
 
@@ -65,7 +65,7 @@ onMounted(() => fetchSellers())
         </thead>
         <tbody>
           <tr v-if="loading"><td colspan="5" class="loading">加载中...</td></tr>
-          <tr v-else-if="!sellers.length"><td colspan="5" class="empty">暂无商家数据</td></tr>
+          <tr v-else-if="!sellers.length"><td colspan="5" class="empty">暫無商家數據</td></tr>
           <tr v-for="seller in sellers" :key="seller.id">
             <td class="nickname">{{ seller.nickname || '-' }}</td>
             <td>{{ seller.email }}</td>

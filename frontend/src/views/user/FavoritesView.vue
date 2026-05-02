@@ -1,21 +1,15 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useRouter } from 'vue-router'
+import { favoritesApi, type FavoriteItem } from '@/api/favorites'
+import { useFavoritesStore } from '@/stores/favorites'
 
 const { t } = useI18n()
+const router = useRouter()
+const favoritesStore = useFavoritesStore()
 
-interface Favorite {
-  id: string
-  productId: string
-  title: string
-  category: string
-  price: number
-  image?: string
-  sellerNickname: string
-  addedAt: string
-}
-
-const favorites = ref<Favorite[]>([])
+const favorites = ref<FavoriteItem[]>([])
 const loading = ref(true)
 
 const formatPrice = (price: number) => {
@@ -26,29 +20,11 @@ const formatPrice = (price: number) => {
   }).format(price)
 }
 
-const getCategoryEmoji = (category: string) => {
-  const map: Record<string, string> = {
-    pokemon: '🎮',
-    yugioh: '🐉',
-    mtg: '🧙',
-    ultraman: '👾',
-    onepiece: '⚔️',
-    doraemon: '🤖',
-    sports: '⚽',
-    other: '🎴',
-  }
-  return map[category] || '🎴'
-}
-
 const loadFavorites = async () => {
   loading.value = true
   try {
-    favorites.value = [
-      { id: '1', productId: '1', title: 'Pokemon 1st Edition Base Set', category: 'pokemon', price: 12800, sellerNickname: 'CardMaster', addedAt: '2026-04-20' },
-      { id: '2', productId: '2', title: 'Yu-Gi-Oh Blue-Eyes White Dragon', category: 'yugioh', price: 6800, sellerNickname: 'DragonSeller', addedAt: '2026-04-19' },
-      { id: '3', productId: '3', title: 'MTG Black Lotus', category: 'mtg', price: 25000, sellerNickname: 'MagicCards', addedAt: '2026-04-18' },
-      { id: '4', productId: '4', title: 'Doraemon Figure Collection', category: 'doraemon', price: 1800, sellerNickname: 'AnimeSeller', addedAt: '2026-04-17' },
-    ]
+    const res = await favoritesApi.getFavorites(1, 50)
+    favorites.value = res.data.data
   } catch (error) {
     console.error('Failed to load favorites:', error)
   } finally {
@@ -56,8 +32,9 @@ const loadFavorites = async () => {
   }
 }
 
-const handleRemove = (id: string) => {
-  favorites.value = favorites.value.filter(f => f.id !== id)
+const handleRemove = async (productId: string) => {
+  await favoritesStore.toggleFavorite(productId)
+  favorites.value = favorites.value.filter(f => f.productId !== productId)
 }
 
 onMounted(() => {
@@ -82,15 +59,16 @@ onMounted(() => {
 
     <div v-else class="favorites-grid">
       <div v-for="item in favorites" :key="item.id" class="favorite-card">
-        <div class="card-image">
-          <span class="category-emoji">{{ getCategoryEmoji(item.category) }}</span>
-          <button class="remove-btn" @click="handleRemove(item.id)">✕</button>
+        <div class="card-image" @click="router.push(`/product/${item.productId}`)">
+          <img v-if="item.product?.images?.[0]" :src="item.product.images[0]" :alt="item.product?.titleZh || item.product?.titleEn" />
+          <span v-else class="category-emoji">🎴</span>
+          <button class="remove-btn" @click.stop="handleRemove(item.productId)">✕</button>
         </div>
         <div class="card-info">
-          <h3 class="card-title">{{ item.title }}</h3>
-          <div class="card-meta">賣家: {{ item.sellerNickname }}</div>
+          <h3 class="card-title">{{ item.product?.titleZh || item.product?.titleEn }}</h3>
+          <div class="card-meta">{{ item.product?.brand }}</div>
           <div class="card-price">
-            <span class="price-value">{{ formatPrice(item.price) }}</span>
+            <span class="price-value">{{ formatPrice(item.product?.price || 0) }}</span>
           </div>
         </div>
         <div class="card-actions">
@@ -196,6 +174,14 @@ onMounted(() => {
   align-items: center;
   justify-content: center;
   position: relative;
+  overflow: hidden;
+  cursor: pointer;
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
 }
 
 .category-emoji {

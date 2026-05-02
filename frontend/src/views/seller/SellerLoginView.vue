@@ -22,7 +22,7 @@ onMounted(() => {
 const handleLogin = async () => {
   errorMsg.value = ''
   if (!loginForm.value.email || !loginForm.value.password) {
-    errorMsg.value = '请输入邮箱和密码'
+    errorMsg.value = '請輸入郵箱和密碼'
     return
   }
 
@@ -37,10 +37,10 @@ const handleLogin = async () => {
         authStore.logout()
       }
     } else {
-      errorMsg.value = '登录失败，请检查邮箱和密码'
+      errorMsg.value = '登入失敗，請檢查郵箱和密碼'
     }
   } catch (error: any) {
-    errorMsg.value = error?.response?.data?.message || '登录失败'
+    errorMsg.value = error?.response?.data?.message || '登入失敗'
   } finally {
     loading.value = false
   }

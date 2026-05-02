@@ -4,12 +4,16 @@ import { RouterLink } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { Heart, ShoppingCart, Gavel } from 'lucide-vue-next'
 import type { Product } from '@/types'
+import { useFavoritesStore } from '@/stores/favorites'
+import { useAuthStore } from '@/stores/auth'
 
 const props = defineProps<{
   product: Product
 }>()
 
 const { t, locale } = useI18n()
+const favoritesStore = useFavoritesStore()
+const authStore = useAuthStore()
 
 const title = computed(() => locale.value === 'zh' ? props.product.titleZh : props.product.titleEn)
 
@@ -22,6 +26,14 @@ const price = computed(() => {
     minimumFractionDigits: 0
   }).format(props.product.price)
 })
+
+const isFavorited = computed(() => favoritesStore.isFavorited(props.product.id))
+
+const handleToggleFavorite = (e: Event) => {
+  e.preventDefault()
+  e.stopPropagation()
+  favoritesStore.toggleFavorite(props.product.id)
+}
 </script>
 
 <template>
@@ -85,8 +97,8 @@ const price = computed(() => {
 
     <!-- Actions -->
     <div class="card-actions">
-      <button class="action-btn favorite" @click.prevent>
-        <Heart class="icon" />
+      <button class="action-btn favorite" :class="{ active: isFavorited }" @click="handleToggleFavorite">
+        <Heart class="icon" :class="{ 'icon-filled': isFavorited }" />
       </button>
       <button class="action-btn cart" @click.prevent>
         <ShoppingCart class="icon" />
@@ -323,6 +335,14 @@ const price = computed(() => {
 
 .favorite:hover {
   background: var(--accent);
+}
+
+.favorite.active {
+  background: var(--accent);
+}
+
+.icon-filled {
+  fill: var(--accent);
 }
 
 .cart:hover {

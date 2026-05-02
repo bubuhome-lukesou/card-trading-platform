@@ -55,11 +55,11 @@ watch(showTagCreate, (val) => {
 })
 
 const categories = [
-  { value: 'pokemon', label: '宝可梦', emoji: '🎮' },
-  { value: 'yugioh', label: '游戏王', emoji: '🐉' },
-  { value: 'mtg', label: '万智牌', emoji: '🧙' },
-  { value: 'ultraman', label: '奥特曼', emoji: '👾' },
-  { value: 'onepiece', label: '海贼王', emoji: '⚔️' },
+  { value: 'pokemon', label: '寶可夢', emoji: '🎮' },
+  { value: 'yugioh', label: '遊戲王', emoji: '🐉' },
+  { value: 'mtg', label: '萬智牌', emoji: '🧙' },
+  { value: 'ultraman', label: '奧特曼', emoji: '👾' },
+  { value: 'onepiece', label: '海賊王', emoji: '⚔️' },
   { value: 'doraemon', label: '哆啦A梦', emoji: '🤖' },
   { value: 'sports', label: '体育卡', emoji: '⚽' },
   { value: 'other', label: '其他', emoji: '🎴' },
@@ -119,7 +119,7 @@ const resetForm = () => {
 // AI Scan Card Function
 const scanCardImage = async () => {
   if (!scanImageUrl.value.trim()) {
-    scanError.value = '请输入图片 URL'
+    scanError.value = '請輸入圖片 URL'
     return
   }
 
@@ -148,12 +148,12 @@ const scanCardImage = async () => {
         formData.value.images = [scanImageUrl.value]
       }
       
-      alert('✅ 扫描成功！请检查并修改自动填充的内容')
+      alert('✅ 掃描成功！請檢查並修改自動填充的內容')
     } else {
       scanError.value = response.data.error || '无法识别图片中的卡牌'
     }
   } catch (error: any) {
-    scanError.value = error?.response?.data?.message || '扫描失败，请重试'
+    scanError.value = error?.response?.data?.message || '掃描失敗，請重試'
   } finally {
     scanning.value = false
   }
@@ -225,7 +225,7 @@ const handleSubmit = async () => {
         }
       } catch (uploadError) {
         console.error('Image upload failed:', uploadError)
-        alert('图片上传失败，请重试')
+        alert('圖片上傳失敗，請重試')
         loading.value = false
         return
       }
@@ -254,7 +254,7 @@ const handleSubmit = async () => {
     loadProducts()
   } catch (error: any) {
     console.error('Failed to save product:', error)
-    const message = error?.response?.data?.message || error?.message || '保存失败，请重试'
+    const message = error?.response?.data?.message || error?.message || '儲存失敗，請重試'
     alert(message)
   } finally {
     loading.value = false
@@ -502,7 +502,7 @@ onUnmounted(() => {
 
     <div v-else-if="filteredProducts.length === 0" class="empty-state">
       <div class="empty-icon">📦</div>
-      <h3>暂无商品</h3>
+      <h3>暫無商品</h3>
       <p>点击上方「+ 发布商品」按钮发布您的第一件商品吧！</p>
     </div>
 
