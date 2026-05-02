@@ -97,7 +97,7 @@ export class OrdersService {
     order.transferReceipt = receiptUrl;
     order.transferTime = new Date();
     // Auto-change status to 'paid' so seller can confirm
-    order.status = OrderStatus.PAID;
+    order.status = OrderStatus.PENDING_PAID;
     return this.orderRepo.save(order);
   }
 

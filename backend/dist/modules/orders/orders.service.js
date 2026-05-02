@@ -97,7 +97,7 @@ let OrdersService = class OrdersService {
         const order = await this.findOne(orderId);
         order.transferReceipt = receiptUrl;
         order.transferTime = new Date();
-        order.status = order_entity_2.OrderStatus.PAID;
+        order.status = order_entity_2.OrderStatus.PENDING_PAID;
         return this.orderRepo.save(order);
     }
     async updateStatus(id, status) {

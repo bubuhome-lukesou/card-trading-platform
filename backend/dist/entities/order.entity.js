@@ -22,6 +22,7 @@ var OrderType;
 var OrderStatus;
 (function (OrderStatus) {
     OrderStatus["PENDING"] = "pending";
+    OrderStatus["PENDING_PAID"] = "pending_paid";
     OrderStatus["PAID"] = "paid";
     OrderStatus["CONFIRMED"] = "confirmed";
     OrderStatus["SHIPPED"] = "shipped";

@@ -50,7 +50,9 @@ const formatDate = (dateStr: string) => {
 const getStatusBadge = (status: string) => {
   const map: Record<string, { class: string; text: string }> = {
     pending: { class: 'pending', text: '待付款' },
+    pending_paid: { class: 'pending-paid', text: '待確認' },
     paid: { class: 'paid', text: '已付款' },
+    confirmed: { class: 'confirmed', text: '已確認' },
     shipped: { class: 'shipped', text: '已發貨' },
     delivered: { class: 'delivered', text: '已完成' },
     cancelled: { class: 'cancelled', text: '已取消' },
@@ -125,8 +127,8 @@ const handleReceive = async (orderId: string) => {
 
 const handleReserve = async (orderId: string) => {
   try {
-    // 預約拿貨 — 改為 confirmed 狀態表示已預約
-    await ordersApi.updateStatus(orderId, 'confirmed')
+    // 預約拿貨 — 改為 pending_paid 狀態，等待商家確認
+    await ordersApi.updateStatus(orderId, 'pending_paid')
     await loadOrders()
     alert('預約拿貨成功！')
   } catch (error) {
@@ -479,6 +481,16 @@ onMounted(() => {
 .status-badge.pending {
   background: #f59e0b4d;
   color: #f59e0b;
+}
+
+.status-badge.pending-paid {
+  background: #f59e0b4d;
+  color: #f59e0b;
+}
+
+.status-badge.confirmed {
+  background: #10b9814d;
+  color: #10b981;
 }
 
 .status-badge.paid {

@@ -7,6 +7,7 @@ export declare enum OrderType {
 }
 export declare enum OrderStatus {
     PENDING = "pending",
+    PENDING_PAID = "pending_paid",
     PAID = "paid",
     CONFIRMED = "confirmed",
     SHIPPED = "shipped",

@@ -130,7 +130,7 @@ const formatDate = (dateStr: string) => {
 const getStatusBadge = (status: string) => {
   const map: Record<string, { class: string; text: string }> = {
     pending: { class: 'pending', text: '待付款' },
-    pending_paid: { class: 'pending', text: '待付款' },
+    pending_paid: { class: 'pending-paid', text: '待確認' },
     paid: { class: 'paid', text: '已付款' },
     shipped: { class: 'shipped', text: '已發貨' },
     delivered: { class: 'delivered', text: '已完成' },
@@ -300,6 +300,7 @@ tr:last-child td { border-bottom: none; }
 .amount { font-family: var(--font-num); font-weight: 600; color: var(--primary); }
 .date { font-size: var(--text-xs); color: var(--text-muted); }
 .status-badge { padding: 2px 8px; border-radius: var(--radius-full); font-size: var(--text-xs); font-weight: 500; }
+.status-badge.pending-paid { background: #f59e0b33; color: #f59e0b; }
 .status-badge.pending { background: #f59e0b33; color: #f59e0b; }
 .status-badge.paid { background: #3b82f633; color: #3b82f6; }
 .status-badge.shipped { background: #8b5cf633; color: #8b5cf6; }
