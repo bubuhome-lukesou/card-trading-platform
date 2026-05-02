@@ -13,11 +13,23 @@ export class FavoritesService {
   async findByUser(userId: string, page = 1, limit = 20) {
     const [data, total] = await this.favoriteRepo.findAndCount({
       where: { userId },
-      relations: ['product', 'product.images', 'product.tags'],
+      relations: ['product', 'product.tags'],
       order: { createdAt: 'DESC' },
       skip: (page - 1) * limit,
       take: limit,
     });
+
+    // Parse images JSON string → array for each product
+    for (const fav of data) {
+      if (fav.product?.images && typeof fav.product.images === 'string') {
+        try {
+          (fav.product as any).images = JSON.parse(fav.product.images);
+        } catch {
+          (fav.product as any).images = [fav.product.images];
+        }
+      }
+    }
+
     return { data, total, page, limit };
   }
 
