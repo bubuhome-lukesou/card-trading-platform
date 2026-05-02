@@ -4,13 +4,15 @@ import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { favoritesApi, type FavoriteItem } from '@/api/favorites'
 import { useFavoritesStore } from '@/stores/favorites'
+import { cartApi } from '@/api/cart'
 
 const { t } = useI18n()
 const router = useRouter()
 const favoritesStore = useFavoritesStore()
 
-const favorites = ref<FavoriteItem[]>([])
+const favorites = ref<any[]>([])
 const loading = ref(true)
+const processing = ref<string | null>(null)
 
 const formatPrice = (price: number) => {
   return new Intl.NumberFormat('zh-HK', {
@@ -37,6 +39,30 @@ const handleRemove = async (productId: string) => {
   favorites.value = favorites.value.filter(f => f.productId !== productId)
 }
 
+const handleBuyNow = async (item: any) => {
+  processing.value = item.productId
+  try {
+    await cartApi.addItem(item.productId, 1)
+    router.push('/user/cart')
+  } catch (error) {
+    console.error('Buy now failed:', error)
+  } finally {
+    processing.value = null
+  }
+}
+
+const handleAddToCart = async (item: any) => {
+  processing.value = item.productId
+  try {
+    await cartApi.addItem(item.productId, 1)
+    router.push('/user/cart')
+  } catch (error) {
+    console.error('Add to cart failed:', error)
+  } finally {
+    processing.value = null
+  }
+}
+
 onMounted(() => {
   loadFavorites()
 })
@@ -60,7 +86,11 @@ onMounted(() => {
     <div v-else class="favorites-grid">
       <div v-for="item in favorites" :key="item.id" class="favorite-card">
         <div class="card-image" @click="router.push(`/product/${item.productId}`)">
-          <img v-if="item.product?.images?.[0]" :src="item.product.images[0]" :alt="item.product?.titleZh || item.product?.titleEn" />
+          <img
+            v-if="item.product?.images?.[0]"
+            :src="item.product.images[0]"
+            :alt="item.product?.titleZh || item.product?.titleEn"
+          />
           <span v-else class="category-emoji">🎴</span>
           <button class="remove-btn" @click.stop="handleRemove(item.productId)">✕</button>
         </div>
@@ -72,9 +102,20 @@ onMounted(() => {
           </div>
         </div>
         <div class="card-actions">
-          <router-link :to="`/product/${item.productId}`" class="btn-view">
-            檢視詳情
-          </router-link>
+          <button
+            class="btn-buy"
+            :disabled="processing === item.productId"
+            @click="handleBuyNow(item)"
+          >
+            {{ processing === item.productId ? '處理中...' : '立即購買' }}
+          </button>
+          <button
+            class="btn-cart"
+            :disabled="processing === item.productId"
+            @click="handleAddToCart(item)"
+          >
+            加入購物車
+          </button>
         </div>
       </div>
     </div>
@@ -244,22 +285,47 @@ onMounted(() => {
   border-top: 1px solid var(--border);
 }
 
-.btn-view {
-  display: block;
-  text-align: center;
+.btn-buy {
+  flex: 1;
+  padding: var(--space-2);
+  background: var(--primary-gradient);
+  border: none;
+  border-radius: var(--radius-md);
+  color: white;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  &:hover:not(:disabled) {
+    opacity: 0.9;
+    transform: translateY(-1px);
+  }
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+.btn-cart {
+  flex: 1;
   padding: var(--space-2);
   background: var(--bg-elevated);
+  border: 1px solid var(--border);
   border-radius: var(--radius-md);
   color: var(--text-primary);
   font-size: var(--text-sm);
   font-weight: 500;
-  text-decoration: none;
+  cursor: pointer;
   transition: all var(--transition-fast);
-}
-
-.btn-view:hover {
-  background: var(--primary-gradient);
-  color: white;
+  &:hover:not(:disabled) {
+    background: var(--success);
+    border-color: var(--success);
+    color: white;
+  }
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
 }
 
 @media (max-width: 1024px) {

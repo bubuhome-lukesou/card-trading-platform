@@ -13,6 +13,7 @@ export class FavoritesService {
   async findByUser(userId: string, page = 1, limit = 20) {
     const [data, total] = await this.favoriteRepo.findAndCount({
       where: { userId },
+      relations: ['product', 'product.images', 'product.tags'],
       order: { createdAt: 'DESC' },
       skip: (page - 1) * limit,
       take: limit,
