@@ -10,6 +10,8 @@ interface Order {
   id: string
   orderNumber: string
   productTitle: string
+  productImage?: string
+  quantity: number
   buyerNickname: string
   buyerEmail: string
   amount: number
@@ -39,22 +41,32 @@ const loadOrders = async () => {
   loading.value = true
   try {
     const res = await ordersApi.getSellerOrders()
-    orders.value = (res.data.data || []).map((o: any) => ({
-      id: o.id,
-      orderNumber: o.orderNumber,
-      productTitle: o.product?.titleZh || o.product?.titleEn || '未知商品',
-      buyerNickname: o.buyer?.nickname || '-',
-      buyerEmail: o.buyer?.email || '-',
-      amount: o.totalPrice || 0,
-      status: o.status,
-      type: o.type,
-      createdAt: o.createdAt,
-      paidAt: o.paidAt,
-      shippedAt: o.shippedAt,
-      trackingNumber: o.trackingNumber,
-      transferReceipt: o.transferReceipt,
-      transferTime: o.transferTime,
-    }))
+    orders.value = (res.data.data || []).map((o: any) => {
+      let images: string[] = []
+      try {
+        images = typeof o.product?.images === 'string'
+          ? JSON.parse(o.product.images)
+          : (Array.isArray(o.product?.images) ? o.product.images : [])
+      } catch {}
+      return {
+        id: o.id,
+        orderNumber: o.orderNumber,
+        productTitle: o.product?.titleZh || o.product?.titleEn || '未知商品',
+        productImage: images[0] || '',
+        quantity: o.quantity || 1,
+        buyerNickname: o.buyer?.nickname || '-',
+        buyerEmail: o.buyer?.email || '-',
+        amount: o.totalPrice || 0,
+        status: o.status,
+        type: o.type,
+        createdAt: o.createdAt,
+        paidAt: o.paidAt,
+        shippedAt: o.shippedAt,
+        trackingNumber: o.trackingNumber,
+        transferReceipt: o.transferReceipt,
+        transferTime: o.transferTime,
+      }
+    })
   } catch (e) {
     console.error('Failed to load orders', e)
     orders.value = []
@@ -136,6 +148,7 @@ onMounted(() => loadOrders())
           <tr>
             <th>訂單號</th>
             <th>商品</th>
+            <th>數量</th>
             <th>買家</th>
             <th>金額</th>
             <th>狀態</th>
@@ -146,7 +159,14 @@ onMounted(() => loadOrders())
         <tbody>
           <tr v-for="order in filteredOrders" :key="order.id">
             <td class="order-number">{{ order.orderNumber }}</td>
-            <td class="product-title">{{ order.productTitle }}</td>
+            <td class="product-cell">
+              <div class="product-image">
+                <img v-if="order.productImage" :src="order.productImage" :alt="order.productTitle" />
+                <span v-else class="placeholder-emoji">🃏</span>
+              </div>
+              <span class="product-name">{{ order.productTitle }}</span>
+            </td>
+            <td class="quantity">x{{ order.quantity }}</td>
             <td>
               <div>{{ order.buyerNickname }}</div>
               <div class="buyer-email">{{ order.buyerEmail }}</div>
@@ -235,7 +255,12 @@ th { font-size: var(--text-xs); font-weight: 500; color: var(--text-secondary); 
 td { font-size: var(--text-sm); color: var(--text-primary); }
 tr:last-child td { border-bottom: none; }
 .order-number { font-family: var(--font-num); font-size: var(--text-xs); color: var(--text-muted); }
-.product-title { max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.product-cell { display: flex; align-items: center; gap: var(--space-3); }
+.product-image { width: 48px; height: 48px; border-radius: var(--radius-md); overflow: hidden; background: var(--bg-elevated); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.product-image img { width: 100%; height: 100%; object-fit: cover; }
+.placeholder-emoji { font-size: 24px; }
+.product-name { max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--text-sm); }
+.quantity { font-family: var(--font-num); font-size: var(--text-sm); color: var(--text-secondary); }
 .buyer-email { font-size: var(--text-xs); color: var(--text-muted); }
 .amount { font-family: var(--font-num); font-weight: 600; color: var(--primary); }
 .date { font-size: var(--text-xs); color: var(--text-muted); }
