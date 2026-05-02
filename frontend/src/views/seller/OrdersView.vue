@@ -9,9 +9,11 @@ const { t } = useI18n()
 interface Order {
   id: string
   orderNumber: string
+  productId: string
   productTitle: string
   productImage?: string
   quantity: number
+  unitPrice: number
   buyerNickname: string
   buyerEmail: string
   amount: number
@@ -51,9 +53,11 @@ const loadOrders = async () => {
       return {
         id: o.id,
         orderNumber: o.orderNumber,
+        productId: o.productId || '',
         productTitle: o.product?.titleZh || o.product?.titleEn || '未知商品',
         productImage: images[0] || '',
         quantity: o.quantity || 1,
+        unitPrice: o.product?.price ? Number(o.product.price) : (o.totalPrice ? Number(o.totalPrice) / (o.quantity || 1) : 0),
         buyerNickname: o.buyer?.nickname || '-',
         buyerEmail: o.buyer?.email || '-',
         amount: o.totalPrice || 0,
@@ -149,8 +153,9 @@ onMounted(() => loadOrders())
             <th>訂單號</th>
             <th>商品</th>
             <th>數量</th>
+            <th>單價</th>
+            <th>合計</th>
             <th>買家</th>
-            <th>金額</th>
             <th>狀態</th>
             <th>時間</th>
             <th>操作</th>
@@ -160,18 +165,21 @@ onMounted(() => loadOrders())
           <tr v-for="order in filteredOrders" :key="order.id">
             <td class="order-number">{{ order.orderNumber }}</td>
             <td class="product-cell">
-              <div class="product-image">
-                <img v-if="order.productImage" :src="order.productImage" :alt="order.productTitle" />
-                <span v-else class="placeholder-emoji">🃏</span>
-              </div>
-              <span class="product-name">{{ order.productTitle }}</span>
+              <router-link :to="`/product/${order.productId}`" class="product-link">
+                <div class="product-image">
+                  <img v-if="order.productImage" :src="order.productImage" :alt="order.productTitle" />
+                  <span v-else class="placeholder-emoji">🃏</span>
+                </div>
+                <span class="product-name">{{ order.productTitle }}</span>
+              </router-link>
             </td>
             <td class="quantity">x{{ order.quantity }}</td>
+            <td class="unit-price">{{ formatPrice(order.unitPrice) }}</td>
+            <td class="amount">{{ formatPrice(order.amount) }}</td>
             <td>
               <div>{{ order.buyerNickname }}</div>
               <div class="buyer-email">{{ order.buyerEmail }}</div>
             </td>
-            <td class="amount">{{ formatPrice(order.amount) }}</td>
             <td>
               <span class="status-badge" :class="getStatusBadge(order.status).class">
                 {{ getStatusBadge(order.status).text }}
@@ -256,11 +264,14 @@ td { font-size: var(--text-sm); color: var(--text-primary); }
 tr:last-child td { border-bottom: none; }
 .order-number { font-family: var(--font-num); font-size: var(--text-xs); color: var(--text-muted); }
 .product-cell { display: flex; align-items: center; gap: var(--space-3); }
+.product-link { display: flex; align-items: center; gap: var(--space-3); text-decoration: none; color: inherit; }
+.product-link:hover .product-name { color: var(--primary); text-decoration: underline; }
 .product-image { width: 48px; height: 48px; border-radius: var(--radius-md); overflow: hidden; background: var(--bg-elevated); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
 .product-image img { width: 100%; height: 100%; object-fit: cover; }
 .placeholder-emoji { font-size: 24px; }
-.product-name { max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--text-sm); }
+.product-name { max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--text-sm); transition: color 0.2s; }
 .quantity { font-family: var(--font-num); font-size: var(--text-sm); color: var(--text-secondary); }
+.unit-price { font-family: var(--font-num); font-size: var(--text-sm); color: var(--text-secondary); }
 .buyer-email { font-size: var(--text-xs); color: var(--text-muted); }
 .amount { font-family: var(--font-num); font-weight: 600; color: var(--primary); }
 .date { font-size: var(--text-xs); color: var(--text-muted); }
