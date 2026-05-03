@@ -15,9 +15,9 @@ const loading = ref(true)
 const processing = ref<string | null>(null)
 
 const formatPrice = (price: number) => {
-  return new Intl.NumberFormat('zh-HK', {
+  return new Intl.NumberFormat('zh-MO', {
     style: 'currency',
-    currency: 'HKD',
+    currency: 'MOP',
     minimumFractionDigits: 0,
   }).format(price)
 }

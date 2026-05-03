@@ -14,6 +14,16 @@ const router = useRouter()
 const route = useRoute()
 const authStore = useAuthStore()
 
+// API base URL for absolute image URLs
+const apiBaseUrl = import.meta.env.VITE_API_URL || ''
+
+// Resolve image URL - prepend API base if it's a server-side path
+const resolveImageUrl = (url: string) => {
+  if (!url) return '/placeholder-card.png'
+  if (url.startsWith('data:') || url.startsWith('http://') || url.startsWith('https://')) return url
+  return apiBaseUrl + url
+}
+
 // State
 const showModal = ref(false)
 const editingProduct = ref<any>(null)
@@ -26,6 +36,7 @@ const scanImageUrl = ref('')
 const imageInput = ref<HTMLInputElement | null>(null)
 const imagePreviews = ref<string[]>([])
 const pendingImageFiles = ref<File[]>([])
+const pendingImagePreviews = ref<string[]>([])
 const existingImageUrls = ref<string[]>([])
 const availableTags = ref<any[]>([])
 const selectedTags = ref<number[]>([])
@@ -112,6 +123,7 @@ const resetForm = () => {
   }
   imagePreviews.value = []
   pendingImageFiles.value = []
+  pendingImagePreviews.value = []
   existingImageUrls.value = []
   selectedTags.value = []
 }
@@ -184,6 +196,7 @@ const openEditModal = async (product: any) => {
   existingImageUrls.value = [...existingImages]
   imagePreviews.value = [...existingImages]
   pendingImageFiles.value = [] // No new files yet
+  pendingImagePreviews.value = [] // No new file previews
   // Load existing tags - use nextTick to ensure DOM is ready after modal opens
   const ids = (product.tags || []).map((t: any) => typeof t === 'number' ? t : t.id)
   _tagSelectedSnapshot = [...ids]
@@ -310,9 +323,9 @@ const getConditionLabel = (condition: string) => {
 }
 
 const formatPrice = (price: number) => {
-  return new Intl.NumberFormat('zh-HK', {
+  return new Intl.NumberFormat('zh-MO', {
     style: 'currency',
-    currency: 'HKD',
+    currency: 'MOP',
     minimumFractionDigits: 0,
   }).format(price)
 }
@@ -349,7 +362,9 @@ const handleImageChange = async (event: Event) => {
     pendingImageFiles.value.push(file)
     const reader = new FileReader()
     reader.onload = (e) => {
-      imagePreviews.value.push(e.target?.result as string)
+      const base64 = e.target?.result as string
+      pendingImagePreviews.value.push(base64)
+      imagePreviews.value = [...existingImageUrls.value, ...pendingImagePreviews.value]
     }
     reader.readAsDataURL(file)
   }
@@ -357,25 +372,14 @@ const handleImageChange = async (event: Event) => {
 }
 
 const removeImage = (index: number) => {
-  // If index is within existingImageUrls range, it's an existing image URL
   if (index < existingImageUrls.value.length) {
     existingImageUrls.value.splice(index, 1)
   } else {
-    // It's a new pending file
     const pendingIndex = index - existingImageUrls.value.length
     pendingImageFiles.value.splice(pendingIndex, 1)
+    pendingImagePreviews.value.splice(pendingIndex, 1)
   }
-  // Rebuild preview: existing URLs + new file base64 previews
-  const newFilePreviews = pendingImageFiles.value.map(file => {
-    return new Promise<string>((resolve) => {
-      const reader = new FileReader()
-      reader.onload = (e) => resolve(e.target?.result as string)
-      reader.readAsDataURL(file)
-    })
-  })
-  Promise.all(newFilePreviews).then(previews => {
-    imagePreviews.value = [...existingImageUrls.value, ...previews]
-  })
+  imagePreviews.value = [...existingImageUrls.value, ...pendingImagePreviews.value]
 }
 
 // Tag functions
@@ -509,7 +513,7 @@ onUnmounted(() => {
     <div v-else class="products-grid">
       <div v-for="product in filteredProducts" :key="product.id" class="product-card">
         <div class="product-image">
-          <img v-if="getProductImage(product)" :src="getProductImage(product)" :alt="product.titleEn" class="product-img" />
+          <img v-if="getProductImage(product)" :src="resolveImageUrl(getProductImage(product))" :alt="product.titleEn" class="product-img" />
           <span v-else class="category-emoji">{{ getCategoryEmoji(product.category) }}</span>
           <span class="status-badge" :class="getStatusBadge(product.status).class">
             {{ getStatusBadge(product.status).text }}
@@ -653,7 +657,7 @@ onUnmounted(() => {
 
             <!-- 售价 -->
             <div class="form-group">
-              <label>售价 (HK$)</label>
+              <label>售价 (MOP)</label>
               <input 
                 v-model.number="formData.price" 
                 type="number" 
@@ -692,7 +696,7 @@ onUnmounted(() => {
               </label>
               <div v-if="imagePreviews.length > 0" class="image-previews">
                 <div v-for="(img, index) in imagePreviews" :key="index" class="preview-item">
-                  <img :src="img" alt="Preview" />
+                  <img :src="resolveImageUrl(img)" alt="Preview" />
                   <button type="button" class="remove-btn" @click="removeImage(index)">×</button>
                 </div>
               </div>

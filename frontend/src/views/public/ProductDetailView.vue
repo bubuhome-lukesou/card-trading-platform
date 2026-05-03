@@ -187,7 +187,7 @@ const handleAddToCart = async () => {
 
           <div class="price-section">
             <span class="price-label">{{ t('product.details.price') }}</span>
-            <span class="price">HK$ {{ Number(product.price).toLocaleString() }}</span>
+            <span class="price">MOP ${{ Number(product.price).toLocaleString() }}</span>
             <div v-if="product.quantity !== undefined" class="stock-info">
               <span v-if="product.quantity === 0" class="out-of-stock-badge">Out of Stock</span>
               <span v-else class="stock-count">庫存: {{ product.quantity }}</span>
@@ -199,7 +199,14 @@ const handleAddToCart = async () => {
             <span class="qty-label">購買數量:</span>
             <div class="qty-controls">
               <button class="qty-btn" @click="decreaseQuantity" :disabled="selectedQuantity <= 1">−</button>
-              <span class="qty-value">{{ selectedQuantity }}</span>
+              <input
+                type="number"
+                class="qty-input"
+                v-model.number="selectedQuantity"
+                :min="1"
+                :max="getMaxQuantity()"
+                @change="selectedQuantity = Math.max(1, Math.min(selectedQuantity, getMaxQuantity()))"
+              />
               <button class="qty-btn" @click="increaseQuantity" :disabled="selectedQuantity >= getMaxQuantity()">+</button>
             </div>
           </div>
@@ -215,14 +222,14 @@ const handleAddToCart = async () => {
               :disabled="processing || isOutOfStock()"
               @click="handleBuyNow"
             >
-              {{ processing ? (t('common.loading') || '處理中...') : (t('product.card.buyNow') || '立即購買') }}
+              {{ processing ? (t('common.loading') || '處理中...') : '立即購買' }}
             </button>
             <button
               class="btn btn-outline"
               :disabled="processing || isOutOfStock()"
               @click="handleAddToCart"
             >
-              {{ t('product.card.addToCart') || '加入購物車' }}
+              加到購物車
             </button>
           </div>
         </div>
@@ -234,5 +241,55 @@ const handleAddToCart = async () => {
   </div>
 </template>
 
+<style scoped>
+.quantity-selector {
+  margin: 20px 0;
+}
 
+.qty-controls {
+  display: flex;
+  flex-direction: row;
+  gap: 25px;
+  align-items: center;
+}
 
+.qty-btn {
+  width: 52px;
+  height: 52px;
+  font-size: 24px;
+  line-height: 1;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-md);
+}
+
+.qty-input {
+  width: 140px;
+  height: 52px;
+  padding: 0 16px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-size: var(--text-lg);
+  text-align: center;
+  font-family: var(--font-num);
+}
+
+.qty-input:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+
+/* Remove spinner arrows from number input */
+.qty-input::-webkit-outer-spin-button,
+.qty-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.qty-input[type=number] {
+  -moz-appearance: textfield;
+}
+</style>

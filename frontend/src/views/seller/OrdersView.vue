@@ -33,6 +33,12 @@ const filterStatus = ref('all')
 const processingId = ref<string | null>(null)
 const showReceiptModal = ref(false)
 const receiptImageUrl = ref('')
+const apiBaseUrl = import.meta.env.VITE_API_URL || ''
+const resolveImageUrl = (url: string) => {
+  if (!url) return '/placeholder-card.png'
+  if (url.startsWith('data:') || url.startsWith('http')) return url
+  return apiBaseUrl + url
+}
 const showImageModal = ref(false)
 const modalImageUrl = ref('')
 const modalImageTitle = ref('')
@@ -120,7 +126,7 @@ const openImageModal = (url: string | undefined, title: string) => {
 }
 
 const formatPrice = (price: number) => {
-  return new Intl.NumberFormat('zh-HK', { style: 'currency', currency: 'HKD', minimumFractionDigits: 0 }).format(price)
+  return new Intl.NumberFormat('zh-MO', { style: 'currency', currency: 'MOP', minimumFractionDigits: 0 }).format(price)
 }
 
 const formatDate = (dateStr: string) => {
@@ -208,23 +214,23 @@ onMounted(() => loadOrders())
               <div v-if="order.status === 'pending_paid'" class="warning-text">
                 ⚠️ 買家未付款
               </div>
-              <template v-if="order.status === 'paid'">
-                <img 
-                  v-if="order.transferReceipt" 
-                  :src="order.transferReceipt" 
+              <template v-if="['paid', 'confirmed', 'shipped', 'pending_paid'].includes(order.status)">
+                <img
+                  v-if="order.transferReceipt"
+                  :src="resolveImageUrl(order.transferReceipt)"
                   class="receipt-thumbnail"
                   @click="viewReceipt(order.transferReceipt)"
                   alt="轉帳憑證"
                 />
                 <button
-                  v-if="order.transferReceipt"
+                  v-if="order.transferReceipt && (order.status === 'paid' || order.status === 'pending_paid')"
                   class="btn-action confirm"
                   @click="handleConfirmPayment(order.id)"
                   :disabled="processingId === order.id"
                 >
                   {{ processingId === order.id ? '處理中...' : '確認收款' }}
                 </button>
-                <div v-else class="warning-text">
+                <div v-if="!order.transferReceipt && order.status === 'pending_paid'" class="warning-text">
                   ⏳ 等待買家上傳憑證
                 </div>
               </template>
@@ -250,7 +256,7 @@ onMounted(() => loadOrders())
         <button @click="showReceiptModal = false" class="modal-close">✕</button>
       </div>
       <div class="modal-body">
-        <img :src="receiptImageUrl" alt="轉帳憑證" class="receipt-image" />
+        <img :src="resolveImageUrl(receiptImageUrl)" alt="轉帳憑證" class="receipt-image" />
       </div>
     </div>
   </div>

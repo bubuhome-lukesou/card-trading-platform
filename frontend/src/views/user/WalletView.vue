@@ -21,9 +21,9 @@ const showWithdrawModal = ref(false)
 const withdrawAmount = ref(0)
 
 const formatPrice = (price: number) => {
-  return new Intl.NumberFormat('zh-HK', {
+  return new Intl.NumberFormat('zh-MO', {
     style: 'currency',
-    currency: 'HKD',
+    currency: 'MOP',
     minimumFractionDigits: 0,
   }).format(price)
 }
@@ -159,7 +159,7 @@ onMounted(() => {
             目前可提現餘額: <strong>{{ formatPrice(balance) }}</strong>
           </div>
           <div class="form-group">
-            <label>提現金額 (HK$)</label>
+            <label>提現金額 (MOP)</label>
             <input 
               v-model.number="withdrawAmount" 
               type="number" 

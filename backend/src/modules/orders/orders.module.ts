@@ -17,7 +17,7 @@ import { ProductsModule } from '../products/products.module';
     ProductsModule,
     MulterModule.register({
       storage: diskStorage({
-        destination: './uploads',
+        destination: '/var/www/card-auction-platform/backend/uploads',
         filename: (req, file, callback) => {
           const uniqueName = `${uuidv4()}${extname(file.originalname)}`;
           callback(null, uniqueName);

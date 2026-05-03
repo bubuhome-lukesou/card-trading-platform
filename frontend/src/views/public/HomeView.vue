@@ -207,7 +207,7 @@ onMounted(() => {
             <div class="auction-info">
               <h3 class="auction-title">{{ auction.title }}</h3>
               <div class="auction-meta">
-                <span class="auction-price">HK$ {{ Number(auction.price).toLocaleString() }}</span>
+                <span class="auction-price">MOP ${{ Number(auction.price).toLocaleString() }}</span>
                 <span class="auction-bids">{{ auction.bids }} {{ t('home.auctionStatus.bids') }}</span>
               </div>
               <div class="auction-timer">
@@ -247,7 +247,7 @@ onMounted(() => {
             </div>
             <div class="listing-info">
               <h3 class="listing-title">{{ item.titleEn || item.titleZh }}</h3>
-              <div class="listing-price">HK$ {{ Number(item.price).toLocaleString() }}</div>
+              <div class="listing-price">MOP ${{ Number(item.price).toLocaleString() }}</div>
             </div>
           </RouterLink>
         </div>

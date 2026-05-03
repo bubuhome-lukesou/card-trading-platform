@@ -225,7 +225,7 @@ onUnmounted(() => {
         <!-- Bid Form -->
         <div v-if="canBid" class="bid-form">
           <div class="bid-input-group">
-            <span class="currency-prefix">HK$</span>
+            <span class="currency-prefix">MOP</span>
             <input 
               v-model.number="bidAmount" 
               type="number" 

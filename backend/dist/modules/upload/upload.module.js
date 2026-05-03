@@ -21,7 +21,7 @@ exports.UploadModule = UploadModule = __decorate([
         imports: [
             platform_express_1.MulterModule.register({
                 storage: (0, multer_1.diskStorage)({
-                    destination: './uploads',
+                    destination: '/var/www/card-auction-platform/backend/uploads',
                     filename: (req, file, callback) => {
                         const uniqueName = `${(0, uuid_1.v4)()}${(0, path_1.extname)(file.originalname)}`;
                         callback(null, uniqueName);

@@ -115,7 +115,7 @@ const activeFiltersList = computed(() => {
   if (filters.value.priceMin || filters.value.priceMax) {
     list.push({
       key: 'price',
-      value: `HK$ ${filters.value.priceMin || 0} - ${filters.value.priceMax || '∞'}`
+      value: `MOP $${filters.value.priceMin || 0} - ${filters.value.priceMax || '∞'}`
     })
   }
 
@@ -479,7 +479,7 @@ watch(() => route.query, () => {
                 v-model.number="filters.priceMin"
                 type="number"
                 class="price-input"
-                placeholder="Min"
+                placeholder="最低"
                 @change="updateFilter('priceMin', filters.priceMin)"
               />
               <span class="price-separator">-</span>
@@ -487,7 +487,7 @@ watch(() => route.query, () => {
                 v-model.number="filters.priceMax"
                 type="number"
                 class="price-input"
-                placeholder="Max"
+                placeholder="最高"
                 @change="updateFilter('priceMax', filters.priceMax)"
               />
             </div>
@@ -867,10 +867,17 @@ watch(() => route.query, () => {
   border-radius: var(--radius-md);
   color: var(--text-primary);
   font-size: var(--text-sm);
+  min-width: 0;
 
   &:focus {
     outline: none;
     border-color: var(--primary);
+  }
+
+  @media (max-width: 480px) {
+    min-width: 120px;
+    flex: 1;
+    font-size: var(--text-base);
   }
 }
 

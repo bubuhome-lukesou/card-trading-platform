@@ -29,6 +29,12 @@ const filterStatus = ref('all')
 const uploadingReceipt = ref<string | null>(null)
 const showReceiptModal = ref(false)
 const receiptImageUrl = ref('')
+const apiBaseUrl = import.meta.env.VITE_API_URL || ''
+const resolveImageUrl = (url: string) => {
+  if (!url) return '/placeholder-card.png'
+  if (url.startsWith('data:') || url.startsWith('http')) return url
+  return apiBaseUrl + url
+}
 
 const filteredOrders = computed(() => {
   if (filterStatus.value === 'all') return orders.value
@@ -36,9 +42,9 @@ const filteredOrders = computed(() => {
 })
 
 const formatPrice = (price: number) => {
-  return new Intl.NumberFormat('zh-HK', {
+  return new Intl.NumberFormat('zh-MO', {
     style: 'currency',
-    currency: 'HKD',
+    currency: 'MOP',
     minimumFractionDigits: 0,
   }).format(price)
 }
@@ -284,7 +290,7 @@ onMounted(() => {
           </button>
           <img 
             v-if="order.transferReceipt" 
-            :src="order.transferReceipt" 
+            :src="resolveImageUrl(order.transferReceipt)" 
             class="receipt-thumbnail"
             @click="viewReceipt(order.transferReceipt)"
             alt="轉帳憑證"
@@ -312,7 +318,7 @@ onMounted(() => {
         <button @click="showReceiptModal = false" class="modal-close">✕</button>
       </div>
       <div class="modal-body">
-        <img :src="receiptImageUrl" alt="轉帳憑證" class="receipt-image" />
+        <img :src="resolveImageUrl(receiptImageUrl)" alt="轉帳憑證" class="receipt-image" />
       </div>
     </div>
   </div>

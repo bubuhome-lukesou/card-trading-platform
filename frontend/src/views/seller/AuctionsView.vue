@@ -57,9 +57,9 @@ const filteredAuctions = computed(() => {
 })
 
 const formatPrice = (price: number) => {
-  return new Intl.NumberFormat('zh-HK', {
+  return new Intl.NumberFormat('zh-MO', {
     style: 'currency',
-    currency: 'HKD',
+    currency: 'MOP',
     minimumFractionDigits: 0,
   }).format(price)
 }
@@ -337,7 +337,7 @@ onMounted(() => {
 
           <div class="form-row">
             <div class="form-group">
-              <label>起拍价 (HK$)</label>
+              <label>起拍价 (MOP)</label>
               <input 
                 v-model.number="formData.startingPrice" 
                 type="number" 
@@ -347,7 +347,7 @@ onMounted(() => {
             </div>
 
             <div class="form-group">
-              <label>最低加价 (HK$)</label>
+              <label>最低加价 (MOP)</label>
               <input 
                 v-model.number="formData.bidIncrement" 
                 type="number" 
@@ -358,7 +358,7 @@ onMounted(() => {
           </div>
 
           <div class="form-group">
-            <label>保留价 (HK$) - 可选</label>
+            <label>保留价 (MOP) - 可选</label>
             <input 
               v-model.number="formData.reservePrice" 
               type="number" 

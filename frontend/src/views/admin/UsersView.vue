@@ -58,11 +58,11 @@ const handleChangeRole = async (id: string, currentRole: string) => {
 }
 
 const formatPrice = (price: number) => {
-  return new Intl.NumberFormat('zh-HK', { style: 'currency', currency: 'HKD', minimumFractionDigits: 0 }).format(price || 0)
+  return new Intl.NumberFormat('zh-MO', { style: 'currency', currency: 'MOP', minimumFractionDigits: 0 }).format(price || 0)
 }
 
 const formatDate = (date: string) => {
-  return date ? new Date(date).toLocaleDateString('zh-HK') : '-'
+  return date ? new Date(date).toLocaleDateString('zh-MO') : '-'
 }
 
 onMounted(() => fetchUsers())

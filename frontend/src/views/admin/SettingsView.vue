@@ -54,7 +54,7 @@ const handleSave = async () => {
           <input v-model.number="settings.platformFee" type="number" min="0" max="100" />
         </div>
         <div class="form-group">
-          <label>最低提現金額 (HK$)</label>
+          <label>最低提現金額 (MOP)</label>
           <input v-model.number="settings.minWithdraw" type="number" min="1" />
         </div>
       </div>
@@ -68,7 +68,7 @@ const handleSave = async () => {
           <input v-model.number="settings.maxAuctionDuration" type="number" min="1" />
         </div>
         <div class="form-group">
-          <label>預設最低加價 (HK$)</label>
+          <label>預設最低加價 (MOP)</label>
           <input v-model.number="settings.defaultBidIncrement" type="number" min="1" />
         </div>
       </div>

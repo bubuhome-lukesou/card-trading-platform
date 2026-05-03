@@ -44,7 +44,7 @@ onMounted(async () => {
 })
 
 const formatPrice = (price: number) => {
-  return new Intl.NumberFormat('zh-HK', { style: 'currency', currency: 'HKD', minimumFractionDigits: 0 }).format(price)
+  return new Intl.NumberFormat('zh-MO', { style: 'currency', currency: 'MOP', minimumFractionDigits: 0 }).format(price)
 }
 
 const getOrderStatusText = (status: string) => {

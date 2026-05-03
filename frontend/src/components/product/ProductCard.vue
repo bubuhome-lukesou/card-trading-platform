@@ -20,9 +20,9 @@ const title = computed(() => locale.value === 'zh' ? props.product.titleZh : pro
 const rarityClass = computed(() => `rarity-${props.product.rarity.toLowerCase()}`)
 
 const price = computed(() => {
-  return new Intl.NumberFormat('en-HK', {
+  return new Intl.NumberFormat('en-MO', {
     style: 'currency',
-    currency: 'HKD',
+    currency: 'MOP',
     minimumFractionDigits: 0
   }).format(props.product.price)
 })
