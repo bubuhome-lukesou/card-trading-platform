@@ -316,13 +316,6 @@ onMounted(() => {
           >
             {{ uploadingReceipt === order.id ? '上傳中...' : '上傳轉帳憑證' }}
           </button>
-          <img 
-            v-if="order.transferReceipt" 
-            :src="resolveImageUrl(order.transferReceipt)" 
-            class="receipt-thumbnail"
-            @click="viewReceipt(order.transferReceipt)"
-            alt="轉帳憑證"
-          />
           <button 
             v-if="order.status === 'shipped'" 
             class="btn-receive"
@@ -333,6 +326,17 @@ onMounted(() => {
           <router-link :to="`/product/${order.id}`" class="btn-detail">
             訂單詳情
           </router-link>
+        </div>
+
+        <!-- 轉帳憑證：獨立顯示，任何狀態有憑證就顯示 -->
+        <div v-if="order.transferReceipt" class="receipt-row">
+          <span class="receipt-label">轉帳憑證</span>
+          <img 
+            :src="resolveImageUrl(order.transferReceipt)" 
+            class="receipt-thumbnail"
+            @click="viewReceipt(order.transferReceipt)"
+            alt="轉帳憑證"
+          />
         </div>
       </div>
     </div>
@@ -610,6 +614,35 @@ onMounted(() => {
   border-top: 1px solid var(--border);
 }
 
+.receipt-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background: var(--bg-elevated);
+  border-top: 1px solid var(--border);
+}
+
+.receipt-label {
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.receipt-thumbnail {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-md);
+  object-fit: cover;
+  cursor: pointer;
+  border: 2px solid var(--border);
+  transition: border-color var(--transition-fast);
+}
+
+.receipt-thumbnail:hover {
+  border-color: var(--primary);
+}
+
 .btn-pay,
 .btn-receive,
 .btn-detail {
@@ -660,19 +693,6 @@ onMounted(() => {
 .btn-upload:disabled {
   opacity: 0.6;
   cursor: not-allowed;
-}
-
-.receipt-thumbnail {
-  width: 40px;
-  height: 40px;
-  border-radius: var(--radius-md);
-  object-fit: cover;
-  cursor: pointer;
-  border: 2px solid var(--border);
-}
-
-.receipt-thumbnail:hover {
-  border-color: var(--primary);
 }
 
 .btn-receive {
