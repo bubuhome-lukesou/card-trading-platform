@@ -33,5 +33,15 @@ export class AdminController {
   getStats() {
     return this.adminService.getStats();
   }
+
+  @Get('settings')
+  getSettings() {
+    return this.adminService.getSettings();
+  }
+
+  @Patch('settings')
+  updateSettings(@Body() body: { pickupInfo?: string; pickupQrCode?: string }) {
+    return this.adminService.updateSettings(body);
+  }
 }
 

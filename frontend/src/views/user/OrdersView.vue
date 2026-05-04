@@ -4,6 +4,7 @@ import { useI18n } from 'vue-i18n'
 import { ordersApi } from '@/api/orders'
 import { cartApi } from '@/api/cart'
 import { useRouter } from 'vue-router'
+import api from '@/api/index'
 
 const { t } = useI18n()
 const router = useRouter()
@@ -35,6 +36,13 @@ const resolveImageUrl = (url: string) => {
   if (url.startsWith('data:') || url.startsWith('http')) return url
   return apiBaseUrl + url
 }
+
+// 預約攞貨彈窗
+const showPickupModal = ref(false)
+const pickupInfo = ref('')
+const pickupQrCode = ref('')
+const pendingReserveOrderId = ref<string | null>(null)
+const submittingReserve = ref(false)
 
 const filteredOrders = computed(() => {
   if (filterStatus.value === 'all') return orders.value
@@ -132,15 +140,39 @@ const handleReceive = async (orderId: string) => {
 }
 
 const handleReserve = async (orderId: string) => {
+  // 先載入預約提示資訊
   try {
-    // 預約拿貨 — 改為 pending_paid 狀態，等待商家確認
-    await ordersApi.updateStatus(orderId, 'pending_paid')
+    const res = await api.get('/api/public/settings')
+    pickupInfo.value = res.data.pickupInfo || ''
+    pickupQrCode.value = res.data.pickupQrCode || ''
+  } catch (e) {
+    pickupInfo.value = ''
+    pickupQrCode.value = ''
+  }
+  pendingReserveOrderId.value = orderId
+  showPickupModal.value = true
+}
+
+const confirmReserve = async () => {
+  if (!pendingReserveOrderId.value) return
+  submittingReserve.value = true
+  try {
+    await ordersApi.updateStatus(pendingReserveOrderId.value, 'pending_paid')
     await loadOrders()
+    showPickupModal.value = false
+    pendingReserveOrderId.value = null
     alert('預約拿貨成功！')
   } catch (error) {
     console.error('Reserve failed:', error)
     alert('操作失敗，請重試')
+  } finally {
+    submittingReserve.value = false
   }
+}
+
+const cancelReserve = () => {
+  showPickupModal.value = false
+  pendingReserveOrderId.value = null
 }
 
 const handleUploadReceipt = async (orderId: string, file: File) => {
@@ -351,6 +383,27 @@ onMounted(() => {
       </div>
       <div class="modal-body">
         <img :src="resolveImageUrl(receiptImageUrl)" alt="轉帳憑證" class="receipt-image" />
+      </div>
+    </div>
+  </div>
+
+  <!-- 預約攞貨彈窗 -->
+  <div v-if="showPickupModal" class="modal-overlay" @click.self="cancelReserve">
+    <div class="pickup-modal">
+      <div class="modal-header">
+        <h3>📦 預約攞貨</h3>
+        <button @click="cancelReserve" class="modal-close">✕</button>
+      </div>
+      <div class="modal-body">
+        <div v-if="pickupInfo" class="pickup-info">{{ pickupInfo }}</div>
+        <div v-else class="pickup-empty">賣家尚未設定預約資訊</div>
+        <img v-if="pickupQrCode" :src="resolveImageUrl(pickupQrCode)" alt="WeChat 二維碼" class="qr-code" />
+      </div>
+      <div class="modal-footer">
+        <button @click="cancelReserve" class="btn-cancel">返回</button>
+        <button @click="confirmReserve" class="btn-confirm" :disabled="submittingReserve">
+          {{ submittingReserve ? '確認中...' : '確認預約' }}
+        </button>
       </div>
     </div>
   </div>
@@ -757,5 +810,82 @@ onMounted(() => {
   width: 100%;
   height: auto;
   display: block;
+}
+
+.pickup-modal {
+  background: var(--bg-card);
+  border-radius: var(--radius-xl);
+  padding: var(--space-6);
+  max-width: 400px;
+  width: 90%;
+}
+
+.pickup-modal .modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-4);
+}
+
+.pickup-modal .modal-header h3 {
+  font-size: var(--text-lg);
+  font-weight: 600;
+}
+
+.pickup-info {
+  white-space: pre-wrap;
+  font-size: var(--text-sm);
+  color: var(--text-primary);
+  line-height: 1.6;
+  margin-bottom: var(--space-4);
+  background: var(--bg-elevated);
+  padding: var(--space-4);
+  border-radius: var(--radius-lg);
+}
+
+.pickup-empty {
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+  margin-bottom: var(--space-4);
+}
+
+.qr-code {
+  width: 160px;
+  height: auto;
+  display: block;
+  margin: 0 auto var(--space-4);
+  border-radius: var(--radius-lg);
+}
+
+.modal-footer {
+  display: flex;
+  gap: var(--space-3);
+  justify-content: flex-end;
+  margin-top: var(--space-4);
+}
+
+.btn-cancel {
+  padding: var(--space-3) var(--space-6);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  color: var(--text-secondary);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btn-confirm {
+  padding: var(--space-3) var(--space-6);
+  background: var(--primary-gradient);
+  border: none;
+  border-radius: var(--radius-lg);
+  color: white;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btn-confirm:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 </style>
