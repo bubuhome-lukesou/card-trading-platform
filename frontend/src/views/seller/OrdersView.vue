@@ -178,6 +178,7 @@ onMounted(() => loadOrders())
             <th>買家</th>
             <th>狀態</th>
             <th>時間</th>
+            <th>轉帳憑證</th>
             <th>操作</th>
           </tr>
         </thead>
@@ -207,6 +208,30 @@ onMounted(() => loadOrders())
             </td>
             <td class="date">{{ formatDate(order.createdAt) }}</td>
             <td>
+              <div v-if="order.transferReceipt" class="receipt-cell">
+                <img
+                  :src="resolveImageUrl(order.transferReceipt)"
+                  class="receipt-thumbnail"
+                  @click="viewReceipt(order.transferReceipt)"
+                  alt="轉帳憑證"
+                />
+                <button
+                  v-if="order.status === 'paid' || order.status === 'pending_paid'"
+                  class="btn-action confirm"
+                  @click="handleConfirmPayment(order.id)"
+                  :disabled="processingId === order.id"
+                >
+                  {{ processingId === order.id ? '處理中...' : '確認收款' }}
+                </button>
+              </div>
+              <div v-if="!order.transferReceipt && order.status === 'pending_paid'" class="warning-text">
+                ⏳ 等待買家上傳憑證
+              </div>
+              <div v-if="!order.transferReceipt && order.status === 'paid'" class="warning-text">
+                ⚠️ 待確認
+              </div>
+            </td>
+            <td>
               <button
                 v-if="order.status === 'pending_paid'"
                 class="btn-warning"
@@ -217,26 +242,6 @@ onMounted(() => loadOrders())
               <div v-if="order.status === 'pending_paid'" class="warning-text">
                 ⚠️ 買家未付款
               </div>
-              <template v-if="['paid', 'confirmed', 'shipped', 'pending_paid'].includes(order.status)">
-                <img
-                  v-if="order.transferReceipt"
-                  :src="resolveImageUrl(order.transferReceipt)"
-                  class="receipt-thumbnail"
-                  @click="viewReceipt(order.transferReceipt)"
-                  alt="轉帳憑證"
-                />
-                <button
-                  v-if="order.transferReceipt && (order.status === 'paid' || order.status === 'pending_paid')"
-                  class="btn-action confirm"
-                  @click="handleConfirmPayment(order.id)"
-                  :disabled="processingId === order.id"
-                >
-                  {{ processingId === order.id ? '處理中...' : '確認收款' }}
-                </button>
-                <div v-if="!order.transferReceipt && order.status === 'pending_paid'" class="warning-text">
-                  ⏳ 等待買家上傳憑證
-                </div>
-              </template>
               <button
                 v-if="order.status === 'confirmed'"
                 @click="handleUpdateStatus(order.id, 'shipped')"
@@ -322,7 +327,8 @@ tr:last-child td { border-bottom: none; }
 .btn-action.confirm { background: #10b981; color: white; margin-top: var(--space-2); }
 .btn-warning { background: #ef444433; color: #ef4444; padding: var(--space-1) var(--space-3); border-radius: var(--radius-md); font-size: var(--text-xs); border: none; cursor: pointer; }
 .warning-text { font-size: var(--text-xs); color: var(--text-muted); margin-top: var(--space-2); }
-.receipt-thumbnail { width: 40px; height: 40px; border-radius: var(--radius-md); object-fit: cover; cursor: pointer; border: 2px solid var(--border); display: block; margin-bottom: var(--space-2); }
+.receipt-cell { display: flex; flex-direction: column; align-items: center; gap: var(--space-2); }
+.receipt-thumbnail { width: 40px; height: 40px; border-radius: var(--radius-md); object-fit: cover; cursor: pointer; border: 2px solid var(--border); }
 .receipt-thumbnail:hover { border-color: var(--primary); }
 
 .modal-overlay {
