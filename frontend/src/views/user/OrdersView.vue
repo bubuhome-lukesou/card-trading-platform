@@ -191,35 +191,63 @@ onMounted(() => {
         :class="{ active: filterStatus === 'all' }"
         @click="filterStatus = 'all'"
       >
-        全部
+        全部 ({{ orders.length }})
       </button>
       <button 
         class="tab" 
         :class="{ active: filterStatus === 'pending' }"
         @click="filterStatus = 'pending'"
       >
-        待付款
+        待付款 ({{ orders.filter(o => o.status === 'pending').length }})
+      </button>
+      <button 
+        class="tab" 
+        :class="{ active: filterStatus === 'pending_paid' }"
+        @click="filterStatus = 'pending_paid'"
+      >
+        待確認 ({{ orders.filter(o => o.status === 'pending_paid').length }})
       </button>
       <button 
         class="tab" 
         :class="{ active: filterStatus === 'paid' }"
         @click="filterStatus = 'paid'"
       >
-        已付款
+        已付款 ({{ orders.filter(o => o.status === 'paid').length }})
+      </button>
+      <button 
+        class="tab" 
+        :class="{ active: filterStatus === 'confirmed' }"
+        @click="filterStatus = 'confirmed'"
+      >
+        已確認 ({{ orders.filter(o => o.status === 'confirmed').length }})
       </button>
       <button 
         class="tab" 
         :class="{ active: filterStatus === 'shipped' }"
         @click="filterStatus = 'shipped'"
       >
-        已發貨
+        已發貨 ({{ orders.filter(o => o.status === 'shipped').length }})
       </button>
       <button 
         class="tab" 
         :class="{ active: filterStatus === 'delivered' }"
         @click="filterStatus = 'delivered'"
       >
-        已完成
+        已完成 ({{ orders.filter(o => o.status === 'delivered').length }})
+      </button>
+      <button 
+        class="tab" 
+        :class="{ active: filterStatus === 'cancelled' }"
+        @click="filterStatus = 'cancelled'"
+      >
+        已取消 ({{ orders.filter(o => o.status === 'cancelled').length }})
+      </button>
+      <button 
+        class="tab" 
+        :class="{ active: filterStatus === 'refunded' }"
+        @click="filterStatus = 'refunded'"
+      >
+        已退款 ({{ orders.filter(o => o.status === 'refunded').length }})
       </button>
     </div>
 
