@@ -38,6 +38,7 @@ const tag_entity_1 = require("./entities/tag.entity");
 const tags_module_1 = require("./modules/tags/tags.module");
 const cart_module_1 = require("./modules/cart/cart.module");
 const cart_item_entity_1 = require("./entities/cart-item.entity");
+const settings_entity_1 = require("./entities/settings.entity");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -51,10 +52,11 @@ exports.AppModule = AppModule = __decorate([
                 username: process.env.DB_USERNAME || 'card_admin',
                 password: process.env.DB_PASSWORD || 'CardAuction2026!',
                 database: process.env.DB_DATABASE || 'card_auction',
-                entities: [user_entity_1.User, product_entity_1.Product, auction_entity_1.Auction, bid_entity_1.Bid, order_entity_1.Order, favorite_entity_1.Favorite, wallet_entity_1.WalletTransaction, page_entity_1.Page, tag_entity_1.Tag, cart_item_entity_1.CartItem],
+                entities: [user_entity_1.User, product_entity_1.Product, auction_entity_1.Auction, bid_entity_1.Bid, order_entity_1.Order, favorite_entity_1.Favorite, wallet_entity_1.WalletTransaction, page_entity_1.Page, tag_entity_1.Tag, cart_item_entity_1.CartItem, settings_entity_1.Settings],
                 synchronize: true,
                 logging: process.env.NODE_ENV === 'development'
             }),
+            typeorm_1.TypeOrmModule.forFeature([settings_entity_1.Settings]),
             schedule_1.ScheduleModule.forRoot(),
             auth_module_1.AuthModule,
             products_module_1.ProductsModule,

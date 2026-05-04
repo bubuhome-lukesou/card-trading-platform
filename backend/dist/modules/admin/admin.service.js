@@ -17,9 +17,11 @@ const common_1 = require("@nestjs/common");
 const typeorm_1 = require("@nestjs/typeorm");
 const typeorm_2 = require("typeorm");
 const user_entity_1 = require("../../entities/user.entity");
+const settings_entity_1 = require("../../entities/settings.entity");
 let AdminService = class AdminService {
-    constructor(userRepo) {
+    constructor(userRepo, settingsRepo) {
         this.userRepo = userRepo;
+        this.settingsRepo = settingsRepo;
     }
     async getUsers(page = 1, limit = 20, role) {
         const where = {};
@@ -54,11 +56,29 @@ let AdminService = class AdminService {
         const totalAdmins = await this.userRepo.count({ where: { role: user_entity_1.UserRole.ADMIN } });
         return { totalUsers, totalSellers, totalAdmins };
     }
+    async getSettings() {
+        let settings = await this.settingsRepo.findOne({ where: { id: 1 } });
+        if (!settings) {
+            settings = this.settingsRepo.create({ id: 1, pickupInfo: '', pickupQrCode: '' });
+            settings = await this.settingsRepo.save(settings);
+        }
+        return settings;
+    }
+    async updateSettings(data) {
+        const settings = await this.getSettings();
+        if (data.pickupInfo !== undefined)
+            settings.pickupInfo = data.pickupInfo;
+        if (data.pickupQrCode !== undefined)
+            settings.pickupQrCode = data.pickupQrCode;
+        return this.settingsRepo.save(settings);
+    }
 };
 exports.AdminService = AdminService;
 exports.AdminService = AdminService = __decorate([
     (0, common_1.Injectable)(),
     __param(0, (0, typeorm_1.InjectRepository)(user_entity_1.User)),
-    __metadata("design:paramtypes", [typeorm_2.Repository])
+    __param(1, (0, typeorm_1.InjectRepository)(settings_entity_1.Settings)),
+    __metadata("design:paramtypes", [typeorm_2.Repository,
+        typeorm_2.Repository])
 ], AdminService);
 //# sourceMappingURL=admin.service.js.map

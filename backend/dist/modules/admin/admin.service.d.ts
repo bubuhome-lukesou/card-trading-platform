@@ -1,8 +1,10 @@
 import { Repository } from 'typeorm';
 import { User } from '../../entities/user.entity';
+import { Settings } from '../../entities/settings.entity';
 export declare class AdminService {
     private userRepo;
-    constructor(userRepo: Repository<User>);
+    private settingsRepo;
+    constructor(userRepo: Repository<User>, settingsRepo: Repository<Settings>);
     getUsers(page?: number, limit?: number, role?: string): Promise<{
         data: User[];
         total: number;
@@ -20,4 +22,9 @@ export declare class AdminService {
         totalSellers: number;
         totalAdmins: number;
     }>;
+    getSettings(): Promise<Settings>;
+    updateSettings(data: {
+        pickupInfo?: string;
+        pickupQrCode?: string;
+    }): Promise<Settings>;
 }

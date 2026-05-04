@@ -19,4 +19,9 @@ export declare class AdminController {
         totalSellers: number;
         totalAdmins: number;
     }>;
+    getSettings(): Promise<import("../../entities").Settings>;
+    updateSettings(body: {
+        pickupInfo?: string;
+        pickupQrCode?: string;
+    }): Promise<import("../../entities").Settings>;
 }

@@ -8,16 +8,34 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
+var __param = (this && this.__param) || function (paramIndex, decorator) {
+    return function (target, key) { decorator(target, key, paramIndex); }
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.AppController = void 0;
 const common_1 = require("@nestjs/common");
 const app_service_1 = require("./app.service");
+const settings_entity_1 = require("./entities/settings.entity");
+const typeorm_1 = require("@nestjs/typeorm");
+const typeorm_2 = require("typeorm");
 let AppController = class AppController {
-    constructor(appService) {
+    constructor(appService, settingsRepo) {
         this.appService = appService;
+        this.settingsRepo = settingsRepo;
     }
     getHello() {
         return this.appService.getHello();
+    }
+    async getPublicSettings() {
+        let settings = await this.settingsRepo.findOne({ where: { id: 1 } });
+        if (!settings) {
+            settings = this.settingsRepo.create({ id: 1, pickupInfo: '', pickupQrCode: '' });
+            settings = await this.settingsRepo.save(settings);
+        }
+        return {
+            pickupInfo: settings.pickupInfo,
+            pickupQrCode: settings.pickupQrCode,
+        };
     }
 };
 exports.AppController = AppController;
@@ -27,8 +45,16 @@ __decorate([
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", String)
 ], AppController.prototype, "getHello", null);
+__decorate([
+    (0, common_1.Get)('api/public/settings'),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", Promise)
+], AppController.prototype, "getPublicSettings", null);
 exports.AppController = AppController = __decorate([
     (0, common_1.Controller)(),
-    __metadata("design:paramtypes", [app_service_1.AppService])
+    __param(1, (0, typeorm_1.InjectRepository)(settings_entity_1.Settings)),
+    __metadata("design:paramtypes", [app_service_1.AppService,
+        typeorm_2.Repository])
 ], AppController);
 //# sourceMappingURL=app.controller.js.map
