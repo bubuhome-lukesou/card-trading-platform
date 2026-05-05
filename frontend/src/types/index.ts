@@ -14,6 +14,8 @@ export interface User {
   emailNotifications: boolean
   status: UserStatus
   createdAt: string
+  pickupInfo?: string
+  pickupQrCode?: string
 }
 
 // Tag types

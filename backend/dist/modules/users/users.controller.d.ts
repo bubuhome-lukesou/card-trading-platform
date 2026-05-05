@@ -12,4 +12,12 @@ export declare class UsersController {
         currentPassword: string;
         newPassword: string;
     }): Promise<import("../../entities").User>;
+    updatePickupInfo(req: any, body: {
+        pickupInfo?: string;
+        pickupQrCode?: string;
+    }): Promise<import("../../entities").User>;
+    getSellerPickupInfo(sellerId: string): Promise<{
+        pickupInfo: string;
+        pickupQrCode: string;
+    }>;
 }

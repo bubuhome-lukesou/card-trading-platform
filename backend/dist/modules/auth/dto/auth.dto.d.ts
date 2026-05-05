@@ -8,6 +8,16 @@ export declare class RegisterDto {
     password: string;
     role?: string;
 }
+export declare class SellerRegisterDto {
+    email: string;
+    nickname: string;
+    password: string;
+    storeName: string;
+    storeDescription?: string;
+    phone?: string;
+    pickupInfo?: string;
+    pickupQrCode?: string;
+}
 export declare class AuthResponseDto {
     user: any;
     accessToken: string;

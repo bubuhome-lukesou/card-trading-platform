@@ -30,6 +30,8 @@ import { TagsModule } from './modules/tags/tags.module'
 import { CartModule } from './modules/cart/cart.module'
 import { CartItem } from './entities/cart-item.entity'
 import { Settings } from './entities/settings.entity'
+import { SellerApplication } from './entities/seller-application.entity'
+import { SellerApplicationsModule } from './modules/seller-applications/seller-applications.module'
 
 @Module({
   imports: [
@@ -40,7 +42,7 @@ import { Settings } from './entities/settings.entity'
       username: process.env.DB_USERNAME || 'card_admin',
       password: process.env.DB_PASSWORD || 'CardAuction2026!',
       database: process.env.DB_DATABASE || 'card_auction',
-      entities: [User, Product, Auction, Bid, Order, Favorite, WalletTransaction, Page, Tag, CartItem, Settings],
+      entities: [User, Product, Auction, Bid, Order, Favorite, WalletTransaction, Page, Tag, CartItem, Settings, SellerApplication],
       synchronize: true,
       logging: process.env.NODE_ENV === 'development'
     }),
@@ -61,7 +63,8 @@ import { Settings } from './entities/settings.entity'
     AdminModule,
     PagesModule,
     TagsModule,
-    CartModule
+    CartModule,
+    SellerApplicationsModule
   ],
   controllers: [AppController],
   providers: [AppService]

@@ -22,6 +22,8 @@ export declare class User {
     resetPasswordToken: string;
     resetPasswordExpires: Date;
     lastLoginAt: Date;
+    pickupInfo: string;
+    pickupQrCode: string;
     createdAt: Date;
     updatedAt: Date;
 }

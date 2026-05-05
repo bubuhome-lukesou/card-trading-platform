@@ -29,6 +29,12 @@ let UsersController = class UsersController {
     updatePassword(req, body) {
         return this.usersService.updatePassword(req.user.id, body.currentPassword, body.newPassword);
     }
+    updatePickupInfo(req, body) {
+        return this.usersService.updatePickupInfo(req.user.id, body);
+    }
+    getSellerPickupInfo(sellerId) {
+        return this.usersService.getSellerInfo(sellerId);
+    }
 };
 exports.UsersController = UsersController;
 __decorate([
@@ -57,6 +63,22 @@ __decorate([
     __metadata("design:paramtypes", [Object, Object]),
     __metadata("design:returntype", void 0)
 ], UsersController.prototype, "updatePassword", null);
+__decorate([
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, common_1.Patch)('pickup-info'),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, Object]),
+    __metadata("design:returntype", void 0)
+], UsersController.prototype, "updatePickupInfo", null);
+__decorate([
+    (0, common_1.Get)('seller/:sellerId/pickup-info'),
+    __param(0, (0, common_1.Param)('sellerId')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", void 0)
+], UsersController.prototype, "getSellerPickupInfo", null);
 exports.UsersController = UsersController = __decorate([
     (0, common_1.Controller)('users'),
     __metadata("design:paramtypes", [users_service_1.UsersService])

@@ -57,5 +57,21 @@ export class UsersService {
     (user as any).role = role;
     return this.userRepo.save(user);
   }
+
+  async updatePickupInfo(id: string, data: { pickupInfo?: string; pickupQrCode?: string }) {
+    const user = await this.findById(id);
+    if (data.pickupInfo !== undefined) user.pickupInfo = data.pickupInfo;
+    if (data.pickupQrCode !== undefined) user.pickupQrCode = data.pickupQrCode;
+    return this.userRepo.save(user);
+  }
+
+  async getSellerInfo(sellerId: string) {
+    const user = await this.userRepo.findOne({ where: { id: sellerId } });
+    if (!user) return { pickupInfo: '', pickupQrCode: '' };
+    return {
+      pickupInfo: user.pickupInfo || '',
+      pickupQrCode: user.pickupQrCode || '',
+    };
+  }
 }
 

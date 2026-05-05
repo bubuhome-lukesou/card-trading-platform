@@ -20,4 +20,5 @@ __exportStar(require("./auction.entity"), exports);
 __exportStar(require("./bid.entity"), exports);
 __exportStar(require("./order.entity"), exports);
 __exportStar(require("./settings.entity"), exports);
+__exportStar(require("./seller-application.entity"), exports);
 //# sourceMappingURL=index.js.map

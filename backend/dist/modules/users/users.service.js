@@ -100,6 +100,23 @@ let UsersService = class UsersService {
         user.role = role;
         return this.userRepo.save(user);
     }
+    async updatePickupInfo(id, data) {
+        const user = await this.findById(id);
+        if (data.pickupInfo !== undefined)
+            user.pickupInfo = data.pickupInfo;
+        if (data.pickupQrCode !== undefined)
+            user.pickupQrCode = data.pickupQrCode;
+        return this.userRepo.save(user);
+    }
+    async getSellerInfo(sellerId) {
+        const user = await this.userRepo.findOne({ where: { id: sellerId } });
+        if (!user)
+            return { pickupInfo: '', pickupQrCode: '' };
+        return {
+            pickupInfo: user.pickupInfo || '',
+            pickupQrCode: user.pickupQrCode || '',
+        };
+    }
 };
 exports.UsersService = UsersService;
 exports.UsersService = UsersService = __decorate([

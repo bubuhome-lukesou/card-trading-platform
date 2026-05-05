@@ -16,6 +16,7 @@ const navItems = [
   { path: '/seller/auctions', name: 'auctions', icon: '🔨', label: 'seller.auctions' },
   { path: '/seller/orders', name: 'orders', icon: '📋', label: 'seller.orders' },
   { path: '/seller/earnings', name: 'earnings', icon: '💰', label: 'seller.earnings' },
+  { path: '/seller/settings', name: 'settings', icon: '⚙️', label: 'seller.settings' },
 ]
 
 const isActive = (path: string) => route.path === path

@@ -19,4 +19,12 @@ export declare class UsersService {
         limit: number;
     }>;
     updateRole(id: string, role: string): Promise<User>;
+    updatePickupInfo(id: string, data: {
+        pickupInfo?: string;
+        pickupQrCode?: string;
+    }): Promise<User>;
+    getSellerInfo(sellerId: string): Promise<{
+        pickupInfo: string;
+        pickupQrCode: string;
+    }>;
 }

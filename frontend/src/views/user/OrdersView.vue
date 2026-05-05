@@ -14,6 +14,7 @@ interface Order {
   orderNumber: string
   productTitle: string
   productImage?: string
+  sellerId: string
   sellerNickname: string
   amount: number
   quantity: number
@@ -102,6 +103,7 @@ const loadOrders = async () => {
         orderNumber: o.orderNumber,
         productTitle: o.product?.titleZh || o.product?.titleEn || '未知商品',
         productImage: images[0] || '',
+        sellerId: o.sellerId || '',
         sellerNickname: o.seller?.nickname || o.seller?.username || (o.sellerId ? `賣家${o.sellerId.slice(0,8)}` : '未知賣家'),
         amount: Number(o.totalPrice) || 0,
         status: o.status,
@@ -139,10 +141,10 @@ const handleReceive = async (orderId: string) => {
   }
 }
 
-const handleReserve = async (orderId: string) => {
-  // 先載入預約提示資訊
+const handleReserve = async (orderId: string, sellerId: string) => {
+  // 根據 sellerId 獲取該商家的取貨資訊
   try {
-    const res = await api.get('/api/public/settings')
+    const res = await api.get(`/api/users/seller/${sellerId}/pickup-info`)
     pickupInfo.value = res.data.pickupInfo || ''
     pickupQrCode.value = res.data.pickupQrCode || ''
   } catch (e) {
@@ -336,7 +338,7 @@ onMounted(() => {
           <button
             v-if="order.status === 'pending'"
             class="btn-reserve"
-            @click="handleReserve(order.id)"
+            @click="handleReserve(order.id, order.sellerId)"
           >
             預約拿貨
           </button>

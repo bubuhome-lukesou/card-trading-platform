@@ -1,4 +1,4 @@
-import { Controller, Get, Patch, Body, UseGuards, Request } from '@nestjs/common';
+import { Controller, Get, Patch, Body, UseGuards, Request, Param } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { UsersService } from './users.service';
 
@@ -22,6 +22,17 @@ export class UsersController {
   @Patch('password')
   updatePassword(@Request() req, @Body() body: { currentPassword: string; newPassword: string }) {
     return this.usersService.updatePassword(req.user.id, body.currentPassword, body.newPassword);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Patch('pickup-info')
+  updatePickupInfo(@Request() req, @Body() body: { pickupInfo?: string; pickupQrCode?: string }) {
+    return this.usersService.updatePickupInfo(req.user.id, body);
+  }
+
+  @Get('seller/:sellerId/pickup-info')
+  getSellerPickupInfo(@Param('sellerId') sellerId: string) {
+    return this.usersService.getSellerInfo(sellerId);
   }
 }
 

@@ -68,6 +68,13 @@ export class User {
   @Column({ nullable: true })
   lastLoginAt: Date
 
+  // 賣家取貨資訊
+  @Column({ type: 'varchar', length: 2000, nullable: true })
+  pickupInfo: string
+
+  @Column({ nullable: true })
+  pickupQrCode: string
+
   @CreateDateColumn()
   createdAt: Date
 

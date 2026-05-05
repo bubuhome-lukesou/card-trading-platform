@@ -52,10 +52,9 @@ const userMenuItems = computed(() => {
       { to: '/user/settings', name: t('user.settings'), icon: Settings },
     )
   } else if (authStore.isSeller) {
-    // Sellers see their seller dashboard and settings only
+    // Sellers see their seller dashboard only (no user settings in dropdown)
     items.push(
       { to: '/seller', name: t('seller.dashboard'), icon: Store },
-      { to: '/user/settings', name: t('user.settings'), icon: Settings },
     )
   }
   // Admins see no user menu items beyond logout

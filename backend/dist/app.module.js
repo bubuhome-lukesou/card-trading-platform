@@ -39,6 +39,8 @@ const tags_module_1 = require("./modules/tags/tags.module");
 const cart_module_1 = require("./modules/cart/cart.module");
 const cart_item_entity_1 = require("./entities/cart-item.entity");
 const settings_entity_1 = require("./entities/settings.entity");
+const seller_application_entity_1 = require("./entities/seller-application.entity");
+const seller_applications_module_1 = require("./modules/seller-applications/seller-applications.module");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -52,7 +54,7 @@ exports.AppModule = AppModule = __decorate([
                 username: process.env.DB_USERNAME || 'card_admin',
                 password: process.env.DB_PASSWORD || 'CardAuction2026!',
                 database: process.env.DB_DATABASE || 'card_auction',
-                entities: [user_entity_1.User, product_entity_1.Product, auction_entity_1.Auction, bid_entity_1.Bid, order_entity_1.Order, favorite_entity_1.Favorite, wallet_entity_1.WalletTransaction, page_entity_1.Page, tag_entity_1.Tag, cart_item_entity_1.CartItem, settings_entity_1.Settings],
+                entities: [user_entity_1.User, product_entity_1.Product, auction_entity_1.Auction, bid_entity_1.Bid, order_entity_1.Order, favorite_entity_1.Favorite, wallet_entity_1.WalletTransaction, page_entity_1.Page, tag_entity_1.Tag, cart_item_entity_1.CartItem, settings_entity_1.Settings, seller_application_entity_1.SellerApplication],
                 synchronize: true,
                 logging: process.env.NODE_ENV === 'development'
             }),
@@ -73,7 +75,8 @@ exports.AppModule = AppModule = __decorate([
             admin_module_1.AdminModule,
             pages_module_1.PagesModule,
             tags_module_1.TagsModule,
-            cart_module_1.CartModule
+            cart_module_1.CartModule,
+            seller_applications_module_1.SellerApplicationsModule
         ],
         controllers: [app_controller_1.AppController],
         providers: [app_service_1.AppService]

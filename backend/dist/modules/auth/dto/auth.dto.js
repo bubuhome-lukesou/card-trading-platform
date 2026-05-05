@@ -9,7 +9,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.AuthResponseDto = exports.RegisterDto = exports.LoginDto = void 0;
+exports.AuthResponseDto = exports.SellerRegisterDto = exports.RegisterDto = exports.LoginDto = void 0;
 const class_validator_1 = require("class-validator");
 class LoginDto {
 }
@@ -46,6 +46,51 @@ __decorate([
     (0, class_validator_1.IsEnum)(['user', 'seller']),
     __metadata("design:type", String)
 ], RegisterDto.prototype, "role", void 0);
+class SellerRegisterDto {
+}
+exports.SellerRegisterDto = SellerRegisterDto;
+__decorate([
+    (0, class_validator_1.IsEmail)(),
+    __metadata("design:type", String)
+], SellerRegisterDto.prototype, "email", void 0);
+__decorate([
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.MinLength)(3),
+    (0, class_validator_1.MaxLength)(20),
+    __metadata("design:type", String)
+], SellerRegisterDto.prototype, "nickname", void 0);
+__decorate([
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.MinLength)(6),
+    __metadata("design:type", String)
+], SellerRegisterDto.prototype, "password", void 0);
+__decorate([
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.MinLength)(1),
+    (0, class_validator_1.MaxLength)(50),
+    __metadata("design:type", String)
+], SellerRegisterDto.prototype, "storeName", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.MaxLength)(200),
+    __metadata("design:type", String)
+], SellerRegisterDto.prototype, "storeDescription", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], SellerRegisterDto.prototype, "phone", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], SellerRegisterDto.prototype, "pickupInfo", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], SellerRegisterDto.prototype, "pickupQrCode", void 0);
 class AuthResponseDto {
 }
 exports.AuthResponseDto = AuthResponseDto;
