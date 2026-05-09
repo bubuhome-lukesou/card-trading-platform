@@ -25,6 +25,7 @@ export interface Tag {
   slug?: string
   color?: string
   sortOrder: number
+  type?: 'general' | 'product_type'
 }
 
 // Product types

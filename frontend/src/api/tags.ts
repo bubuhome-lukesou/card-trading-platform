@@ -13,12 +13,12 @@ export const tagApi = {
   },
 
   // Create tag (admin only)
-  createTag(data: { name: string; slug?: string; color?: string; sortOrder?: number }) {
+  createTag(data: { name: string; slug?: string; color?: string; sortOrder?: number; type?: 'general' | 'product_type' }) {
     return api.post<Tag>('/tags', data)
   },
 
   // Update tag (admin only)
-  updateTag(id: number, data: { name?: string; slug?: string; color?: string; sortOrder?: number }) {
+  updateTag(id: number, data: { name?: string; slug?: string; color?: string; sortOrder?: number; type?: 'general' | 'product_type' }) {
     return api.put<Tag>(`/tags/${id}`, data)
   },
 

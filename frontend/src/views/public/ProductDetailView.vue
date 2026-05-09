@@ -55,10 +55,12 @@ const nextImage = () => {
 
 // Touch handlers for mobile swipe
 const onTouchStart = (e: TouchEvent) => {
+  e.preventDefault()
   touchStartX.value = e.changedTouches[0].screenX
 }
 
 const onTouchEnd = (e: TouchEvent) => {
+  e.preventDefault()
   touchEndX.value = e.changedTouches[0].screenX
   handleSwipe()
 }
