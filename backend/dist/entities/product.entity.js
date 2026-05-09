@@ -31,15 +31,15 @@ var ProductRarity;
     ProductRarity["RARE"] = "rare";
     ProductRarity["SUPER_RARE"] = "super_rare";
     ProductRarity["ULTRA_RARE"] = "ultra_rare";
-    ProductRarity["SECRET_RARE"] = "secret_rare";
+    ProductRarity["SECRET_RARE"] = "***";
 })(ProductRarity || (exports.ProductRarity = ProductRarity = {}));
 var ProductCondition;
 (function (ProductCondition) {
-    ProductCondition["MINT"] = "mint";
-    ProductCondition["NEAR_MINT"] = "near_mint";
-    ProductCondition["EXCELLENT"] = "excellent";
-    ProductCondition["GOOD"] = "good";
-    ProductCondition["FAIR"] = "fair";
+    ProductCondition["S"] = "S";
+    ProductCondition["A"] = "A";
+    ProductCondition["B"] = "B";
+    ProductCondition["C"] = "C";
+    ProductCondition["D"] = "D";
 })(ProductCondition || (exports.ProductCondition = ProductCondition = {}));
 var ListingType;
 (function (ListingType) {

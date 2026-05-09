@@ -16,14 +16,14 @@ export declare enum ProductRarity {
     RARE = "rare",
     SUPER_RARE = "super_rare",
     ULTRA_RARE = "ultra_rare",
-    SECRET_RARE = "secret_rare"
+    SECRET_RARE = "***"
 }
 export declare enum ProductCondition {
-    MINT = "mint",
-    NEAR_MINT = "near_mint",
-    EXCELLENT = "excellent",
-    GOOD = "good",
-    FAIR = "fair"
+    S = "S",
+    A = "A",
+    B = "B",
+    C = "C",
+    D = "D"
 }
 export declare enum ListingType {
     BOTH = "both",
