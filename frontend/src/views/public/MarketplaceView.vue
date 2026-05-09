@@ -58,18 +58,12 @@ const filterOptions = ref({
     { value: 'onepiece', label: '海贼王', labelEn: 'One Piece' },
     { value: 'other', label: '其他', labelEn: 'Other' }
   ],
-  rarities: [
-    { value: 'SSR', label: 'SSR' },
-    { value: 'SR', label: 'SR' },
-    { value: 'R', label: 'R' },
-    { value: 'N', label: 'N' }
-  ],
   conditions: [
-    { value: 'mint', label: 'Mint', labelZh: '全新' },
-    { value: 'near_mint', label: 'Near Mint', labelZh: '近全新' },
-    { value: 'excellent', label: 'Excellent', labelZh: '优秀' },
-    { value: 'good', label: 'Good', labelZh: '良好' },
-    { value: 'fair', label: 'Fair', labelZh: '一般' }
+    { value: 'S', label: 'S', labelZh: 'S級 - 完美品相' },
+    { value: 'A', label: 'A', labelZh: 'A級 - 輕微磨損' },
+    { value: 'B', label: 'B', labelZh: 'B級 - 正常使用痕跡' },
+    { value: 'C', label: 'C', labelZh: 'C級 - 較明顯磨損' },
+    { value: 'D', label: 'D', labelZh: 'D級 - 嚴重磨損' }
   ],
   tags: [] as Tag[]
 })
@@ -100,11 +94,6 @@ const activeFiltersList = computed(() => {
   filters.value.category?.forEach((c: string) => {
     const cat = filterOptions.value.categories.find(x => x.value === c)
     list.push({ key: 'category', value: locale.value === 'zh' ? cat?.label || c : cat?.labelEn || c, rawValue: c })
-  })
-
-  filters.value.rarity?.forEach((r: string) => {
-    const rarity = filterOptions.value.rarities.find(x => x.value === r)
-    list.push({ key: 'rarity', value: rarity?.label || r, rawValue: r })
   })
 
   filters.value.condition?.forEach((c: string) => {
@@ -193,14 +182,12 @@ const removeFilter = (key: string, value?: string) => {
       for (let i = 0; i < arr.length; i++) {
         const displayValue = key === 'category'
           ? (locale.value === 'zh'
-              ? filterOptions.value.categories.find(x => x.value === arr[i])?.label
-              : filterOptions.value.categories.find(x => x.value === arr[i])?.labelEn) || arr[i]
-          : key === 'rarity'
-          ? filterOptions.value.rarities.find(x => x.value === arr[i])?.label || arr[i]
+              ? filterOptions.value.categories.find((x: any) => x.value === arr[i])?.label
+              : filterOptions.value.categories.find((x: any) => x.value === arr[i])?.labelEn) || arr[i]
           : key === 'condition'
           ? (locale.value === 'zh'
-              ? `${filterOptions.value.conditions.find(x => x.value === arr[i])?.labelZh} (${filterOptions.value.conditions.find(x => x.value === arr[i])?.label})`
-              : filterOptions.value.conditions.find(x => x.value === arr[i])?.label) || arr[i]
+              ? `${filterOptions.value.conditions.find((x: any) => x.value === arr[i])?.labelZh} (${filterOptions.value.conditions.find((x: any) => x.value === arr[i])?.label})`
+              : filterOptions.value.conditions.find((x: any) => x.value === arr[i])?.label) || arr[i]
           : arr[i]
         if (displayValue === value) {
           arr.splice(i, 1)
@@ -416,27 +403,27 @@ watch(() => route.query, () => {
             </div>
           </div>
 
-          <!-- Rarity -->
+          <!-- Tags (商品種類) -->
           <div class="filter-section">
-            <h4 class="filter-title" @click="filtersExpanded.rarity = !filtersExpanded.rarity">
-              {{ t('product.filters.rarity') }}
-              <ChevronDown class="filter-chevron" :class="{ collapsed: !filtersExpanded.rarity }" />
+            <h4 class="filter-title" @click="filtersExpanded.tags = !filtersExpanded.tags">
+              {{ t('product.filters.tags') || '商品種類' }}
+              <ChevronDown class="filter-chevron" :class="{ collapsed: !filtersExpanded.tags }" />
             </h4>
-            <div v-show="filtersExpanded.rarity" class="filter-options">
+            <div v-show="filtersExpanded.tags" class="filter-options">
               <label
-                v-for="rarity in filterOptions.rarities"
-                :key="rarity.value"
+                v-for="tag in filterOptions.tags"
+                :key="tag.id"
                 class="filter-option"
-                :class="{ active: filters.rarity.includes(rarity.value) }"
+                :class="{ active: filters.tags.includes(String(tag.id)) }"
               >
                 <input
                   type="checkbox"
-                  :checked="filters.rarity.includes(rarity.value)"
-                  @change="toggleArrayFilter('rarity', rarity.value)"
+                  :checked="filters.tags.includes(String(tag.id))"
+                  @change="toggleArrayFilter('tags', String(tag.id))"
                 />
                 <span class="checkmark" />
-                <span class="filter-label filter-rarity" :class="`rarity-${rarity.value.toLowerCase()}`">
-                  ⭐ {{ rarity.label }}
+                <span class="filter-label filter-tag" :style="tag.color ? { color: tag.color } : {}">
+                  {{ tag.name }}
                 </span>
               </label>
             </div>

@@ -29,10 +29,9 @@ export interface Tag {
 
 // Product types
 export type ProductCategory = 'pokemon' | 'yugioh' | 'mtg' | 'ultraman' | 'onepiece' | 'other'
-export type ProductRarity = 'SSR' | 'SR' | 'R' | 'N'
-export type ProductCondition = 'mint' | 'near_mint' | 'excellent' | 'good' | 'fair'
+export type ProductCondition = 'S' | 'A' | 'B' | 'C' | 'D'
 export type ProductStatus = 'draft' | 'active' | 'sold' | 'removed'
-export type ListingType = 'sale' | 'auction' | 'both'
+export type ListingType = 'sale_only' | 'auction' | 'both'
 
 export interface Product {
   id: string
@@ -45,7 +44,7 @@ export interface Product {
   category: ProductCategory
   brand: string
   series: string
-  rarity: ProductRarity
+  rarity?: string | null
   condition: ProductCondition
   price: number
   quantity?: number
@@ -53,7 +52,7 @@ export interface Product {
   images: string[]
   tags?: Tag[]
   status: ProductStatus
-  hasAuction: boolean
+  listingType: ListingType
   createdAt: string
   updatedAt: string
 }
@@ -135,7 +134,6 @@ export interface ProductFilters {
   category?: ProductCategory[]
   brand?: string[]
   series?: string[]
-  rarity?: ProductRarity[]
   condition?: ProductCondition[]
   priceMin?: number
   priceMax?: number

@@ -17,7 +17,7 @@ const authStore = useAuthStore()
 
 const title = computed(() => locale.value === 'zh' ? props.product.titleZh : props.product.titleEn)
 
-const rarityClass = computed(() => `rarity-${props.product.rarity.toLowerCase()}`)
+const rarityClass = computed(() => props.product.rarity ? `rarity-${props.product.rarity.toLowerCase()}` : '')
 
 const price = computed(() => {
   return new Intl.NumberFormat('en-MO', {
@@ -52,14 +52,14 @@ const handleToggleFavorite = (e: Event) => {
       </div>
 
       <!-- Listing Type Badge -->
-      <span class="listing-badge" :class="product.hasAuction ? 'is-auction' : 'is-sale'">
-        <Gavel v-if="product.hasAuction" class="badge-icon" />
+      <span class="listing-badge" :class="product.listingType === 'auction' ? 'is-auction' : 'is-sale'">
+        <Gavel v-if="product.listingType === 'auction'" class="badge-icon" />
         <ShoppingCart v-else class="badge-icon" />
-        {{ product.hasAuction ? 'Auction' : 'Sale' }}
+        {{ product.listingType === 'auction' ? 'Auction' : 'Sale' }}
       </span>
 
       <!-- Rarity Badge -->
-      <span class="rarity-badge" :class="rarityClass">
+      <span v-if="product.rarity" class="rarity-badge" :class="rarityClass">
         ⭐ {{ product.rarity }}
       </span>
     </div>
