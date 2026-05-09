@@ -78,8 +78,8 @@ export class Product {
   @Column({ nullable: true })
   series: string
 
-  @Column({ type: 'enum', enum: ProductRarity })
-  rarity: ProductRarity
+  @Column({ nullable: true })
+  rarity: string
 
   @Column({ type: 'enum', enum: ProductCondition })
   condition: ProductCondition
