@@ -222,11 +222,11 @@
     "info": "提示"
   },
   "conditions": {
-    "mint": "全新/Mint",
-    "near_mint": "近全新/Near Mint",
-    "excellent": "優秀/Excellent",
-    "good": "良好/Good",
-    "fair": "一般/Fair"
+    "S": "S級 - 完美品相",
+    "A": "A級 - 輕微磨損",
+    "B": "B級 - 正常使用痕跡",
+    "C": "C級 - 較明顯磨損",
+    "D": "D級 - 嚴重磨損"
   },
   "errors": {
     "required": "此欄位為必填項",

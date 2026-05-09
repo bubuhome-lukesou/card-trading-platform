@@ -222,11 +222,11 @@
     "info": "Info"
   },
   "conditions": {
-    "mint": "Mint",
-    "near_mint": "Near Mint",
-    "excellent": "Excellent",
-    "good": "Good",
-    "fair": "Fair"
+    "S": "S - Perfect",
+    "A": "A - Light Wear",
+    "B": "B - Normal Use",
+    "C": "C - Noticeable Wear",
+    "D": "D - Heavy Wear"
   },
   "errors": {
     "required": "This field is required",
