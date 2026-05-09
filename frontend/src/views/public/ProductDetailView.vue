@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import { productApi } from '@/api/products'
@@ -19,6 +19,10 @@ const message = ref('')
 const messageType = ref<'success' | 'error'>('success')
 const selectedQuantity = ref(1)
 
+// Touch/swipe state for mobile
+const touchStartX = ref(0)
+const touchEndX = ref(0)
+
 onMounted(async () => {
   try {
     const response = await productApi.getProduct(route.params.id as string)
@@ -33,6 +37,44 @@ onMounted(async () => {
 
 const selectImage = (index: number) => {
   currentImageIndex.value = index
+}
+
+const prevImage = () => {
+  if (!product.value?.images?.length) return
+  currentImageIndex.value = currentImageIndex.value > 0
+    ? currentImageIndex.value - 1
+    : product.value.images.length - 1
+}
+
+const nextImage = () => {
+  if (!product.value?.images?.length) return
+  currentImageIndex.value = currentImageIndex.value < product.value.images.length - 1
+    ? currentImageIndex.value + 1
+    : 0
+}
+
+// Touch handlers for mobile swipe
+const onTouchStart = (e: TouchEvent) => {
+  touchStartX.value = e.changedTouches[0].screenX
+}
+
+const onTouchEnd = (e: TouchEvent) => {
+  touchEndX.value = e.changedTouches[0].screenX
+  handleSwipe()
+}
+
+const handleSwipe = () => {
+  if (!product.value?.images?.length || product.value.images.length <= 1) return
+  const diff = touchStartX.value - touchEndX.value
+  if (Math.abs(diff) > 50) {
+    if (diff > 0) {
+      // Swipe left -> next image
+      nextImage()
+    } else {
+      // Swipe right -> prev image
+      prevImage()
+    }
+  }
 }
 
 const isOutOfStock = () => {
@@ -75,7 +117,6 @@ const handleBuyNow = async () => {
   processing.value = true
   message.value = ''
   try {
-    // For direct purchase, create order directly
     const orderData = {
       productId: product.value.id,
       type: 'direct_purchase' as const,
@@ -142,8 +183,15 @@ const handleAddToCart = async () => {
       <div v-else-if="product" class="product-layout">
         <!-- Images -->
         <div class="product-images">
-          <div class="main-image">
+          <div
+            class="main-image"
+            @touchstart="onTouchStart"
+            @touchend="onTouchEnd"
+          >
+            <button v-if="product.images?.length > 1" class="nav-btn nav-prev" @click.stop="prevImage">‹</button>
             <img :src="product.images?.[currentImageIndex] || '/placeholder-card.png'" :alt="product.titleEn" />
+            <button v-if="product.images?.length > 1" class="nav-btn nav-next" @click.stop="nextImage">›</button>
+            <div v-if="product.images?.length > 1" class="image-counter">{{ currentImageIndex + 1 }} / {{ product.images.length }}</div>
           </div>
           <div v-if="product.images?.length > 1" class="thumbnail-list">
             <img
@@ -242,6 +290,77 @@ const handleAddToCart = async () => {
 </template>
 
 <style scoped>
+.main-image {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-dark);
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+}
+
+.main-image img {
+  max-width: 100%;
+  max-height: 500px;
+  object-fit: contain;
+}
+
+.nav-btn {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.6);
+  color: white;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s;
+}
+
+.nav-btn:hover {
+  background: rgba(0, 0, 0, 0.8);
+}
+
+.nav-prev {
+  left: 12px;
+}
+
+.nav-next {
+  right: 12px;
+}
+
+.image-counter {
+  position: absolute;
+  bottom: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.6);
+  color: white;
+  padding: 4px 12px;
+  border-radius: var(--radius-full);
+  font-size: var(--text-xs);
+}
+
+@media (max-width: 640px) {
+  .nav-btn {
+    width: 32px;
+    height: 32px;
+    font-size: 18px;
+  }
+
+  .main-image img {
+    max-height: 350px;
+  }
+}
+
 .quantity-selector {
   margin: 20px 0;
 }

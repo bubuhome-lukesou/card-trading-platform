@@ -3,11 +3,9 @@ import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
-import { aiApi } from '@/api/ai'
 import { uploadApi } from '@/api/upload'
 import { productApi } from '@/api/products'
 import { tagApi } from '@/api/tags'
-import { Loader2, ScanLine } from 'lucide-vue-next'
 
 const { t } = useI18n()
 const router = useRouter()
@@ -30,9 +28,6 @@ const editingProduct = ref<any>(null)
 const loading = ref(false)
 const products = ref<any[]>([])
 const filterStatus = ref('all')
-const scanning = ref(false)
-const scanError = ref('')
-const scanImageUrl = ref('')
 const imageInput = ref<HTMLInputElement | null>(null)
 const imagePreviews = ref<string[]>([])
 const pendingImageFiles = ref<File[]>([])
@@ -77,20 +72,25 @@ const categories = [
 ]
 
 const conditions = [
-  { value: 'mint', label: '全新/Mint' },
-  { value: 'near_mint', label: '近全新/Near Mint' },
-  { value: 'excellent', label: '优秀/Excellent' },
-  { value: 'good', label: '良好/Good' },
-  { value: 'fair', label: '一般/Fair' },
+  { value: 'S', label: 'S級 - 完美品相' },
+  { value: 'A', label: 'A級 - 輕微瑕疵' },
+  { value: 'B', label: 'B級 - 少量瑕疵' },
+  { value: 'C', label: 'C級 - 磨損可見' },
+  { value: 'D', label: 'D級 - 嚴重磨損' },
 ]
 
-const rarities = [
-  { value: 'common', label: '普通' },
-  { value: 'rare', label: '稀有' },
-  { value: 'super_rare', label: '超级稀有' },
-  { value: 'ultra_rare', label: '爆闪稀有' },
-  { value: 'secret_rare', label: '秘密稀有' },
-]
+// 商品種類（從 Tag type=product_type 加載，不再用固定下拉選項）
+const productTypes = ref<any[]>([])
+const selectedProductTypeTags = ref<number[]>([])
+
+const toggleProductType = (tagId: number) => {
+  const idx = selectedProductTypeTags.value.indexOf(tagId)
+  if (idx === -1) {
+    selectedProductTypeTags.value.push(tagId)
+  } else {
+    selectedProductTypeTags.value.splice(idx, 1)
+  }
+}
 
 // 预设仅销售模式，隐藏拍卖相关字段
 const formData = ref({
@@ -99,8 +99,7 @@ const formData = ref({
   descriptionZh: '',
   descriptionEn: '',
   category: 'pokemon',
-  condition: 'near_mint',
-  rarity: 'rare',
+  condition: 'S',
   price: 0,
   quantity: 1,
   images: [] as string[],
@@ -114,8 +113,7 @@ const resetForm = () => {
     descriptionZh: '',
     descriptionEn: '',
     category: 'pokemon',
-    condition: 'near_mint',
-    rarity: 'rare',
+    condition: 'S',
     price: 0,
     quantity: 1,
     images: [],
@@ -126,49 +124,7 @@ const resetForm = () => {
   pendingImagePreviews.value = []
   existingImageUrls.value = []
   selectedTags.value = []
-}
-
-// AI Scan Card Function
-const scanCardImage = async () => {
-  if (!scanImageUrl.value.trim()) {
-    scanError.value = '請輸入圖片 URL'
-    return
-  }
-
-  scanning.value = true
-  scanError.value = ''
-
-  try {
-    const response = await aiApi.recognizeCard(scanImageUrl.value)
-    
-    if (response.data.success && response.data.data) {
-      const data = response.data.data
-      
-      // Auto-fill form with recognized data
-      if (data.titleZh) formData.value.titleZh = data.titleZh
-      if (data.titleEn) formData.value.titleEn = data.titleEn
-      if (data.descriptionZh) formData.value.descriptionZh = data.descriptionZh
-      if (data.descriptionEn) formData.value.descriptionEn = data.descriptionEn
-      if (data.category) formData.value.category = data.category
-      if (data.rarity) formData.value.rarity = data.rarity.toLowerCase()
-      if (data.condition) formData.value.condition = data.condition
-      if (data.brand) (formData.value as any).brand = data.brand
-      if (data.series) (formData.value as any).series = data.series
-      
-      // Add image URL if recognized
-      if (scanImageUrl.value) {
-        formData.value.images = [scanImageUrl.value]
-      }
-      
-      alert('✅ 掃描成功！請檢查並修改自動填充的內容')
-    } else {
-      scanError.value = response.data.error || '无法识别图片中的卡牌'
-    }
-  } catch (error: any) {
-    scanError.value = error?.response?.data?.message || '掃描失敗，請重試'
-  } finally {
-    scanning.value = false
-  }
+  selectedProductTypeTags.value = []
 }
 
 const openCreateModal = () => {
@@ -201,8 +157,12 @@ const openEditModal = async (product: any) => {
   const ids = (product.tags || []).map((t: any) => typeof t === 'number' ? t : t.id)
   _tagSelectedSnapshot = [...ids]
   selectedTags.value = [...ids]
+  // Load product types (type=product_type)
+  const ptIds = (product.productTypeTags || []).map((t: any) => typeof t === 'number' ? t : t.id)
+  selectedProductTypeTags.value = [...ptIds]
   // Ensure availableTags is loaded before modal opens
   await loadTags()
+  await loadProductTypes()
   nextTick().then(() => {
     // Verify reactivity - if still not showing selected, force update
     if (selectedTags.value.length !== ids.length) {
@@ -215,8 +175,7 @@ const openEditModal = async (product: any) => {
     descriptionZh: product.descriptionZh,
     descriptionEn: product.descriptionEn,
     category: product.category,
-    condition: product.condition,
-    rarity: product.rarity,
+    condition: product.condition || 'S',
     price: product.price,
     quantity: product.quantity || 1,
     images: [...existingImages],
@@ -252,8 +211,10 @@ const handleSubmit = async () => {
       listingType: 'sale_only',
       images: [...existingImageUrls.value, ...uploadedUrls],
       tags: selectedTags.value,
+      productTypeTags: selectedProductTypeTags.value,
     }
     console.log('[DEBUG] productData.tags:', productData.tags)
+    console.log('[DEBUG] productData.productTypeTags:', productData.productTypeTags)
 
     // Create or update product
     if (editingProduct.value) {
@@ -371,6 +332,10 @@ const handleImageChange = async (event: Event) => {
   target.value = ''
 }
 
+const showImageLimitAlert = () => {
+  alert('已達圖片上傳上限（9張）')
+}
+
 const removeImage = (index: number) => {
   if (index < existingImageUrls.value.length) {
     existingImageUrls.value.splice(index, 1)
@@ -421,9 +386,20 @@ const createNewTag = async () => {
 const loadTags = async () => {
   try {
     const response = await tagApi.getTags()
-    availableTags.value = response.data
+    availableTags.value = response.data || []
   } catch (error) {
     console.error('Failed to load tags:', error)
+  }
+}
+
+const loadProductTypes = async () => {
+  try {
+    const response = await tagApi.getTags()
+    // Filter only tags with type=product_type
+    const allTags = response.data || []
+    productTypes.value = allTags.filter((t: any) => t.type === 'product_type')
+  } catch (error) {
+    console.error('Failed to load product types:', error)
   }
 }
 
@@ -452,6 +428,7 @@ const routeWatcher = watch(
 onMounted(() => {
   loadProducts()
   loadTags()
+  loadProductTypes()
 })
 
 onUnmounted(() => {
@@ -556,36 +533,6 @@ onUnmounted(() => {
         </div>
 
         <form @submit.prevent="handleSubmit" class="modal-body">
-          <!-- AI Scan Section -->
-          <div class="scan-section">
-            <div class="scan-header">
-              <ScanLine class="scan-icon" />
-              <span>🔮 AI 智能识别卡牌</span>
-            </div>
-            <div class="scan-input-row">
-              <input
-                v-model="scanImageUrl"
-                type="url"
-                placeholder="粘贴卡牌图片 URL..."
-                class="scan-input"
-              />
-              <button
-                type="button"
-                @click="scanCardImage"
-                :disabled="scanning"
-                class="btn-scan"
-              >
-                <Loader2 v-if="scanning" class="animate-spin" />
-                <ScanLine v-else />
-                {{ scanning ? '识别中...' : '扫描' }}
-              </button>
-            </div>
-            <p v-if="scanError" class="scan-error">{{ scanError }}</p>
-            <p class="scan-hint">粘贴卡牌图片 URL，AI 将自动识别并填充商品信息</p>
-          </div>
-
-          <div class="form-divider"></div>
-
           <div class="form-grid">
             <!-- Title -->
             <div class="form-group">
@@ -645,14 +592,33 @@ onUnmounted(() => {
               </select>
             </div>
 
-            <!-- Rarity -->
-            <div class="form-group">
-              <label>稀有度</label>
-              <select v-model="formData.rarity">
-                <option v-for="rarity in rarities" :key="rarity.value" :value="rarity.value">
-                  {{ rarity.label }}
-                </option>
-              </select>
+            <!-- 商品種類（Tag type=product_type） -->
+            <div class="form-group full-width">
+              <label>商品種類</label>
+              <p class="form-hint" style="margin-bottom: 8px">選擇商品種類（評分卡/原箱/原盒/原袋/裸卡），可在管理員後台添加</p>
+              <div v-if="selectedProductTypeTags.length" class="tags-selected" style="margin-bottom: 8px">
+                <span
+                  v-for="tagId in selectedProductTypeTags"
+                  :key="tagId"
+                  class="tag-badge-selected"
+                >
+                  {{ productTypes.find(t => t.id === tagId)?.name }}
+                  <button type="button" @click="toggleProductType(tagId)" class="tag-remove">×</button>
+                </span>
+              </div>
+              <div class="product-type-grid">
+                <button
+                  v-for="pt in productTypes"
+                  :key="pt.id"
+                  type="button"
+                  class="product-type-btn"
+                  :class="{ selected: selectedProductTypeTags.includes(pt.id) }"
+                  @click="toggleProductType(pt.id)"
+                >
+                  <span class="pt-color-dot" :style="{ backgroundColor: pt.color || '#6366f1' }"></span>
+                  {{ pt.name }}
+                </button>
+              </div>
             </div>
 
             <!-- 售价 -->
@@ -679,7 +645,7 @@ onUnmounted(() => {
 
             <!-- Images -->
             <div class="form-group full-width">
-              <label>商品图片</label>
+              <label>商品图片 <span class="label-hint">({{ imagePreviews.length }}/9)</span></label>
               <input
                 id="imageInput"
                 ref="imageInput"
@@ -689,15 +655,24 @@ onUnmounted(() => {
                 style="display: none"
                 @change="handleImageChange"
               />
-              <label class="upload-button" for="imageInput">
-                <span class="upload-icon">📷</span>
-                <span>点击上传图片</span>
-                <span class="upload-hint">支持 JPG、PNG，最大 10MB，最多 9 张</span>
-              </label>
-              <div v-if="imagePreviews.length > 0" class="image-previews">
-                <div v-for="(img, index) in imagePreviews" :key="index" class="preview-item">
-                  <img :src="resolveImageUrl(img)" alt="Preview" />
-                  <button type="button" class="remove-btn" @click="removeImage(index)">×</button>
+              <div class="image-upload-area" :class="{ disabled: imagePreviews.length >= 9 }">
+                <label
+                  class="upload-box"
+                  :class="{ 'at-limit': imagePreviews.length >= 9 }"
+                  :for="imagePreviews.length >= 9 ? undefined : 'imageInput'"
+                  @click.prevent="imagePreviews.length >= 9 ? showImageLimitAlert() : null"
+                >
+                  <div class="upload-box-inner">
+                    <span class="upload-icon">📷</span>
+                    <span class="upload-text">{{ imagePreviews.length >= 9 ? '已達上傳上限' : '點擊上傳圖片' }}</span>
+                    <span class="upload-hint">JPG/PNG，最大 10MB，最多 9 張</span>
+                  </div>
+                </label>
+                <div v-if="imagePreviews.length > 0" class="image-previews">
+                  <div v-for="(img, index) in imagePreviews" :key="index" class="preview-item">
+                    <img :src="resolveImageUrl(img)" alt="Preview" />
+                    <button type="button" class="remove-btn" @click="removeImage(index)">×</button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -1263,6 +1238,63 @@ onUnmounted(() => {
 
 .image-upload:hover {
   border-color: var(--primary);
+}
+
+.image-upload-area {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.image-upload-area.disabled {
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+.upload-box {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px dashed var(--border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-6);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  background: var(--bg-elevated);
+}
+
+.upload-box:hover:not(.at-limit) {
+  border-color: var(--primary);
+  background: rgba(99, 102, 241, 0.05);
+}
+
+.upload-box.at-limit {
+  cursor: not-allowed;
+  border-color: var(--danger);
+  background: rgba(239, 68, 68, 0.05);
+}
+
+.upload-box-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.upload-text {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.upload-box.at-limit .upload-text {
+  color: var(--danger);
+}
+
+.label-hint {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  font-weight: normal;
+  margin-left: var(--space-2);
 }
 
 .upload-placeholder {

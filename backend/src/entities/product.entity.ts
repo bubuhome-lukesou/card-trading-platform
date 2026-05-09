@@ -26,19 +26,21 @@ export enum ProductCategory {
 }
 
 export enum ProductRarity {
+  // 已棄用，請使用 Tag (type=product_type) 來標記商品種類
+  // 保留欄位僅為向後相容
   COMMON = 'common',
   RARE = 'rare',
   SUPER_RARE = 'super_rare',
   ULTRA_RARE = 'ultra_rare',
-  SECRET_RARE = 'secret_rare'
+  SECRET_RARE='***'
 }
 
 export enum ProductCondition {
-  MINT = 'mint',
-  NEAR_MINT = 'near_mint',
-  EXCELLENT = 'excellent',
-  GOOD = 'good',
-  FAIR = 'fair'
+  S = 'S',    // S級 - 完美品相
+  A = 'A',    // A級 - 輕微瑕疵
+  B = 'B',    // B級 - 少量瑕疵
+  C = 'C',    // C級 - 磨損可見
+  D = 'D'     // D級 - 嚴重磨損
 }
 
 export enum ListingType {

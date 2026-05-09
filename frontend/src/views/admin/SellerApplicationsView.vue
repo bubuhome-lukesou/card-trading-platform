@@ -31,12 +31,13 @@ const loadApplications = async (page = 1) => {
   loading.value = true
   try {
     const res = await sellerApplicationApi.getAllApplications(page, 10)
-    applications.value = res.data.data
-    total.value = res.data.total
-    totalPages.value = Math.ceil(res.data.total / 10)
+    applications.value = res.data.data || []
+    total.value = res.data.total || 0
+    totalPages.value = Math.ceil((res.data.total || 0) / 10)
     currentPage.value = page
-  } catch (e) {
+  } catch (e: any) {
     console.error('Failed to load applications', e)
+    alert('載入失敗：' + (e?.response?.data?.message || e?.message || '未知錯誤'))
   } finally {
     loading.value = false
   }
@@ -48,9 +49,9 @@ const handleApprove = async (id: string) => {
   try {
     await sellerApplicationApi.approve(id)
     await loadApplications(currentPage.value)
-  } catch (e) {
-    alert('操作失敗')
-  } finally {
+  } catch (e: any) {
+    console.error('Approve failed', e)
+    alert('操作失敗：' + (e?.response?.data?.message || e?.message || '未知錯誤'))
     actionLoading.value = null
   }
 }
@@ -62,9 +63,9 @@ const handleReject = async (id: string) => {
   try {
     await sellerApplicationApi.reject(id, reason || undefined)
     await loadApplications(currentPage.value)
-  } catch (e) {
-    alert('操作失敗')
-  } finally {
+  } catch (e: any) {
+    console.error('Reject failed', e)
+    alert('操作失敗：' + (e?.response?.data?.message || e?.message || '未知錯誤'))
     actionLoading.value = null
   }
 }

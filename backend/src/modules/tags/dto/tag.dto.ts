@@ -1,5 +1,6 @@
-import { IsString, IsOptional, IsNumber, Min } from 'class-validator'
+import { IsString, IsOptional, IsNumber, Min, IsEnum } from 'class-validator'
 import { Transform } from 'class-transformer'
+import { TagType } from '../../../entities/tag.entity'
 
 export class CreateTagDto {
   @IsString()
@@ -12,6 +13,10 @@ export class CreateTagDto {
   @IsOptional()
   @IsString()
   color?: string
+
+  @IsOptional()
+  @IsEnum(TagType)
+  type?: TagType
 
   @IsOptional()
   @IsNumber()
@@ -31,6 +36,10 @@ export class UpdateTagDto {
   @IsOptional()
   @IsString()
   color?: string
+
+  @IsOptional()
+  @IsEnum(TagType)
+  type?: TagType
 
   @IsOptional()
   @IsNumber()

@@ -1,6 +1,11 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToMany, JoinTable } from 'typeorm'
 import { Product } from './product.entity'
 
+export enum TagType {
+  GENERAL = 'general',    // 普通标签
+  PRODUCT_TYPE = 'product_type'  // 商品種類（評分卡/原箱/原盒/原袋/裸卡）
+}
+
 @Entity('tags')
 export class Tag {
   @PrimaryGeneratedColumn()
@@ -14,6 +19,9 @@ export class Tag {
 
   @Column({ nullable: true })
   color: string
+
+  @Column({ type: 'enum', enum: TagType, default: TagType.GENERAL })
+  type: TagType
 
   @Column({ default: 1 })
   sortOrder: number
