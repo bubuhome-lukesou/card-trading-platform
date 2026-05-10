@@ -18,6 +18,7 @@ const processing = ref(false)
 const message = ref('')
 const messageType = ref<'success' | 'error'>('success')
 const selectedQuantity = ref(1)
+const lightboxOpen = ref(false)
 
 // Touch/swipe state for mobile
 const touchStartX = ref(0)
@@ -37,6 +38,14 @@ onMounted(async () => {
 
 const selectImage = (index: number) => {
   currentImageIndex.value = index
+}
+
+const openLightbox = () => {
+  lightboxOpen.value = true
+}
+
+const closeLightbox = () => {
+  lightboxOpen.value = false
 }
 
 const prevImage = () => {
@@ -191,7 +200,7 @@ const handleAddToCart = async () => {
             @touchend="onTouchEnd"
           >
             <button v-if="product.images?.length > 1" class="nav-btn nav-prev" @click.stop="prevImage">‹</button>
-            <img :src="product.images?.[currentImageIndex] || '/placeholder-card.png'" :alt="product.titleEn" />
+            <img :src="product.images?.[currentImageIndex] || '/placeholder-card.png'" :alt="product.titleEn" @click="openLightbox" style="cursor: zoom-in;" />
             <button v-if="product.images?.length > 1" class="nav-btn nav-next" @click.stop="nextImage">›</button>
             <div v-if="product.images?.length > 1" class="image-counter">{{ currentImageIndex + 1 }} / {{ product.images.length }}</div>
           </div>
@@ -288,6 +297,15 @@ const handleAddToCart = async () => {
         <p>{{ t('common.error') || '商品不存在' }}</p>
       </div>
     </div>
+  </div>
+
+  <!-- Lightbox for image zoom -->
+  <div v-if="lightboxOpen" class="lightbox" @click.self="closeLightbox">
+    <button class="lightbox-close" @click="closeLightbox">✕</button>
+    <button v-if="product.images?.length > 1" class="lightbox-nav lightbox-prev" @click.stop="prevImage">‹</button>
+    <img :src="product.images?.[currentImageIndex]" :alt="product.titleEn" class="lightbox-img" />
+    <button v-if="product.images?.length > 1" class="lightbox-nav lightbox-next" @click.stop="nextImage">›</button>
+    <div v-if="product.images?.length > 1" class="lightbox-counter">{{ currentImageIndex + 1 }} / {{ product.images.length }}</div>
   </div>
 </template>
 
@@ -404,13 +422,79 @@ const handleAddToCart = async () => {
   border-color: var(--primary);
 }
 
-/* Remove spinner arrows from number input */
-.qty-input::-webkit-outer-spin-button,
-.qty-input::-webkit-inner-spin-button {
-  -webkit-appearance: none;
-  margin: 0;
+/* Lightbox */
+.lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: rgba(0, 0, 0, 0.92);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: fadeIn 0.2s ease;
 }
-.qty-input[type=number] {
-  -moz-appearance: textfield;
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.lightbox-img {
+  max-width: 90vw;
+  max-height: 90vh;
+  object-fit: contain;
+  border-radius: var(--radius-md);
+}
+
+.lightbox-close {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.15);
+  border: none;
+  color: #fff;
+  font-size: 20px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s;
+}
+.lightbox-close:hover { background: rgba(255,255,255,0.3); }
+
+.lightbox-nav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.15);
+  border: none;
+  color: #fff;
+  font-size: 28px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s;
+}
+.lightbox-nav:hover { background: rgba(255,255,255,0.3); }
+.lightbox-prev { left: 20px; }
+.lightbox-next { right: 20px; }
+
+.lightbox-counter {
+  position: absolute;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0,0,0,0.6);
+  color: #fff;
+  padding: 6px 16px;
+  border-radius: 20px;
+  font-size: 14px;
 }
 </style>

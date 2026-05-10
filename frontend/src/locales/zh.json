@@ -116,7 +116,7 @@
       "all": "全部",
       "saleOnly": "僅銷售",
       "auctionOnly": "僅拍賣",
-      "rarity": "稀有度",
+      "productTypes": "商品種類",
       "condition": "品相",
       "priceRange": "價格範圍"
     },

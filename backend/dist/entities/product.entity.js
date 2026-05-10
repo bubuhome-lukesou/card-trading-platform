@@ -84,7 +84,7 @@ __decorate([
     __metadata("design:type", String)
 ], Product.prototype, "series", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: 'enum', enum: ProductRarity }),
+    (0, typeorm_1.Column)({ nullable: true }),
     __metadata("design:type", String)
 ], Product.prototype, "rarity", void 0);
 __decorate([
@@ -131,6 +131,10 @@ __decorate([
     (0, typeorm_1.Column)({ type: 'enum', enum: ProductStatus, default: ProductStatus.DRAFT }),
     __metadata("design:type", String)
 ], Product.prototype, "status", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: 'boolean', default: true }),
+    __metadata("design:type", Boolean)
+], Product.prototype, "isActive", void 0);
 __decorate([
     (0, typeorm_1.Column)({ default: 0 }),
     __metadata("design:type", Number)

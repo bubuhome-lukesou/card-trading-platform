@@ -44,7 +44,7 @@ export declare class Product {
     category: ProductCategory;
     brand: string;
     series: string;
-    rarity: ProductRarity;
+    rarity: string;
     condition: ProductCondition;
     titleEn: string;
     titleZh: string;
@@ -56,6 +56,7 @@ export declare class Product {
     cardNumber: string;
     listingType: ListingType;
     status: ProductStatus;
+    isActive: boolean;
     viewCount: number;
     favoriteCount: number;
     stock: number;

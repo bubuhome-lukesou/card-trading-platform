@@ -114,6 +114,9 @@ export class Product {
   @Column({ type: 'enum', enum: ProductStatus, default: ProductStatus.DRAFT })
   status: ProductStatus
 
+  @Column({ type: 'boolean', default: true })
+  isActive: boolean
+
   @Column({ default: 0 })
   viewCount: number
 

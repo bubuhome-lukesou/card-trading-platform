@@ -163,6 +163,15 @@ export class CreateProductDto {
   @IsArray()
   @IsString({ each: true })
   tags?: string[]
+
+  @IsOptional()
+  @Transform(({ value }) => value === 'true' || value === true)
+  isActive?: boolean
+
+  @IsOptional()
+  @IsArray()
+  @IsNumber({}, { each: true })
+  productTypeTags?: number[]
 }
 
 export class UpdateProductDto {
@@ -252,7 +261,16 @@ export class UpdateProductDto {
   quantity?: number
 
   @IsOptional()
+  @Transform(({ value }) => value === 'true' || value === true)
+  isActive?: boolean
+
+  @IsOptional()
   @IsArray()
   @IsNumber({}, { each: true })
   tags?: number[]
+
+  @IsOptional()
+  @IsArray()
+  @IsNumber({}, { each: true })
+  productTypeTags?: number[]
 }

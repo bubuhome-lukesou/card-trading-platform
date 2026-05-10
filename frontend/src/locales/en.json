@@ -94,7 +94,7 @@
       "category": "Category",
       "brand": "Brand",
       "series": "Series",
-      "rarity": "Rarity",
+      "productTypes": "Product Type",
       "condition": "Condition",
       "priceRange": "Price Range",
       "listingType": "Listing Type",

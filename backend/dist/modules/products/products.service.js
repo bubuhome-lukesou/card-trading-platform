@@ -27,7 +27,8 @@ let ProductsService = class ProductsService {
         const queryBuilder = this.productRepo
             .createQueryBuilder('product')
             .leftJoinAndSelect('product.tags', 'tag')
-            .where('product.status = :status', { status: filters.status || product_entity_1.ProductStatus.ACTIVE });
+            .where('product.status = :status', { status: filters.status || product_entity_1.ProductStatus.ACTIVE })
+            .andWhere('product.isActive = :isActive', { isActive: true });
         if (filters.category?.length) {
             queryBuilder.andWhere('product.category IN (:...categories)', { categories: filters.category });
         }
@@ -126,13 +127,18 @@ let ProductsService = class ProductsService {
         if (dto.tags && dto.tags.length > 0) {
             tags = await this.tagRepo.findByIds(dto.tags);
         }
+        if (dto.productTypeTags && dto.productTypeTags.length > 0) {
+            const typeTags = await this.tagRepo.findByIds(dto.productTypeTags);
+            tags = [...tags, ...typeTags];
+        }
         const product = this.productRepo.create({
             ...dto,
             quantity: dto.quantity ?? 1,
             listingType: listingType,
             sellerId: userId,
             status,
-            tags
+            tags,
+            isActive: dto.isActive !== undefined ? dto.isActive : true
         });
         return this.productRepo.save(product);
     }

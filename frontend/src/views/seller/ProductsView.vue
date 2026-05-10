@@ -104,6 +104,8 @@ const formData = ref({
   quantity: 1,
   images: [] as string[],
   tags: [] as number[],
+  productTypeTagId: null as number | null,
+  isActive: true,
 })
 
 const resetForm = () => {
@@ -118,6 +120,8 @@ const resetForm = () => {
     quantity: 1,
     images: [],
     tags: [],
+    productTypeTagId: null,
+    isActive: true,
   }
   imagePreviews.value = []
   pendingImageFiles.value = []
@@ -180,6 +184,8 @@ const openEditModal = async (product: any) => {
     quantity: product.quantity || 1,
     images: [...existingImages],
     tags: [...selectedTags.value],
+    productTypeTagId: ptIds.length > 0 ? ptIds[0] : null,
+    isActive: product.isActive !== false,
   }
   showModal.value = true
 }
@@ -211,7 +217,8 @@ const handleSubmit = async () => {
       listingType: 'sale_only',
       images: [...existingImageUrls.value, ...uploadedUrls],
       tags: selectedTags.value,
-      productTypeTags: selectedProductTypeTags.value,
+      // productTypeTagId as single value, wrapped in array for API
+      productTypeTags: formData.value.productTypeTagId ? [formData.value.productTypeTagId] : [],
     }
     console.log('[DEBUG] productData.tags:', productData.tags)
     console.log('[DEBUG] productData.productTypeTags:', productData.productTypeTags)
@@ -596,29 +603,12 @@ onUnmounted(() => {
             <div class="form-group full-width">
               <label>商品種類</label>
               <p class="form-hint" style="margin-bottom: 8px">選擇商品種類（評分卡/原箱/原盒/原袋/裸卡），可在管理員後台添加</p>
-              <div v-if="selectedProductTypeTags.length" class="tags-selected" style="margin-bottom: 8px">
-                <span
-                  v-for="tagId in selectedProductTypeTags"
-                  :key="tagId"
-                  class="tag-badge-selected"
-                >
-                  {{ productTypes.find(t => t.id === tagId)?.name }}
-                  <button type="button" @click="toggleProductType(tagId)" class="tag-remove">×</button>
-                </span>
-              </div>
-              <div class="product-type-grid">
-                <button
-                  v-for="pt in productTypes"
-                  :key="pt.id"
-                  type="button"
-                  class="product-type-btn"
-                  :class="{ selected: selectedProductTypeTags.includes(pt.id) }"
-                  @click="toggleProductType(pt.id)"
-                >
-                  <span class="pt-color-dot" :style="{ backgroundColor: pt.color || '#6366f1' }"></span>
+              <select v-model="formData.productTypeTagId" class="form-select">
+                <option value="">請選擇商品種類</option>
+                <option v-for="pt in productTypes" :key="pt.id" :value="pt.id">
                   {{ pt.name }}
-                </button>
-              </div>
+                </option>
+              </select>
             </div>
 
             <!-- 售价 -->
@@ -630,6 +620,15 @@ onUnmounted(() => {
                 min="1"
                 placeholder="0"
               />
+            </div>
+
+            <!-- 商品狀態 -->
+            <div class="form-group">
+              <label>商品狀態</label>
+              <select v-model="formData.isActive" class="form-select">
+                <option :value="true">上架</option>
+                <option :value="false">下架</option>
+              </select>
             </div>
 
             <!-- 数量 -->

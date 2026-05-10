@@ -19,6 +19,7 @@ export class ProductsService {
       .createQueryBuilder('product')
       .leftJoinAndSelect('product.tags', 'tag')
       .where('product.status = :status', { status: filters.status || ProductStatus.ACTIVE })
+      .andWhere('product.isActive = :isActive', { isActive: true })
 
     if (filters.category?.length) {
       queryBuilder.andWhere('product.category IN (:...categories)', { categories: filters.category })
@@ -144,13 +145,20 @@ export class ProductsService {
       tags = await this.tagRepo.findByIds(dto.tags)
     }
 
+    // productTypeTags IDs also go into the regular tags relation
+    if ((dto as any).productTypeTags && (dto as any).productTypeTags.length > 0) {
+      const typeTags = await this.tagRepo.findByIds((dto as any).productTypeTags)
+      tags = [...tags, ...typeTags]
+    }
+
     const product = this.productRepo.create({
       ...dto,
       quantity: dto.quantity ?? 1,
       listingType: listingType as any,
       sellerId: userId,
       status,
-      tags
+      tags,
+      isActive: dto.isActive !== undefined ? dto.isActive : true
     })
 
     return this.productRepo.save(product)

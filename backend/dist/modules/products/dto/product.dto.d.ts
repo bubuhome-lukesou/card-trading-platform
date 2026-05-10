@@ -35,6 +35,8 @@ export declare class CreateProductDto {
     stock?: number;
     quantity?: number;
     tags?: string[];
+    isActive?: boolean;
+    productTypeTags?: number[];
 }
 export declare class UpdateProductDto {
     category?: ProductCategory;
@@ -56,5 +58,7 @@ export declare class UpdateProductDto {
     status?: ProductStatus;
     stock?: number;
     quantity?: number;
+    isActive?: boolean;
     tags?: number[];
+    productTypeTags?: number[];
 }

@@ -24,10 +24,9 @@ const sentinelRef = ref<HTMLElement | null>(null)
 const filtersExpanded = ref({
   category: true,
   listingType: true,
-  rarity: true,
+  productTypes: true,
   condition: true,
-  price: true,
-  tags: true
+  price: true
 })
 
 // Filters - using any to avoid complex type issues
@@ -43,6 +42,7 @@ const filters = ref<any>({
   listingType: 'all',
   sortBy: 'newest',
   tags: [] as string[],
+  productTypes: [] as string[],
   page: 1,
   limit: 20
 })
@@ -65,7 +65,7 @@ const filterOptions = ref({
     { value: 'C', label: 'C', labelZh: 'C級 - 較明顯磨損' },
     { value: 'D', label: 'D', labelZh: 'D級 - 嚴重磨損' }
   ],
-  tags: [] as Tag[]
+  productTypes: [] as Tag[]
 })
 
 const sortOptions = [
@@ -84,7 +84,7 @@ const activeFiltersCount = computed(() => {
   if (filters.value.condition?.length) count += filters.value.condition.length
   if (filters.value.priceMin || filters.value.priceMax) count++
   if (filters.value.listingType !== 'all') count++
-  if (filters.value.tags?.length) count += filters.value.tags.length
+  if (filters.value.productTypes?.length) count += filters.value.productTypes.length
   return count
 })
 
@@ -115,9 +115,9 @@ const activeFiltersList = computed(() => {
     })
   }
 
-  filters.value.tags?.forEach((tagId: string) => {
-    const tag = filterOptions.value.tags.find(x => String(x.id) === tagId)
-    list.push({ key: 'tags', value: tag?.name || tagId, rawValue: tagId })
+  filters.value.productTypes?.forEach((tagId: string) => {
+    const tag = filterOptions.value.productTypes.find(x => String(x.id) === tagId)
+    list.push({ key: 'productTypes', value: tag?.name || tagId, rawValue: tagId })
   })
 
   return list
@@ -156,7 +156,7 @@ const updateFilter = (key: string, value: any) => {
   fetchProducts()
 }
 
-const toggleArrayFilter = (key: 'category' | 'rarity' | 'condition' | 'tags', value: string) => {
+const toggleArrayFilter = (key: 'category' | 'rarity' | 'condition' | 'tags' | 'productTypes', value: string) => {
   const arr = filters.value[key] || []
   const index = arr.indexOf(value)
   if (index === -1) {
@@ -233,6 +233,7 @@ const updateUrl = () => {
   if (filters.value.listingType !== 'all') query.listing = filters.value.listingType
   if (filters.value.sortBy !== 'newest') query.sort = filters.value.sortBy
   if (filters.value.tags?.length) query.tags = filters.value.tags.join(',')
+  if (filters.value.productTypes?.length) query.productTypes = filters.value.productTypes.join(',')
   if (filters.value.page !== 1) query.page = String(filters.value.page)
 
   router.replace({ query })
@@ -248,7 +249,7 @@ const parseUrlFilters = () => {
   if (query.priceMax) filters.value.priceMax = Number(query.priceMax)
   if (query.listing) filters.value.listingType = query.listing as 'all' | 'sale' | 'auction'
   if (query.sort) filters.value.sortBy = query.sort as string
-  if (query.tags) filters.value.tags = (query.tags as string).split(',')
+  if (query.productTypes) filters.value.productTypes = (query.productTypes as string).split(',')
   if (query.page) filters.value.page = Number(query.page)
 }
 
@@ -264,12 +265,13 @@ const handleSearch = () => {
   fetchProducts()
 }
 
-const loadTags = async () => {
+const loadProductTypes = async () => {
   try {
     const response = await tagApi.getTags()
-    filterOptions.value.tags = response.data
+    // Filter only tags with type=product_type
+    filterOptions.value.productTypes = (response.data || []).filter((t: any) => t.type === 'product_type')
   } catch (error) {
-    console.error('Failed to load tags:', error)
+    console.error('Failed to load product types:', error)
   }
 }
 
@@ -277,7 +279,7 @@ const loadTags = async () => {
 onMounted(() => {
   parseUrlFilters()
   fetchProducts()
-  loadTags()
+  loadProductTypes()
   favoritesStore.loadFavorites()
 
   // Infinite scroll via scroll event
@@ -405,21 +407,21 @@ watch(() => route.query, () => {
 
           <!-- Tags (商品種類) -->
           <div class="filter-section">
-            <h4 class="filter-title" @click="filtersExpanded.tags = !filtersExpanded.tags">
-              {{ t('product.filters.tags') || '商品種類' }}
-              <ChevronDown class="filter-chevron" :class="{ collapsed: !filtersExpanded.tags }" />
+            <h4 class="filter-title" @click="filtersExpanded.productTypes = !filtersExpanded.productTypes">
+              {{ t('product.filters.productTypes') || '商品種類' }}
+              <ChevronDown class="filter-chevron" :class="{ collapsed: !filtersExpanded.productTypes }" />
             </h4>
-            <div v-show="filtersExpanded.tags" class="filter-options">
+            <div v-show="filtersExpanded.productTypes" class="filter-options">
               <label
-                v-for="tag in filterOptions.tags"
+                v-for="tag in filterOptions.productTypes"
                 :key="tag.id"
                 class="filter-option"
-                :class="{ active: filters.tags.includes(String(tag.id)) }"
+                :class="{ active: filters.productTypes.includes(String(tag.id)) }"
               >
                 <input
                   type="checkbox"
-                  :checked="filters.tags.includes(String(tag.id))"
-                  @change="toggleArrayFilter('tags', String(tag.id))"
+                  :checked="filters.productTypes.includes(String(tag.id))"
+                  @change="toggleArrayFilter('productTypes', String(tag.id))"
                 />
                 <span class="checkmark" />
                 <span class="filter-label filter-tag" :style="tag.color ? { color: tag.color } : {}">
@@ -480,29 +482,7 @@ watch(() => route.query, () => {
             </div>
           </div>
 
-          <!-- Tags -->
-          <div class="filter-section">
-            <h4 class="filter-title" @click="filtersExpanded.tags = !filtersExpanded.tags">
-              标签
-              <ChevronDown class="filter-chevron" :class="{ collapsed: !filtersExpanded.tags }" />
-            </h4>
-            <div v-show="filtersExpanded.tags" class="filter-options">
-              <label
-                v-for="tag in filterOptions.tags"
-                :key="tag.id"
-                class="filter-option"
-                :class="{ active: filters.tags.includes(String(tag.id)) }"
-              >
-                <input
-                  type="checkbox"
-                  :checked="filters.tags.includes(String(tag.id))"
-                  @change="toggleArrayFilter('tags', String(tag.id))"
-                />
-                <span class="checkmark" />
-                <span class="filter-label">{{ tag.name }}</span>
-              </label>
-            </div>
-          </div>
+          
         </aside>
 
         <!-- Products Grid -->
