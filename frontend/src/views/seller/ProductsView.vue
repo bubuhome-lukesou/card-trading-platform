@@ -42,11 +42,11 @@ const categories = [
 ]
 
 const conditions = [
-  { value: 'mint', label: '全新/Mint' },
-  { value: 'near_mint', label: '近全新/Near Mint' },
-  { value: 'excellent', label: '优秀/Excellent' },
-  { value: 'good', label: '良好/Good' },
-  { value: 'fair', label: '一般/Fair' },
+  { value: 'S', label: 'S級 (完美品相)' },
+  { value: 'A', label: 'A級 (輕微磨損)' },
+  { value: 'B', label: 'B級 (正常使用痕跡)' },
+  { value: 'C', label: 'C級 (較明顯磨損)' },
+  { value: 'D', label: 'D級 (嚴重磨損)' },
 ]
 
 const rarities = [
@@ -64,12 +64,13 @@ const formData = ref({
   descriptionZh: '',
   descriptionEn: '',
   category: 'pokemon',
-  condition: 'near_mint',
+  condition: 'S',
   rarity: 'rare',
   price: 0,
   quantity: 1,
   images: [] as string[],
   tags: [] as number[],
+  status: 'active',
 })
 
 const resetForm = () => {
@@ -79,12 +80,13 @@ const resetForm = () => {
     descriptionZh: '',
     descriptionEn: '',
     category: 'pokemon',
-    condition: 'near_mint',
+    condition: 'S',
     rarity: 'rare',
     price: 0,
     quantity: 1,
     images: [],
     tags: [],
+    status: 'active',
   }
   imagePreviews.value = []
   pendingImageFiles.value = []
@@ -173,6 +175,7 @@ const openEditModal = (product: any) => {
     quantity: product.quantity || 1,
     images: [...existingImages],
     tags: [...selectedTags.value],
+    status: product.status || 'active',
   }
   showModal.value = true
 }
@@ -559,7 +562,7 @@ onUnmounted(() => {
               ></textarea>
             </div>
 
-            <!-- Category & Condition -->
+            <!-- Category & Condition & Status -->
             <div class="form-group">
               <label>商品类别</label>
               <select v-model="formData.category">
@@ -575,6 +578,14 @@ onUnmounted(() => {
                 <option v-for="cond in conditions" :key="cond.value" :value="cond.value">
                   {{ cond.label }}
                 </option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label>商品狀態</label>
+              <select v-model="formData.status">
+                <option value="active">上架</option>
+                <option value="inactive">下架</option>
               </select>
             </div>
 

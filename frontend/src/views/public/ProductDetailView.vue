@@ -18,6 +18,7 @@ const processing = ref(false)
 const message = ref('')
 const messageType = ref<'success' | 'error'>('success')
 const selectedQuantity = ref(1)
+const showLightbox = ref(false)
 
 onMounted(async () => {
   try {
@@ -53,6 +54,15 @@ const increaseQuantity = () => {
   if (selectedQuantity.value < getMaxQuantity()) {
     selectedQuantity.value++
   }
+}
+
+const openLightbox = (index: number) => {
+  currentImageIndex.value = index
+  showLightbox.value = true
+}
+
+const closeLightbox = () => {
+  showLightbox.value = false
 }
 
 const handleBuyNow = async () => {
@@ -142,7 +152,7 @@ const handleAddToCart = async () => {
       <div v-else-if="product" class="product-layout">
         <!-- Images -->
         <div class="product-images">
-          <div class="main-image">
+          <div class="main-image" @click="openLightbox(currentImageIndex)">
             <img :src="product.images?.[currentImageIndex] || '/placeholder-card.png'" :alt="product.titleEn" />
           </div>
           <div v-if="product.images?.length > 1" class="thumbnail-list">
@@ -217,6 +227,15 @@ const handleAddToCart = async () => {
         <p>{{ t('common.error') || '商品不存在' }}</p>
       </div>
     </div>
+  </div>
+
+  <!-- Lightbox -->
+  <div v-if="showLightbox" class="lightbox" @click.self="closeLightbox">
+    <button class="lightbox-close" @click="closeLightbox">✕</button>
+    <button v-if="product.images?.length > 1" class="lightbox-prev" @click="currentImageIndex = (currentImageIndex - 1 + product.images.length) % product.images.length">‹</button>
+    <img :src="product.images[currentImageIndex]" :alt="product.titleEn" class="lightbox-image" />
+    <button v-if="product.images?.length > 1" class="lightbox-next" @click="currentImageIndex = (currentImageIndex + 1) % product.images.length">›</button>
+    <div v-if="product.images?.length > 1" class="lightbox-counter">{{ currentImageIndex + 1 }} / {{ product.images.length }}</div>
   </div>
 </template>
 
@@ -389,5 +408,65 @@ const handleAddToCart = async () => {
   .product-layout {
     grid-template-columns: 1fr;
   }
+}
+
+.lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: rgba(0,0,0,0.92);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.lightbox-image {
+  max-width: 90vw;
+  max-height: 90vh;
+  object-fit: contain;
+  border-radius: 8px;
+}
+.lightbox-close {
+  position: absolute;
+  top: 20px;
+  right: 24px;
+  font-size: 28px;
+  background: rgba(255,255,255,0.15);
+  border: none;
+  color: white;
+  cursor: pointer;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+}
+.lightbox-close:hover { background: rgba(255,255,255,0.25); }
+.lightbox-prev, .lightbox-next {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 48px;
+  background: rgba(255,255,255,0.12);
+  border: none;
+  color: white;
+  cursor: pointer;
+  width: 56px;
+  height: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+}
+.lightbox-prev { left: 20px; }
+.lightbox-next { right: 20px; }
+.lightbox-prev:hover, .lightbox-next:hover { background: rgba(255,255,255,0.22); }
+.lightbox-counter {
+  position: absolute;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  color: rgba(255,255,255,0.7);
+  font-size: 14px;
 }
 </style>

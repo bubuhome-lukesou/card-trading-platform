@@ -50,6 +50,7 @@ export enum ListingType {
 export enum ProductStatus {
   DRAFT = 'draft',
   ACTIVE = 'active',
+  INACTIVE = 'inactive',
   SOLD = 'sold',
   ENDED = 'ended',
   CANCELLED = 'cancelled'
