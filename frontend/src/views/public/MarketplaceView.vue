@@ -7,19 +7,23 @@ import { productApi } from '@/api/products'
 import { tagApi } from '@/api/tags'
 import type { Product, Tag } from '@/types'
 import ProductCard from '@/components/product/ProductCard.vue'
+import { useFavoritesStore } from '@/stores/favorites'
 
 const { t, locale } = useI18n()
 const route = useRoute()
 const router = useRouter()
+const favoritesStore = useFavoritesStore()
 
 // State
 const products = ref<Product[]>([])
 const loading = ref(false)
 const loadingMore = ref(false)
-const showFilters = ref(true)
+const showFilters = ref(false)
 const hasMore = computed(() => products.value.length < meta.value.total)
 const sentinelRef = ref<HTMLElement | null>(null)
 const filtersExpanded = ref({
+  category: true,
+  listingType: true,
   rarity: true,
   condition: true,
   price: true,
@@ -29,12 +33,14 @@ const filtersExpanded = ref({
 // Filters - using any to avoid complex type issues
 const filters = ref<any>({
   search: '',
+  category: [] as string[],
   brand: [] as string[],
   series: [] as string[],
   rarity: [] as string[],
   condition: [] as string[],
   priceMin: undefined as number | undefined,
   priceMax: undefined as number | undefined,
+  listingType: 'all',
   sortBy: 'newest',
   tags: [] as string[],
   page: 1,
@@ -59,11 +65,11 @@ const filterOptions = ref({
     { value: 'N', label: 'N' }
   ],
   conditions: [
-    { value: 'S', label: 'S', labelZh: 'S級 (完美品相)' },
-    { value: 'A', label: 'A', labelZh: 'A級 (輕微磨損)' },
-    { value: 'B', label: 'B', labelZh: 'B級 (正常使用痕跡)' },
-    { value: 'C', label: 'C', labelZh: 'C級 (較明顯磨損)' },
-    { value: 'D', label: 'D', labelZh: 'D級 (嚴重磨損)' }
+    { value: 'mint', label: 'Mint', labelZh: '全新' },
+    { value: 'near_mint', label: 'Near Mint', labelZh: '近全新' },
+    { value: 'excellent', label: 'Excellent', labelZh: '优秀' },
+    { value: 'good', label: 'Good', labelZh: '良好' },
+    { value: 'fair', label: 'Fair', labelZh: '一般' }
   ],
   tags: [] as Tag[]
 })
@@ -79,15 +85,22 @@ const sortOptions = [
 // Computed
 const activeFiltersCount = computed(() => {
   let count = 0
+  if (filters.value.category?.length) count += filters.value.category.length
   if (filters.value.rarity?.length) count += filters.value.rarity.length
   if (filters.value.condition?.length) count += filters.value.condition.length
   if (filters.value.priceMin || filters.value.priceMax) count++
+  if (filters.value.listingType !== 'all') count++
   if (filters.value.tags?.length) count += filters.value.tags.length
   return count
 })
 
 const activeFiltersList = computed(() => {
   const list: { key: string; value: string; rawValue?: string }[] = []
+
+  filters.value.category?.forEach((c: string) => {
+    const cat = filterOptions.value.categories.find(x => x.value === c)
+    list.push({ key: 'category', value: locale.value === 'zh' ? cat?.label || c : cat?.labelEn || c, rawValue: c })
+  })
 
   filters.value.rarity?.forEach((r: string) => {
     const rarity = filterOptions.value.rarities.find(x => x.value === r)
@@ -102,7 +115,14 @@ const activeFiltersList = computed(() => {
   if (filters.value.priceMin || filters.value.priceMax) {
     list.push({
       key: 'price',
-      value: `HK$ ${filters.value.priceMin || 0} - ${filters.value.priceMax || '∞'}`
+      value: `MOP $${filters.value.priceMin || 0} - ${filters.value.priceMax || '∞'}`
+    })
+  }
+
+  if (filters.value.listingType !== 'all') {
+    list.push({
+      key: 'listingType',
+      value: filters.value.listingType === 'sale' ? '仅销售' : '仅拍卖'
     })
   }
 
@@ -122,7 +142,10 @@ const fetchProducts = async (append = false) => {
     loading.value = true
   }
   try {
-    const response = await productApi.getProducts(filters.value)
+    // Strip listingType if 'all' since backend only accepts 'sale'|'auction'|'both'
+    const { listingType, ...params } = filters.value
+    const cleanParams = listingType === 'all' ? params : { ...filters.value, listingType }
+    const response = await productApi.getProducts(cleanParams)
     if (append) {
       products.value = [...products.value, ...response.data.data]
     } else {
@@ -159,12 +182,20 @@ const removeFilter = (key: string, value?: string) => {
   if (key === 'price') {
     filters.value.priceMin = undefined
     filters.value.priceMax = undefined
+  } else if (key === 'listingType') {
+    filters.value.listingType = 'all'
   } else if (value) {
     const arr = filters.value[key] || []
+    // Find the actual value to remove (might be stored as rawValue in activeFiltersList)
     const index = arr.indexOf(value)
     if (index === -1) {
+      // value might be the display label, find by iterating
       for (let i = 0; i < arr.length; i++) {
-        const displayValue = key === 'rarity'
+        const displayValue = key === 'category'
+          ? (locale.value === 'zh'
+              ? filterOptions.value.categories.find(x => x.value === arr[i])?.label
+              : filterOptions.value.categories.find(x => x.value === arr[i])?.labelEn) || arr[i]
+          : key === 'rarity'
           ? filterOptions.value.rarities.find(x => x.value === arr[i])?.label || arr[i]
           : key === 'condition'
           ? (locale.value === 'zh'
@@ -188,14 +219,15 @@ const removeFilter = (key: string, value?: string) => {
 const clearAllFilters = () => {
   filters.value = {
     search: '',
+    category: [],
     brand: [],
     series: [],
     rarity: [],
     condition: [],
     priceMin: undefined,
     priceMax: undefined,
+    listingType: 'all',
     sortBy: 'newest',
-    tags: [],
     page: 1,
     limit: 20
   }
@@ -206,10 +238,12 @@ const clearAllFilters = () => {
 const updateUrl = () => {
   const query: Record<string, string> = {}
   if (filters.value.search) query.search = filters.value.search
+  if (filters.value.category?.length) query.category = filters.value.category.join(',')
   if (filters.value.rarity?.length) query.rarity = filters.value.rarity.join(',')
   if (filters.value.condition?.length) query.condition = filters.value.condition.join(',')
   if (filters.value.priceMin) query.priceMin = String(filters.value.priceMin)
   if (filters.value.priceMax) query.priceMax = String(filters.value.priceMax)
+  if (filters.value.listingType !== 'all') query.listing = filters.value.listingType
   if (filters.value.sortBy !== 'newest') query.sort = filters.value.sortBy
   if (filters.value.tags?.length) query.tags = filters.value.tags.join(',')
   if (filters.value.page !== 1) query.page = String(filters.value.page)
@@ -220,10 +254,12 @@ const updateUrl = () => {
 const parseUrlFilters = () => {
   const query = route.query
   if (query.search) filters.value.search = query.search as string
+  if (query.category) filters.value.category = (query.category as string).split(',')
   if (query.rarity) filters.value.rarity = (query.rarity as string).split(',')
   if (query.condition) filters.value.condition = (query.condition as string).split(',')
   if (query.priceMin) filters.value.priceMin = Number(query.priceMin)
   if (query.priceMax) filters.value.priceMax = Number(query.priceMax)
+  if (query.listing) filters.value.listingType = query.listing as 'all' | 'sale' | 'auction'
   if (query.sort) filters.value.sortBy = query.sort as string
   if (query.tags) filters.value.tags = (query.tags as string).split(',')
   if (query.page) filters.value.page = Number(query.page)
@@ -255,6 +291,7 @@ onMounted(() => {
   parseUrlFilters()
   fetchProducts()
   loadTags()
+  favoritesStore.loadFavorites()
 
   // Infinite scroll via scroll event
   window.addEventListener('scroll', handleScroll)
@@ -303,6 +340,13 @@ watch(() => route.query, () => {
       </div>
 
       <div class="marketplace-layout">
+        <!-- Backdrop overlay for mobile filter -->
+        <div
+          v-if="showFilters"
+          class="filter-backdrop"
+          @click="showFilters = false"
+        />
+
         <!-- Filters Sidebar -->
         <aside class="filter-sidebar" :class="{ 'is-open': showFilters }">
           <div class="filter-header">
@@ -318,26 +362,56 @@ watch(() => route.query, () => {
             </button>
           </div>
 
-          <!-- Tags (商品種類) -->
+          <!-- Category -->
           <div class="filter-section">
-            <h4 class="filter-title" @click="filtersExpanded.tags = !filtersExpanded.tags">
-              {{ t('product.filters.productTypeTags') }}
-              <ChevronDown class="filter-chevron" :class="{ collapsed: !filtersExpanded.tags }" />
+            <h4 class="filter-title" @click="filtersExpanded.category = !filtersExpanded.category">
+              {{ t('product.filters.category') }}
+              <ChevronDown class="filter-chevron" :class="{ collapsed: !filtersExpanded.category }" />
             </h4>
-            <div v-show="filtersExpanded.tags" class="filter-options">
+            <div v-show="filtersExpanded.category" class="filter-options">
               <label
-                v-for="tag in filterOptions.tags"
-                :key="tag.id"
+                v-for="cat in filterOptions.categories"
+                :key="cat.value"
                 class="filter-option"
-                :class="{ active: filters.tags.includes(String(tag.id)) }"
+                :class="{ active: filters.category.includes(cat.value) }"
               >
                 <input
                   type="checkbox"
-                  :checked="filters.tags.includes(String(tag.id))"
-                  @change="toggleArrayFilter('tags', String(tag.id))"
+                  :checked="filters.category.includes(cat.value)"
+                  @change="toggleArrayFilter('category', cat.value)"
                 />
                 <span class="checkmark" />
-                <span class="filter-label">{{ tag.name }}</span>
+                <span class="filter-label">
+                  {{ locale === 'zh' ? cat.label : cat.labelEn }}
+                </span>
+              </label>
+            </div>
+          </div>
+
+          <!-- Listing Type -->
+          <div class="filter-section">
+            <h4 class="filter-title" @click="filtersExpanded.listingType = !filtersExpanded.listingType">
+              {{ t('product.filters.listingType') }}
+              <ChevronDown class="filter-chevron" :class="{ collapsed: !filtersExpanded.listingType }" />
+            </h4>
+            <div v-show="filtersExpanded.listingType" class="filter-options">
+              <label
+                v-for="opt in [
+                  { value: 'all', label: t('product.filters.all') },
+                  { value: 'sale', label: t('product.filters.saleOnly') },
+                  { value: 'auction', label: t('product.filters.auctionOnly') }
+                ]"
+                :key="opt.value"
+                class="filter-option"
+                :class="{ active: filters.listingType === opt.value }"
+              >
+                <input
+                  type="radio"
+                  :checked="filters.listingType === opt.value"
+                  @change="updateFilter('listingType', opt.value)"
+                />
+                <span class="radiomark" />
+                <span class="filter-label">{{ opt.label }}</span>
               </label>
             </div>
           </div>
@@ -405,7 +479,7 @@ watch(() => route.query, () => {
                 v-model.number="filters.priceMin"
                 type="number"
                 class="price-input"
-                placeholder="Min"
+                placeholder="最低"
                 @change="updateFilter('priceMin', filters.priceMin)"
               />
               <span class="price-separator">-</span>
@@ -413,9 +487,33 @@ watch(() => route.query, () => {
                 v-model.number="filters.priceMax"
                 type="number"
                 class="price-input"
-                placeholder="Max"
+                placeholder="最高"
                 @change="updateFilter('priceMax', filters.priceMax)"
               />
+            </div>
+          </div>
+
+          <!-- Tags -->
+          <div class="filter-section">
+            <h4 class="filter-title" @click="filtersExpanded.tags = !filtersExpanded.tags">
+              标签
+              <ChevronDown class="filter-chevron" :class="{ collapsed: !filtersExpanded.tags }" />
+            </h4>
+            <div v-show="filtersExpanded.tags" class="filter-options">
+              <label
+                v-for="tag in filterOptions.tags"
+                :key="tag.id"
+                class="filter-option"
+                :class="{ active: filters.tags.includes(String(tag.id)) }"
+              >
+                <input
+                  type="checkbox"
+                  :checked="filters.tags.includes(String(tag.id))"
+                  @change="toggleArrayFilter('tags', String(tag.id))"
+                />
+                <span class="checkmark" />
+                <span class="filter-label">{{ tag.name }}</span>
+              </label>
             </div>
           </div>
         </aside>
@@ -575,22 +673,37 @@ watch(() => route.query, () => {
   }
 }
 
+.filter-backdrop {
+  display: none;
+  @media (max-width: 1024px) {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: calc(var(--z-modal) - 1);
+  }
+}
+
 .filter-sidebar {
   @media (max-width: 1024px) {
     position: fixed;
-    top: 0;
     left: 0;
+    right: 0;
     bottom: 0;
-    width: 300px;
+    top: auto;
+    width: 100%;
+    max-height: 85vh;
     z-index: var(--z-modal);
     background: var(--bg-dark);
     padding: var(--space-6);
-    transform: translateX(-100%);
+    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+    transform: translateY(100%);
     transition: transform 0.3s ease;
     overflow-y: auto;
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.3);
 
     &.is-open {
-      transform: translateX(0);
+      transform: translateY(0);
     }
   }
 }
@@ -754,10 +867,17 @@ watch(() => route.query, () => {
   border-radius: var(--radius-md);
   color: var(--text-primary);
   font-size: var(--text-sm);
+  min-width: 0;
 
   &:focus {
     outline: none;
     border-color: var(--primary);
+  }
+
+  @media (max-width: 480px) {
+    min-width: 120px;
+    flex: 1;
+    font-size: var(--text-base);
   }
 }
 
@@ -898,7 +1018,7 @@ watch(() => route.query, () => {
   }
 
   @media (max-width: 1024px) {
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(2, 1fr);
   }
 
   @media (max-width: 768px) {
@@ -906,7 +1026,7 @@ watch(() => route.query, () => {
   }
 
   @media (max-width: 480px) {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, 1fr);
   }
 }
 
