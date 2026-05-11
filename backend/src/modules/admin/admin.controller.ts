@@ -1,4 +1,5 @@
-import { Controller, Get, Patch, Param, Body, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Patch, Param, Body, Query, UseGuards, Req } from '@nestjs/common';
+import { Request } from 'express';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -42,6 +43,15 @@ export class AdminController {
   @Patch('settings')
   updateSettings(@Body() body: { pickupInfo?: string; pickupQrCode?: string }) {
     return this.adminService.updateSettings(body);
+  }
+
+  @Patch('password')
+  changePassword(
+    @Req() req: Request,
+    @Body() body: { currentPassword: string; newPassword: string },
+  ) {
+    const userId = (req.user as any).id;
+    return this.adminService.changePassword(userId, body.currentPassword, body.newPassword);
   }
 }
 

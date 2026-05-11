@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import * as bcrypt from 'bcrypt';
 import { User, UserRole } from '../../entities/user.entity';
 import { Settings } from '../../entities/settings.entity';
 
@@ -59,6 +60,21 @@ export class AdminService {
     if (data.pickupInfo !== undefined) settings.pickupInfo = data.pickupInfo;
     if (data.pickupQrCode !== undefined) settings.pickupQrCode = data.pickupQrCode;
     return this.settingsRepo.save(settings);
+  }
+
+  async changePassword(userId: string, currentPassword: string, newPassword: string): Promise<void> {
+    const user = await this.userRepo.findOne({ where: { id: userId } });
+    if (!user) throw new Error('User not found');
+
+    // Verify current password (only if user has a password set)
+    if (user.password) {
+      const isValid = await bcrypt.compare(currentPassword, user.password);
+      if (!isValid) throw new Error('當前密碼不正確');
+    }
+
+    // Hash and set new password
+    user.password = await bcrypt.hash(newPassword, 10);
+    await this.userRepo.save(user);
   }
 }
 

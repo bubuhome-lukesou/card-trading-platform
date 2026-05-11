@@ -51,11 +51,11 @@ const meta = ref({ total: 0, page: 1, limit: 20, totalPages: 0 })
 
 const filterOptions = ref({
   categories: [
-    { value: 'pokemon', label: '宝可梦', labelEn: 'Pokemon' },
-    { value: 'yugioh', label: '游戏王', labelEn: 'Yu-Gi-Oh!' },
-    { value: 'mtg', label: '万智牌', labelEn: 'Magic: The Gathering' },
-    { value: 'ultraman', label: '奥特曼', labelEn: 'Ultraman' },
-    { value: 'onepiece', label: '海贼王', labelEn: 'One Piece' },
+    { value: 'pokemon', label: '寶可夢', labelEn: 'Pokemon' },
+    { value: 'yugioh', label: '遊戲王', labelEn: 'Yu-Gi-Oh!' },
+    { value: 'mtg', label: '萬智牌', labelEn: 'Magic: The Gathering' },
+    { value: 'ultraman', label: '超人迪卡', labelEn: 'Ultraman' },
+    { value: 'onepiece', label: '海賊王', labelEn: 'One Piece' },
     { value: 'other', label: '其他', labelEn: 'Other' }
   ],
   conditions: [
@@ -93,12 +93,12 @@ const activeFiltersList = computed(() => {
 
   filters.value.category?.forEach((c: string) => {
     const cat = filterOptions.value.categories.find(x => x.value === c)
-    list.push({ key: 'category', value: locale.value === 'zh' ? cat?.label || c : cat?.labelEn || c, rawValue: c })
+    list.push({ key: 'category', value: cat?.label || c, rawValue: c })
   })
 
   filters.value.condition?.forEach((c: string) => {
     const cond = filterOptions.value.conditions.find(x => x.value === c)
-    list.push({ key: 'condition', value: locale.value === 'zh' ? `${cond?.labelZh} (${cond?.label})` : cond?.label || c, rawValue: c })
+    list.push({ key: 'condition', value: cond?.labelZh || c, rawValue: c })
   })
 
   if (filters.value.priceMin || filters.value.priceMax) {
@@ -111,7 +111,7 @@ const activeFiltersList = computed(() => {
   if (filters.value.listingType !== 'all') {
     list.push({
       key: 'listingType',
-      value: filters.value.listingType === 'sale' ? '仅销售' : '仅拍卖'
+      value: filters.value.listingType === 'sale' ? '僅銷售' : '僅拍賣'
     })
   }
 
@@ -371,36 +371,8 @@ watch(() => route.query, () => {
                 />
                 <span class="checkmark" />
                 <span class="filter-label">
-                  {{ locale === 'zh' ? cat.label : cat.labelEn }}
+                  {{ cat.label }}
                 </span>
-              </label>
-            </div>
-          </div>
-
-          <!-- Listing Type -->
-          <div class="filter-section">
-            <h4 class="filter-title" @click="filtersExpanded.listingType = !filtersExpanded.listingType">
-              {{ t('product.filters.listingType') }}
-              <ChevronDown class="filter-chevron" :class="{ collapsed: !filtersExpanded.listingType }" />
-            </h4>
-            <div v-show="filtersExpanded.listingType" class="filter-options">
-              <label
-                v-for="opt in [
-                  { value: 'all', label: t('product.filters.all') },
-                  { value: 'sale', label: t('product.filters.saleOnly') },
-                  { value: 'auction', label: t('product.filters.auctionOnly') }
-                ]"
-                :key="opt.value"
-                class="filter-option"
-                :class="{ active: filters.listingType === opt.value }"
-              >
-                <input
-                  type="radio"
-                  :checked="filters.listingType === opt.value"
-                  @change="updateFilter('listingType', opt.value)"
-                />
-                <span class="radiomark" />
-                <span class="filter-label">{{ opt.label }}</span>
               </label>
             </div>
           </div>
@@ -424,7 +396,7 @@ watch(() => route.query, () => {
                   @change="toggleArrayFilter('productTypes', String(tag.id))"
                 />
                 <span class="checkmark" />
-                <span class="filter-label filter-tag" :style="tag.color ? { color: tag.color } : {}">
+                <span class="filter-label">
                   {{ tag.name }}
                 </span>
               </label>
@@ -451,7 +423,7 @@ watch(() => route.query, () => {
                 />
                 <span class="checkmark" />
                 <span class="filter-label">
-                  {{ locale === 'zh' ? `${cond.labelZh} (${cond.label})` : cond.label }}
+                  {{ cond.labelZh }}
                 </span>
               </label>
             </div>

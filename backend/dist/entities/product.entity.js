@@ -88,6 +88,10 @@ __decorate([
     __metadata("design:type", String)
 ], Product.prototype, "rarity", void 0);
 __decorate([
+    (0, typeorm_1.Column)({ name: 'productTypeTagId', type: 'int', nullable: true }),
+    __metadata("design:type", Number)
+], Product.prototype, "productTypeTagId", void 0);
+__decorate([
     (0, typeorm_1.Column)({ type: 'enum', enum: ProductCondition }),
     __metadata("design:type", String)
 ], Product.prototype, "condition", void 0);

@@ -127,9 +127,15 @@ let ProductsService = class ProductsService {
         if (dto.tags && dto.tags.length > 0) {
             tags = await this.tagRepo.findByIds(dto.tags);
         }
-        if (dto.productTypeTags && dto.productTypeTags.length > 0) {
-            const typeTags = await this.tagRepo.findByIds(dto.productTypeTags);
-            tags = [...tags, ...typeTags];
+        if (dto.productTypeTags !== undefined) {
+            const typeTagIds = dto.productTypeTags;
+            if (typeTagIds && typeTagIds.length > 0) {
+                dto.productTypeTagId = typeTagIds[0];
+            }
+            else {
+                dto.productTypeTagId = null;
+            }
+            delete dto.productTypeTags;
         }
         const product = this.productRepo.create({
             ...dto,
@@ -147,7 +153,7 @@ let ProductsService = class ProductsService {
         if (product.sellerId !== userId) {
             throw new common_1.ForbiddenException('You can only edit your own products');
         }
-        if (dto.images !== undefined && dto.images !== null && dto.images !== '') {
+        if (dto.images !== undefined && dto.images !== null) {
             if (Array.isArray(dto.images)) {
                 dto.images = dto.images.length > 0 ? JSON.stringify(dto.images) : (product.images || '');
             }
@@ -163,6 +169,16 @@ let ProductsService = class ProductsService {
             else {
                 product.tags = [];
             }
+        }
+        if (dto.productTypeTags !== undefined) {
+            const typeTagIds = dto.productTypeTags;
+            if (typeTagIds && typeTagIds.length > 0) {
+                dto.productTypeTagId = typeTagIds[0];
+            }
+            else {
+                dto.productTypeTagId = null;
+            }
+            delete dto.productTypeTags;
         }
         Object.assign(product, dto);
         return this.productRepo.save(product);

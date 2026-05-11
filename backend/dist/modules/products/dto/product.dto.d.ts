@@ -19,7 +19,7 @@ export declare class CreateProductDto {
     category: ProductCategory;
     brand?: string;
     series?: string;
-    rarity: ProductRarity;
+    rarity?: ProductRarity;
     condition: ProductCondition;
     titleEn: string;
     titleZh: string;
@@ -34,7 +34,7 @@ export declare class CreateProductDto {
     bidIncrement?: number;
     stock?: number;
     quantity?: number;
-    tags?: string[];
+    tags?: number[];
     isActive?: boolean;
     productTypeTags?: number[];
 }

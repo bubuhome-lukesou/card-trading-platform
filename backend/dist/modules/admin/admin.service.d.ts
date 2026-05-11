@@ -27,4 +27,5 @@ export declare class AdminService {
         pickupInfo?: string;
         pickupQrCode?: string;
     }): Promise<Settings>;
+    changePassword(userId: string, currentPassword: string, newPassword: string): Promise<void>;
 }

@@ -81,6 +81,9 @@ export class Product {
   @Column({ nullable: true })
   rarity: string
 
+  @Column({ name: 'productTypeTagId', type: 'int', nullable: true })
+  productTypeTagId: number | null
+
   @Column({ type: 'enum', enum: ProductCondition })
   condition: ProductCondition
 

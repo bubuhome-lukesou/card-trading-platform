@@ -1,3 +1,4 @@
+import { Request } from 'express';
 import { AdminService } from './admin.service';
 export declare class AdminController {
     private adminService;
@@ -24,4 +25,8 @@ export declare class AdminController {
         pickupInfo?: string;
         pickupQrCode?: string;
     }): Promise<import("../../entities").Settings>;
+    changePassword(req: Request, body: {
+        currentPassword: string;
+        newPassword: string;
+    }): Promise<void>;
 }

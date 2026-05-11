@@ -40,6 +40,10 @@ let AdminController = class AdminController {
     updateSettings(body) {
         return this.adminService.updateSettings(body);
     }
+    changePassword(req, body) {
+        const userId = req.user.id;
+        return this.adminService.changePassword(userId, body.currentPassword, body.newPassword);
+    }
 };
 exports.AdminController = AdminController;
 __decorate([
@@ -85,6 +89,14 @@ __decorate([
     __metadata("design:paramtypes", [Object]),
     __metadata("design:returntype", void 0)
 ], AdminController.prototype, "updateSettings", null);
+__decorate([
+    (0, common_1.Patch)('password'),
+    __param(0, (0, common_1.Req)()),
+    __param(1, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, Object]),
+    __metadata("design:returntype", void 0)
+], AdminController.prototype, "changePassword", null);
 exports.AdminController = AdminController = __decorate([
     (0, common_1.Controller)('admin'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, roles_guard_1.RolesGuard),

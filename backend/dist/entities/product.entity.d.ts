@@ -45,6 +45,7 @@ export declare class Product {
     brand: string;
     series: string;
     rarity: string;
+    productTypeTagId: number | null;
     condition: ProductCondition;
     titleEn: string;
     titleZh: string;

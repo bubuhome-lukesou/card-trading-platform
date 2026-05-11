@@ -95,8 +95,9 @@ export class CreateProductDto {
   @IsString()
   series?: string
 
+  @IsOptional()
   @IsEnum(ProductRarity)
-  rarity: ProductRarity
+  rarity?: ProductRarity
 
   @IsEnum(ProductCondition)
   condition: ProductCondition
@@ -161,8 +162,8 @@ export class CreateProductDto {
 
   @IsOptional()
   @IsArray()
-  @IsString({ each: true })
-  tags?: string[]
+  @IsNumber({}, { each: true })
+  tags?: number[]
 
   @IsOptional()
   @Transform(({ value }) => value === 'true' || value === true)

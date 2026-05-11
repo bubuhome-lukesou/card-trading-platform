@@ -145,15 +145,10 @@ export class ProductsService {
       tags = await this.tagRepo.findByIds(dto.tags)
     }
 
-    // productTypeTags - store as productTypeTagId field
-    if ((dto as any).productTypeTags !== undefined) {
-      const typeTagIds = (dto as any).productTypeTags
-      if (typeTagIds && typeTagIds.length > 0) {
-        (dto as any).productTypeTagId = typeTagIds[0] // Take first one
-      } else {
-        (dto as any).productTypeTagId = null
-      }
-      delete (dto as any).productTypeTags
+    // productTypeTags IDs also go into the regular tags relation
+    if ((dto as any).productTypeTags && (dto as any).productTypeTags.length > 0) {
+      const typeTags = await this.tagRepo.findByIds((dto as any).productTypeTags)
+      tags = [...tags, ...typeTags]
     }
 
     const product = this.productRepo.create({
@@ -176,8 +171,8 @@ export class ProductsService {
       throw new ForbiddenException('You can only edit your own products')
     }
 
-    // Handle images - store as JSON string, skip if empty/undefined/empty array
-    if (dto.images !== undefined && dto.images !== null) {
+    // Handle images - store as JSON string, skip if empty/undefined
+    if (dto.images !== undefined && dto.images !== null && dto.images !== '') {
       if (Array.isArray(dto.images)) {
         dto.images = dto.images.length > 0 ? JSON.stringify(dto.images) as any : (product.images || '')
       } else if (typeof dto.images === 'string') {
@@ -195,13 +190,15 @@ export class ProductsService {
         product.tags = []
       }
     }
-// Handle productTypeTags - store as productTypeTagId field
+
+    // Handle productTypeTags - merge into regular tags relation
     if ((dto as any).productTypeTags !== undefined) {
       const typeTagIds = (dto as any).productTypeTags
+      console.log('[DEBUG] productTypeTags received:', typeTagIds)
       if (typeTagIds && typeTagIds.length > 0) {
-        (dto as any).productTypeTagId = typeTagIds[0] // Take first one
-      } else {
-        (dto as any).productTypeTagId = null
+        const typeTags = await this.tagRepo.findByIds(typeTagIds)
+        console.log('[DEBUG] typeTags found:', typeTags.map(t => t.id))
+        product.tags = [...(product.tags || []), ...typeTags]
       }
       delete (dto as any).productTypeTags
     }

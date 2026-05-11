@@ -131,6 +131,42 @@ const handleDeleteTag = async (tag: Tag) => {
   }
 }
 
+// Password change
+const passwordData = ref({
+  currentPassword: '',
+  newPassword: '',
+  confirmPassword: '',
+})
+const passwordError = ref('')
+const passwordSuccess = ref('')
+
+const handlePasswordChange = async () => {
+  passwordError.value = ''
+  passwordSuccess.value = ''
+  if (passwordData.value.newPassword !== passwordData.value.confirmPassword) {
+    passwordError.value = '兩次輸入的密碼不一致'
+    return
+  }
+  if (passwordData.value.newPassword.length < 6) {
+    passwordError.value = '密碼至少需要 6 個字符'
+    return
+  }
+  saving.value = true
+  try {
+    await adminApi.changePassword({
+      currentPassword: passwordData.value.currentPassword,
+      newPassword: passwordData.value.newPassword,
+    })
+    passwordData.value = { currentPassword: '', newPassword: '', confirmPassword: '' }
+    passwordSuccess.value = '密碼已修改'
+    setTimeout(() => passwordSuccess.value = '', 3000)
+  } catch (e: any) {
+    passwordError.value = e?.response?.data?.message || '修改密碼失敗'
+  } finally {
+    saving.value = false
+  }
+}
+
 const productTypeTags = () => tags.value.filter(t => t.type === 'product_type')
 const generalTags = () => tags.value.filter(t => t.type === 'general' || !t.type)
 </script>
@@ -202,6 +238,32 @@ const generalTags = () => tags.value.filter(t => t.type === 'general' || !t.type
 💬 WeChat：your_wechat_id"
           ></textarea>
         </div>
+      </div>
+    </div>
+
+    <!-- Password Change -->
+    <div class="settings-card">
+      <h3 class="section-title">🔐 修改密碼</h3>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>當前密碼</label>
+          <input v-model="passwordData.currentPassword" type="password" />
+        </div>
+        <div class="form-group">
+          <label>新密碼</label>
+          <input v-model="passwordData.newPassword" type="password" />
+        </div>
+        <div class="form-group">
+          <label>確認新密碼</label>
+          <input v-model="passwordData.confirmPassword" type="password" @keyup.enter="handlePasswordChange" />
+        </div>
+      </div>
+      <div v-if="passwordError" class="error-text">{{ passwordError }}</div>
+      <div v-if="passwordSuccess" class="success-text">{{ passwordSuccess }}</div>
+      <div class="actions">
+        <button @click="handlePasswordChange" class="btn-save" :disabled="saving">
+          {{ saving ? '處理中...' : '修改密碼' }}
+        </button>
       </div>
     </div>
 
@@ -354,6 +416,7 @@ const generalTags = () => tags.value.filter(t => t.type === 'general' || !t.type
 .btn-confirm { padding: var(--space-2) var(--space-4); background: var(--primary); border: none; border-radius: var(--radius-lg); color: white; cursor: pointer; font-weight: 500; }
 .btn-confirm:hover { opacity: 0.9; }
 .error-text { color: var(--danger); font-size: var(--text-sm); }
+.success-text { color: #10b981; font-size: var(--text-sm); margin-top: var(--space-2); }
 
 @media (max-width: 640px) { .form-grid { grid-template-columns: 1fr; } }
 </style>

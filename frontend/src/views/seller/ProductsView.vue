@@ -82,6 +82,21 @@ const conditions = [
 // 商品種類（從 Tag type=product_type 加載，不再用固定下拉選項）
 const productTypes = ref<any[]>([])
 const selectedProductTypeTags = ref<number[]>([])
+const productTypesLoaded = ref(false)
+
+// Watch formData.productTypeTagId to sync with selectedProductTypeTags for submission
+watch(() => formData.value.productTypeTagId, (newVal, oldVal) => {
+  console.log('[DEBUG] Watch triggered: oldVal =', oldVal, 'newVal =', newVal)
+  console.log('[DEBUG] Watch selectedProductTypeTags before =', selectedProductTypeTags.value.slice())
+  console.log('[DEBUG] Watch productTypes loaded =', productTypes.value.map(pt => ({ id: pt.id, name: pt.name })))
+  if (newVal) {
+    // Add to selectedProductTypeTags if not already present
+    if (!selectedProductTypeTags.value.includes(newVal)) {
+      selectedProductTypeTags.value = [newVal]
+      console.log('[DEBUG] Watch set selectedProductTypeTags to:', selectedProductTypeTags.value)
+    }
+  }
+}, { immediate: false })
 
 const toggleProductType = (tagId: number) => {
   const idx = selectedProductTypeTags.value.indexOf(tagId)
@@ -161,18 +176,20 @@ const openEditModal = async (product: any) => {
   const ids = (product.tags || []).map((t: any) => typeof t === 'number' ? t : t.id)
   _tagSelectedSnapshot = [...ids]
   selectedTags.value = [...ids]
-  // Load product types (type=product_type)
-  const ptIds = (product.productTypeTags || []).map((t: any) => typeof t === 'number' ? t : t.id)
+  // Load product types (type=product_type) - extract from tags array in API response
+  const ptIds = (product.tags || [])
+    .filter((t: any) => t.type === 'product_type')
+    .map((t: any) => typeof t === 'number' ? t : t.id)
+  console.log('[DEBUG] openEditModal - product.tags:', product.tags, 'ptIds:', ptIds)
   selectedProductTypeTags.value = [...ptIds]
+  
   // Ensure availableTags is loaded before modal opens
   await loadTags()
   await loadProductTypes()
-  nextTick().then(() => {
-    // Verify reactivity - if still not showing selected, force update
-    if (selectedTags.value.length !== ids.length) {
-      selectedTags.value = [...ids]
-    }
-  })
+  
+  // Sync formData.productTypeTagId for dropdown display
+  formData.value.productTypeTagId = ptIds.length > 0 ? ptIds[0] : null
+  
   formData.value = {
     titleZh: product.titleZh,
     titleEn: product.titleEn,
@@ -211,18 +228,19 @@ const handleSubmit = async () => {
 
     // Prepare product data - merge existing URLs with newly uploaded URLs
     // 预设仅销售模式
-    console.log('[DEBUG] selectedTags:', selectedTags.value, 'formData.tags:', formData.value.tags)
     const productData = {
       ...formData.value,
       listingType: 'sale_only',
       images: [...existingImageUrls.value, ...uploadedUrls],
       tags: selectedTags.value,
-      // productTypeTagId as single value, wrapped in array for API
-      productTypeTags: formData.value.productTypeTagId ? [formData.value.productTypeTagId] : [],
+      // productTypeTags as array
+      productTypeTags: selectedProductTypeTags.value,
     }
-    console.log('[DEBUG] productData.tags:', productData.tags)
-    console.log('[DEBUG] productData.productTypeTags:', productData.productTypeTags)
-
+    console.log('[DEBUG] formData.productTypeTagId:', formData.value.productTypeTagId)
+    console.log('[DEBUG] selectedProductTypeTags.value:', selectedProductTypeTags.value.slice())
+    console.log('[DEBUG] productTypes list:', productTypes.value.map(pt => ({ id: pt.id, name: pt.name })))
+    console.log('[DEBUG] Submitting productData:', JSON.stringify(productData, null, 2))
+    
     // Create or update product
     if (editingProduct.value) {
       await productApi.updateProduct(editingProduct.value.id, productData)
@@ -317,7 +335,8 @@ const handleImageChange = async (event: Event) => {
   if (!target.files) return
   
   const files = Array.from(target.files)
-  if (imagePreviews.value.length + files.length > 9) {
+  const currentCount = existingImageUrls.value.length + pendingImagePreviews.value.length
+  if (currentCount + files.length > 9) {
     alert('最多只能上传9张图片')
     return
   }
@@ -332,7 +351,9 @@ const handleImageChange = async (event: Event) => {
     reader.onload = (e) => {
       const base64 = e.target?.result as string
       pendingImagePreviews.value.push(base64)
+      // Force reactivity update
       imagePreviews.value = [...existingImageUrls.value, ...pendingImagePreviews.value]
+      console.log('[DEBUG] Image added, previews:', imagePreviews.value.length)
     }
     reader.readAsDataURL(file)
   }
@@ -405,6 +426,7 @@ const loadProductTypes = async () => {
     // Filter only tags with type=product_type
     const allTags = response.data || []
     productTypes.value = allTags.filter((t: any) => t.type === 'product_type')
+    productTypesLoaded.value = true
   } catch (error) {
     console.error('Failed to load product types:', error)
   }
@@ -646,7 +668,7 @@ onUnmounted(() => {
             <div class="form-group full-width">
               <label>商品图片 <span class="label-hint">({{ imagePreviews.length }}/9)</span></label>
               <input
-                id="imageInput"
+                id="productImageInput"
                 ref="imageInput"
                 type="file"
                 accept="image/*"
@@ -658,14 +680,11 @@ onUnmounted(() => {
                 <label
                   class="upload-box"
                   :class="{ 'at-limit': imagePreviews.length >= 9 }"
-                  :for="imagePreviews.length >= 9 ? undefined : 'imageInput'"
-                  @click.prevent="imagePreviews.length >= 9 ? showImageLimitAlert() : null"
+                  :for="imagePreviews.length >= 9 ? undefined : 'productImageInput'"
                 >
-                  <div class="upload-box-inner">
-                    <span class="upload-icon">📷</span>
-                    <span class="upload-text">{{ imagePreviews.length >= 9 ? '已達上傳上限' : '點擊上傳圖片' }}</span>
-                    <span class="upload-hint">JPG/PNG，最大 10MB，最多 9 張</span>
-                  </div>
+                  <span class="upload-icon">📷</span>
+                  <span class="upload-text">{{ imagePreviews.length >= 9 ? '已達上傳上限' : '點擊上傳圖片' }}</span>
+                  <span class="upload-hint">JPG/PNG，最大 10MB，最多 9 張</span>
                 </label>
                 <div v-if="imagePreviews.length > 0" class="image-previews">
                   <div v-for="(img, index) in imagePreviews" :key="index" class="preview-item">

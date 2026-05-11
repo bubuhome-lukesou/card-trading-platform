@@ -32,6 +32,7 @@ export class ProductsController {
   @UseGuards(JwtAuthGuard)
   @Put(':id')
   async update(@Param('id') id: string, @Body() dto: UpdateProductDto, @Request() req: any) {
+    console.log('[DEBUG] Controller received update dto:', JSON.stringify(dto, null, 2))
     return this.productsService.update(id, dto, req.user.id)
   }
 

@@ -34,6 +34,7 @@ let ProductsController = class ProductsController {
         return this.productsService.create(dto, req.user.id);
     }
     async update(id, dto, req) {
+        console.log('[DEBUG] Controller received update dto:', JSON.stringify(dto, null, 2));
         return this.productsService.update(id, dto, req.user.id);
     }
     async remove(id, req) {

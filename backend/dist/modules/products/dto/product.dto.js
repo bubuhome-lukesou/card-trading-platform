@@ -144,6 +144,7 @@ __decorate([
     __metadata("design:type", String)
 ], CreateProductDto.prototype, "series", void 0);
 __decorate([
+    (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsEnum)(product_entity_1.ProductRarity),
     __metadata("design:type", String)
 ], CreateProductDto.prototype, "rarity", void 0);
@@ -225,7 +226,7 @@ __decorate([
 __decorate([
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsArray)(),
-    (0, class_validator_1.IsString)({ each: true }),
+    (0, class_validator_1.IsNumber)({}, { each: true }),
     __metadata("design:type", Array)
 ], CreateProductDto.prototype, "tags", void 0);
 __decorate([
