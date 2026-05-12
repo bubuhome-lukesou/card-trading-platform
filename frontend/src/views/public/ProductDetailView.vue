@@ -6,7 +6,7 @@ import { productApi } from '@/api/products'
 import { cartApi } from '@/api/cart'
 import { useAuthStore } from '@/stores/auth'
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
@@ -18,6 +18,8 @@ const processing = ref(false)
 const message = ref('')
 const messageType = ref<'success' | 'error'>('success')
 const selectedQuantity = ref(1)
+
+const getTitle = (product: any) => locale.value === 'zh' ? (product.titleZh || product.titleEn) : (product.titleEn || product.titleZh)
 const lightboxOpen = ref(false)
 
 // Touch/swipe state for mobile
@@ -219,8 +221,8 @@ const handleAddToCart = async () => {
 
         <!-- Info -->
         <div class="product-info">
-          <h1 class="product-title">{{ product.titleEn }}</h1>
-          <p class="product-subtitle">{{ product.titleZh }}</p>
+          <h1 class="product-title">{{ getTitle(product) }}</h1>
+          
 
           <div class="product-meta">
             <span class="meta-item">{{ product.brand }}</span>
