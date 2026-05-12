@@ -5,6 +5,7 @@ import { RouterLink } from 'vue-router'
 import { ArrowRight, Zap, Clock, Star } from 'lucide-vue-next'
 import { auctionApi } from '@/api/auctions'
 import { productApi } from '@/api/products'
+import { tagApi } from '@/api/tags'
 
 const { t, locale } = useI18n()
 
@@ -23,6 +24,7 @@ const hotAuctions = ref<any[]>([])
 const newListings = ref<any[]>([])
 const loadingAuctions = ref(false)
 const loadingProducts = ref(false)
+const productTypeTags = ref<any[]>([])
 
 const stats = ref([
   { value: '10,000+', label: 'auctions' },
@@ -90,6 +92,27 @@ const fetchHotAuctions = async () => {
   }
 }
 
+const fetchProductTypeTags = async () => {
+  try {
+    const response = await tagApi.getTags()
+    productTypeTags.value = (response.data || []).filter((t: any) => t.type === 'product_type')
+  } catch (e) {
+    console.error('Failed to fetch product type tags:', e)
+  }
+}
+
+const getProductTypeTagName = (tagId: number | null | undefined) => {
+  if (!tagId) return ''
+  const tag = productTypeTags.value.find(t => t.id === tagId)
+  return tag?.name || ''
+}
+
+const getCategoryName = (category: string | null | undefined) => {
+  if (!category) return ''
+  const cat = categories.find(c => c.id === category)
+  return cat ? t(cat.name) : category
+}
+
 const fetchNewListings = async () => {
   loadingProducts.value = true
   try {
@@ -99,6 +122,8 @@ const fetchNewListings = async () => {
       title: getTitle(product),
       price: product.price,
       condition: product.condition,
+      category: product.category,
+      productTypeTagId: product.productTypeTagId,
       image: getProductImage(product)
     }))
   } catch (e) {
@@ -111,6 +136,7 @@ const fetchNewListings = async () => {
 onMounted(() => {
   fetchHotAuctions()
   fetchNewListings()
+  fetchProductTypeTags()
 })
 </script>
 
@@ -244,9 +270,17 @@ onMounted(() => {
               <img v-if="item.image" :src="item.image" :alt="item.titleEn" />
               <div v-else class="placeholder-card">🃏</div>
               <div class="listing-condition">{{ item.condition }}</div>
+              <div v-if="getProductTypeTagName(item.productTypeTagId)" class="listing-tag">
+                {{ getProductTypeTagName(item.productTypeTagId) }}
+              </div>
             </div>
             <div class="listing-info">
               <h3 class="listing-title">{{ item.titleEn || item.titleZh }}</h3>
+              <div class="listing-meta">
+                <span class="listing-category">{{ getCategoryName(item.category) }}</span>
+                <span class="listing-sep">•</span>
+                <span class="listing-tag-name">{{ getProductTypeTagName(item.productTypeTagId) }}</span>
+              </div>
               <div class="listing-price">MOP ${{ Number(item.price).toLocaleString() }}</div>
             </div>
           </RouterLink>
@@ -645,6 +679,18 @@ onMounted(() => {
   color: var(--text-muted);
 }
 
+.listing-tag {
+  position: absolute;
+  top: var(--space-2);
+  right: var(--space-2);
+  padding: 2px var(--space-2);
+  background: var(--primary);
+  color: white;
+  border-radius: var(--radius-sm);
+  font-size: 10px;
+  font-weight: 600;
+}
+
 .listing-info {
   padding: var(--space-3);
 }
@@ -656,6 +702,31 @@ onMounted(() => {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.listing-meta {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  color: var(--text-muted);
+  margin-bottom: var(--space-1);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.listing-sep {
+  flex-shrink: 0;
+}
+
+.listing-category {
+  color: var(--text-secondary);
+}
+
+.listing-tag-name {
+  color: var(--primary);
+  font-weight: 500;
 }
 
 .listing-price {
