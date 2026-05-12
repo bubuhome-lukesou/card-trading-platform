@@ -56,6 +56,14 @@ export class ProductsService {
       }
     }
 
+    // Filter by productTypeTags (stored as productTypeTagId)
+    if ((filters as any).productTypeTags?.length) {
+      const typeTagIds = (filters as any).productTypeTags.map((t: string) => parseInt(t)).filter((t: number) => !isNaN(t))
+      if (typeTagIds.length > 0) {
+        queryBuilder.andWhere('product.productTypeTagId IN (:...typeTagIds)', { typeTagIds })
+      }
+    }
+
     // Sorting
     switch (filters.sortBy) {
       case 'price_asc':
@@ -179,7 +187,12 @@ export class ProductsService {
     // Handle images - store as JSON string, skip if empty/undefined/empty array
     if (dto.images !== undefined && dto.images !== null) {
       if (Array.isArray(dto.images)) {
-        dto.images = dto.images.length > 0 ? JSON.stringify(dto.images) as any : (product.images || '')
+        if (dto.images.length > 0) {
+          dto.images = JSON.stringify(dto.images) as any
+        } else {
+          // Empty array - don't update images field, keep existing
+          delete dto.images
+        }
       } else if (typeof dto.images === 'string') {
         // Already a string, use as-is
       }

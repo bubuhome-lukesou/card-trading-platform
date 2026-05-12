@@ -84,29 +84,6 @@ const productTypes = ref<any[]>([])
 const selectedProductTypeTags = ref<number[]>([])
 const productTypesLoaded = ref(false)
 
-// Watch formData.productTypeTagId to sync with selectedProductTypeTags for submission
-watch(() => formData.value.productTypeTagId, (newVal, oldVal) => {
-  console.log('[DEBUG] Watch triggered: oldVal =', oldVal, 'newVal =', newVal)
-  console.log('[DEBUG] Watch selectedProductTypeTags before =', selectedProductTypeTags.value.slice())
-  console.log('[DEBUG] Watch productTypes loaded =', productTypes.value.map(pt => ({ id: pt.id, name: pt.name })))
-  if (newVal) {
-    // Add to selectedProductTypeTags if not already present
-    if (!selectedProductTypeTags.value.includes(newVal)) {
-      selectedProductTypeTags.value = [newVal]
-      console.log('[DEBUG] Watch set selectedProductTypeTags to:', selectedProductTypeTags.value)
-    }
-  }
-}, { immediate: false })
-
-const toggleProductType = (tagId: number) => {
-  const idx = selectedProductTypeTags.value.indexOf(tagId)
-  if (idx === -1) {
-    selectedProductTypeTags.value.push(tagId)
-  } else {
-    selectedProductTypeTags.value.splice(idx, 1)
-  }
-}
-
 // 预设仅销售模式，隐藏拍卖相关字段
 const formData = ref({
   titleZh: '',
@@ -122,6 +99,24 @@ const formData = ref({
   productTypeTagId: null as number | null,
   isActive: true,
 })
+
+// Watch formData.productTypeTagId to sync with selectedProductTypeTags for submission
+watch(() => formData.value.productTypeTagId, (newVal, oldVal) => {
+  console.log('[DEBUG] Watch triggered: oldVal =', oldVal, 'newVal =', newVal)
+  console.log('[DEBUG] Watch selectedProductTypeTags before =', selectedProductTypeTags.value.slice())
+  console.log('[DEBUG] Watch productTypes loaded =', productTypes.value.map(pt => ({ id: pt.id, name: pt.name })))
+  if (newVal && productTypesLoaded.value) {
+    // Add to selectedProductTypeTags if not already present
+    const exists = selectedProductTypeTags.value.includes(newVal)
+    console.log('[DEBUG] Watch: exists in selectedProductTypeTags =', exists)
+    if (!exists) {
+      selectedProductTypeTags.value = [newVal]
+      console.log('[DEBUG] Watch set selectedProductTypeTags to:', selectedProductTypeTags.value)
+    }
+  } else if (!productTypesLoaded.value) {
+    console.log('[DEBUG] Watch: productTypes not loaded yet, skipping')
+  }
+}, { immediate: false })
 
 const resetForm = () => {
   formData.value = {
@@ -149,6 +144,8 @@ const resetForm = () => {
 const openCreateModal = () => {
   editingProduct.value = null
   resetForm()
+  // 预设商品种类为裸卡 (id=7)
+  formData.value.productTypeTagId = 7
   showModal.value = true
 }
 
@@ -176,20 +173,21 @@ const openEditModal = async (product: any) => {
   const ids = (product.tags || []).map((t: any) => typeof t === 'number' ? t : t.id)
   _tagSelectedSnapshot = [...ids]
   selectedTags.value = [...ids]
-  // Load product types (type=product_type) - extract from tags array in API response
-  const ptIds = (product.tags || [])
-    .filter((t: any) => t.type === 'product_type')
-    .map((t: any) => typeof t === 'number' ? t : t.id)
-  console.log('[DEBUG] openEditModal - product.tags:', product.tags, 'ptIds:', ptIds)
-  selectedProductTypeTags.value = [...ptIds]
+  // Load product types (type=product_type) - from dedicated productTypeTagId field
+  const productTypeTagId = product.productTypeTagId
+  console.log('[DEBUG] openEditModal - product.productTypeTagId:', productTypeTagId)
+  selectedProductTypeTags.value = productTypeTagId ? [productTypeTagId] : []
   
   // Ensure availableTags is loaded before modal opens
   await loadTags()
   await loadProductTypes()
   
   // Sync formData.productTypeTagId for dropdown display
-  formData.value.productTypeTagId = ptIds.length > 0 ? ptIds[0] : null
+  formData.value.productTypeTagId = productTypeTagId || null
   
+  // Directly set selectedProductTypeTags to ensure it's not empty on submit
+  selectedProductTypeTags.value = productTypeTagId ? [productTypeTagId] : []
+
   formData.value = {
     titleZh: product.titleZh,
     titleEn: product.titleEn,
@@ -201,7 +199,7 @@ const openEditModal = async (product: any) => {
     quantity: product.quantity || 1,
     images: [...existingImages],
     tags: [...selectedTags.value],
-    productTypeTagId: ptIds.length > 0 ? ptIds[0] : null,
+    productTypeTagId: productTypeTagId || null,
     isActive: product.isActive !== false,
   }
   showModal.value = true
@@ -622,11 +620,9 @@ onUnmounted(() => {
             </div>
 
             <!-- 商品種類（Tag type=product_type） -->
-            <div class="form-group full-width">
+            <div class="form-group">
               <label>商品種類</label>
-              <p class="form-hint" style="margin-bottom: 8px">選擇商品種類（評分卡/原箱/原盒/原袋/裸卡），可在管理員後台添加</p>
-              <select v-model="formData.productTypeTagId" class="form-select">
-                <option value="">請選擇商品種類</option>
+              <select v-model="formData.productTypeTagId" class="form-select" :disabled="!productTypesLoaded">
                 <option v-for="pt in productTypes" :key="pt.id" :value="pt.id">
                   {{ pt.name }}
                 </option>

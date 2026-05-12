@@ -134,6 +134,12 @@ const fetchProducts = async (append = false) => {
     // Strip listingType if 'all' since backend only accepts 'sale'|'auction'|'both'
     const { listingType, ...params } = filters.value
     const cleanParams = listingType === 'all' ? params : { ...filters.value, listingType }
+    // Convert productTypes to productTypeTags for API call (backend expects productTypeTags)
+    if (cleanParams.productTypes && Array.isArray(cleanParams.productTypes)) {
+      (cleanParams as any).productTypeTags = cleanParams.productTypes
+      delete (cleanParams as any).productTypes
+    }
+    console.log('[DEBUG] fetchProducts params:', JSON.stringify(cleanParams))
     const response = await productApi.getProducts(cleanParams)
     if (append) {
       products.value = [...products.value, ...response.data.data]
@@ -233,7 +239,7 @@ const updateUrl = () => {
   if (filters.value.listingType !== 'all') query.listing = filters.value.listingType
   if (filters.value.sortBy !== 'newest') query.sort = filters.value.sortBy
   if (filters.value.tags?.length) query.tags = filters.value.tags.join(',')
-  if (filters.value.productTypes?.length) query.productTypes = filters.value.productTypes.join(',')
+  if (filters.value.productTypes?.length) query.productTypeTags = filters.value.productTypes.join(',')
   if (filters.value.page !== 1) query.page = String(filters.value.page)
 
   router.replace({ query })
@@ -251,6 +257,7 @@ const parseUrlFilters = () => {
   if (query.sort) filters.value.sortBy = query.sort as string
   if (query.productTypes) filters.value.productTypes = (query.productTypes as string).split(',')
   if (query.page) filters.value.page = Number(query.page)
+  if (query.productTypeTags) filters.value.productTypes = (query.productTypeTags as string).split(',')
 }
 
 const loadMore = () => {

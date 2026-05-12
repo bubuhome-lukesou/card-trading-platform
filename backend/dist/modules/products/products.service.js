@@ -59,6 +59,12 @@ let ProductsService = class ProductsService {
                 queryBuilder.andWhere('tag.id IN (:...tagIds)', { tagIds });
             }
         }
+        if (filters.productTypeTags?.length) {
+            const typeTagIds = filters.productTypeTags.map((t) => parseInt(t)).filter((t) => !isNaN(t));
+            if (typeTagIds.length > 0) {
+                queryBuilder.andWhere('product.productTypeTagId IN (:...typeTagIds)', { typeTagIds });
+            }
+        }
         switch (filters.sortBy) {
             case 'price_asc':
                 queryBuilder.orderBy('product.price', 'ASC');
@@ -155,7 +161,12 @@ let ProductsService = class ProductsService {
         }
         if (dto.images !== undefined && dto.images !== null) {
             if (Array.isArray(dto.images)) {
-                dto.images = dto.images.length > 0 ? JSON.stringify(dto.images) : (product.images || '');
+                if (dto.images.length > 0) {
+                    dto.images = JSON.stringify(dto.images);
+                }
+                else {
+                    delete dto.images;
+                }
             }
             else if (typeof dto.images === 'string') {
             }

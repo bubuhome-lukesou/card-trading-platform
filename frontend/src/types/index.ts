@@ -141,6 +141,7 @@ export interface ProductFilters {
   listingType?: 'all' | 'sale' | 'auction'
   sortBy?: 'popular' | 'newest' | 'price_asc' | 'price_desc' | 'ending_soon'
   tags?: string[]
+  productTypes?: string[]
   page?: number
   limit?: number
 }
