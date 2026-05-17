@@ -2,10 +2,11 @@
 import { ref, onMounted, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { RouterLink } from 'vue-router'
-import { ArrowRight, Zap, Clock, Star } from 'lucide-vue-next'
+import { ArrowRight, Zap, Clock, Star, Heart, ShoppingCart, Gavel } from 'lucide-vue-next'
 import { auctionApi } from '@/api/auctions'
 import { productApi } from '@/api/products'
 import { tagApi } from '@/api/tags'
+import { useFavoritesStore } from '@/stores/favorites'
 
 const { t, locale } = useI18n()
 
@@ -25,6 +26,7 @@ const newListings = ref<any[]>([])
 const loadingAuctions = ref(false)
 const loadingProducts = ref(false)
 const productTypeTags = ref<any[]>([])
+const favoritesStore = useFavoritesStore()
 
 const stats = ref([
   { value: '10,000+', label: 'auctions' },
@@ -107,6 +109,14 @@ const getProductTypeTagName = (tagId: number | null | undefined) => {
   return tag?.name || ''
 }
 
+const isProductFavorited = (productId: number) => favoritesStore.isFavorited(String(productId))
+
+const toggleProductFavorite = (e: Event, productId: number) => {
+  e.preventDefault()
+  e.stopPropagation()
+  favoritesStore.toggleFavorite(String(productId))
+}
+
 const getCategoryName = (category: string | null | undefined) => {
   if (!category) return ''
   const cat = categories.find(c => c.id === category)
@@ -124,7 +134,9 @@ const fetchNewListings = async () => {
       condition: product.condition,
       category: product.category,
       productTypeTagId: product.productTypeTagId,
-      image: getProductImage(product)
+      image: getProductImage(product),
+      listingType: product.listingType || 'sale',
+      tags: product.tags || []
     }))
   } catch (e) {
     console.error('Failed to fetch products:', e)
@@ -269,17 +281,37 @@ onMounted(() => {
             <div class="listing-image">
               <img v-if="item.image" :src="item.image" :alt="item.title" />
               <div v-else class="placeholder-card">🃏</div>
-              <div class="listing-condition">{{ item.condition }}</div>
-              <div v-if="getProductTypeTagName(item.productTypeTagId)" class="listing-tag">
-                {{ getProductTypeTagName(item.productTypeTagId) }}
+
+              <!-- Favorite & Cart buttons (left side, transparent) -->
+              <div class="listing-actions">
+                <button
+                  class="listing-action-btn"
+                  :class="{ active: isProductFavorited(item.id) }"
+                  @click="toggleProductFavorite($event, item.id)"
+                >
+                  <Heart class="action-icon" :class="{ 'icon-filled': isProductFavorited(item.id) }" />
+                </button>
+                <button class="listing-action-btn" @click.prevent>
+                  <ShoppingCart class="action-icon" />
+                </button>
               </div>
+
+              <!-- Sale/Bid badge (top right) -->
+              <span class="listing-badge" :class="item.listingType === 'auction' ? 'is-auction' : 'is-sale'">
+                <Gavel v-if="item.listingType === 'auction'" class="badge-icon" />
+                <ShoppingCart v-else class="badge-icon" />
+                {{ item.listingType === 'auction' ? 'Bid' : 'Sale' }}
+              </span>
             </div>
+
             <div class="listing-info">
               <h3 class="listing-title">{{ item.titleEn || item.titleZh || item.title }}</h3>
               <div class="listing-meta">
                 <span class="listing-category">{{ getCategoryName(item.category) }}</span>
                 <span class="listing-sep">•</span>
                 <span class="listing-tag-name">{{ getProductTypeTagName(item.productTypeTagId) }}</span>
+                <span class="listing-sep">•</span>
+                <span class="listing-condition">{{ item.condition }}</span>
               </div>
               <div class="listing-price">MOP ${{ Number(item.price).toLocaleString() }}</div>
             </div>
@@ -665,6 +697,80 @@ onMounted(() => {
     width: 100%;
     height: 100%;
     object-fit: cover;
+  }
+}
+
+// Action buttons (favorite/cart) - left side, transparent
+.listing-actions {
+  position: absolute;
+  top: var(--space-2);
+  left: var(--space-2);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  z-index: 10;
+}
+
+.listing-action-btn {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+  border: none;
+  border-radius: var(--radius-full);
+  color: white;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  padding: 0;
+
+  .action-icon {
+    width: 14px;
+    height: 14px;
+  }
+
+  &:hover {
+    background: var(--primary);
+    transform: scale(1.1);
+  }
+
+  &.active {
+    background: var(--accent);
+    .icon-filled {
+      fill: var(--accent);
+    }
+  }
+}
+
+.listing-badge {
+  position: absolute;
+  top: var(--space-2);
+  right: var(--space-2);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  z-index: 10;
+
+  .badge-icon {
+    width: 10px;
+    height: 10px;
+  }
+
+  &.is-auction {
+    background: var(--success-gradient, linear-gradient(135deg, #10b981, #059669));
+    color: white;
+  }
+
+  &.is-sale {
+    background: var(--accent-gradient, linear-gradient(135deg, #8b5cf6, #6d28d9));
+    color: white;
   }
 }
 
