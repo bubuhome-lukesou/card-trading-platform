@@ -775,14 +775,9 @@ onMounted(() => {
 }
 
 .listing-condition {
-  position: absolute;
-  bottom: var(--space-2);
-  left: var(--space-2);
-  padding: 2px var(--space-2);
-  background: rgba(0, 0, 0, 0.7);
-  border-radius: var(--radius-sm);
-  font-size: 10px;
+  // 品相顯示在 listing-meta 文字區域（非絕對定位）
   color: var(--text-muted);
+  font-size: 10px;
 }
 
 .listing-tag {

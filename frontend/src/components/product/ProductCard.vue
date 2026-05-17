@@ -71,7 +71,7 @@ const handleToggleFavorite = (e: Event) => {
       <div class="card-meta">
         <span class="meta-item">{{ product.brand }}</span>
         <span class="meta-sep">•</span>
-        <span class="meta-item">{{ t(`conditions.${product.condition}`) }}</span>
+        <span class="meta-item">{{ t(`product.condition.${product.condition}`) || product.condition }}</span>
       </div>
 
       <!-- Tags -->
@@ -309,12 +309,12 @@ const handleToggleFavorite = (e: Event) => {
 }
 
 .action-btn {
-  width: 36px;
-  height: 36px;
+  width: 28px;
+  height: 28px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(0, 0, 0, 0.6);
+  background: rgba(0, 0, 0, 0.3);
   backdrop-filter: blur(4px);
   border: none;
   border-radius: var(--radius-full);
@@ -328,8 +328,8 @@ const handleToggleFavorite = (e: Event) => {
   }
 
   .icon {
-    width: 18px;
-    height: 18px;
+    width: 14px;
+    height: 14px;
   }
 }
 
