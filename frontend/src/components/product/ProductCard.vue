@@ -1,30 +1,50 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { RouterLink } from 'vue-router'
-import { useI18n } from 'vue-i18n'
 import { Heart, ShoppingCart, Gavel } from 'lucide-vue-next'
-import type { Product } from '@/types'
+import type { Product, Tag } from '@/types'
 import { useFavoritesStore } from '@/stores/favorites'
-import { useAuthStore } from '@/stores/auth'
+import { tagApi } from '@/api/tags'
+import { useI18n } from 'vue-i18n'
 
 const props = defineProps<{
   product: Product
 }>()
 
-const { t, locale } = useI18n()
+const { locale } = useI18n()
 const favoritesStore = useFavoritesStore()
-const authStore = useAuthStore()
+const productTypeTags = ref<Tag[]>([])
 
-const title = computed(() => locale.value === 'zh' ? props.product.titleZh : props.product.titleEn)
+// Fetch product type tags once
+tagApi.getTags().then(res => {
+  productTypeTags.value = (res.data || []).filter((t: any) => t.type === 'product_type')
+}).catch(() => {})
 
-const rarityClass = computed(() => props.product.rarity ? `rarity-${props.product.rarity.toLowerCase()}` : '')
+const title = computed(() => locale.value === 'zh' ? (props.product.titleZh || props.product.titleEn) : (props.product.titleEn || props.product.titleZh))
 
-const price = computed(() => {
-  return new Intl.NumberFormat('en-MO', {
-    style: 'currency',
-    currency: 'MOP',
-    minimumFractionDigits: 0
-  }).format(props.product.price)
+// Get product type tag name from productTypeTagId
+const productTypeTagName = computed(() => {
+  const tagId = (props.product as any).productTypeTagId
+  if (!tagId) return ''
+  const tag = productTypeTags.value.find(t => t.id === tagId)
+  return tag?.name || ''
+})
+
+// Category translation map
+const categoryNames: Record<string, { zh: string, en: string }> = {
+  pokemon: { zh: '寶可夢', en: 'Pokemon' },
+  yugioh: { zh: '遊戲王', en: 'Yu-Gi-Oh!' },
+  mtg: { zh: '萬智牌', en: 'Magic: The Gathering' },
+  ultraman: { zh: '超人迪卡', en: 'Ultraman' },
+  onepiece: { zh: '海賊王', en: 'One Piece' },
+  doraemon: { zh: '多啦A夢', en: 'Doraemon' },
+  sports: { zh: '運動', en: 'Sports' },
+  other: { zh: '其他', en: 'Other' }
+}
+
+const categoryName = computed(() => {
+  const cat = categoryNames[props.product.category]
+  return locale.value === 'zh' ? (cat?.zh || props.product.category) : (cat?.en || props.product.category)
 })
 
 const isFavorited = computed(() => favoritesStore.isFavorited(props.product.id))
@@ -37,106 +57,87 @@ const handleToggleFavorite = (e: Event) => {
 </script>
 
 <template>
-  <RouterLink :to="`/product/${product.id}`" class="product-card">
+  <RouterLink :to="`/product/${product.id}`" class="listing-card">
     <!-- Image -->
-    <div class="card-image">
+    <div class="listing-image">
       <img
-        :src="product.images?.[0] || '/placeholder-card.png'"
+        v-if="product.images?.[0]"
+        :src="product.images[0]"
         :alt="title"
         loading="lazy"
       />
+      <div v-else class="placeholder-card">🃏</div>
 
       <!-- Out of Stock Overlay -->
       <div v-if="product.quantity === 0" class="out-of-stock-overlay">
         <span class="out-of-stock-text">Out of Stock</span>
       </div>
 
-      <!-- Listing Type Badge -->
+      <!-- Favorite & Cart buttons (left side, transparent) -->
+      <div class="listing-actions">
+        <button class="listing-action-btn" :class="{ active: isFavorited }" @click="handleToggleFavorite">
+          <Heart class="action-icon" :class="{ 'icon-filled': isFavorited }" />
+        </button>
+        <button class="listing-action-btn" @click.prevent>
+          <ShoppingCart class="action-icon" />
+        </button>
+      </div>
+
+      <!-- Sale/Bid badge (top right) -->
       <span class="listing-badge" :class="product.listingType === 'auction' ? 'is-auction' : 'is-sale'">
         <Gavel v-if="product.listingType === 'auction'" class="badge-icon" />
         <ShoppingCart v-else class="badge-icon" />
-        {{ product.listingType === 'auction' ? 'Auction' : 'Sale' }}
-      </span>
-
-      <!-- Rarity Badge -->
-      <span v-if="product.rarity" class="rarity-badge" :class="rarityClass">
-        ⭐ {{ product.rarity }}
+        {{ product.listingType === 'auction' ? 'Bid' : 'Sale' }}
       </span>
     </div>
 
     <!-- Info -->
-    <div class="card-info">
-      <h3 class="card-title">{{ title }}</h3>
-
-      <div class="card-meta">
-        <span class="meta-item">{{ product.brand }}</span>
-        <span class="meta-sep">•</span>
-        <span class="meta-item">{{ t(`product.condition.${product.condition}`) || product.condition }}</span>
+    <div class="listing-info">
+      <h3 class="listing-title">{{ title }}</h3>
+      <div class="listing-meta">
+        <span class="listing-category">{{ categoryName }}</span>
+        <span class="listing-sep">•</span>
+        <span class="listing-tag-name">{{ productTypeTagName }}</span>
+        <span class="listing-sep">•</span>
+        <span class="listing-condition">{{ product.condition }}</span>
       </div>
-
-      <!-- Tags -->
-      <div v-if="product.tags?.length" class="card-tags">
-        <span
-          v-for="tag in product.tags.slice(0, 3)"
-          :key="tag.id"
-          class="tag-badge"
-          :style="tag.color ? { backgroundColor: tag.color + '18', color: tag.color, borderColor: tag.color + '40' } : {}"
-        >
-          <span class="tag-dot" :style="{ backgroundColor: tag.color || '#6366f1' }"></span>
-          {{ tag.name }}
-        </span>
-        <span v-if="product.tags.length > 3" class="tag-badge tag-more">
-          +{{ product.tags.length - 3 }}
-        </span>
-      </div>
-
-      <div class="card-price">
-        <span class="price">{{ price }}</span>
-      </div>
-    </div>
-
-    <!-- Actions -->
-    <div class="card-actions">
-      <button class="action-btn favorite" :class="{ active: isFavorited }" @click="handleToggleFavorite">
-        <Heart class="icon" :class="{ 'icon-filled': isFavorited }" />
-      </button>
-      <button class="action-btn cart" @click.prevent>
-        <ShoppingCart class="icon" />
-      </button>
+      <div class="listing-price">MOP ${{ Number(product.price).toLocaleString() }}</div>
     </div>
   </RouterLink>
 </template>
 
 <style scoped lang="scss">
-.product-card {
+.listing-card {
   position: relative;
   background: var(--bg-card);
   border: 1px solid var(--border);
-  border-radius: var(--radius-xl);
+  border-radius: var(--radius-lg);
   overflow: hidden;
-  transition: all var(--transition-base);
+  transition: all var(--transition-fast);
   text-decoration: none;
 
   &:hover {
     border-color: var(--primary);
-    transform: translateY(-4px);
-    box-shadow: var(--shadow-xl), 0 0 30px rgba(102, 126, 234, 0.15);
+    transform: translateY(-2px);
 
-    .card-image img {
+    .listing-image img {
       transform: scale(1.05);
     }
 
-    .card-actions {
+    .listing-actions {
       opacity: 1;
     }
   }
 }
 
-.card-image {
+.listing-image {
   position: relative;
-  aspect-ratio: 3/4;
+  aspect-ratio: 4/3;
   overflow: hidden;
-  background: var(--bg-elevated);
+  background: linear-gradient(135deg, var(--bg-dark) 0%, var(--bg-elevated) 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
 
   img {
     width: 100%;
@@ -144,6 +145,14 @@ const handleToggleFavorite = (e: Event) => {
     object-fit: cover;
     transition: transform var(--transition-slow);
   }
+}
+
+.placeholder-card {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 64px;
+  opacity: 0.5;
 }
 
 .out-of-stock-overlay {
@@ -165,141 +174,14 @@ const handleToggleFavorite = (e: Event) => {
   text-transform: uppercase;
 }
 
-.listing-badge {
+.listing-actions {
   position: absolute;
-  top: var(--space-3);
-  right: var(--space-3);
-  display: flex;
-  align-items: center;
+  top: var(--space-2);
+  left: var(--space-2);
   gap: var(--space-1);
-  padding: var(--space-1) var(--space-2);
-  border-radius: var(--radius-md);
-  font-size: var(--text-xs);
-  font-weight: 600;
-  text-transform: uppercase;
-
-  .badge-icon {
-    width: 12px;
-    height: 12px;
-  }
-
-  &.is-auction {
-    background: var(--success-gradient);
-    color: white;
-  }
-
-  &.is-sale {
-    background: var(--accent-gradient);
-    color: white;
-  }
-}
-
-.rarity-badge {
-  position: absolute;
-  bottom: var(--space-3);
-  left: var(--space-3);
-  padding: var(--space-1) var(--space-2);
-  background: rgba(0, 0, 0, 0.7);
-  backdrop-filter: blur(4px);
-  border-radius: var(--radius-md);
-  font-size: var(--text-xs);
-  font-weight: 600;
-
-  &.rarity-ssr { color: var(--rarity-ssr); }
-  &.rarity-sr { color: var(--rarity-sr); }
-  &.rarity-r { color: var(--rarity-r); }
-  &.rarity-n { color: var(--rarity-n); }
-}
-
-.card-info {
-  padding: var(--space-4);
-}
-
-.card-title {
-  font-size: var(--text-base);
-  font-weight: 600;
-  color: var(--text-primary);
-  margin-bottom: var(--space-2);
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  line-height: 1.4;
-  min-height: 2.8em;
-}
-
-.card-meta {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  font-size: var(--text-xs);
-  color: var(--text-muted);
-  margin-bottom: var(--space-3);
-}
-
-.meta-sep {
-  opacity: 0.5;
-}
-
-.card-tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-1);
-  margin-bottom: var(--space-2);
-}
-
-.tag-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 2px 8px;
-  border-radius: var(--radius-full);
-  font-size: 11px;
-  font-weight: 500;
-  background: var(--bg-elevated);
-  border: 1px solid var(--border);
-  color: var(--text-muted);
-  transition: all 0.2s;
-
-  &:hover {
-    transform: scale(1.05);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-  }
-}
-
-.tag-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-
-.tag-more {
-  background: var(--bg-elevated);
-  color: var(--text-muted);
-  font-weight: 600;
-}
-
-.card-price {
-  display: flex;
-  align-items: baseline;
-  gap: var(--space-1);
-}
-
-.price {
-  font-family: var(--font-num);
-  font-size: var(--text-lg);
-  font-weight: 700;
-  color: var(--primary);
-}
-
-.card-actions {
-  position: absolute;
-  top: var(--space-3);
-  left: var(--space-3);
-  display: flex;
+  z-index: 10;
   flex-direction: column;
-  gap: var(--space-2);
+  display: flex;
   opacity: 0;
   transition: opacity var(--transition-base);
 
@@ -308,44 +190,119 @@ const handleToggleFavorite = (e: Event) => {
   }
 }
 
-.action-btn {
+.listing-action-btn {
+  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(4px);
+  border-radius: var(--radius-full);
+  color: #fff;
+  cursor: pointer;
   width: 28px;
   height: 28px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(0, 0, 0, 0.3);
-  backdrop-filter: blur(4px);
-  border: none;
-  border-radius: var(--radius-full);
-  color: white;
-  cursor: pointer;
   transition: all var(--transition-fast);
+  background: #00000080;
+  border: none;
+  justify-content: center;
+  align-items: center;
+  padding: 0;
+  display: flex;
+
+  .action-icon {
+    width: 14px;
+    height: 14px;
+  }
 
   &:hover {
     background: var(--primary);
     transform: scale(1.1);
   }
 
-  .icon {
-    width: 14px;
-    height: 14px;
+  &.active {
+    background: var(--accent);
+  }
+
+  &.active .icon-filled {
+    fill: var(--accent);
   }
 }
 
-.favorite:hover {
-  background: var(--accent);
+.listing-badge {
+  position: absolute;
+  top: var(--space-2);
+  right: var(--space-2);
+  border-radius: var(--radius-sm);
+  text-transform: uppercase;
+  z-index: 10;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px;
+  font-size: 10px;
+  font-weight: 600;
+  display: flex;
+
+  .badge-icon {
+    width: 10px;
+    height: 10px;
+  }
+
+  &.is-auction {
+    background: var(--success-gradient, linear-gradient(135deg, #10b981, #059669));
+    color: #fff;
+  }
+
+  &.is-sale {
+    background: var(--accent-gradient, linear-gradient(135deg, #8b5cf6, #6d28d9));
+    color: #fff;
+  }
 }
 
-.favorite.active {
-  background: var(--accent);
+.listing-info {
+  padding: var(--space-3);
 }
 
-.icon-filled {
-  fill: var(--accent);
+.listing-title {
+  font-size: var(--text-xs);
+  color: var(--text-primary);
+  margin-bottom: var(--space-1);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
 }
 
-.cart:hover {
-  background: var(--success);
+.listing-meta {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  color: var(--text-muted);
+  margin-bottom: var(--space-1);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.listing-sep {
+  flex-shrink: 0;
+}
+
+.listing-category {
+  color: var(--text-secondary);
+}
+
+.listing-tag-name {
+  color: var(--primary);
+  font-weight: 500;
+}
+
+.listing-condition {
+  color: var(--text-muted);
+  font-size: 10px;
+}
+
+.listing-price {
+  font-family: var(--font-num);
+  font-size: var(--text-sm);
+  font-weight: 700;
+  color: var(--primary);
 }
 </style>
