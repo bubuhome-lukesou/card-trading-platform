@@ -548,6 +548,9 @@ const handleAddToCart = async () => {
   grid-template-columns: 1fr 1fr;
   gap: 48px;
   padding: 24px 0;
+  overflow: hidden;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 @media (max-width: 900px) {
@@ -561,6 +564,7 @@ const handleAddToCart = async () => {
   display: flex;
   flex-direction: column;
   gap: 16px;
+  width: 100%;
 }
 
 .main-image {
@@ -1116,6 +1120,12 @@ const handleAddToCart = async () => {
     height: 36px;
     top: 12px;
     right: 12px;
+  }
+
+  .product-detail {
+    max-width: 100%;
+    overflow-x: hidden;
+    box-sizing: border-box;
   }
 }
 </style>
