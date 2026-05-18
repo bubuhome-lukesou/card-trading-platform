@@ -1126,6 +1126,22 @@ const handleAddToCart = async () => {
     max-width: 100%;
     overflow-x: hidden;
     box-sizing: border-box;
+    padding-left: 0;
+    padding-right: 0;
+  }
+
+  .container {
+    max-width: 100%;
+    margin: 0;
+    padding-left: 16px;
+    padding-right: 16px;
+    overflow: hidden;
+    box-sizing: border-box;
+  }
+
+  .product-layout {
+    padding-left: 0;
+    padding-right: 0;
   }
 }
 </style>
