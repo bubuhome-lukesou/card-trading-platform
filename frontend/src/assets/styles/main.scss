@@ -655,12 +655,26 @@ small {
 // ============================================
 .product-detail {
   padding: var(--space-8) 0 var(--space-16);
+  max-width: 100%;
+  overflow-x: hidden;
 }
 
 .product-layout {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: var(--space-12);
+  max-width: 100%;
+  overflow: hidden;
+
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+    gap: var(--space-6);
+    overflow: hidden;
+    width: 100%;
+    box-sizing: border-box;
+    padding: 0;
+    margin: 0;
+  }
 }
 
 .product-images {
@@ -673,7 +687,14 @@ small {
       width: 100%;
       height: auto;
       max-height: 500px;
+      max-width: 100%;
       object-fit: contain;
+    }
+
+    @media (max-width: 768px) {
+      width: 100%;
+      max-width: 100%;
+      overflow: hidden;
     }
   }
 
