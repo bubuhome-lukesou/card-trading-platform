@@ -2,9 +2,13 @@
 import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
+import { Heart, Loader2 } from 'lucide-vue-next'
 import { productApi } from '@/api/products'
 import { cartApi } from '@/api/cart'
+import { favoritesApi } from '@/api/favorites'
 import { useAuthStore } from '@/stores/auth'
+import { tagApi } from '@/api/tags'
+import ProductCard from '@/components/product/ProductCard.vue'
 
 const { t, locale } = useI18n()
 const route = useRoute()
@@ -19,21 +23,26 @@ const message = ref('')
 const messageType = ref<'success' | 'error'>('success')
 const selectedQuantity = ref(1)
 const lightboxOpen = ref(false)
+const isFavorited = ref(false)
+const favoriteLoading = ref(false)
+const relatedProducts = ref<any[]>([])
+const relatedLoading = ref(false)
+const allTags = ref<any[]>([])
 
 // Touch/swipe state for mobile
 const touchStartX = ref(0)
 const touchEndX = ref(0)
 
-// Category labels
-const categoryLabels = computed(() => ({
-  pokemon: { zh: '寶可夢', en: 'Pokemon' },
-  yugioh: { zh: '遊戲王', en: 'Yugioh' },
-  mtg: { zh: '萬智牌', en: 'MTG' },
-  ultraman: { zh: '奧特曼', en: 'Ultraman' },
-  onepiece: { zh: '海賊王', en: 'OnePiece' },
-  doraemon: { zh: '哆啦A夢', en: 'Doraemon' },
-  sports: { zh: '體育卡', en: 'Sports Cards' },
-  other: { zh: '其他', en: 'Other' }
+// Category emoji & labels
+const categoryInfo = computed(() => ({
+  pokemon: { emoji: '🎮', zh: '寶可夢', en: 'Pokemon' },
+  yugioh: { emoji: '⚡', zh: '遊戲王', en: 'Yu-Gi-Oh!' },
+  mtg: { emoji: '🧙', zh: '萬智牌', en: 'Magic: The Gathering' },
+  ultraman: { emoji: '👾', zh: '奧特曼', en: 'Ultraman' },
+  onepiece: { emoji: '🏴‍☠️', zh: '海賊王', en: 'One Piece' },
+  doraemon: { emoji: '🤖', zh: '哆啦A夢', en: 'Doraemon' },
+  sports: { emoji: '⚽', zh: '體育卡', en: 'Sports Cards' },
+  other: { emoji: '📦', zh: '其他', en: 'Other' }
 }))
 
 // Get title based on locale
@@ -49,16 +58,22 @@ const getDescription = (product: any) => {
   return product.descriptionEn || product.descriptionZh || ''
 }
 
-// Get category label
-const getCategoryLabel = (category: string) => {
-  const labels = categoryLabels.value[category as keyof typeof categoryLabels.value]
-  return labels ? labels[locale.value as 'zh' | 'en'] : category
+// Get category info
+const getCategoryInfo = (category: string) => {
+  return categoryInfo.value[category as keyof typeof categoryInfo.value] || { emoji: '📦', zh: category, en: category }
 }
 
-// Get product type tag (filter only type=product_type tags)
-const getProductTypeTags = (product: any) => {
-  if (!product.tags) return []
-  return product.tags.filter((tag: any) => tag.type === 'product_type' || tag.type === 'PRODUCT_TYPE')
+// Get category label only
+const getCategoryLabel = (category: string) => {
+  const info = getCategoryInfo(category)
+  return locale.value === 'zh' ? info.zh : info.en
+}
+
+// Get product type tag (from productTypeTagId)
+const getProductTypeTag = (product: any) => {
+  const tagId = (product as any).productTypeTagId
+  if (!tagId) return null
+  return allTags.value.find(t => t.id === tagId && (t.type === 'product_type' || t.type === 'PRODUCT_TYPE')) || null
 }
 
 // Get general tags
@@ -67,11 +82,98 @@ const getGeneralTags = (product: any) => {
   return product.tags.filter((tag: any) => tag.type !== 'product_type' && tag.type !== 'PRODUCT_TYPE')
 }
 
+// Fetch related products (you may like)
+const fetchRelatedProducts = async () => {
+  if (!product.value) return
+  relatedLoading.value = true
+  try {
+    // Fetch products with same category, limit 10 to compute match score
+    const res = await productApi.getProducts({
+      category: product.value.category,
+      limit: 20,
+      sortBy: 'newest'
+    })
+    // Filter out current product and score by matching attributes
+    const matches = (res.data.data || [])
+      .filter((p: any) => p.id !== product.value.id && p.quantity > 0)
+      .map((p: any) => {
+        let score = 0
+        // Same category: +1
+        if (p.category === product.value.category) score += 1
+        // Same productTypeTagId: +3
+        if ((p as any).productTypeTagId === (product.value as any).productTypeTagId) score += 3
+        // Same condition: +1
+        if (p.condition === product.value.condition) score += 1
+        // Same brand: +1
+        if (p.brand && product.value.brand && p.brand === product.value.brand) score += 1
+        // Same series: +1
+        if (p.series && product.value.series && p.series === product.value.series) score += 1
+        // Shared tags: +2 per shared tag
+        if (product.value.tags && p.tags) {
+          const productTagIds = new Set(product.value.tags.map((t: any) => t.id))
+          p.tags.forEach((t: any) => {
+            if (productTagIds.has(t.id)) score += 2
+          })
+        }
+        return { ...p, _score: score }
+      })
+      .filter((p: any) => p._score > 0)
+      .sort((a: any, b: any) => b._score - a._score)
+      .slice(0, 6)
+    relatedProducts.value = matches
+  } catch (err) {
+    console.error('Failed to fetch related products:', err)
+  } finally {
+    relatedLoading.value = false
+  }
+}
+
+// Check if favorited
+const checkFavorite = async () => {
+  if (!authStore.isAuthenticated || !product.value) return
+  try {
+    const res = await favoritesApi.check(product.value.id)
+    isFavorited.value = res.data.isFavorite
+  } catch (err) {
+    // Ignore
+  }
+}
+
+// Toggle favorite
+const handleToggleFavorite = async () => {
+  if (!authStore.isAuthenticated) {
+    router.push('/login')
+    return
+  }
+  if (favoriteLoading.value) return
+  favoriteLoading.value = true
+  try {
+    if (isFavorited.value) {
+      await favoritesApi.remove(product.value.id)
+      isFavorited.value = false
+    } else {
+      await favoritesApi.add(product.value.id)
+      isFavorited.value = true
+    }
+  } catch (err: any) {
+    message.value = err?.response?.data?.message || (t('common.error') || '操作失敗')
+    messageType.value = 'error'
+  } finally {
+    favoriteLoading.value = false
+  }
+}
+
 onMounted(async () => {
   try {
-    const response = await productApi.getProduct(route.params.id as string)
-    product.value = response.data
+    const [productRes, tagsRes] = await Promise.all([
+      productApi.getProduct(route.params.id as string),
+      tagApi.getTags()
+    ])
+    product.value = productRes.data
+    allTags.value = tagsRes.data || []
     currentImageIndex.value = 0
+    await checkFavorite()
+    await fetchRelatedProducts()
   } catch (error) {
     console.error('Failed to load product:', error)
   } finally {
@@ -249,6 +351,7 @@ const handleAddToCart = async () => {
   <div class="product-detail">
     <div class="container">
       <div v-if="loading" class="loading-state">
+        <Loader2 class="spinner" />
         <p>{{ t('common.loading') || '加載中...' }}</p>
       </div>
       <div v-else-if="product" class="product-layout">
@@ -292,29 +395,20 @@ const handleAddToCart = async () => {
 
         <!-- Info -->
         <div class="product-info">
+          <!-- 商品名稱 -->
           <h1 class="product-title">{{ getTitle(product) }}</h1>
-          
-          <!-- Category & Product Type -->
-          <div class="product-meta">
-            <span class="meta-item category-badge">
-              {{ getCategoryLabel(product.category) }}
-            </span>
-            <template v-if="getProductTypeTags(product).length > 0">
-              <span class="meta-sep">•</span>
-              <span 
-                v-for="tag in getProductTypeTags(product)" 
-                :key="tag.id"
-                class="meta-item product-type-tag"
-                :style="{ color: tag.color || '#6366f1' }"
-              >
-                {{ tag.name }}
-              </span>
-            </template>
-            <span class="meta-sep">•</span>
-            <span class="meta-item">{{ t(`conditions.${product.condition}`, product.condition) }}</span>
+
+          <!-- 類別emoji 類別名稱 . 商品種類 . 品相 -->
+          <div class="product-meta-row">
+            <span class="meta-emoji">{{ getCategoryInfo(product.category).emoji }}</span>
+            <span class="meta-category">{{ getCategoryLabel(product.category) }}</span>
+            <span class="meta-sep">·</span>
+            <span v-if="getProductTypeTag(product)" class="meta-product-type">{{ getProductTypeTag(product).name }}</span>
+            <span v-if="getProductTypeTag(product)" class="meta-sep">·</span>
+            <span class="meta-condition">{{ product.condition }}</span>
           </div>
 
-          <!-- General Tags -->
+          <!-- 標簽 -->
           <div v-if="getGeneralTags(product).length > 0" class="product-tags">
             <span
               v-for="tag in getGeneralTags(product)"
@@ -328,35 +422,18 @@ const handleAddToCart = async () => {
             </span>
           </div>
 
-          <!-- Brand & Series -->
-          <div v-if="product.brand || product.series" class="product-attr">
-            <span v-if="product.brand" class="attr-item">
-              <span class="attr-label">{{ locale === 'zh' ? '品牌' : 'Brand' }}:</span>
-              <span class="attr-value">{{ product.brand }}</span>
-            </span>
-            <span v-if="product.series" class="attr-item">
-              <span class="attr-label">{{ locale === 'zh' ? '系列' : 'Series' }}:</span>
-              <span class="attr-value">{{ product.series }}</span>
-            </span>
-          </div>
-
-          <!-- Description -->
+          <!-- 商品描述 -->
           <div v-if="getDescription(product)" class="product-description">
             <p>{{ getDescription(product) }}</p>
           </div>
 
+          <!-- MOP 200 價格 -->
           <div class="price-section">
-            <span class="price-label">{{ t('product.details.price') }}</span>
             <span class="price">MOP ${{ Number(product.price).toLocaleString() }}</span>
-            <div v-if="product.quantity !== undefined" class="stock-info">
-              <span v-if="product.quantity === 0" class="out-of-stock-badge">{{ locale === 'zh' ? '已售罄' : 'Out of Stock' }}</span>
-              <span v-else class="stock-count">{{ locale === 'zh' ? '庫存' : 'Stock' }}: {{ product.quantity }}</span>
-            </div>
           </div>
 
-          <!-- Quantity Selector -->
-          <div v-if="product.quantity > 0" class="quantity-selector">
-            <span class="qty-label">{{ locale === 'zh' ? '購買數量' : 'Quantity' }}:</span>
+          <!-- -數量+  庫存:x -->
+          <div v-if="product.quantity > 0" class="quantity-row">
             <div class="qty-controls">
               <button class="qty-btn" @click="decreaseQuantity" :disabled="selectedQuantity <= 1">−</button>
               <input
@@ -369,6 +446,12 @@ const handleAddToCart = async () => {
               />
               <button class="qty-btn" @click="increaseQuantity" :disabled="selectedQuantity >= getMaxQuantity()">+</button>
             </div>
+            <span v-if="product.quantity !== undefined" class="stock-count">
+              {{ locale === 'zh' ? '庫存:' : 'Stock:' }} {{ product.quantity }}
+            </span>
+          </div>
+          <div v-else class="stock-count out-of-stock-text">
+            {{ locale === 'zh' ? '已售罄' : 'Out of Stock' }}
           </div>
 
           <!-- Message -->
@@ -376,6 +459,7 @@ const handleAddToCart = async () => {
             {{ message }}
           </div>
 
+          <!-- 立即購買 + 加到購物車 -->
           <div class="action-buttons">
             <button
               class="btn btn-primary btn-lg"
@@ -392,10 +476,36 @@ const handleAddToCart = async () => {
               {{ locale === 'zh' ? '加到購物車' : 'Add to Cart' }}
             </button>
           </div>
+
+          <!-- 加到我的最愛 -->
+          <button
+            class="btn btn-favorite"
+            :class="{ active: isFavorited }"
+            :disabled="favoriteLoading"
+            @click="handleToggleFavorite"
+          >
+            <Heart class="favorite-icon" :class="{ 'icon-filled': isFavorited }" />
+            {{ favoriteLoading ? (t('common.loading') || '...') : (isFavorited ? (locale === 'zh' ? '已加入我的最愛' : 'Saved') : (locale === 'zh' ? '加到我的最愛' : 'Add to Favorites')) }}
+          </button>
         </div>
       </div>
       <div v-else class="error-state">
         <p>{{ t('common.error') || '商品不存在' }}</p>
+      </div>
+
+      <!-- 你可能喜歡 -->
+      <div v-if="!loading && relatedProducts.length > 0" class="related-section">
+        <h2 class="related-title">{{ locale === 'zh' ? '你可能喜歡' : 'You May Also Like' }}</h2>
+        <div v-if="relatedLoading" class="loading-state">
+          <Loader2 class="spinner" />
+        </div>
+        <div v-else class="products-grid">
+          <ProductCard
+            v-for="p in relatedProducts"
+            :key="p.id"
+            :product="p"
+          />
+        </div>
       </div>
     </div>
   </div>
@@ -411,7 +521,30 @@ const handleAddToCart = async () => {
   </div>
 </template>
 
-<style scoped>
+<style scoped lang="scss">
+@use '@/styles/variables' as *;
+
+.spinner {
+  animation: spin 1s linear infinite;
+  width: 24px;
+  height: 24px;
+  color: var(--primary);
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.loading-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 48px;
+  color: var(--text-secondary);
+}
+
 .product-layout {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -463,9 +596,7 @@ const handleAddToCart = async () => {
 }
 
 @media (max-width: 640px) {
-  .zoom-hint {
-    display: none;
-  }
+  .zoom-hint { display: none; }
 }
 
 .nav-btn {
@@ -487,17 +618,9 @@ const handleAddToCart = async () => {
   transition: background 0.2s;
 }
 
-.nav-btn:hover {
-  background: rgba(0, 0, 0, 0.8);
-}
-
-.nav-prev {
-  left: 12px;
-}
-
-.nav-next {
-  right: 12px;
-}
+.nav-btn:hover { background: rgba(0, 0, 0, 0.8); }
+.nav-prev { left: 12px; }
+.nav-next { right: 12px; }
 
 .image-counter {
   position: absolute;
@@ -529,13 +652,8 @@ const handleAddToCart = async () => {
   flex-shrink: 0;
 }
 
-.thumbnail:hover {
-  opacity: 0.8;
-}
-
-.thumbnail.active {
-  border-color: var(--primary);
-}
+.thumbnail:hover { opacity: 0.8; }
+.thumbnail.active { border-color: var(--primary); }
 
 .product-info {
   display: flex;
@@ -550,7 +668,8 @@ const handleAddToCart = async () => {
   line-height: 1.3;
 }
 
-.product-meta {
+/* 新 meta row: 類別emoji 類別名稱 · 商品種類 · 品相 */
+.product-meta-row {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -559,9 +678,13 @@ const handleAddToCart = async () => {
   color: var(--text-secondary);
 }
 
-.meta-item {
-  display: inline-flex;
-  align-items: center;
+.meta-emoji {
+  font-size: 1.1rem;
+}
+
+.meta-category {
+  font-weight: 500;
+  color: var(--text-primary);
 }
 
 .meta-sep {
@@ -569,19 +692,16 @@ const handleAddToCart = async () => {
   opacity: 0.5;
 }
 
-.category-badge {
-  background: var(--bg-elevated);
-  padding: 4px 12px;
-  border-radius: var(--radius-full);
-  font-size: 0.85rem;
-  font-weight: 500;
-}
-
-.product-type-tag {
+.meta-product-type {
   font-weight: 600;
-  font-size: 0.9rem;
+  color: var(--primary);
 }
 
+.meta-condition {
+  color: var(--text-secondary);
+}
+
+/* 標簽 */
 .product-tags {
   display: flex;
   flex-wrap: wrap;
@@ -600,9 +720,7 @@ const handleAddToCart = async () => {
   transition: opacity 0.2s;
 }
 
-.product-tag:hover {
-  opacity: 0.8;
-}
+.product-tag:hover { opacity: 0.8; }
 
 .tag-dot {
   width: 8px;
@@ -610,31 +728,7 @@ const handleAddToCart = async () => {
   border-radius: 50%;
 }
 
-.product-attr {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 16px;
-  padding: 12px 0;
-  border-top: 1px solid var(--border);
-  border-bottom: 1px solid var(--border);
-}
-
-.attr-item {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 0.9rem;
-}
-
-.attr-label {
-  color: var(--text-secondary);
-}
-
-.attr-value {
-  color: var(--text-primary);
-  font-weight: 500;
-}
-
+/* 商品描述 */
 .product-description {
   padding: 16px 0;
   font-size: 0.95rem;
@@ -648,16 +742,12 @@ const handleAddToCart = async () => {
   white-space: pre-wrap;
 }
 
+/* MOP 200 價格 */
 .price-section {
   display: flex;
   align-items: baseline;
   gap: 12px;
   flex-wrap: wrap;
-}
-
-.price-label {
-  font-size: 0.9rem;
-  color: var(--text-secondary);
 }
 
 .price {
@@ -667,33 +757,11 @@ const handleAddToCart = async () => {
   font-family: var(--font-num);
 }
 
-.stock-info {
-  margin-left: auto;
-}
-
-.out-of-stock-badge {
-  background: #ef4444;
-  color: white;
-  padding: 4px 12px;
-  border-radius: var(--radius-full);
-  font-size: 0.85rem;
-  font-weight: 500;
-}
-
-.stock-count {
-  color: var(--text-secondary);
-  font-size: 0.9rem;
-}
-
-.quantity-selector {
-  margin: 8px 0;
-}
-
-.qty-label {
-  display: block;
-  font-size: 0.9rem;
-  color: var(--text-secondary);
-  margin-bottom: 12px;
+/* 數量 + 庫存 row */
+.quantity-row {
+  display: flex;
+  align-items: center;
+  gap: 20px;
 }
 
 .qty-controls {
@@ -733,6 +801,16 @@ const handleAddToCart = async () => {
   border-color: var(--primary);
 }
 
+.stock-count {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}
+
+.out-of-stock-text {
+  color: var(--danger);
+  font-weight: 600;
+}
+
 /* Action buttons */
 .action-buttons {
   display: flex;
@@ -756,9 +834,7 @@ const handleAddToCart = async () => {
   color: white;
 }
 
-.btn-primary:hover:not(:disabled) {
-  background: var(--primary-dark);
-}
+.btn-primary:hover:not(:disabled) { background: var(--primary-dark); }
 
 .btn-outline {
   background: transparent;
@@ -766,15 +842,50 @@ const handleAddToCart = async () => {
   border: 2px solid var(--primary);
 }
 
-.btn-outline:hover:not(:disabled) {
-  background: var(--primary-light);
+.btn-outline:hover:not(:disabled) { background: var(--primary-light); }
+
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* 加到我的最愛按鈕 */
+.btn-favorite {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex: 1;
+  padding: 14px 24px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  transition: all 0.2s;
+  background: transparent;
+  color: var(--text-secondary);
+  border: 2px solid var(--border);
 }
 
-.btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
+.btn-favorite:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
 }
 
+.btn-favorite.active {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: rgba(239, 68, 68, 0.08);
+}
+
+.btn-favorite .favorite-icon {
+  width: 18px;
+  height: 18px;
+  transition: all 0.2s;
+}
+
+.btn-favorite .icon-filled {
+  fill: var(--accent);
+}
+
+/* Message */
 .action-message {
   padding: 12px 16px;
   border-radius: var(--radius-md);
@@ -790,6 +901,24 @@ const handleAddToCart = async () => {
 .action-message.error {
   background: rgba(239, 68, 68, 0.1);
   color: #ef4444;
+}
+
+/* 你可能喜歡 */
+.related-section {
+  padding: 40px 0 24px;
+}
+
+.related-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 20px;
+}
+
+.products-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 16px;
 }
 
 /* Lightbox */
@@ -833,6 +962,7 @@ const handleAddToCart = async () => {
   justify-content: center;
   transition: background 0.2s;
 }
+
 .lightbox-close:hover { background: rgba(255,255,255,0.3); }
 
 .lightbox-nav {
@@ -852,6 +982,7 @@ const handleAddToCart = async () => {
   justify-content: center;
   transition: background 0.2s;
 }
+
 .lightbox-nav:hover { background: rgba(255,255,255,0.3); }
 .lightbox-prev { left: 20px; }
 .lightbox-next { right: 20px; }
@@ -884,16 +1015,14 @@ const handleAddToCart = async () => {
     font-size: 18px;
   }
 
-  .main-image img {
-    max-height: 350px;
-  }
-  
-  .action-buttons {
-    flex-direction: column;
-  }
-  
-  .btn {
-    width: 100%;
+  .main-image img { max-height: 350px; }
+
+  .action-buttons { flex-direction: column; }
+
+  .btn { width: 100%; }
+
+  .products-grid {
+    grid-template-columns: repeat(2, 1fr);
   }
 }
 </style>
