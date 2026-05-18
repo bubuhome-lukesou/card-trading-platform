@@ -565,12 +565,13 @@ const handleAddToCart = async () => {
 
 .main-image {
   position: relative;
+  overflow: hidden;
+  border-radius: var(--radius-xl);
+  background: var(--bg-dark);
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--bg-dark);
-  border-radius: var(--radius-xl);
-  overflow: hidden;
+  width: 100%;
 }
 
 .main-image img {
