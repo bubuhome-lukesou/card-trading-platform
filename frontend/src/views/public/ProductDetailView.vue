@@ -522,8 +522,6 @@ const handleAddToCart = async () => {
 </template>
 
 <style scoped lang="scss">
-@use '@/styles/variables' as *;
-
 .spinner {
   animation: spin 1s linear infinite;
   width: 24px;
