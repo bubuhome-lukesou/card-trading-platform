@@ -806,7 +806,7 @@ const handleAddToCart = async () => {
 
 .stock-count {
   color: var(--text-secondary);
-  font-size: 0.9rem;
+  font-size: var(--text-base);
 }
 
 .out-of-stock-text {
@@ -1053,9 +1053,9 @@ const handleAddToCart = async () => {
   }
 
   .quantity-row {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 12px;
+    flex-direction: row;
+    align-items: center;
+    gap: 16px;
   }
 
   .qty-controls {
@@ -1075,7 +1075,10 @@ const handleAddToCart = async () => {
   }
 
   .stock-count {
-    font-size: 0.85rem;
+    font-size: var(--text-base);
+    white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
   }
 
   .action-buttons { flex-direction: column; }
