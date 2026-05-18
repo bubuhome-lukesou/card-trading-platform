@@ -1123,25 +1123,50 @@ const handleAddToCart = async () => {
   }
 
   .product-detail {
-    max-width: 100%;
-    overflow-x: hidden;
+    max-width: 100% !important;
+    width: 100% !important;
+    overflow-x: hidden !important;
     box-sizing: border-box;
     padding-left: 0;
     padding-right: 0;
   }
 
   .container {
-    max-width: 100%;
-    margin: 0;
-    padding-left: 16px;
-    padding-right: 16px;
-    overflow: hidden;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding-left: 16px !important;
+    padding-right: 16px !important;
+    overflow: hidden !important;
     box-sizing: border-box;
+    width: 100% !important;
   }
 
   .product-layout {
     padding-left: 0;
     padding-right: 0;
+    width: 100% !important;
+    box-sizing: border-box;
+    overflow: hidden !important;
+  }
+
+  .product-images {
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow: hidden !important;
+    box-sizing: border-box;
+  }
+
+  .main-image {
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow: hidden !important;
+    box-sizing: border-box;
+  }
+
+  .main-image img {
+    width: 100% !important;
+    max-width: 100% !important;
+    height: auto;
   }
 }
 </style>
