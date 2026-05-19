@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, computed } from 'vue'
+import { ref, watch, onMounted, onUnmounted, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import { Heart, Loader2 } from 'lucide-vue-next'
@@ -28,6 +28,31 @@ const favoriteLoading = ref(false)
 const relatedProducts = ref<any[]>([])
 const relatedLoading = ref(false)
 const allTags = ref<any[]>([])
+
+// Watch route changes to refetch product when ID changes
+watch(
+  () => route.params.id as string,
+  async (newId, oldId) => {
+    if (newId && newId !== oldId) {
+      loading.value = true
+      product.value = null
+      currentImageIndex.value = 0
+      try {
+        const [productRes, tagsRes] = await Promise.all([
+          productApi.getProduct(newId),
+          tagApi.getTags()
+        ])
+        product.value = productRes.data
+        allTags.value = tagsRes.data || []
+        await checkFavorite()
+      } catch (error) {
+        console.error('Failed to load product:', error)
+      } finally {
+        loading.value = false
+      }
+    }
+  }
+)
 
 // Touch/swipe state for mobile
 const touchStartX = ref(0)
