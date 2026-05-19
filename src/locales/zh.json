@@ -1,0 +1,242 @@
+{
+  "app": {
+    "name": "Card Quest",
+    "tagline": "珍稀卡牌 盡在Card Quest",
+    "description": "Card Quest 是領先的卡牌拍賣平台，為全球收藏家提供安全、透明的競拍環境。"
+  },
+  "nav": {
+    "home": "首頁",
+    "marketplace": "商品市場",
+    "auctions": "拍賣列表",
+    "login": "登入",
+    "register": "註冊",
+    "logout": "登出",
+    "userCenter": "用戶中心",
+    "sellerCenter": "賣家中心",
+    "adminPanel": "管理後台",
+    "becomeSeller": "成為賣家"
+  },
+  "footer": {
+    "platform": "平台",
+    "support": "支持",
+    "contact": "聯絡方式",
+    "helpCenter": "幫助中心",
+    "contactUs": "聯絡我們",
+    "faq": "常見問題",
+    "location": "澳門",
+    "rights": "版權所有"
+  },
+  "home": {
+    "search": {
+      "placeholder": "搜尋珍稀卡牌..."
+    },
+    "hero": {
+      "title": "珍稀卡牌 限時競拍",
+      "subtitle": "發現最珍貴的收藏卡牌，參與激動人心的即時競拍",
+      "bidNow": "立即競拍",
+      "browse": "瀏覽商品"
+    },
+    "categories": {
+      "title": "快速分類",
+      "pokemon": "寶可夢",
+      "yugioh": "遊戲王",
+      "mtg": "萬智牌",
+      "ultraman": "奧特曼",
+      "onepiece": "海賊王",
+      "doraemon": "哆啦A夢",
+      "sports": "體育卡",
+      "other": "其他"
+    },
+    "stats": {
+      "auctions": "拍賣總數",
+      "users": "用戶總數",
+      "satisfaction": "滿意度"
+    },
+    "hotAuctions": {
+      "title": "熱門拍賣"
+    },
+    "auctionStatus": {
+      "live": "進行中",
+      "upcoming": "即將開始",
+      "ended": "已結束",
+      "bids": "次出價"
+    },
+    "newListings": {
+      "title": "最新上架"
+    },
+    "seeAll": "查看全部",
+    "cta": {
+      "title": "成為賣家，開始交易",
+      "desc": "在 Card Quest 開店，銷售您的珍稀卡牌收藏",
+      "button": "立即入駐"
+    },
+    "featuredAuctions": {
+      "title": "正在熱拍",
+      "viewAll": "查看全部"
+    },
+    "featuredProducts": {
+      "title": "精選商品",
+      "viewAll": "查看全部"
+    },
+    "whyUs": {
+      "title": "為什麼選擇我們",
+      "security": "安全交易",
+      "fast": "快速結算",
+      "global": "全球配送",
+      "support": "24/7 支持"
+    }
+  },
+  "product": {
+    "create": "發布商品",
+    "edit": "編輯",
+    "delete": "刪除",
+    "titleZh": "商品名稱（中文）",
+    "titleEn": "商品名稱（英文）",
+    "descriptionZh": "商品描述（中文）",
+    "descriptionEn": "商品描述（英文）",
+    "category": "商品類別",
+    "condition": "品相",
+    "rarity": "稀有度",
+    "listingType": "銷售模式",
+    "price": "售價",
+    "startingPrice": "起拍價",
+    "bidIncrement": "最低加價",
+    "images": "商品圖片",
+    "status": {
+      "draft": "草稿",
+      "active": "在售",
+      "sold": "已售",
+      "removed": "已下架"
+    },
+    "marketplace": "商品市場",
+    "filters": {
+      "title": "篩選",
+      "category": "類別",
+      "listingType": "銷售模式",
+      "all": "全部",
+      "saleOnly": "僅銷售",
+      "auctionOnly": "僅拍賣",
+      "productTypes": "商品種類",
+      "condition": "品相",
+      "priceRange": "價格範圍"
+    },
+    "sort": {
+      "newest": "最新上架",
+      "popular": "熱門暢銷",
+      "priceAsc": "價格由低到高",
+      "priceDesc": "價格由高到低",
+      "endingSoon": "即將結束"
+    }
+  },
+  "auction": {
+    "list": "拍賣列表",
+    "live": "正在進行",
+    "upcoming": "即將開始",
+    "ended": "已結束",
+    "status": {
+      "active": "進行中",
+      "upcoming": "即將開始",
+      "ended": "已結束",
+      "cancelled": "已取消"
+    }
+  },
+  "auth": {
+    "login": {
+      "title": "登入",
+      "email": "電郵",
+      "password": "密碼",
+      "submit": "登入",
+      "noAccount": "還沒有帳號？",
+      "registerNow": "立即註冊"
+    },
+    "register": {
+      "title": "註冊",
+      "email": "電郵",
+      "nickname": "暱稱",
+      "password": "密碼",
+      "confirmPassword": "確認密碼",
+      "submit": "註冊",
+      "hasAccount": "已有帳號？",
+      "loginNow": "立即登入"
+    }
+  },
+  "user": {
+    "dashboard": "我的帳戶",
+    "myOrders": "我的訂單",
+    "myPurchases": "我的購買",
+    "mySales": "我的銷售",
+    "myBids": "我的出價",
+    "myFavorites": "我的收藏",
+    "wallet": "錢包",
+    "settings": "設定"
+  },
+  "seller": {
+    "dashboard": "賣家中心",
+    "products": "商品管理",
+    "auctions": "拍賣管理",
+    "orders": "訂單管理",
+    "earnings": "收益管理",
+    "reviews": "評價管理",
+    "settings": "店鋪設定",
+    "apply": "申請成為賣家",
+    "createProduct": "發布新商品",
+    "editProduct": "編輯商品",
+    "totalProducts": "商品總數",
+    "activeListings": "在售商品",
+    "totalSales": "總銷售額",
+    "pendingOrders": "待處理訂單"
+  },
+  "admin": {
+    "dashboard": "管理後台",
+    "users": "用戶管理",
+    "sellers": "商家管理",
+    "sellerApplications": "商家入駐審批",
+    "products": "商品審核",
+    "auctions": "拍賣監控",
+    "reports": "數據報表",
+    "settings": "平台設定"
+  },
+  "common": {
+    "search": "搜尋",
+    "searchPlaceholder": "搜尋卡牌名稱/系列/賣家...",
+    "loading": "載入中...",
+    "noResults": "暫無結果",
+    "loadMore": "載入更多",
+    "allLoaded": "— 已載入全部 {total} 件商品 —",
+    "showing": "顯示",
+    "of": "共",
+    "items": "件",
+    "currency": "HK$",
+    "save": "儲存",
+    "cancel": "取消",
+    "confirm": "確認",
+    "delete": "刪除",
+    "edit": "編輯",
+    "add": "新增",
+    "back": "返回",
+    "next": "下一步",
+    "previous": "上一步",
+    "success": "操作成功",
+    "error": "操作失敗",
+    "warning": "警告",
+    "info": "提示"
+  },
+  "conditions": {
+    "S": "S級 - 完美品相",
+    "A": "A級 - 輕微磨損",
+    "B": "B級 - 正常使用痕跡",
+    "C": "C級 - 較明顯磨損",
+    "D": "D級 - 嚴重磨損"
+  },
+  "errors": {
+    "required": "此欄位為必填項",
+    "invalidEmail": "請輸入有效的電郵地址",
+    "minLength": "至少需要 {min} 個字符",
+    "maxLength": "最多只能輸入 {max} 個字符",
+    "passwordMismatch": "兩次輸入的密碼不一致",
+    "networkError": "網絡錯誤，請稍後重試",
+    "unauthorized": "請先登入",
+    "forbidden": "您沒有權限執行此操作",
+    "notFound": "請求的資源不存在"
+  }
+}

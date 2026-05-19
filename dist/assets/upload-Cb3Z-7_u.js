@@ -1,0 +1,1 @@
+import{o as e}from"./index-DTZ_W-tQ.js";var t={uploadImage(t){let n=new FormData;return n.append(`image`,t),e.post(`/upload/image`,n,{headers:{"Content-Type":`multipart/form-data`}})}};export{t};
