@@ -28,6 +28,7 @@ const favoriteLoading = ref(false)
 const relatedProducts = ref<any[]>([])
 const relatedLoading = ref(false)
 const allTags = ref<any[]>([])
+const imageLoaded = ref(false)
 
 // Watch route changes to refetch product when ID changes
 watch(
@@ -37,6 +38,7 @@ watch(
       loading.value = true
       product.value = null
       currentImageIndex.value = 0
+      imageLoaded.value = false
       try {
         const [productRes, tagsRes] = await Promise.all([
           productApi.getProduct(newId),
@@ -45,6 +47,7 @@ watch(
         product.value = productRes.data
         allTags.value = tagsRes.data || []
         await checkFavorite()
+        await fetchRelatedProducts()
       } catch (error) {
         console.error('Failed to load product:', error)
       } finally {
@@ -112,28 +115,20 @@ const fetchRelatedProducts = async () => {
   if (!product.value) return
   relatedLoading.value = true
   try {
-    // Fetch products with same category, limit 10 to compute match score
     const res = await productApi.getProducts({
       category: product.value.category,
       limit: 20,
       sortBy: 'newest'
     })
-    // Filter out current product and score by matching attributes
     const matches = (res.data.data || [])
       .filter((p: any) => p.id !== product.value.id && p.quantity > 0)
       .map((p: any) => {
         let score = 0
-        // Same category: +1
         if (p.category === product.value.category) score += 1
-        // Same productTypeTagId: +3
         if ((p as any).productTypeTagId === (product.value as any).productTypeTagId) score += 3
-        // Same condition: +1
         if (p.condition === product.value.condition) score += 1
-        // Same brand: +1
         if (p.brand && product.value.brand && p.brand === product.value.brand) score += 1
-        // Same series: +1
         if (p.series && product.value.series && p.series === product.value.series) score += 1
-        // Shared tags: +2 per shared tag
         if (product.value.tags && p.tags) {
           const productTagIds = new Set(product.value.tags.map((t: any) => t.id))
           p.tags.forEach((t: any) => {
@@ -206,7 +201,12 @@ onMounted(async () => {
   }
 })
 
+const onImageLoad = () => {
+  imageLoaded.value = true
+}
+
 const selectImage = (index: number) => {
+  imageLoaded.value = false
   currentImageIndex.value = index
 }
 
@@ -374,30 +374,47 @@ const handleAddToCart = async () => {
 
 <template>
   <div class="product-detail">
+    <!-- Background animated orbs -->
+    <div class="bg-orbs" aria-hidden="true">
+      <div class="orb orb-1"></div>
+      <div class="orb orb-2"></div>
+      <div class="orb orb-3"></div>
+    </div>
+
     <div class="container">
       <div v-if="loading" class="loading-state">
-        <Loader2 class="spinner" />
-        <p>{{ t('common.loading') || '加載中...' }}</p>
+        <div class="loading-card">
+          <Loader2 class="spinner" />
+          <p>{{ t('common.loading') || '加載中...' }}</p>
+        </div>
       </div>
       <div v-else-if="product" class="product-layout">
         <!-- Images -->
         <div class="product-images">
-          <div
-            class="main-image"
-            @touchstart="onTouchStart"
-            @touchend="onTouchEnd"
-          >
+          <!-- Main image with glow effect -->
+          <div class="main-image-wrap" :class="{ loaded: imageLoaded }">
+            <div class="image-glow" aria-hidden="true"></div>
+            <div
+              class="main-image"
+              @touchstart="onTouchStart"
+              @touchend="onTouchEnd"
+            >
+              <div class="image-shimmer" aria-hidden="true"></div>
+              <img
+                :src="product.images?.[currentImageIndex] || '/placeholder-card.png'"
+                :alt="getTitle(product)"
+                @click="openLightbox"
+                @load="onImageLoad"
+                class="main-img"
+                :class="{ visible: imageLoaded }"
+              />
+              <div class="image-glow-overlay" aria-hidden="true"></div>
+            </div>
             <button v-if="product.images?.length > 1" class="nav-btn nav-prev" @click.stop="prevImage">‹</button>
-            <img 
-              :src="product.images?.[currentImageIndex] || '/placeholder-card.png'" 
-              :alt="getTitle(product)" 
-              @click="openLightbox" 
-              style="cursor: zoom-in;" 
-            />
             <button v-if="product.images?.length > 1" class="nav-btn nav-next" @click.stop="nextImage">›</button>
             <div v-if="product.images?.length > 1" class="image-counter">{{ currentImageIndex + 1 }} / {{ product.images.length }}</div>
             <div class="zoom-hint">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <circle cx="11" cy="11" r="8"/>
                 <path d="m21 21-4.35-4.35"/>
                 <path d="M11 8v6M8 11h6"/>
@@ -405,6 +422,8 @@ const handleAddToCart = async () => {
               {{ locale === 'zh' ? '點擊放大' : 'Click to zoom' }}
             </div>
           </div>
+
+          <!-- Thumbnails -->
           <div v-if="product.images?.length > 1" class="thumbnail-list">
             <img
               v-for="(img, idx) in product.images"
@@ -420,7 +439,7 @@ const handleAddToCart = async () => {
 
         <!-- Info -->
         <div class="product-info">
-          <!-- 商品名稱 -->
+          <!-- 商品名稱 - with glow entrance -->
           <h1 class="product-title">{{ getTitle(product) }}</h1>
 
           <!-- 類別emoji 類別名稱 . 商品種類 . 品相 -->
@@ -452,15 +471,18 @@ const handleAddToCart = async () => {
             <p>{{ getDescription(product) }}</p>
           </div>
 
-          <!-- MOP 200 價格 -->
+          <!-- MOP 200 價格 - with animated glow -->
           <div class="price-section">
+            <div class="price-glow" aria-hidden="true"></div>
             <span class="price">MOP ${{ Number(product.price).toLocaleString() }}</span>
           </div>
 
           <!-- -數量+  庫存:x -->
           <div v-if="product.quantity > 0" class="quantity-row">
             <div class="qty-controls">
-              <button class="qty-btn" @click="decreaseQuantity" :disabled="selectedQuantity <= 1">−</button>
+              <button class="qty-btn" @click="decreaseQuantity" :disabled="selectedQuantity <= 1">
+                <span class="qty-btn-inner">−</span>
+              </button>
               <input
                 type="number"
                 class="qty-input"
@@ -469,9 +491,12 @@ const handleAddToCart = async () => {
                 :max="getMaxQuantity()"
                 @change="selectedQuantity = Math.max(1, Math.min(selectedQuantity, getMaxQuantity()))"
               />
-              <button class="qty-btn" @click="increaseQuantity" :disabled="selectedQuantity >= getMaxQuantity()">+</button>
+              <button class="qty-btn" @click="increaseQuantity" :disabled="selectedQuantity >= getMaxQuantity()">
+                <span class="qty-btn-inner">+</span>
+              </button>
             </div>
             <span v-if="product.quantity !== undefined" class="stock-count">
+              <span class="stock-icon">📦</span>
               {{ locale === 'zh' ? '庫存:' : 'Stock:' }} {{ product.quantity }}
             </span>
           </div>
@@ -487,18 +512,20 @@ const handleAddToCart = async () => {
           <!-- 立即購買 + 加到購物車 -->
           <div class="action-buttons">
             <button
-              class="btn btn-primary btn-lg"
+              class="btn btn-buy"
+              :class="{ processing }"
               :disabled="processing || isOutOfStock()"
               @click="handleBuyNow"
             >
-              {{ processing ? (t('common.loading') || '處理中...') : (locale === 'zh' ? '立即購買' : 'Buy Now') }}
+              <span class="btn-shine" aria-hidden="true"></span>
+              {{ processing ? (t('common.loading') || '處理中...') : (locale === 'zh' ? '⚡ 立即購買' : '⚡ Buy Now') }}
             </button>
             <button
-              class="btn btn-outline"
+              class="btn btn-cart"
               :disabled="processing || isOutOfStock()"
               @click="handleAddToCart"
             >
-              {{ locale === 'zh' ? '加到購物車' : 'Add to Cart' }}
+              {{ locale === 'zh' ? '🛒 加到購物車' : '🛒 Add to Cart' }}
             </button>
           </div>
 
@@ -509,8 +536,8 @@ const handleAddToCart = async () => {
             :disabled="favoriteLoading"
             @click="handleToggleFavorite"
           >
-            <Heart class="favorite-icon" :class="{ 'icon-filled': isFavorited }" />
-            {{ favoriteLoading ? (t('common.loading') || '...') : (isFavorited ? (locale === 'zh' ? '已加入我的最愛' : 'Saved') : (locale === 'zh' ? '加到我的最愛' : 'Add to Favorites')) }}
+            <Heart class="favorite-icon" :class="{ 'icon-filled': isFavorited, 'pulse': isFavorited }" />
+            {{ favoriteLoading ? (t('common.loading') || '...') : (isFavorited ? (locale === 'zh' ? '✨ 已加入我的最愛' : '✨ Saved') : (locale === 'zh' ? '♡ 加到我的最愛' : '♡ Add to Favorites')) }}
           </button>
         </div>
       </div>
@@ -520,26 +547,38 @@ const handleAddToCart = async () => {
 
       <!-- 你可能喜歡 -->
       <div v-if="!loading && relatedProducts.length > 0" class="related-section">
-        <h2 class="related-title">{{ locale === 'zh' ? '你可能喜歡' : 'You May Also Like' }}</h2>
+        <div class="related-header">
+          <div class="related-title-wrap">
+            <span class="related-star" aria-hidden="true">✨</span>
+            <h2 class="related-title">{{ locale === 'zh' ? '你可能喜歡' : 'You May Also Like' }}</h2>
+            <span class="related-star" aria-hidden="true">✨</span>
+          </div>
+          <div class="related-title-line" aria-hidden="true"></div>
+        </div>
         <div v-if="relatedLoading" class="loading-state">
           <Loader2 class="spinner" />
         </div>
         <div v-else class="products-grid">
           <ProductCard
-            v-for="p in relatedProducts"
+            v-for="(p, idx) in relatedProducts"
             :key="p.id"
             :product="p"
+            :style="{ animationDelay: `${idx * 80}ms` }"
+            class="related-card"
           />
         </div>
       </div>
     </div>
   </div>
 
-  <!-- Lightbox for image zoom -->
+  <!-- Lightbox -->
   <div v-if="lightboxOpen" class="lightbox" @click.self="closeLightbox">
+    <div class="lightbox-bg" aria-hidden="true"></div>
     <button class="lightbox-close" @click="closeLightbox">✕</button>
     <button v-if="product.images?.length > 1" class="lightbox-nav lightbox-prev" @click.stop="prevImage">‹</button>
-    <img :src="product.images?.[currentImageIndex]" :alt="getTitle(product)" class="lightbox-img" @click.stop />
+    <div class="lightbox-image-wrap">
+      <img :src="product.images?.[currentImageIndex]" :alt="getTitle(product)" class="lightbox-img" @click.stop />
+    </div>
     <button v-if="product.images?.length > 1" class="lightbox-nav lightbox-next" @click.stop="nextImage">›</button>
     <div v-if="product.images?.length > 1" class="lightbox-counter">{{ currentImageIndex + 1 }} / {{ product.images.length }}</div>
     <div class="lightbox-hint">{{ locale === 'zh' ? '按 ESC 關閉 · 左右鍵切換' : 'Press ESC to close · Arrow keys to navigate' }}</div>
@@ -547,10 +586,17 @@ const handleAddToCart = async () => {
 </template>
 
 <style scoped lang="scss">
+// ===== Variables =====
+$primary-glow: rgba(139, 92, 246, 0.6);
+$accent-glow: rgba(236, 72, 153, 0.5);
+$cyan-glow: rgba(34, 211, 238, 0.5);
+$gold-glow: rgba(251, 191, 36, 0.5);
+
+// ===== Spinner =====
 .spinner {
   animation: spin 1s linear infinite;
-  width: 24px;
-  height: 24px;
+  width: 28px;
+  height: 28px;
   color: var(--primary);
 }
 
@@ -559,23 +605,94 @@ const handleAddToCart = async () => {
   to { transform: rotate(360deg); }
 }
 
+// ===== Background Orbs =====
+.bg-orbs {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  overflow: hidden;
+}
+
+.orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  opacity: 0.15;
+  animation: float-orb 12s ease-in-out infinite;
+}
+
+.orb-1 {
+  width: 500px;
+  height: 500px;
+  background: #8b5cf6;
+  top: -150px;
+  right: -100px;
+  animation-delay: 0s;
+}
+
+.orb-2 {
+  width: 400px;
+  height: 400px;
+  background: #ec4899;
+  bottom: -100px;
+  left: -150px;
+  animation-delay: -4s;
+}
+
+.orb-3 {
+  width: 350px;
+  height: 350px;
+  background: #22d3ee;
+  top: 40%;
+  left: 30%;
+  animation-delay: -8s;
+}
+
+@keyframes float-orb {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(30px, -30px) scale(1.05); }
+  66% { transform: translate(-20px, 20px) scale(0.95); }
+}
+
+// ===== Loading State =====
 .loading-state {
+  display: flex;
+  justify-content: center;
+  padding: 80px 0;
+}
+
+.loading-card {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 12px;
-  padding: 48px;
+  gap: 16px;
   color: var(--text-secondary);
+  font-size: 1rem;
 }
 
+// ===== Product Layout =====
 .product-layout {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 48px;
-  padding: 24px 0;
-  overflow: hidden;
+  padding: 24px 0 40px;
   width: 100%;
   box-sizing: border-box;
+  position: relative;
+  z-index: 1;
+  animation: fadeSlideUp 0.5s ease-out;
+}
+
+@keyframes fadeSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 @media (max-width: 900px) {
@@ -585,11 +702,31 @@ const handleAddToCart = async () => {
   }
 }
 
+// ===== Product Images =====
 .product-images {
   display: flex;
   flex-direction: column;
   gap: 16px;
   width: 100%;
+}
+
+.main-image-wrap {
+  position: relative;
+  opacity: 0;
+  transition: opacity 0.4s ease;
+
+  &.loaded {
+    opacity: 1;
+  }
+}
+
+.image-glow {
+  position: absolute;
+  inset: -20px;
+  background: radial-gradient(ellipse at center, rgba(139, 92, 246, 0.2) 0%, transparent 70%);
+  border-radius: 24px;
+  z-index: -1;
+  pointer-events: none;
 }
 
 .main-image {
@@ -601,12 +738,81 @@ const handleAddToCart = async () => {
   align-items: center;
   justify-content: center;
   width: 100%;
+  cursor: zoom-in;
+
+  // Card back pattern
+  background-image:
+    repeating-linear-gradient(
+      45deg,
+      transparent,
+      transparent 10px,
+      rgba(139, 92, 246, 0.06) 10px,
+      rgba(139, 92, 246, 0.06) 20px
+    ),
+    repeating-linear-gradient(
+      -45deg,
+      transparent,
+      transparent 10px,
+      rgba(236, 72, 153, 0.04) 10px,
+      rgba(236, 72, 153, 0.04) 20px
+    );
+  background-color: var(--bg-dark);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+
+  &:hover {
+    transform: translateY(-4px);
+    box-shadow:
+      0 20px 60px rgba(139, 92, 246, 0.3),
+      0 0 40px rgba(139, 92, 246, 0.15);
+  }
+
+  &:hover .image-shimmer {
+    opacity: 1;
+  }
 }
 
-.main-image img {
+.image-shimmer {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    110deg,
+    transparent 25%,
+    rgba(255, 255, 255, 0.05) 50%,
+    transparent 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 3s infinite;
+  opacity: 0;
+  transition: opacity 0.3s;
+  pointer-events: none;
+  z-index: 2;
+}
+
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+.image-glow-overlay {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at center, transparent 50%, rgba(0, 0, 0, 0.3) 100%);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.main-img {
+  position: relative;
+  z-index: 1;
   max-width: 100%;
-  max-height: 500px;
+  max-height: 480px;
   object-fit: contain;
+  opacity: 0;
+  transition: opacity 0.5s ease, transform 0.3s ease;
+
+  &.visible {
+    opacity: 1;
+  }
 }
 
 .zoom-hint {
@@ -617,36 +823,51 @@ const handleAddToCart = async () => {
   align-items: center;
   gap: 6px;
   background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(8px);
   color: rgba(255, 255, 255, 0.8);
   padding: 6px 12px;
   border-radius: 20px;
   font-size: 12px;
+  z-index: 3;
+  transition: opacity 0.2s;
+}
+
+.main-image:hover .zoom-hint {
+  opacity: 0;
 }
 
 @media (max-width: 640px) {
   .zoom-hint { display: none; }
 }
 
+// ===== Nav Buttons =====
 .nav-btn {
   position: absolute;
   top: 50%;
   transform: translateY(-50%);
-  width: 40px;
-  height: 40px;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
   background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(8px);
   color: white;
-  border: none;
+  border: 1px solid rgba(255, 255, 255, 0.2);
   font-size: 24px;
   cursor: pointer;
   z-index: 10;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background 0.2s;
+  transition: all 0.2s;
+
+  &:hover {
+    background: var(--primary);
+    border-color: var(--primary);
+    transform: translateY(-50%) scale(1.1);
+    box-shadow: 0 0 20px rgba(139, 92, 246, 0.5);
+  }
 }
 
-.nav-btn:hover { background: rgba(0, 0, 0, 0.8); }
 .nav-prev { left: 12px; }
 .nav-next { right: 12px; }
 
@@ -656,12 +877,15 @@ const handleAddToCart = async () => {
   left: 50%;
   transform: translateX(-50%);
   background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(8px);
   color: white;
-  padding: 4px 12px;
+  padding: 4px 14px;
   border-radius: var(--radius-full);
   font-size: var(--text-xs);
+  z-index: 3;
 }
 
+// ===== Thumbnails =====
 .thumbnail-list {
   display: flex;
   gap: 12px;
@@ -676,27 +900,50 @@ const handleAddToCart = async () => {
   border-radius: var(--radius-md);
   border: 2px solid transparent;
   cursor: pointer;
-  transition: border-color 0.2s, opacity 0.2s;
+  transition: all 0.25s ease;
   flex-shrink: 0;
+
+  &:hover {
+    border-color: rgba(139, 92, 246, 0.5);
+    transform: scale(1.05);
+    box-shadow: 0 4px 16px rgba(139, 92, 246, 0.3);
+  }
+
+  &.active {
+    border-color: var(--primary);
+    box-shadow: 0 0 16px rgba(139, 92, 246, 0.4);
+  }
 }
 
-.thumbnail:hover { opacity: 0.8; }
-.thumbnail.active { border-color: var(--primary); }
-
+// ===== Product Info =====
 .product-info {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 18px;
 }
 
+// ===== Product Title =====
 .product-title {
-  font-size: 1.75rem;
-  font-weight: 700;
+  font-size: 2rem;
+  font-weight: 800;
   color: var(--text-primary);
   line-height: 1.3;
+  text-shadow: 0 0 30px rgba(139, 92, 246, 0.3);
+  animation: titleEntrance 0.6s ease-out;
 }
 
-/* 新 meta row: 類別emoji 類別名稱 · 商品種類 · 品相 */
+@keyframes titleEntrance {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+// ===== Meta Row =====
 .product-meta-row {
   display: flex;
   flex-wrap: wrap;
@@ -704,14 +951,16 @@ const handleAddToCart = async () => {
   gap: 8px;
   font-size: 0.9rem;
   color: var(--text-secondary);
+  animation: fadeSlideUp 0.5s ease-out 0.1s both;
 }
 
 .meta-emoji {
-  font-size: 1.1rem;
+  font-size: 1.2rem;
+  filter: drop-shadow(0 0 4px currentColor);
 }
 
 .meta-category {
-  font-weight: 500;
+  font-weight: 600;
   color: var(--text-primary);
 }
 
@@ -723,17 +972,22 @@ const handleAddToCart = async () => {
 .meta-product-type {
   font-weight: 600;
   color: var(--primary);
+  background: rgba(139, 92, 246, 0.12);
+  padding: 2px 10px;
+  border-radius: var(--radius-full);
+  border: 1px solid rgba(139, 92, 246, 0.3);
 }
 
 .meta-condition {
   color: var(--text-secondary);
 }
 
-/* 標簽 */
+// ===== Tags =====
 .product-tags {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+  animation: fadeSlideUp 0.5s ease-out 0.15s both;
 }
 
 .product-tag {
@@ -745,10 +999,19 @@ const handleAddToCart = async () => {
   font-size: 0.85rem;
   border: 1px solid;
   cursor: pointer;
-  transition: opacity 0.2s;
+  transition: all 0.2s;
+  animation: tagPop 0.3s ease-out both;
+
+  &:hover {
+    transform: scale(1.08);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+  }
 }
 
-.product-tag:hover { opacity: 0.8; }
+@keyframes tagPop {
+  from { opacity: 0; transform: scale(0.8); }
+  to { opacity: 1; transform: scale(1); }
+}
 
 .tag-dot {
   width: 8px;
@@ -756,13 +1019,14 @@ const handleAddToCart = async () => {
   border-radius: 50%;
 }
 
-/* 商品描述 */
+// ===== Description =====
 .product-description {
   padding: 16px 0;
   font-size: 0.95rem;
   line-height: 1.6;
   color: var(--text-secondary);
   border-bottom: 1px solid var(--border);
+  animation: fadeSlideUp 0.5s ease-out 0.2s both;
 }
 
 .product-description p {
@@ -770,111 +1034,254 @@ const handleAddToCart = async () => {
   white-space: pre-wrap;
 }
 
-/* MOP 200 價格 */
+// ===== Price Section =====
 .price-section {
+  position: relative;
   display: flex;
   align-items: baseline;
   gap: 12px;
   flex-wrap: wrap;
+  animation: fadeSlideUp 0.5s ease-out 0.25s both;
+}
+
+.price-glow {
+  position: absolute;
+  inset: -10px -20px;
+  background: radial-gradient(ellipse at left, rgba(251, 191, 36, 0.15) 0%, transparent 60%);
+  pointer-events: none;
+  border-radius: var(--radius-lg);
 }
 
 .price {
-  font-size: 2rem;
-  font-weight: 700;
-  color: var(--primary);
+  font-size: 2.25rem;
+  font-weight: 800;
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 50%, #fbbf24 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  filter: drop-shadow(0 0 12px rgba(251, 191, 36, 0.4));
+  animation: priceGlow 3s ease-in-out infinite;
   font-family: var(--font-num);
 }
 
-/* 數量 + 庫存 row */
+@keyframes priceGlow {
+  0%, 100% { filter: drop-shadow(0 0 12px rgba(251, 191, 36, 0.4)); }
+  50% { filter: drop-shadow(0 0 24px rgba(251, 191, 36, 0.7)); }
+}
+
+// ===== Quantity Row =====
 .quantity-row {
   display: flex;
   align-items: center;
   gap: 20px;
+  animation: fadeSlideUp 0.5s ease-out 0.3s both;
 }
 
 .qty-controls {
   display: flex;
   flex-direction: row;
-  gap: 25px;
+  gap: 12px;
   align-items: center;
 }
 
 .qty-btn {
-  width: 52px;
-  height: 52px;
-  font-size: 24px;
-  line-height: 1;
-  padding: 0;
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius-lg);
+  background: var(--bg-elevated);
+  border: 2px solid var(--border);
+  cursor: pointer;
+  transition: all 0.2s;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: var(--radius-md);
+  padding: 0;
+
+  &:hover:not(:disabled) {
+    border-color: var(--primary);
+    background: rgba(139, 92, 246, 0.1);
+    transform: scale(1.05);
+    box-shadow: 0 0 16px rgba(139, 92, 246, 0.3);
+  }
+
+  &:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  .qty-btn-inner {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--text-primary);
+    line-height: 1;
+  }
 }
 
 .qty-input {
-  width: 140px;
-  height: 52px;
-  padding: 0 16px;
+  width: 80px;
+  height: 48px;
+  padding: 0 8px;
   background: var(--bg-elevated);
-  border: 1px solid var(--border);
+  border: 2px solid var(--border);
   border-radius: var(--radius-md);
   color: var(--text-primary);
-  font-size: var(--text-lg);
+  font-size: 1.1rem;
   text-align: center;
   font-family: var(--font-num);
-}
+  transition: border-color 0.2s, box-shadow 0.2s;
 
-.qty-input:focus {
-  outline: none;
-  border-color: var(--primary);
+  &:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 16px rgba(139, 92, 246, 0.2);
+  }
 }
 
 .stock-count {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   color: var(--text-secondary);
   font-size: var(--text-base);
+  font-weight: 500;
+
+  .stock-icon {
+    font-size: 1rem;
+  }
 }
 
 .out-of-stock-text {
   color: var(--danger);
-  font-weight: 600;
+  font-weight: 700;
+  font-size: 1rem;
 }
 
-/* Action buttons */
+// ===== Message =====
+.action-message {
+  padding: 12px 16px;
+  border-radius: var(--radius-md);
+  font-size: 0.9rem;
+  margin: 4px 0;
+  animation: popIn 0.3s ease-out;
+}
+
+@keyframes popIn {
+  from { opacity: 0; transform: scale(0.9); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.action-message.success {
+  background: rgba(34, 197, 94, 0.12);
+  color: #4ade80;
+  border: 1px solid rgba(34, 197, 94, 0.3);
+}
+
+.action-message.error {
+  background: rgba(239, 68, 68, 0.12);
+  color: #f87171;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+// ===== Action Buttons =====
 .action-buttons {
   display: flex;
   gap: 12px;
-  margin-top: 8px;
+  margin-top: 4px;
+  animation: fadeSlideUp 0.5s ease-out 0.35s both;
 }
 
 .btn {
   flex: 1;
   padding: 16px 24px;
   font-size: 1rem;
-  font-weight: 600;
+  font-weight: 700;
   border-radius: var(--radius-lg);
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.25s ease;
   border: none;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
 }
 
-.btn-primary {
-  background: var(--primary);
+.btn-buy {
+  background: linear-gradient(135deg, #8b5cf6 0%, #a855f7 100%);
   color: white;
+  box-shadow:
+    0 4px 16px rgba(139, 92, 246, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15);
+
+  &:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow:
+      0 8px 30px rgba(139, 92, 246, 0.6),
+      0 0 40px rgba(139, 92, 246, 0.3),
+      inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  }
+
+  &:active:not(:disabled) {
+    transform: translateY(0);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  &.processing {
+    background: linear-gradient(135deg, #6b7280 0%, #9ca3af 100%);
+    box-shadow: none;
+  }
 }
 
-.btn-primary:hover:not(:disabled) { background: var(--primary-dark); }
+.btn-shine {
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.2),
+    transparent
+  );
+  animation: btnShine 3s infinite;
 
-.btn-outline {
+  .btn-buy:hover & {
+    animation-duration: 1.5s;
+  }
+}
+
+@keyframes btnShine {
+  0% { left: -100%; }
+  50%, 100% { left: 100%; }
+}
+
+.btn-cart {
   background: transparent;
   color: var(--primary);
   border: 2px solid var(--primary);
+  box-shadow: 0 2px 8px rgba(139, 92, 246, 0.15);
+
+  &:hover:not(:disabled) {
+    background: rgba(139, 92, 246, 0.08);
+    transform: translateY(-2px);
+    box-shadow:
+      0 6px 20px rgba(139, 92, 246, 0.25),
+      inset 0 0 20px rgba(139, 92, 246, 0.05);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
 }
 
-.btn-outline:hover:not(:disabled) { background: var(--primary-light); }
-
-.btn:disabled { opacity: 0.5; cursor: not-allowed; }
-
-/* 加到我的最愛按鈕 */
+// ===== Favorite Button =====
 .btn-favorite {
   display: flex;
   align-items: center;
@@ -886,61 +1293,104 @@ const handleAddToCart = async () => {
   font-weight: 600;
   border-radius: var(--radius-lg);
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.25s ease;
   background: transparent;
   color: var(--text-secondary);
   border: 2px solid var(--border);
+  animation: fadeSlideUp 0.5s ease-out 0.4s both;
+
+  &:hover:not(:disabled) {
+    border-color: #ec4899;
+    color: #ec4899;
+    background: rgba(236, 72, 153, 0.06);
+    transform: translateY(-2px);
+  }
+
+  &.active {
+    border-color: #ec4899;
+    color: #ec4899;
+    background: rgba(236, 72, 153, 0.08);
+    box-shadow: 0 4px 20px rgba(236, 72, 153, 0.2);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .favorite-icon {
+    width: 18px;
+    height: 18px;
+    transition: all 0.3s ease;
+  }
+
+  .icon-filled {
+    fill: #ec4899;
+    filter: drop-shadow(0 0 6px rgba(236, 72, 153, 0.6));
+  }
+
+  .pulse {
+    animation: heartPulse 1.5s ease-in-out infinite;
+  }
 }
 
-.btn-favorite:hover:not(:disabled) {
-  border-color: var(--accent);
-  color: var(--accent);
+@keyframes heartPulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.2); }
 }
 
-.btn-favorite.active {
-  border-color: var(--accent);
-  color: var(--accent);
-  background: rgba(239, 68, 68, 0.08);
-}
-
-.btn-favorite .favorite-icon {
-  width: 18px;
-  height: 18px;
-  transition: all 0.2s;
-}
-
-.btn-favorite .icon-filled {
-  fill: var(--accent);
-}
-
-/* Message */
-.action-message {
-  padding: 12px 16px;
-  border-radius: var(--radius-md);
-  font-size: 0.9rem;
-  margin: 8px 0;
-}
-
-.action-message.success {
-  background: rgba(34, 197, 94, 0.1);
-  color: #22c55e;
-}
-
-.action-message.error {
-  background: rgba(239, 68, 68, 0.1);
-  color: #ef4444;
-}
-
-/* 你可能喜歡 */
+// ===== Related Section =====
 .related-section {
   padding: 40px 0 24px;
+  position: relative;
+  z-index: 1;
+}
+
+.related-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.related-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.related-star {
+  font-size: 1.5rem;
+  animation: starSparkle 2s ease-in-out infinite;
+  filter: drop-shadow(0 0 8px rgba(251, 191, 36, 0.6));
+
+  &:nth-child(3) {
+    animation-delay: -1s;
+  }
+}
+
+@keyframes starSparkle {
+  0%, 100% { transform: scale(1) rotate(0deg); opacity: 1; }
+  50% { transform: scale(1.2) rotate(10deg); opacity: 0.8; }
 }
 
 .related-title {
-  font-size: 1.25rem;
-  font-weight: 700;
+  font-size: 1.3rem;
+  font-weight: 800;
   color: var(--text-primary);
-  margin-bottom: 20px;
+  text-shadow: 0 0 20px rgba(139, 92, 246, 0.3);
+}
+
+.related-title-line {
+  flex: 1;
+  height: 2px;
+  background: linear-gradient(
+    90deg,
+    rgba(139, 92, 246, 0.4) 0%,
+    transparent 100%
+  );
+  border-radius: 1px;
 }
 
 .products-grid {
@@ -949,16 +1399,53 @@ const handleAddToCart = async () => {
   gap: 16px;
 }
 
-/* Lightbox */
+.related-card {
+  animation: cardEntrance 0.5s ease-out both;
+}
+
+@keyframes cardEntrance {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+// ===== Lightbox =====
 .lightbox {
   position: fixed;
   inset: 0;
   z-index: 9999;
-  background: rgba(0, 0, 0, 0.95);
   display: flex;
   align-items: center;
   justify-content: center;
-  animation: fadeIn 0.2s ease;
+  animation: fadeIn 0.25s ease;
+}
+
+.lightbox-bg {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.95);
+  backdrop-filter: blur(4px);
+}
+
+.lightbox-image-wrap {
+  position: relative;
+  z-index: 1;
+  max-width: 85vw;
+  max-height: 85vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: zoomIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes zoomIn {
+  from { transform: scale(0.85); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
 }
 
 @keyframes fadeIn {
@@ -967,10 +1454,13 @@ const handleAddToCart = async () => {
 }
 
 .lightbox-img {
-  max-width: 90vw;
+  max-width: 85vw;
   max-height: 85vh;
   object-fit: contain;
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-lg);
+  box-shadow:
+    0 0 60px rgba(139, 92, 246, 0.3),
+    0 0 120px rgba(139, 92, 246, 0.15);
 }
 
 .lightbox-close {
@@ -980,18 +1470,23 @@ const handleAddToCart = async () => {
   width: 44px;
   height: 44px;
   border-radius: 50%;
-  background: rgba(255,255,255,0.15);
-  border: none;
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
   color: #fff;
   font-size: 20px;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background 0.2s;
-}
+  transition: all 0.2s;
+  z-index: 10;
 
-.lightbox-close:hover { background: rgba(255,255,255,0.3); }
+  &:hover {
+    background: rgba(255, 255, 255, 0.25);
+    transform: scale(1.1) rotate(90deg);
+  }
+}
 
 .lightbox-nav {
   position: absolute;
@@ -1000,53 +1495,62 @@ const handleAddToCart = async () => {
   width: 52px;
   height: 52px;
   border-radius: 50%;
-  background: rgba(255,255,255,0.15);
-  border: none;
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
   color: #fff;
   font-size: 28px;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background 0.2s;
+  transition: all 0.2s;
+  z-index: 10;
+
+  &:hover {
+    background: var(--primary);
+    border-color: var(--primary);
+    transform: translateY(-50%) scale(1.1);
+    box-shadow: 0 0 30px rgba(139, 92, 246, 0.5);
+  }
 }
 
-.lightbox-nav:hover { background: rgba(255,255,255,0.3); }
 .lightbox-prev { left: 20px; }
 .lightbox-next { right: 20px; }
 
 .lightbox-counter {
   position: absolute;
-  bottom: 50px;
+  bottom: 24px;
   left: 50%;
   transform: translateX(-50%);
-  background: rgba(0,0,0,0.6);
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(8px);
   color: #fff;
   padding: 6px 16px;
   border-radius: 20px;
   font-size: 14px;
+  z-index: 10;
 }
 
 .lightbox-hint {
   position: absolute;
-  bottom: 20px;
+  bottom: 60px;
   left: 50%;
   transform: translateX(-50%);
-  color: rgba(255,255,255,0.5);
+  color: rgba(255, 255, 255, 0.4);
   font-size: 12px;
+  z-index: 10;
 }
 
+// ===== Mobile Responsive =====
 @media (max-width: 640px) {
-  .nav-btn {
-    width: 32px;
-    height: 32px;
-    font-size: 18px;
+  .product-layout {
+    animation: none;
+    padding: 16px 0 24px;
   }
 
-  .main-image img { max-height: 280px; }
-
   .product-title {
-    font-size: 1.3rem;
+    font-size: 1.4rem;
   }
 
   .product-meta-row {
@@ -1071,10 +1575,8 @@ const handleAddToCart = async () => {
     padding: 12px 0;
   }
 
-  .price-section { gap: 8px; }
-
   .price {
-    font-size: 1.5rem;
+    font-size: 1.6rem;
   }
 
   .quantity-row {
@@ -1084,29 +1586,27 @@ const handleAddToCart = async () => {
   }
 
   .qty-controls {
-    gap: 16px;
+    gap: 10px;
   }
 
   .qty-btn {
     width: 44px;
     height: 44px;
-    font-size: 20px;
   }
 
   .qty-input {
-    width: 100px;
+    width: 70px;
     height: 44px;
-    font-size: var(--text-base);
+    font-size: 1rem;
   }
 
   .stock-count {
-    font-size: var(--text-base);
-    white-space: nowrap;
-    display: inline-flex;
-    align-items: center;
+    font-size: 0.9rem;
   }
 
-  .action-buttons { flex-direction: column; }
+  .action-buttons {
+    flex-direction: column;
+  }
 
   .btn {
     width: 100%;
@@ -1126,7 +1626,6 @@ const handleAddToCart = async () => {
 
   .related-title {
     font-size: 1.1rem;
-    margin-bottom: 14px;
   }
 
   .products-grid {
