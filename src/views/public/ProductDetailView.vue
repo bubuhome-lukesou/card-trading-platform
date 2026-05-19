@@ -537,7 +537,7 @@ const handleAddToCart = async () => {
             @click="handleToggleFavorite"
           >
             <Heart class="favorite-icon" :class="{ 'icon-filled': isFavorited, 'pulse': isFavorited }" />
-            {{ favoriteLoading ? (t('common.loading') || '...') : (isFavorited ? (locale === 'zh' ? '✨ 已加入我的最愛' : '✨ Saved') : (locale === 'zh' ? '♡ 加到我的最愛' : '♡ Add to Favorites')) }}
+            {{ favoriteLoading ? (t('common.loading') || '...') : (isFavorited ? (locale === 'zh' ? '✨ 已加入我的最愛' : '✨ Saved') : (locale === 'zh' ? '加到我的最愛' : 'Add to Favorites')) }}
           </button>
         </div>
       </div>
@@ -618,41 +618,79 @@ $gold-glow: rgba(251, 191, 36, 0.5);
   position: absolute;
   border-radius: 50%;
   filter: blur(80px);
-  opacity: 0.15;
-  animation: float-orb 12s ease-in-out infinite;
+  opacity: 0.18;
+  animation: float-orb 15s ease-in-out infinite;
 }
 
 .orb-1 {
-  width: 500px;
-  height: 500px;
-  background: #8b5cf6;
-  top: -150px;
-  right: -100px;
+  width: 600px;
+  height: 600px;
+  background: radial-gradient(circle at 30% 40%, #e63946 0%, #c1121f 55%, #780000 100%);
+  top: -180px;
+  right: -120px;
   animation-delay: 0s;
+  opacity: 0.2;
 }
 
 .orb-2 {
-  width: 400px;
-  height: 400px;
-  background: #ec4899;
-  bottom: -100px;
-  left: -150px;
-  animation-delay: -4s;
+  width: 480px;
+  height: 480px;
+  background: radial-gradient(circle at 70% 60%, #ffd60a 0%, #ffb703 45%, #fb8500 100%);
+  bottom: -120px;
+  left: -160px;
+  animation-delay: -5s;
+  opacity: 0.18;
 }
 
 .orb-3 {
-  width: 350px;
-  height: 350px;
-  background: #22d3ee;
-  top: 40%;
-  left: 30%;
-  animation-delay: -8s;
+  width: 420px;
+  height: 420px;
+  background: radial-gradient(circle at 50% 50%, #4895ef 0%, #3f37c9 55%, #240046 100%);
+  top: 35%;
+  left: 25%;
+  animation-delay: -10s;
+  opacity: 0.15;
 }
 
 @keyframes float-orb {
   0%, 100% { transform: translate(0, 0) scale(1); }
   33% { transform: translate(30px, -30px) scale(1.05); }
   66% { transform: translate(-20px, 20px) scale(0.95); }
+}
+
+.product-layout::before {
+  content: '';
+  position: absolute;
+  top: -80px;
+  right: -60px;
+  width: 280px;
+  height: 280px;
+  pointer-events: none;
+  z-index: 0;
+  background: radial-gradient(circle, transparent 40%, rgba(230, 57, 70, 0.15) 40%, rgba(230, 57, 70, 0.15) 46%, rgba(255, 255, 255, 0.1) 46%, rgba(255, 255, 255, 0.1) 54%, rgba(230, 57, 70, 0.15) 54%, rgba(230, 57, 70, 0.15) 60%, transparent 60%);
+  filter: blur(3px);
+  animation: rotate-pokeball 30s linear infinite;
+  opacity: 0.8;
+}
+
+.product-layout::after {
+  content: '';
+  position: absolute;
+  bottom: -60px;
+  left: -40px;
+  width: 180px;
+  height: 180px;
+  pointer-events: none;
+  z-index: 0;
+  background: radial-gradient(circle, transparent 38%, rgba(255, 214, 10, 0.12) 38%, rgba(255, 214, 10, 0.12) 44%, rgba(255, 255, 255, 0.08) 44%, rgba(255, 255, 255, 0.08) 56%, rgba(255, 214, 10, 0.12) 56%, rgba(255, 214, 10, 0.12) 62%, transparent 62%);
+  filter: blur(2px);
+  animation: rotate-pokeball 25s linear infinite reverse;
+  opacity: 0.6;
+}
+
+@keyframes rotate-pokeball {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
 // ===== Loading State =====
@@ -1055,7 +1093,7 @@ $gold-glow: rgba(251, 191, 36, 0.5);
 .price {
   font-size: 2.25rem;
   font-weight: 800;
-  background: linear-gradient(135deg, #f093fb 0%, #f5576c 50%, #fbbf24 100%);
+  background: linear-gradient(135deg, #ffd60a 0%, #ffb703 50%, #e63946 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -1264,11 +1302,13 @@ $gold-glow: rgba(251, 191, 36, 0.5);
 .btn-cart {
   background: transparent;
   color: var(--primary);
-  border: 2px solid var(--primary);
+  border: 2px solid #e63946;
   box-shadow: 0 2px 8px rgba(139, 92, 246, 0.15);
 
   &:hover:not(:disabled) {
-    background: rgba(139, 92, 246, 0.08);
+    background: rgba(230, 57, 70, 0.08);
+    border-color: #f07178;
+    color: #f07178;
     transform: translateY(-2px);
     box-shadow:
       0 6px 20px rgba(139, 92, 246, 0.25),
@@ -1300,17 +1340,17 @@ $gold-glow: rgba(251, 191, 36, 0.5);
   animation: fadeSlideUp 0.5s ease-out 0.4s both;
 
   &:hover:not(:disabled) {
-    border-color: #ec4899;
-    color: #ec4899;
-    background: rgba(236, 72, 153, 0.06);
+    border-color: #ffd60a;
+    color: #ffd60a;
+    background: rgba(255, 214, 10, 0.06);
     transform: translateY(-2px);
   }
 
   &.active {
-    border-color: #ec4899;
-    color: #ec4899;
-    background: rgba(236, 72, 153, 0.08);
-    box-shadow: 0 4px 20px rgba(236, 72, 153, 0.2);
+    border-color: #ffd60a;
+    color: #ffd60a;
+    background: rgba(255, 214, 10, 0.1);
+    box-shadow: 0 4px 20px rgba(255, 214, 10, 0.25);
   }
 
   &:disabled {
@@ -1325,8 +1365,8 @@ $gold-glow: rgba(251, 191, 36, 0.5);
   }
 
   .icon-filled {
-    fill: #ec4899;
-    filter: drop-shadow(0 0 6px rgba(236, 72, 153, 0.6));
+    fill: #ffd60a;
+    filter: drop-shadow(0 0 8px rgba(255, 214, 10, 0.8));
   }
 
   .pulse {
@@ -1335,8 +1375,8 @@ $gold-glow: rgba(251, 191, 36, 0.5);
 }
 
 @keyframes heartPulse {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.2); }
+  0%, 100% { transform: scale(1); filter: drop-shadow(0 0 6px rgba(255, 214, 10, 0.6)); }
+  50% { transform: scale(1.2); filter: drop-shadow(0 0 12px rgba(255, 214, 10, 1)); }
 }
 
 // ===== Related Section =====
