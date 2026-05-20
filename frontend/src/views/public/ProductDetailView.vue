@@ -522,6 +522,10 @@ const handleAddToCart = async () => {
 </template>
 
 <style scoped lang="scss">
+// ============================================
+// Product Detail - Premium Background Design
+// ============================================
+
 .spinner {
   animation: spin 1s linear infinite;
   width: 24px;
@@ -543,20 +547,92 @@ const handleAddToCart = async () => {
   color: var(--text-secondary);
 }
 
+// ════════════════════════════════════════════
+// 🎴 Background Layer — immersive card theme
+// ════════════════════════════════════════════
+.product-detail {
+  position: relative;
+  min-height: 100vh;
+
+  // Deep space gradient base
+  background:
+    radial-gradient(ellipse 80% 60% at 20% 0%, rgba(102, 126, 234, 0.15) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 50% at 80% 100%, rgba(255, 107, 157, 0.1) 0%, transparent 55%),
+    linear-gradient(160deg, #0d0d1a 0%, #111128 40%, #0f0f1a 100%);
+
+  // Subtle card-pattern overlay
+  background-image:
+    radial-gradient(ellipse 80% 60% at 20% 0%, rgba(102, 126, 234, 0.15) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 50% at 80% 100%, rgba(255, 107, 157, 0.1) 0%, transparent 55%),
+    linear-gradient(160deg, #0d0d1a 0%, #111128 40%, #0f0f1a 100%),
+    url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%236474b4' fill-opacity='0.03'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+
+  // Ambient glow behind main content
+  &::before {
+    content: '';
+    position: fixed;
+    top: 10%;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 900px;
+    height: 600px;
+    background: radial-gradient(ellipse, rgba(102, 126, 234, 0.08) 0%, transparent 70%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  // Floating card suit decorations (♠ ♥ ♦ ♣)
+  &::after {
+    content: '♠ ♥ ♦ ♣ ♠ ♥ ♦ ♣ ♠ ♥ ♦ ♣';
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    font-size: 80px;
+    line-height: 1;
+    letter-spacing: 60px;
+    color: rgba(102, 126, 234, 0.04);
+    pointer-events: none;
+    z-index: 0;
+    overflow: hidden;
+    height: 200px;
+  }
+}
+
+.container {
+  position: relative;
+  z-index: 1;
+}
+
+// ════════════════════════════════════════════
+// Product Layout — glassmorphism card
+// ════════════════════════════════════════════
 .product-layout {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 48px;
-  padding: 24px 0;
-  overflow: hidden;
+  padding: 32px 0;
   width: 100%;
   box-sizing: border-box;
+
+  // Glass card effect for the entire layout
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 24px;
+  padding: 32px;
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
 }
 
 @media (max-width: 900px) {
   .product-layout {
     grid-template-columns: 1fr;
     gap: 24px;
+    padding: 20px;
+    border-radius: 16px;
   }
 }
 
