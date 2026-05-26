@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, computed } from 'vue'
+import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import { Heart, Loader2 } from 'lucide-vue-next'
@@ -163,7 +163,9 @@ const handleToggleFavorite = async () => {
   }
 }
 
-onMounted(async () => {
+// Load product data (shared by mount and route watcher)
+const loadProduct = async () => {
+  loading.value = true
   try {
     const [productRes, tagsRes] = await Promise.all([
       productApi.getProduct(route.params.id as string),
@@ -172,6 +174,7 @@ onMounted(async () => {
     product.value = productRes.data
     allTags.value = tagsRes.data || []
     currentImageIndex.value = 0
+    selectedQuantity.value = 1
     await checkFavorite()
     await fetchRelatedProducts()
   } catch (error) {
@@ -179,6 +182,21 @@ onMounted(async () => {
   } finally {
     loading.value = false
   }
+}
+
+// Watch for route param changes (same route, different product)
+watch(
+  () => route.params.id,
+  (newId, oldId) => {
+    if (newId && newId !== oldId) {
+      loadProduct()
+    }
+  }
+)
+
+onMounted(async () => {
+  window.addEventListener('keydown', handleKeydown)
+  await loadProduct()
 })
 
 const selectImage = (index: number) => {
@@ -240,10 +258,6 @@ const handleKeydown = (e: KeyboardEvent) => {
   if (e.key === 'ArrowRight') nextImage()
   if (e.key === 'Escape') closeLightbox()
 }
-
-onMounted(() => {
-  window.addEventListener('keydown', handleKeydown)
-})
 
 onUnmounted(() => {
   window.removeEventListener('keydown', handleKeydown)
