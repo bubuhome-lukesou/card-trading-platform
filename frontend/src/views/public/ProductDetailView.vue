@@ -589,50 +589,7 @@ const handleAddToCart = async () => {
 .product-detail {
   position: relative;
   min-height: 100vh;
-
-  // Deep space gradient base
-  background:
-    radial-gradient(ellipse 80% 60% at 20% 0%, rgba(102, 126, 234, 0.15) 0%, transparent 60%),
-    radial-gradient(ellipse 60% 50% at 80% 100%, rgba(255, 107, 157, 0.1) 0%, transparent 55%),
-    linear-gradient(160deg, #0d0d1a 0%, #111128 40%, #0f0f1a 100%);
-
-  // Subtle card-pattern overlay
-  background-image:
-    radial-gradient(ellipse 80% 60% at 20% 0%, rgba(102, 126, 234, 0.15) 0%, transparent 60%),
-    radial-gradient(ellipse 60% 50% at 80% 100%, rgba(255, 107, 157, 0.1) 0%, transparent 55%),
-    linear-gradient(160deg, #0d0d1a 0%, #111128 40%, #0f0f1a 100%),
-    url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%236474b4' fill-opacity='0.03'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
-
-  // Ambient glow behind main content
-  &::before {
-    content: '';
-    position: fixed;
-    top: 10%;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 900px;
-    height: 600px;
-    background: radial-gradient(ellipse, rgba(102, 126, 234, 0.08) 0%, transparent 70%);
-    pointer-events: none;
-    z-index: 0;
-  }
-
-  // Floating card suit decorations (♠ ♥ ♦ ♣)
-  &::after {
-    content: '♠ ♥ ♦ ♣ ♠ ♥ ♦ ♣ ♠ ♥ ♦ ♣';
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    font-size: 80px;
-    line-height: 1;
-    letter-spacing: 60px;
-    color: rgba(102, 126, 234, 0.04);
-    pointer-events: none;
-    z-index: 0;
-    overflow: hidden;
-    height: 200px;
-  }
+  background: #0d0d1a;
 }
 
 .container {
@@ -829,9 +786,6 @@ const handleAddToCart = async () => {
   color: var(--text-primary);
   line-height: 1.3;
   position: relative;
-  padding-left: 0;
-  // Anime title glow
-  text-shadow: 0 0 20px rgba(99, 102, 241, 0.3);
 }
 
 // Anime card info strip
@@ -862,10 +816,7 @@ const handleAddToCart = async () => {
 
 .meta-product-type {
   font-weight: 700;
-  background: linear-gradient(135deg, var(--primary), #a855f7);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: var(--primary);
 }
 
 .meta-condition {
