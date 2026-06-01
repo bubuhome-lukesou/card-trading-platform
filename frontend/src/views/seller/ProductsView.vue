@@ -98,6 +98,12 @@ const formData = ref({
   tags: [] as number[],
   productTypeTagId: null as number | null,
   isActive: true,
+  // Listing type
+  listingType: 'sale_only' as 'sale_only' | 'auction_only' | 'both' | 'reservation_only',
+  // Reservation fields
+  reservationSpots: 10,
+  reservationDeposit: 0,
+  reservationDeadline: '',
 })
 
 // Watch formData.productTypeTagId to sync with selectedProductTypeTags for submission
@@ -132,6 +138,10 @@ const resetForm = () => {
     tags: [],
     productTypeTagId: null,
     isActive: true,
+    listingType: 'sale_only',
+    reservationSpots: 10,
+    reservationDeposit: 0,
+    reservationDeadline: '',
   }
   imagePreviews.value = []
   pendingImageFiles.value = []
@@ -201,6 +211,10 @@ const openEditModal = async (product: any) => {
     tags: [...selectedTags.value],
     productTypeTagId: productTypeTagId || null,
     isActive: product.isActive !== false,
+    listingType: product.listingType || 'sale_only',
+    reservationSpots: product.reservationSpots || 10,
+    reservationDeposit: product.reservationDeposit || 0,
+    reservationDeadline: product.reservationDeadline || '',
   }
   showModal.value = true
 }
@@ -228,7 +242,6 @@ const handleSubmit = async () => {
     // 预设仅销售模式
     const productData = {
       ...formData.value,
-      listingType: 'sale_only',
       images: [...existingImageUrls.value, ...uploadedUrls],
       tags: selectedTags.value,
       // productTypeTags as array
@@ -618,6 +631,44 @@ onUnmounted(() => {
                 </option>
               </select>
             </div>
+
+            <!-- Listing Type -->
+            <div class="form-group">
+              <label>销售模式</label>
+              <select v-model="formData.listingType">
+                <option value="sale_only">仅直销</option>
+                <option value="reservation_only">仅预付模式</option>
+              </select>
+            </div>
+
+            <!-- Reservation Fields (when reservation_only is selected) -->
+            <template v-if="formData.listingType === 'reservation_only'">
+              <div class="form-group">
+                <label>预付名额上限</label>
+                <input
+                  v-model.number="formData.reservationSpots"
+                  type="number"
+                  min="1"
+                  placeholder="10"
+                />
+              </div>
+              <div class="form-group">
+                <label>订金金额 (MOP)</label>
+                <input
+                  v-model.number="formData.reservationDeposit"
+                  type="number"
+                  min="0"
+                  placeholder="100"
+                />
+              </div>
+              <div class="form-group">
+                <label>截止预付日期</label>
+                <input
+                  v-model="formData.reservationDeadline"
+                  type="datetime-local"
+                />
+              </div>
+            </template>
 
             <!-- 商品種類（Tag type=product_type） -->
             <div class="form-group">

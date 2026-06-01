@@ -32,7 +32,20 @@ export interface Tag {
 export type ProductCategory = 'pokemon' | 'yugioh' | 'mtg' | 'ultraman' | 'onepiece' | 'other'
 export type ProductCondition = 'S' | 'A' | 'B' | 'C' | 'D'
 export type ProductStatus = 'draft' | 'active' | 'sold' | 'removed'
-export type ListingType = 'sale_only' | 'auction' | 'both'
+export type ListingType = 'sale_only' | 'auction' | 'both' | 'reservation_only'
+
+// Reservation types
+export interface Reservation {
+  id: string
+  productId: string
+  product?: Product
+  userId: string
+  user?: User
+  status: 'pending' | 'paid' | 'cancelled'
+  depositAmount: number
+  createdAt: string
+  updatedAt: string
+}
 
 export interface Product {
   id: string
@@ -54,6 +67,11 @@ export interface Product {
   tags?: Tag[]
   status: ProductStatus
   listingType: ListingType
+  // Reservation fields (when listingType = 'reservation_only')
+  reservationSpots?: number        // Max spots
+  reservationDeposit?: number      // Deposit amount (MOP)
+  reservationDeadline?: string    // ISO date string for registration deadline
+  reservationCount?: number        // Current number of reservations (filled spots)
   createdAt: string
   updatedAt: string
 }

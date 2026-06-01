@@ -3,7 +3,9 @@ import { Product } from './product.entity';
 export declare enum OrderType {
     DIRECT_PURCHASE = "direct_purchase",
     BUY_NOW = "buy_now",
-    AUCTION_WIN = "auction_win"
+    AUCTION_WIN = "auction_win",
+    RESERVATION_DEPOSIT = "reservation_deposit",
+    RESERVATION_FULL = "reservation_full"
 }
 export declare enum OrderStatus {
     PENDING = "pending",

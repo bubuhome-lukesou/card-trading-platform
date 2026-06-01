@@ -46,7 +46,8 @@ export enum ProductCondition {
 export enum ListingType {
   BOTH = 'both',
   SALE_ONLY = 'sale_only',
-  AUCTION_ONLY = 'auction_only'
+  AUCTION_ONLY = 'auction_only',
+  RESERVATION_ONLY = 'reservation_only'
 }
 
 export enum ProductStatus {
@@ -113,6 +114,15 @@ export class Product {
 
   @Column({ type: 'enum', enum: ListingType })
   listingType: ListingType
+
+  @Column({ name: 'reservationMax', type: 'int', nullable: true })
+  reservationMax: number | null
+
+  @Column({ name: 'reservationDeposit', type: 'decimal', precision: 10, scale: 2, nullable: true })
+  reservationDeposit: number | null
+
+  @Column({ name: 'reservationDeadline', type: 'datetime', nullable: true })
+  reservationDeadline: Date | null
 
   @Column({ type: 'enum', enum: ProductStatus, default: ProductStatus.DRAFT })
   status: ProductStatus

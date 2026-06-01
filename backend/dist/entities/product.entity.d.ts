@@ -28,7 +28,8 @@ export declare enum ProductCondition {
 export declare enum ListingType {
     BOTH = "both",
     SALE_ONLY = "sale_only",
-    AUCTION_ONLY = "auction_only"
+    AUCTION_ONLY = "auction_only",
+    RESERVATION_ONLY = "reservation_only"
 }
 export declare enum ProductStatus {
     DRAFT = "draft",
@@ -56,6 +57,9 @@ export declare class Product {
     thumbnail: string;
     cardNumber: string;
     listingType: ListingType;
+    reservationMax: number | null;
+    reservationDeposit: number | null;
+    reservationDeadline: Date | null;
     status: ProductStatus;
     isActive: boolean;
     viewCount: number;

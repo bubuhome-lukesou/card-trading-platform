@@ -46,6 +46,7 @@ var ListingType;
     ListingType["BOTH"] = "both";
     ListingType["SALE_ONLY"] = "sale_only";
     ListingType["AUCTION_ONLY"] = "auction_only";
+    ListingType["RESERVATION_ONLY"] = "reservation_only";
 })(ListingType || (exports.ListingType = ListingType = {}));
 var ProductStatus;
 (function (ProductStatus) {
@@ -131,6 +132,18 @@ __decorate([
     (0, typeorm_1.Column)({ type: 'enum', enum: ListingType }),
     __metadata("design:type", String)
 ], Product.prototype, "listingType", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'reservationMax', type: 'int', nullable: true }),
+    __metadata("design:type", Number)
+], Product.prototype, "reservationMax", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'reservationDeposit', type: 'decimal', precision: 10, scale: 2, nullable: true }),
+    __metadata("design:type", Number)
+], Product.prototype, "reservationDeposit", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'reservationDeadline', type: 'datetime', nullable: true }),
+    __metadata("design:type", Date)
+], Product.prototype, "reservationDeadline", void 0);
 __decorate([
     (0, typeorm_1.Column)({ type: 'enum', enum: ProductStatus, default: ProductStatus.DRAFT }),
     __metadata("design:type", String)

@@ -6,6 +6,7 @@ import { Heart, Loader2 } from 'lucide-vue-next'
 import { productApi } from '@/api/products'
 import { cartApi } from '@/api/cart'
 import { favoritesApi } from '@/api/favorites'
+import { reservationApi } from '@/api/reservations'
 import { useAuthStore } from '@/stores/auth'
 import { tagApi } from '@/api/tags'
 import ProductCard from '@/components/product/ProductCard.vue'
@@ -281,6 +282,12 @@ const isOutOfStock = () => {
   return product.value && (product.value.quantity === 0 || product.value.quantity === undefined)
 }
 
+const formatDate = (dateStr: string) => {
+  if (!dateStr) return ''
+  const d = new Date(dateStr)
+  return d.toLocaleDateString('zh-TW', { year: 'numeric', month: 'numeric', day: 'numeric' })
+}
+
 const getMaxQuantity = () => {
   return product.value?.quantity ?? 1
 }
@@ -372,6 +379,54 @@ const handleAddToCart = async () => {
     processing.value = false
   }
 }
+
+// Handle reservation (for reservation_only listing type)
+const handleReserve = async () => {
+  if (!authStore.isAuthenticated) {
+    router.push('/login')
+    return
+  }
+  if (!product.value) return
+
+  processing.value = true
+  message.value = ''
+  try {
+    await reservationApi.createReservation({ productId: product.value.id })
+    message.value = locale.value === 'zh' ? '預約成功！' : 'Reservation successful!'
+    messageType.value = 'success'
+    // Reload product to get updated reservation count
+    await loadProduct()
+  } catch (error: any) {
+    message.value = error?.response?.data?.message || (t('common.error') || '操作失敗')
+    messageType.value = 'error'
+  } finally {
+    processing.value = false
+  }
+}
+
+// Check if reservation is still open (deadline not passed and spots available)
+const isReservationOpen = computed(() => {
+  if (!product.value || product.value.listingType !== 'reservation_only') return false
+  if (product.value.reservationDeadline) {
+    const deadline = new Date(product.value.reservationDeadline)
+    if (new Date() > deadline) return false
+  }
+  if (product.value.reservationSpots && product.value.reservationCount !== undefined) {
+    if (product.value.reservationCount >= product.value.reservationSpots) return false
+  }
+  return true
+})
+
+// Display text for reservation spots
+const reservationDisplayText = computed(() => {
+  if (!product.value) return ''
+  const spots = product.value.reservationSpots || 0
+  const count = product.value.reservationCount || 0
+  return `${count}/${spots}`
+})
+
+// Whether the current user has already made a reservation (simplified - always false for now)
+const hasReserved = computed(() => false)
 </script>
 
 <template>
@@ -495,23 +550,52 @@ const handleAddToCart = async () => {
             {{ message }}
           </div>
 
-          <!-- 立即購買 + 加到購物車 -->
-          <div class="action-buttons">
-            <button
-              class="btn btn-primary btn-lg"
-              :disabled="processing || isOutOfStock()"
-              @click="handleBuyNow"
-            >
-              {{ processing ? (t('common.loading') || '處理中...') : (locale === 'zh' ? '立即購買' : 'Buy Now') }}
-            </button>
-            <button
-              class="btn btn-outline"
-              :disabled="processing || isOutOfStock()"
-              @click="handleAddToCart"
-            >
-              {{ locale === 'zh' ? '加到購物車' : 'Add to Cart' }}
-            </button>
-          </div>
+          <!-- 預約模式 UI -->
+          <template v-if="product && product.listingType === 'reservation_only'">
+            <div class="reservation-info">
+              <div class="reservation-item">
+                <span class="reservation-label">{{ locale === 'zh' ? '預約名額' : 'Spots' }}</span>
+                <span class="reservation-value">{{ reservationDisplayText }}</span>
+              </div>
+              <div class="reservation-item" v-if="product.reservationDeposit">
+                <span class="reservation-label">{{ locale === 'zh' ? '訂金' : 'Deposit' }}</span>
+                <span class="reservation-value">MOP ${{ product.reservationDeposit }}</span>
+              </div>
+              <div class="reservation-item" v-if="product.reservationDeadline">
+                <span class="reservation-label">{{ locale === 'zh' ? '截止報名' : 'Deadline' }}</span>
+                <span class="reservation-value">{{ formatDate(product.reservationDeadline) }}</span>
+              </div>
+            </div>
+            <div class="action-buttons">
+              <button
+                class="btn btn-primary btn-lg"
+                :disabled="processing || !isReservationOpen"
+                @click="handleReserve"
+              >
+                {{ processing ? (t('common.loading') || '處理中...') : (locale === 'zh' ? '立即預約' : 'Reserve Now') }}
+              </button>
+            </div>
+          </template>
+
+          <!-- 一般購買 UI -->
+          <template v-else>
+            <div class="action-buttons">
+              <button
+                class="btn btn-primary btn-lg"
+                :disabled="processing || isOutOfStock()"
+                @click="handleBuyNow"
+              >
+                {{ processing ? (t('common.loading') || '處理中...') : (locale === 'zh' ? '立即購買' : 'Buy Now') }}
+              </button>
+              <button
+                class="btn btn-outline"
+                :disabled="processing || isOutOfStock()"
+                @click="handleAddToCart"
+              >
+                {{ locale === 'zh' ? '加到購物車' : 'Add to Cart' }}
+              </button>
+            </div>
+          </template>
 
           <!-- 加到我的最愛 -->
           <button
@@ -957,6 +1041,33 @@ const handleAddToCart = async () => {
 
 .out-of-stock-text {
   color: var(--danger);
+  font-weight: 600;
+}
+
+/* Reservation info */
+.reservation-info {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 8px;
+  margin: 16px 0;
+}
+
+.reservation-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.9rem;
+}
+
+.reservation-label {
+  color: var(--text-secondary);
+}
+
+.reservation-value {
+  color: var(--text-primary);
   font-weight: 600;
 }
 

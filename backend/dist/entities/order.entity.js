@@ -18,6 +18,8 @@ var OrderType;
     OrderType["DIRECT_PURCHASE"] = "direct_purchase";
     OrderType["BUY_NOW"] = "buy_now";
     OrderType["AUCTION_WIN"] = "auction_win";
+    OrderType["RESERVATION_DEPOSIT"] = "reservation_deposit";
+    OrderType["RESERVATION_FULL"] = "reservation_full";
 })(OrderType || (exports.OrderType = OrderType = {}));
 var OrderStatus;
 (function (OrderStatus) {
