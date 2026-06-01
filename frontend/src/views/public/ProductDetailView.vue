@@ -35,15 +35,28 @@ const touchEndX = ref(0)
 
 // Category emoji & labels
 const categoryInfo = computed(() => ({
-  pokemon: { emoji: '🎮', zh: '寶可夢', en: 'Pokemon' },
-  yugioh: { emoji: '⚡', zh: '遊戲王', en: 'Yu-Gi-Oh!' },
-  mtg: { emoji: '🧙', zh: '萬智牌', en: 'Magic: The Gathering' },
-  ultraman: { emoji: '👾', zh: '奧特曼', en: 'Ultraman' },
-  onepiece: { emoji: '🏴‍☠️', zh: '海賊王', en: 'One Piece' },
-  doraemon: { emoji: '🤖', zh: '哆啦A夢', en: 'Doraemon' },
-  sports: { emoji: '⚽', zh: '體育卡', en: 'Sports Cards' },
-  other: { emoji: '📦', zh: '其他', en: 'Other' }
+  pokemon: { emoji: '🎮', zh: '寶可夢', en: 'Pokemon', color: '#e74c3c' },
+  yugioh: { emoji: '⚡', zh: '遊戲王', en: 'Yu-Gi-Oh!', color: '#f39c12' },
+  mtg: { emoji: '🧙', zh: '萬智牌', en: 'Magic: The Gathering', color: '#1abc9c' },
+  ultraman: { emoji: '👾', zh: '奧特曼', en: 'Ultraman', color: '#3498db' },
+  onepiece: { emoji: '🏴‍☠️', zh: '海賊王', en: 'One Piece', color: '#e74c3c' },
+  doraemon: { emoji: '🤖', zh: '哆啦A夢', en: 'Doraemon', color: '#2196f3' },
+  sports: { emoji: '⚽', zh: '體育卡', en: 'Sports Cards', color: '#27ae60' },
+  other: { emoji: '📦', zh: '其他', en: 'Other', color: '#9b59b6' }
 }))
+
+const categoryColor = computed(() => {
+  const info = categoryInfo.value[product.value?.category as keyof typeof categoryInfo.value]
+  return info?.color || '#6366f1'
+})
+
+const conditionColor = computed(() => ({
+  'S': '#22c55e',
+  'A': '#84cc16',
+  'B': '#eab308',
+  'C': '#f97316',
+  'D': '#ef4444'
+} as Record<string, string>)[product.value?.condition as string] || '#6366f1')
 
 // Get title based on locale
 const getTitle = (product: any) => {
@@ -371,17 +384,25 @@ const handleAddToCart = async () => {
       <div v-else-if="product" class="product-layout">
         <!-- Images -->
         <div class="product-images">
+          <!-- Vintage Card Display — no frame, just aged card presentation -->
           <div
-            class="main-image"
+            class="vintage-card"
+            :style="{ '--cat-color': categoryColor }"
             @touchstart="onTouchStart"
             @touchend="onTouchEnd"
           >
+            <!-- Category badge -->
+            <div class="category-badge">
+              <span class="cat-emoji">{{ getCategoryInfo(product.category).emoji }}</span>
+              <span class="cat-name">{{ getCategoryLabel(product.category) }}</span>
+            </div>
+
             <button v-if="product.images?.length > 1" class="nav-btn nav-prev" @click.stop="prevImage">‹</button>
-            <img 
-              :src="product.images?.[currentImageIndex] || '/placeholder-card.png'" 
-              :alt="getTitle(product)" 
-              @click="openLightbox" 
-              style="cursor: zoom-in;" 
+            <img
+              :src="product.images?.[currentImageIndex] || '/placeholder-card.png'"
+              :alt="getTitle(product)"
+              @click="openLightbox"
+              style="cursor: zoom-in;"
             />
             <button v-if="product.images?.length > 1" class="nav-btn nav-next" @click.stop="nextImage">›</button>
             <div v-if="product.images?.length > 1" class="image-counter">{{ currentImageIndex + 1 }} / {{ product.images.length }}</div>
@@ -394,6 +415,7 @@ const handleAddToCart = async () => {
               {{ locale === 'zh' ? '點擊放大' : 'Click to zoom' }}
             </div>
           </div>
+
           <div v-if="product.images?.length > 1" class="thumbnail-list">
             <img
               v-for="(img, idx) in product.images"
@@ -628,50 +650,78 @@ const handleAddToCart = async () => {
   padding: 32px 0;
   width: 100%;
   box-sizing: border-box;
-
-  // Glass card effect for the entire layout
-  background: rgba(255, 255, 255, 0.03);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 24px;
-  padding: 32px;
-  box-shadow:
-    0 8px 32px rgba(0, 0, 0, 0.4),
-    inset 0 1px 0 rgba(255, 255, 255, 0.06);
 }
 
 @media (max-width: 900px) {
   .product-layout {
     grid-template-columns: 1fr;
     gap: 24px;
-    padding: 20px;
-    border-radius: 16px;
+    padding: 0;
   }
 }
 
+// ════════════════════════════════════════════
+// 🎴 Product Images — Vintage Card Style
+// ════════════════════════════════════════════
 .product-images {
   display: flex;
   flex-direction: column;
   gap: 16px;
   width: 100%;
+  position: relative;
 }
 
-.main-image {
+// Vintage card — clean display with no border
+.vintage-card {
   position: relative;
-  overflow: hidden;
-  border-radius: var(--radius-xl);
-  background: var(--bg-dark);
+  background: #0e0c0a;
+  border-radius: 8px;
+  padding: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 100%;
+  min-height: 300px;
+
+  img {
+    max-width: 100%;
+    max-height: 520px;
+    object-fit: contain;
+    display: block;
+    border-radius: 6px;
+  }
 }
 
-.main-image img {
-  max-width: 100%;
-  max-height: 500px;
-  object-fit: contain;
+// Floating category badge — vintage leather tag style
+.category-badge {
+  position: absolute;
+  top: 24px;
+  left: 24px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: linear-gradient(135deg, #3d2b1f 0%, #2a1f16 100%);
+  border: 1px solid rgba(210,180,140,0.3);
+  border-radius: 8px;
+  padding: 8px 14px 8px 10px;
+  z-index: 10;
+  box-shadow:
+    0 2px 8px rgba(0,0,0,0.5),
+    inset 0 1px 0 rgba(255,255,255,0.08);
+  backdrop-filter: blur(8px);
+
+  .cat-emoji {
+    font-size: 1.3rem;
+    line-height: 1;
+    filter: drop-shadow(0 1px 2px rgba(0,0,0,0.5));
+  }
+
+  .cat-name {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: #d4b896;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
 }
 
 .zoom-hint {
@@ -690,6 +740,9 @@ const handleAddToCart = async () => {
 
 @media (max-width: 640px) {
   .zoom-hint { display: none; }
+  .category-badge { top: 16px; left: 16px; }
+  .vintage-card { padding: 14px; }
+  .vintage-card img { max-height: 320px; }
 }
 
 .nav-btn {
@@ -699,19 +752,23 @@ const handleAddToCart = async () => {
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  background: rgba(0, 0, 0, 0.6);
-  color: white;
-  border: none;
+  background: linear-gradient(135deg, rgba(61,43,31,0.9) 0%, rgba(42,31,22,0.9) 100%);
+  color: #d4b896;
+  border: 1px solid rgba(210,180,140,0.2);
   font-size: 24px;
   cursor: pointer;
   z-index: 10;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background 0.2s;
+  transition: all 0.2s;
+
+  &:hover {
+    background: linear-gradient(135deg, rgba(80,60,40,0.95) 0%, rgba(60,45,30,0.95) 100%);
+    border-color: rgba(210,180,140,0.4);
+  }
 }
 
-.nav-btn:hover { background: rgba(0, 0, 0, 0.8); }
 .nav-prev { left: 12px; }
 .nav-next { right: 12px; }
 
@@ -720,11 +777,12 @@ const handleAddToCart = async () => {
   bottom: 48px;
   left: 50%;
   transform: translateX(-50%);
-  background: rgba(0, 0, 0, 0.6);
-  color: white;
-  padding: 4px 12px;
-  border-radius: var(--radius-full);
-  font-size: var(--text-xs);
+  background: rgba(42,31,22,0.85);
+  color: #d4b896;
+  padding: 4px 14px;
+  border-radius: 20px;
+  font-size: 12px;
+  border: 1px solid rgba(210,180,140,0.15);
 }
 
 .thumbnail-list {
@@ -732,21 +790,32 @@ const handleAddToCart = async () => {
   gap: 12px;
   overflow-x: auto;
   padding: 4px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(210,180,140,0.2) transparent;
 }
 
 .thumbnail {
   width: 72px;
   height: 72px;
   object-fit: cover;
-  border-radius: var(--radius-md);
-  border: 2px solid transparent;
+  border-radius: 6px;
+  border: 2px solid rgba(210,180,140,0.15);
   cursor: pointer;
-  transition: border-color 0.2s, opacity 0.2s;
+  transition: all 0.2s;
   flex-shrink: 0;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.3);
 }
 
-.thumbnail:hover { opacity: 0.8; }
-.thumbnail.active { border-color: var(--primary); }
+.thumbnail:hover {
+  opacity: 0.8;
+  transform: translateY(-2px);
+  border-color: rgba(210,180,140,0.3);
+}
+
+.thumbnail.active {
+  border-color: #d4b896;
+  box-shadow: 0 0 12px rgba(212,184,150,0.4);
+}
 
 .product-info {
   display: flex;
@@ -756,45 +825,55 @@ const handleAddToCart = async () => {
 
 .product-title {
   font-size: 1.75rem;
-  font-weight: 700;
+  font-weight: 800;
   color: var(--text-primary);
   line-height: 1.3;
+  position: relative;
+  padding-left: 0;
+  // Anime title glow
+  text-shadow: 0 0 20px rgba(99, 102, 241, 0.3);
 }
 
-/* 新 meta row: 類別emoji 類別名稱 · 商品種類 · 品相 */
+// Anime card info strip
 .product-meta-row {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
-  font-size: 0.9rem;
-  color: var(--text-secondary);
+  gap: 10px;
+  font-size: 0.85rem;
 }
 
 .meta-emoji {
-  font-size: 1.1rem;
+  font-size: 1.2rem;
+  filter: drop-shadow(0 0 4px rgba(255,255,255,0.3));
 }
 
 .meta-category {
-  font-weight: 500;
+  font-weight: 600;
   color: var(--text-primary);
+  letter-spacing: 0.01em;
 }
 
 .meta-sep {
   color: var(--text-secondary);
-  opacity: 0.5;
+  opacity: 0.4;
+  font-size: 0.75rem;
 }
 
 .meta-product-type {
-  font-weight: 600;
-  color: var(--primary);
+  font-weight: 700;
+  background: linear-gradient(135deg, var(--primary), #a855f7);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
 .meta-condition {
   color: var(--text-secondary);
+  font-size: 0.8rem;
 }
 
-/* 標簽 */
+/* 標簽 — anime badge style */
 .product-tags {
   display: flex;
   flex-wrap: wrap;
@@ -807,18 +886,57 @@ const handleAddToCart = async () => {
   gap: 6px;
   padding: 6px 12px;
   border-radius: var(--radius-full);
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   border: 1px solid;
   cursor: pointer;
-  transition: opacity 0.2s;
-}
+  transition: all 0.2s;
+  font-weight: 500;
+  letter-spacing: 0.02em;
 
-.product-tag:hover { opacity: 0.8; }
+  &:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    opacity: 0.9;
+  }
+}
 
 .tag-dot {
   width: 8px;
   height: 8px;
   border-radius: 50%;
+  flex-shrink: 0;
+}
+
+// ════════════════════════════════════════════
+// 💰 Price Section — Vintage Gold Bar Style
+// ════════════════════════════════════════════
+.price-section {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  background: transparent !important;
+  padding: 0;
+  border-radius: 0;
+  border: none;
+  box-shadow: none;
+}
+
+.price {
+  font-size: 2.1rem;
+  font-weight: 800;
+  color: #d4b896;
+  text-shadow: 0 0 20px rgba(212,184,150,0.3);
+  position: relative;
+  z-index: 1;
+  letter-spacing: -0.01em;
+}
+
+.price-unit {
+  font-size: 0.9rem;
+  color: #8a7a6a;
+  font-weight: 500;
+  position: relative;
+  z-index: 1;
 }
 
 /* 商品描述 */
@@ -836,19 +954,6 @@ const handleAddToCart = async () => {
 }
 
 /* MOP 200 價格 */
-.price-section {
-  display: flex;
-  align-items: baseline;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-
-.price {
-  font-size: 2rem;
-  font-weight: 700;
-  color: var(--primary);
-  font-family: var(--font-num);
-}
 
 /* 數量 + 庫存 row */
 .quantity-row {
