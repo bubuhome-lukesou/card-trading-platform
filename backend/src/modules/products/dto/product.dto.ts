@@ -178,6 +178,23 @@ export class CreateProductDto {
   @IsArray()
   @IsNumber({}, { each: true })
   productTypeTags?: number[]
+
+  // Reservation fields
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(1)
+  reservationMax?: number
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  reservationDeposit?: number
+
+  @IsOptional()
+  @IsString()
+  reservationDeadline?: string
 }
 
 export class UpdateProductDto {
@@ -284,4 +301,21 @@ export class UpdateProductDto {
   @IsArray()
   @IsNumber({}, { each: true })
   productTypeTags?: number[]
+
+  // Reservation fields
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(1)
+  reservationMax?: number
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  reservationDeposit?: number
+
+  @IsOptional()
+  @IsString()
+  reservationDeadline?: string
 }

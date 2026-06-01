@@ -101,7 +101,7 @@ const formData = ref({
   // Listing type
   listingType: 'sale_only' as 'sale_only' | 'auction_only' | 'both' | 'reservation_only',
   // Reservation fields
-  reservationSpots: 10,
+  reservationMax: 10,
   reservationDeposit: 0,
   reservationDeadline: '',
 })
@@ -139,7 +139,7 @@ const resetForm = () => {
     productTypeTagId: null,
     isActive: true,
     listingType: 'sale_only',
-    reservationSpots: 10,
+    reservationMax: 10,
     reservationDeposit: 0,
     reservationDeadline: '',
   }
@@ -212,7 +212,7 @@ const openEditModal = async (product: any) => {
     productTypeTagId: productTypeTagId || null,
     isActive: product.isActive !== false,
     listingType: product.listingType || 'sale_only',
-    reservationSpots: product.reservationSpots || 10,
+    reservationMax: product.reservationMax || 10,
     reservationDeposit: product.reservationDeposit || 0,
     reservationDeadline: product.reservationDeadline || '',
   }
@@ -646,7 +646,7 @@ onUnmounted(() => {
               <div class="form-group">
                 <label>预付名额上限</label>
                 <input
-                  v-model.number="formData.reservationSpots"
+                  v-model.number="formData.reservationMax"
                   type="number"
                   min="1"
                   placeholder="10"

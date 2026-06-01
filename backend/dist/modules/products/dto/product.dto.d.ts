@@ -37,6 +37,9 @@ export declare class CreateProductDto {
     tags?: number[];
     isActive?: boolean;
     productTypeTags?: number[];
+    reservationMax?: number;
+    reservationDeposit?: number;
+    reservationDeadline?: string;
 }
 export declare class UpdateProductDto {
     category?: ProductCategory;
@@ -61,4 +64,7 @@ export declare class UpdateProductDto {
     isActive?: boolean;
     tags?: number[];
     productTypeTags?: number[];
+    reservationMax?: number;
+    reservationDeposit?: number;
+    reservationDeadline?: string;
 }
