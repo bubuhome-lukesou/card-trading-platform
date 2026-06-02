@@ -2,7 +2,7 @@
 import { ref, onMounted, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { RouterLink } from 'vue-router'
-import { ArrowRight, Zap, Clock, Star, Heart, ShoppingCart, Gavel } from 'lucide-vue-next'
+import { ArrowRight, Zap, Clock, Star, Heart, ShoppingCart, Gavel, Calendar } from 'lucide-vue-next'
 import { auctionApi } from '@/api/auctions'
 import { productApi } from '@/api/products'
 import { tagApi } from '@/api/tags'
@@ -121,6 +121,18 @@ const getCategoryName = (category: string | null | undefined) => {
   if (!category) return ''
   const cat = categories.find(c => c.id === category)
   return cat ? t(cat.name) : category
+}
+
+const getListingBadgeClass = (listingType: string) => {
+  if (listingType === 'auction') return 'is-auction'
+  if (listingType === 'reservation_only') return 'is-reservation'
+  return 'is-sale'
+}
+
+const getListingBadgeText = (listingType: string) => {
+  if (listingType === 'auction') return 'Bid'
+  if (listingType === 'reservation_only') return 'Reserve'
+  return 'Sale'
 }
 
 const fetchNewListings = async () => {
@@ -296,11 +308,12 @@ onMounted(() => {
                 </button>
               </div>
 
-              <!-- Sale/Bid badge (top right) -->
-              <span class="listing-badge" :class="item.listingType === 'auction' ? 'is-auction' : 'is-sale'">
+              <!-- Sale/Bid/Reservation badge (top right) -->
+              <span class="listing-badge" :class="getListingBadgeClass(item.listingType)">
                 <Gavel v-if="item.listingType === 'auction'" class="badge-icon" />
+                <Calendar v-else-if="item.listingType === 'reservation_only'" class="badge-icon" />
                 <ShoppingCart v-else class="badge-icon" />
-                {{ item.listingType === 'auction' ? 'Bid' : 'Sale' }}
+                {{ getListingBadgeText(item.listingType) }}
               </span>
             </div>
 
@@ -770,6 +783,11 @@ onMounted(() => {
 
   &.is-sale {
     background: var(--accent-gradient, linear-gradient(135deg, #8b5cf6, #6d28d9));
+    color: white;
+  }
+
+  &.is-reservation {
+    background: linear-gradient(135deg, #f59e0b, #d97706);
     color: white;
   }
 }

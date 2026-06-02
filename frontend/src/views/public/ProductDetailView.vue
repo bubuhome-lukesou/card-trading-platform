@@ -282,9 +282,18 @@ const isOutOfStock = () => {
   return product.value && (product.value.quantity === 0 || product.value.quantity === undefined)
 }
 
-const formatDate = (dateStr: string) => {
+const formatDate = (dateStr: string, showTime = false) => {
   if (!dateStr) return ''
   const d = new Date(dateStr)
+  if (showTime) {
+    return d.toLocaleString('zh-TW', {
+      year: 'numeric',
+      month: 'numeric',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    })
+  }
   return d.toLocaleDateString('zh-TW', { year: 'numeric', month: 'numeric', day: 'numeric' })
 }
 
@@ -411,8 +420,8 @@ const isReservationOpen = computed(() => {
     const deadline = new Date(product.value.reservationDeadline)
     if (new Date() > deadline) return false
   }
-  if (product.value.reservationSpots && product.value.reservationCount !== undefined) {
-    if (product.value.reservationCount >= product.value.reservationSpots) return false
+  if (product.value.reservationMax && product.value.reservationCount !== undefined) {
+    if (product.value.reservationCount >= product.value.reservationMax) return false
   }
   return true
 })
@@ -420,7 +429,7 @@ const isReservationOpen = computed(() => {
 // Display text for reservation spots
 const reservationDisplayText = computed(() => {
   if (!product.value) return ''
-  const spots = product.value.reservationSpots || 0
+  const spots = product.value.reservationMax || 0
   const count = product.value.reservationCount || 0
   return `${count}/${spots}`
 })
@@ -563,7 +572,7 @@ const hasReserved = computed(() => false)
               </div>
               <div class="reservation-item" v-if="product.reservationDeadline">
                 <span class="reservation-label">{{ locale === 'zh' ? '截止報名' : 'Deadline' }}</span>
-                <span class="reservation-value">{{ formatDate(product.reservationDeadline) }}</span>
+                <span class="reservation-value">{{ formatDate(product.reservationDeadline, true) }}</span>
               </div>
             </div>
             <div class="action-buttons">

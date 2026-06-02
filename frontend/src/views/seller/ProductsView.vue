@@ -425,7 +425,8 @@ const createNewTag = async () => {
 const loadTags = async () => {
   try {
     const response = await tagApi.getTags()
-    availableTags.value = response.data || []
+    // Filter out product_type tags - those are shown in the dedicated 商品種類 dropdown
+    availableTags.value = (response.data || []).filter((t: any) => t.type !== 'product_type')
   } catch (error) {
     console.error('Failed to load tags:', error)
   }
@@ -534,6 +535,9 @@ onUnmounted(() => {
           <span v-else class="category-emoji">{{ getCategoryEmoji(product.category) }}</span>
           <span class="status-badge" :class="getStatusBadge(product.status).class">
             {{ getStatusBadge(product.status).text }}
+          </span>
+          <span v-if="product.listingType === 'reservation_only'" class="listing-type-badge reservation">
+            📅 預約
           </span>
         </div>
         
@@ -823,7 +827,7 @@ onUnmounted(() => {
             <button type="button" @click="showModal = false" class="btn-cancel">
               取消
             </button>
-            <button type="submit" class="btn-submit" :disabled="loading">
+            <button type="button" class="btn-submit" :disabled="loading" @click.prevent="handleSubmit">
               {{ loading ? '保存中...' : (editingProduct ? '保存修改' : '发布商品') }}
             </button>
           </div>
@@ -1003,6 +1007,21 @@ onUnmounted(() => {
 .status-badge.removed {
   background: #ef4444;
   color: white;
+}
+
+.listing-type-badge {
+  position: absolute;
+  top: var(--space-3);
+  right: var(--space-3);
+  padding: 2px 8px;
+  border-radius: var(--space-1);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: white;
+}
+
+.listing-type-badge.reservation {
+  background: #f59e0b;
 }
 
 .product-info {

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { RouterLink } from 'vue-router'
-import { Heart, ShoppingCart, Gavel } from 'lucide-vue-next'
+import { Heart, ShoppingCart, Gavel, Calendar } from 'lucide-vue-next'
 import type { Product, Tag } from '@/types'
 import { useFavoritesStore } from '@/stores/favorites'
 import { tagApi } from '@/api/tags'
@@ -54,6 +54,19 @@ const handleToggleFavorite = (e: Event) => {
   e.stopPropagation()
   favoritesStore.toggleFavorite(props.product.id)
 }
+
+// Shared listing badge computed (reused across ProductCard, HomeView, etc.)
+const listingBadgeClass = computed(() => {
+  if (props.product.listingType === 'auction') return 'is-auction'
+  if (props.product.listingType === 'reservation_only') return 'is-reservation'
+  return 'is-sale'
+})
+
+const listingBadgeText = computed(() => {
+  if (props.product.listingType === 'auction') return 'Bid'
+  if (props.product.listingType === 'reservation_only') return 'Reserve'
+  return 'Sale'
+})
 </script>
 
 <template>
@@ -83,11 +96,12 @@ const handleToggleFavorite = (e: Event) => {
         </button>
       </div>
 
-      <!-- Sale/Bid badge (top right) -->
-      <span class="listing-badge" :class="product.listingType === 'auction' ? 'is-auction' : 'is-sale'">
+      <!-- Sale/Bid/Reservation badge (top right) -->
+      <span class="listing-badge" :class="listingBadgeClass">
         <Gavel v-if="product.listingType === 'auction'" class="badge-icon" />
+        <Calendar v-else-if="product.listingType === 'reservation_only'" class="badge-icon" />
         <ShoppingCart v-else class="badge-icon" />
-        {{ product.listingType === 'auction' ? 'Bid' : 'Sale' }}
+        {{ listingBadgeText }}
       </span>
     </div>
 
@@ -251,6 +265,11 @@ const handleToggleFavorite = (e: Event) => {
 
   &.is-sale {
     background: var(--accent-gradient, linear-gradient(135deg, #8b5cf6, #6d28d9));
+    color: #fff;
+  }
+
+  &.is-reservation {
+    background: linear-gradient(135deg, #f59e0b, #d97706);
     color: #fff;
   }
 }
