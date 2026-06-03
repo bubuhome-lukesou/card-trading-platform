@@ -23,4 +23,8 @@ export declare class OrdersController {
         success: boolean;
         error: string;
     };
+    uploadBalanceReceipt(id: string, file: Express.Multer.File): Promise<Order> | {
+        success: boolean;
+        error: string;
+    };
 }

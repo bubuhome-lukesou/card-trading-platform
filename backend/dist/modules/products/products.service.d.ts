@@ -1,11 +1,13 @@
 import { Repository } from 'typeorm';
 import { Product } from '../../entities/product.entity';
 import { Tag } from '../../entities/tag.entity';
+import { Reservation } from '../../entities/reservation.entity';
 import { CreateProductDto, UpdateProductDto, ProductFiltersDto } from './dto/product.dto';
 export declare class ProductsService {
     private readonly productRepo;
     private readonly tagRepo;
-    constructor(productRepo: Repository<Product>, tagRepo: Repository<Tag>);
+    private readonly reservationRepo;
+    constructor(productRepo: Repository<Product>, tagRepo: Repository<Tag>, reservationRepo: Repository<Reservation>);
     findAll(filters: ProductFiltersDto): Promise<{
         data: Product[];
         meta: {

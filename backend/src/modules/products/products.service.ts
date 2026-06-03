@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm'
 import { Repository, FindOptionsWhere, ILike, Any } from 'typeorm'
 import { Product, ProductStatus } from '../../entities/product.entity'
 import { Tag } from '../../entities/tag.entity'
+import { Reservation, ReservationStatus } from '../../entities/reservation.entity'
 import { CreateProductDto, UpdateProductDto, ProductFiltersDto } from './dto/product.dto'
 
 @Injectable()
@@ -11,7 +12,9 @@ export class ProductsService {
     @InjectRepository(Product)
     private readonly productRepo: Repository<Product>,
     @InjectRepository(Tag)
-    private readonly tagRepo: Repository<Tag>
+    private readonly tagRepo: Repository<Tag>,
+    @InjectRepository(Reservation)
+    private readonly reservationRepo: Repository<Reservation>,
   ) {}
 
   async findAll(filters: ProductFiltersDto) {
@@ -132,6 +135,12 @@ export class ProductsService {
         (product as any).images = [product.images]
       }
     }
+
+    // Get reservation count (only DEPOSIT_PAID status)
+    const reservationCount = await this.reservationRepo.count({
+      where: { productId: id, status: ReservationStatus.DEPOSIT_PAID }
+    });
+    (product as any).reservationCount = reservationCount;
 
     return product
   }

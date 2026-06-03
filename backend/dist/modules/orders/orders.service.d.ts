@@ -23,5 +23,6 @@ export declare class OrdersService {
     create(data: Partial<Order>): Promise<Order>;
     confirmPayment(orderId: string): Promise<Order>;
     updateTransferReceipt(orderId: string, receiptUrl: string): Promise<Order>;
+    updateBalanceReceipt(orderId: string, receiptUrl: string): Promise<Order>;
     updateStatus(id: string, status: string): Promise<Order>;
 }

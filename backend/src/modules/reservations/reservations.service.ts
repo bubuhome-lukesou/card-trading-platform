@@ -1,8 +1,10 @@
-import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common'
+import { Injectable, NotFoundException, BadRequestException, ForbiddenException, forwardRef, Inject } from '@nestjs/common'
 import { InjectRepository } from '@nestjs/typeorm'
 import { Repository } from 'typeorm'
 import { Reservation, ReservationStatus } from '../../entities/reservation.entity'
 import { Product, ListingType } from '../../entities/product.entity'
+import { Order, OrderType, OrderStatus } from '../../entities/order.entity'
+import { OrdersService } from '../orders/orders.service'
 
 @Injectable()
 export class ReservationsService {
@@ -11,9 +13,13 @@ export class ReservationsService {
     private reservationRepo: Repository<Reservation>,
     @InjectRepository(Product)
     private productRepo: Repository<Product>,
+    @InjectRepository(Order)
+    private orderRepo: Repository<Order>,
+    @Inject(forwardRef(() => OrdersService))
+    private ordersService: OrdersService,
   ) {}
 
-  async create(productId: string, buyerId: string, depositAmount: number, expireTime: Date): Promise<Reservation> {
+  async create(productId: string, buyerId: string, depositAmount: number, expireTime: Date): Promise<{ reservation: Reservation; order: Order }> {
     // Check product exists and is reservation type
     const product = await this.productRepo.findOne({ where: { id: productId } })
     if (!product) {
@@ -41,6 +47,7 @@ export class ReservationsService {
       throw new BadRequestException('You have already made a reservation for this product')
     }
 
+    // Create reservation record
     const reservation = this.reservationRepo.create({
       productId,
       buyerId,
@@ -48,7 +55,21 @@ export class ReservationsService {
       expireTime,
       status: ReservationStatus.PENDING,
     })
-    return this.reservationRepo.save(reservation)
+    const savedReservation = await this.reservationRepo.save(reservation)
+
+    // Also create an order record for unified tracking
+    const order = await this.ordersService.create({
+      buyerId,
+      sellerId: product.sellerId,
+      productId,
+      type: OrderType.RESERVATION_DEPOSIT,
+      status: OrderStatus.PENDING,
+      totalPrice: depositAmount,
+      quantity: 1,
+      notes: `預約訂金 - 預約ID: ${savedReservation.id}`,
+    })
+
+    return { reservation: savedReservation, order }
   }
 
   async confirmDeposit(reservationId: string): Promise<Reservation> {

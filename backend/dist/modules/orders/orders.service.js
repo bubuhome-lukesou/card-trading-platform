@@ -100,6 +100,12 @@ let OrdersService = class OrdersService {
         order.status = order_entity_2.OrderStatus.PENDING_PAID;
         return this.orderRepo.save(order);
     }
+    async updateBalanceReceipt(orderId, receiptUrl) {
+        const order = await this.findOne(orderId);
+        order.balanceReceipt = receiptUrl;
+        order.balanceTime = new Date();
+        return this.orderRepo.save(order);
+    }
     async updateStatus(id, status) {
         const order = await this.findOne(id);
         order.status = status;

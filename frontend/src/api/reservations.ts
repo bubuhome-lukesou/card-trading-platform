@@ -1,18 +1,12 @@
-import api from '@/api'
-import type { Reservation } from '@/types'
+import api from './index'
 
 export const reservationApi = {
-  // Create reservation
-  createReservation(data: { productId: string }) {
-    return api.post<Reservation>('/reservations', data)
-  },
-
-  // Get my reservations
   getMyReservations() {
-    return api.get<Reservation[]>('/reservations')
+    return api.get('/reservations/my')
   },
-
-  // Cancel reservation
+  createReservation(productId: string, depositAmount?: number) {
+    return api.post('/reservations', { productId, depositAmount })
+  },
   cancelReservation(id: string) {
     return api.delete(`/reservations/${id}`)
   },

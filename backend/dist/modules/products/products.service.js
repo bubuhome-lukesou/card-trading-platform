@@ -18,10 +18,12 @@ const typeorm_1 = require("@nestjs/typeorm");
 const typeorm_2 = require("typeorm");
 const product_entity_1 = require("../../entities/product.entity");
 const tag_entity_1 = require("../../entities/tag.entity");
+const reservation_entity_1 = require("../../entities/reservation.entity");
 let ProductsService = class ProductsService {
-    constructor(productRepo, tagRepo) {
+    constructor(productRepo, tagRepo, reservationRepo) {
         this.productRepo = productRepo;
         this.tagRepo = tagRepo;
+        this.reservationRepo = reservationRepo;
     }
     async findAll(filters) {
         const queryBuilder = this.productRepo
@@ -120,6 +122,10 @@ let ProductsService = class ProductsService {
                 product.images = [product.images];
             }
         }
+        const reservationCount = await this.reservationRepo.count({
+            where: { productId: id, status: reservation_entity_1.ReservationStatus.DEPOSIT_PAID }
+        });
+        product.reservationCount = reservationCount;
         return product;
     }
     async create(dto, userId) {
@@ -236,7 +242,9 @@ exports.ProductsService = ProductsService = __decorate([
     (0, common_1.Injectable)(),
     __param(0, (0, typeorm_1.InjectRepository)(product_entity_1.Product)),
     __param(1, (0, typeorm_1.InjectRepository)(tag_entity_1.Tag)),
+    __param(2, (0, typeorm_1.InjectRepository)(reservation_entity_1.Reservation)),
     __metadata("design:paramtypes", [typeorm_2.Repository,
+        typeorm_2.Repository,
         typeorm_2.Repository])
 ], ProductsService);
 //# sourceMappingURL=products.service.js.map

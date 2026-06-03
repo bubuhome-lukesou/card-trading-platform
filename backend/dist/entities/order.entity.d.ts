@@ -41,6 +41,8 @@ export declare class Order {
     quantity: number;
     transferReceipt: string;
     transferTime: Date;
+    balanceReceipt: string;
+    balanceTime: Date;
     createdAt: Date;
     updatedAt: Date;
 }

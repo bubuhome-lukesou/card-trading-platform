@@ -11,18 +11,19 @@ export class ReservationsController {
   async create(@Body() body: { productId: string }, @Request() req) {
     // Get product to retrieve reservation settings
     const product = await this.reservationsService.getProduct(body.productId)
-    return this.reservationsService.create(
+    const result = await this.reservationsService.create(
       body.productId,
-      req.user.userId,
+      req.user.id,
       product.reservationDeposit,
       product.reservationDeadline
     )
+    return result
   }
 
   @UseGuards(JwtAuthGuard)
   @Get('my')
   async findMy(@Request() req) {
-    return this.reservationsService.findByBuyer(req.user.userId)
+    return this.reservationsService.findByBuyer(req.user.id)
   }
 
   @Get('product/:productId')
@@ -33,7 +34,7 @@ export class ReservationsController {
   @Get('seller')
   @UseGuards(JwtAuthGuard)
   async findBySeller(@Request() req) {
-    return this.reservationsService.findBySeller(req.user.userId)
+    return this.reservationsService.findBySeller(req.user.id)
   }
 
   @Get(':id')
@@ -51,6 +52,6 @@ export class ReservationsController {
   @Delete(':id')
   @UseGuards(JwtAuthGuard)
   async cancel(@Param('id') id: string, @Request() req) {
-    return this.reservationsService.cancel(id, req.user.userId)
+    return this.reservationsService.cancel(id, req.user.id)
   }
 }

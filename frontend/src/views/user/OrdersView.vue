@@ -19,10 +19,13 @@ interface Order {
   amount: number
   quantity: number
   status: 'pending' | 'paid' | 'shipped' | 'delivered' | 'cancelled' | 'refunded' | 'pending_paid' | 'confirmed'
-  type: 'direct_purchase' | 'buy_now' | 'auction_win'
+  type: 'direct_purchase' | 'buy_now' | 'auction_win' | 'reservation'
   createdAt: string
   transferReceipt?: string
   transferTime?: string
+  balanceReceipt?: string
+  balanceTime?: string
+  fullPrice?: number // 預約商品全價（顯示為尾款）
 }
 
 const orders = ref<Order[]>([])
@@ -38,7 +41,7 @@ const resolveImageUrl = (url: string) => {
   return apiBaseUrl + url
 }
 
-// 預約攞貨彈窗
+// 預約攞貨彈窗（備用，如需直接操作 reservation 記錄時使用）
 const showPickupModal = ref(false)
 const pickupInfo = ref('')
 const pickupQrCode = ref('')
@@ -62,7 +65,18 @@ const formatDate = (dateStr: string) => {
   return new Date(dateStr).toLocaleDateString('zh-CN')
 }
 
-const getStatusBadge = (status: string) => {
+const getStatusBadge = (status: string, orderType?: string) => {
+  // 預約訂單狀態文字
+  if (orderType === 'reservation') {
+    const map: Record<string, { class: string; text: string }> = {
+      pending: { class: 'pending', text: '待付訂金' },
+      pending_paid: { class: 'pending-paid', text: '待確認' },
+      confirmed: { class: 'confirmed', text: '待付尾款' },
+      delivered: { class: 'delivered', text: '已完成' },
+    }
+    return map[status] || { class: 'default', text: status }
+  }
+  // 普通訂單狀態
   const map: Record<string, { class: string; text: string }> = {
     pending: { class: 'pending', text: '待付款' },
     pending_paid: { class: 'pending-paid', text: '待確認' },
@@ -81,6 +95,7 @@ const getTypeText = (type: string) => {
     direct_purchase: '直購',
     buy_now: '立即購買',
     auction_win: '拍賣贏取',
+    reservation: '預約',
   }
   return map[type] || type
 }
@@ -91,13 +106,25 @@ const loadOrders = async () => {
     const res = await ordersApi.getMyOrders()
     const list = Array.isArray(res.data) ? res.data : (res.data?.data || [])
     orders.value = list.map((o: any) => {
-      // Parse product images (stored as JSON string)
       let images: string[] = []
       try {
         images = typeof o.product?.images === 'string'
           ? JSON.parse(o.product.images)
           : (Array.isArray(o.product?.images) ? o.product.images : [])
       } catch {}
+      // 將 backend 類型映射到前端顯示類型
+      let displayType = o.type
+      if (o.type === 'reservation_deposit' || o.type === 'reservation_full') {
+        displayType = 'reservation'
+      }
+      // 預約訂單的狀態映射：pending -> 待付訂金, confirmed -> 待付尾款
+      let displayStatus = o.status
+      if (displayType === 'reservation') {
+        if (o.status === 'pending') displayStatus = 'pending'
+        else if (o.status === 'pending_paid') displayStatus = 'pending_paid'
+        else if (o.status === 'confirmed') displayStatus = 'confirmed'
+        else if (o.status === 'delivered') displayStatus = 'delivered'
+      }
       return {
         id: o.id,
         orderNumber: o.orderNumber,
@@ -106,11 +133,15 @@ const loadOrders = async () => {
         sellerId: o.sellerId || '',
         sellerNickname: o.seller?.nickname || o.seller?.username || (o.sellerId ? `賣家${o.sellerId.slice(0,8)}` : '未知賣家'),
         amount: Number(o.totalPrice) || 0,
-        status: o.status,
-        type: o.type,
+        quantity: o.quantity || 1,
+        status: displayStatus,
+        type: displayType,
         createdAt: o.createdAt,
         transferReceipt: o.transferReceipt,
         transferTime: o.transferTime,
+        balanceReceipt: o.balanceReceipt,
+        balanceTime: o.balanceTime,
+        fullPrice: displayType === 'reservation' ? Number(o.product?.price) || 0 : undefined,
       }
     })
   } catch (error) {
@@ -177,20 +208,6 @@ const cancelReserve = () => {
   pendingReserveOrderId.value = null
 }
 
-const handleUploadReceipt = async (orderId: string, file: File) => {
-  uploadingReceipt.value = orderId
-  try {
-    await cartApi.uploadTransferReceipt(orderId, file)
-    alert('上傳成功！')
-    await loadOrders()
-  } catch (error) {
-    console.error('Upload failed:', error)
-    alert('上傳失敗，請重試')
-  } finally {
-    uploadingReceipt.value = null
-  }
-}
-
 const triggerReceiptUpload = (orderId: string) => {
   const input = document.createElement('input')
   input.type = 'file'
@@ -202,6 +219,47 @@ const triggerReceiptUpload = (orderId: string) => {
     }
   }
   input.click()
+}
+
+const triggerBalanceUpload = (orderId: string) => {
+  const input = document.createElement('input')
+  input.type = 'file'
+  input.accept = 'image/*'
+  input.onchange = (e: Event) => {
+    const target = e.target as HTMLInputElement
+    if (target.files?.[0]) {
+      handleUploadBalance(orderId, target.files[0])
+    }
+  }
+  input.click()
+}
+
+const handleUploadBalance = async (orderId: string, file: File) => {
+  uploadingReceipt.value = orderId
+  try {
+    await ordersApi.uploadBalanceReceipt(orderId, file)
+    alert('尾款憑證上傳成功！')
+    await loadOrders()
+  } catch (error) {
+    console.error('Upload failed:', error)
+    alert('上傳失敗，請重試')
+  } finally {
+    uploadingReceipt.value = null
+  }
+}
+
+const handleUploadReceipt = async (orderId: string, file: File) => {
+  uploadingReceipt.value = orderId
+  try {
+    await ordersApi.uploadTransferReceipt(orderId, file)
+    alert('上傳成功！')
+    await loadOrders()
+  } catch (error) {
+    console.error('Upload failed:', error)
+    alert('上傳失敗，請重試')
+  } finally {
+    uploadingReceipt.value = null
+  }
 }
 
 const viewReceipt = (url: string) => {
@@ -304,8 +362,8 @@ onMounted(() => {
           <span class="type-badge" :class="order.type">
             {{ getTypeText(order.type) }}
           </span>
-          <span class="status-badge" :class="getStatusBadge(order.status).class">
-            {{ getStatusBadge(order.status).text }}
+          <span class="status-badge" :class="getStatusBadge(order.status, order.type).class">
+            {{ getStatusBadge(order.status, order.type).text }}
           </span>
         </div>
 
@@ -319,16 +377,54 @@ onMounted(() => {
             <div class="product-meta">
               賣家: {{ order.sellerNickname }} | {{ formatDate(order.createdAt) }}
             </div>
+            <!-- 預約訂單：顯示尾款資訊 -->
+            <div v-if="order.type === 'reservation' && order.fullPrice" class="reservation-info">
+              <span class="reservation-label">📅 預約</span>
+              <span class="deposit-info">訂金已付 {{ formatPrice(order.amount) }}</span>
+              <span class="remaining-info">到尾款 {{ formatPrice(order.fullPrice - order.amount) }}</span>
+            </div>
           </div>
           <div class="order-amount">
             <div class="amount-label">金額</div>
-            <div class="amount-value">{{ formatPrice(order.amount) }}</div>
+            <div v-if="order.type === 'reservation'" class="reservation-amount">
+              <div class="deposit-value">{{ formatPrice(order.amount) }}</div>
+              <div class="remaining-value">+ {{ formatPrice((order.fullPrice || 0) - order.amount) }} 到尾款</div>
+            </div>
+            <div v-else class="amount-value">{{ formatPrice(order.amount) }}</div>
           </div>
         </div>
 
         <div class="order-actions">
+          <!-- 預約訂單：待付訂金 -> 上傳憑證 -->
           <button
-            v-if="order.status === 'pending'"
+            v-if="order.type === 'reservation' && order.status === 'pending'"
+            class="btn-upload"
+            @click="triggerReceiptUpload(order.id)"
+            :disabled="uploadingReceipt === order.id"
+          >
+            {{ uploadingReceipt === order.id ? '上傳中...' : '上傳訂金憑證' }}
+          </button>
+          <!-- 預約訂單：待確認 -> 等待商家確認 -->
+          <span v-if="order.type === 'reservation' && order.status === 'pending_paid'" class="waiting-confirm">
+            ⏳ 等待商家確認
+          </span>
+          <!-- 預約訂單：待付尾款 -> 提醒到店支付 + 上傳尾款憑證 -->
+          <template v-if="order.type === 'reservation' && order.status === 'confirmed'">
+            <button
+              class="btn-upload"
+              @click="triggerBalanceUpload(order.id)"
+              :disabled="uploadingReceipt === order.id"
+            >
+              {{ uploadingReceipt === order.id ? '上傳中...' : '上傳尾款憑證' }}
+            </button>
+          </template>
+          <!-- 預約訂單：已完成 -> 顯示完成 -->
+          <span v-if="order.type === 'reservation' && order.status === 'delivered'" class="reservation-done">
+            ✅ 交易完成
+          </span>
+          <!-- 普通訂單按鈕 -->
+          <button
+            v-if="order.status === 'pending' && order.type !== 'reservation'"
             class="btn-pay"
             @click="handlePay(order.id)"
             disabled
@@ -336,14 +432,14 @@ onMounted(() => {
             立即支付
           </button>
           <button
-            v-if="order.status === 'pending'"
+            v-if="order.status === 'pending' && order.type !== 'reservation'"
             class="btn-reserve"
             @click="handleReserve(order.id, order.sellerId)"
           >
             預約拿貨
           </button>
           <button
-            v-if="order.status === 'pending' || order.status === 'pending_paid'"
+            v-if="(order.status === 'pending' || order.status === 'pending_paid') && order.type !== 'reservation'"
             class="btn-upload"
             @click="triggerReceiptUpload(order.id)"
             :disabled="uploadingReceipt === order.id"
@@ -351,7 +447,7 @@ onMounted(() => {
             {{ uploadingReceipt === order.id ? '上傳中...' : '上傳轉帳憑證' }}
           </button>
           <button 
-            v-if="order.status === 'shipped'" 
+            v-if="order.status === 'shipped' && order.type !== 'reservation'" 
             class="btn-receive"
             @click="handleReceive(order.id)"
           >
@@ -364,12 +460,21 @@ onMounted(() => {
 
         <!-- 轉帳憑證：獨立顯示，任何狀態有憑證就顯示 -->
         <div v-if="order.transferReceipt" class="receipt-row">
-          <span class="receipt-label">轉帳憑證</span>
+          <span class="receipt-label">訂金憑證</span>
           <img 
             :src="resolveImageUrl(order.transferReceipt)" 
             class="receipt-thumbnail"
             @click="viewReceipt(order.transferReceipt)"
-            alt="轉帳憑證"
+            alt="訂金憑證"
+          />
+        </div>
+        <div v-if="order.balanceReceipt" class="receipt-row">
+          <span class="receipt-label">尾款憑證</span>
+          <img 
+            :src="resolveImageUrl(order.balanceReceipt)" 
+            class="receipt-thumbnail"
+            @click="viewReceipt(order.balanceReceipt)"
+            alt="尾款憑證"
           />
         </div>
       </div>
@@ -659,6 +764,56 @@ onMounted(() => {
   font-size: var(--text-lg);
   font-weight: 700;
   color: var(--primary);
+}
+
+.reservation-info {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+  font-size: var(--text-xs);
+}
+.reservation-label { color: #f59e0b; font-weight: 600; }
+.deposit-info { color: var(--text-secondary); }
+.remaining-info { color: #f59e0b; font-weight: 500; }
+
+.reservation-amount {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+.deposit-value {
+  font-family: var(--font-num);
+  font-size: var(--text-lg);
+  font-weight: 700;
+  color: var(--primary);
+}
+.remaining-value {
+  font-size: var(--text-xs);
+  color: #f59e0b;
+  font-weight: 500;
+}
+
+.waiting-confirm {
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+.waiting-balance {
+  font-size: var(--text-sm);
+  color: #f59e0b;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+.reservation-done {
+  font-size: var(--text-sm);
+  color: #10b981;
+  font-weight: 600;
 }
 
 .order-actions {

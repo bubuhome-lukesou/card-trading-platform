@@ -96,8 +96,16 @@ export class OrdersService {
     const order = await this.findOne(orderId);
     order.transferReceipt = receiptUrl;
     order.transferTime = new Date();
-    // Auto-change status to 'paid' so seller can confirm
+    // Auto-change status to 'pending_paid' so seller can confirm
     order.status = OrderStatus.PENDING_PAID;
+    return this.orderRepo.save(order);
+  }
+
+  async updateBalanceReceipt(orderId: string, receiptUrl: string): Promise<Order> {
+    const order = await this.findOne(orderId);
+    order.balanceReceipt = receiptUrl;
+    order.balanceTime = new Date();
+    // 尾款憑證上傳後，狀態不變（仍為 confirmed），等待賣家確認
     return this.orderRepo.save(order);
   }
 

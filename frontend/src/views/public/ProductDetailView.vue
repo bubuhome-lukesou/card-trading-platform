@@ -400,7 +400,7 @@ const handleReserve = async () => {
   processing.value = true
   message.value = ''
   try {
-    await reservationApi.createReservation({ productId: product.value.id })
+    await reservationApi.createReservation(product.value.id)
     message.value = locale.value === 'zh' ? '預約成功！' : 'Reservation successful!'
     messageType.value = 'success'
     // Reload product to get updated reservation count

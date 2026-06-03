@@ -48,5 +48,15 @@ export class OrdersController {
     const receiptUrl = `/uploads/${file.filename}`;
     return this.ordersService.updateTransferReceipt(id, receiptUrl);
   }
+
+  @Post(':id/balance-receipt')
+  @UseInterceptors(FileInterceptor('receipt'))
+  uploadBalanceReceipt(@Param('id') id: string, @UploadedFile() file: Express.Multer.File) {
+    if (!file) {
+      return { success: false, error: 'No file uploaded' };
+    }
+    const receiptUrl = `/uploads/${file.filename}`;
+    return this.ordersService.updateBalanceReceipt(id, receiptUrl);
+  }
 }
 

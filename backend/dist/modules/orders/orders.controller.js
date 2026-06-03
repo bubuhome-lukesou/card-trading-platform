@@ -46,6 +46,13 @@ let OrdersController = class OrdersController {
         const receiptUrl = `/uploads/${file.filename}`;
         return this.ordersService.updateTransferReceipt(id, receiptUrl);
     }
+    uploadBalanceReceipt(id, file) {
+        if (!file) {
+            return { success: false, error: 'No file uploaded' };
+        }
+        const receiptUrl = `/uploads/${file.filename}`;
+        return this.ordersService.updateBalanceReceipt(id, receiptUrl);
+    }
 };
 exports.OrdersController = OrdersController;
 __decorate([
@@ -105,6 +112,15 @@ __decorate([
     __metadata("design:paramtypes", [String, Object]),
     __metadata("design:returntype", void 0)
 ], OrdersController.prototype, "uploadTransferReceipt", null);
+__decorate([
+    (0, common_1.Post)(':id/balance-receipt'),
+    (0, common_1.UseInterceptors)((0, platform_express_1.FileInterceptor)('receipt')),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.UploadedFile)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:returntype", void 0)
+], OrdersController.prototype, "uploadBalanceReceipt", null);
 exports.OrdersController = OrdersController = __decorate([
     (0, common_1.Controller)('orders'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),

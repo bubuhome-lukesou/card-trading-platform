@@ -27,4 +27,18 @@ export const ordersApi = {
   updateStatus(id: string, status: string) {
     return api.patch(`/orders/${id}/status`, { status })
   },
+  uploadTransferReceipt(id: string, file: File) {
+    const formData = new FormData()
+    formData.append('receipt', file)
+    return api.post(`/orders/${id}/transfer-receipt`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+  },
+  uploadBalanceReceipt(id: string, file: File) {
+    const formData = new FormData()
+    formData.append('receipt', file)
+    return api.post(`/orders/${id}/balance-receipt`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+  },
 }

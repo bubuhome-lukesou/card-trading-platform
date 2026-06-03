@@ -131,6 +131,14 @@ __decorate([
     __metadata("design:type", Date)
 ], Order.prototype, "transferTime", void 0);
 __decorate([
+    (0, typeorm_1.Column)({ nullable: true }),
+    __metadata("design:type", String)
+], Order.prototype, "balanceReceipt", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ nullable: true }),
+    __metadata("design:type", Date)
+], Order.prototype, "balanceTime", void 0);
+__decorate([
     (0, typeorm_1.CreateDateColumn)(),
     __metadata("design:type", Date)
 ], Order.prototype, "createdAt", void 0);

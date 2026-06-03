@@ -14,6 +14,7 @@ interface Order {
   productImage?: string
   quantity: number
   unitPrice: number
+  fullPrice?: number // 商品全價（預約訂單用於顯示尾款參考）
   buyerNickname: string
   buyerEmail: string
   amount: number
@@ -25,6 +26,9 @@ interface Order {
   trackingNumber?: string
   transferReceipt?: string
   transferTime?: string
+  balanceReceipt?: string
+  balanceTime?: string
+  notes?: string // 預約時顯示"需到店支付尾款 XXX"
 }
 
 const orders = ref<Order[]>([])
@@ -59,6 +63,8 @@ const loadOrders = async () => {
           ? JSON.parse(o.product.images)
           : (Array.isArray(o.product?.images) ? o.product.images : [])
       } catch {}
+      // 預約訂單：amount = 訂金, fullPrice = 商品全價（顯示為尾款）
+      const isReservation = o.type === 'reservation_deposit'
       return {
         id: o.id,
         orderNumber: o.orderNumber,
@@ -67,6 +73,7 @@ const loadOrders = async () => {
         productImage: images[0] || '',
         quantity: o.quantity || 1,
         unitPrice: o.product?.price ? Number(o.product.price) : (o.totalPrice ? Number(o.totalPrice) / (o.quantity || 1) : 0),
+        fullPrice: isReservation ? Number(o.product?.price) || 0 : undefined,
         buyerNickname: o.buyer?.nickname || '-',
         buyerEmail: o.buyer?.email || '-',
         amount: o.totalPrice || 0,
@@ -78,6 +85,9 @@ const loadOrders = async () => {
         trackingNumber: o.trackingNumber,
         transferReceipt: o.transferReceipt,
         transferTime: o.transferTime,
+        balanceReceipt: o.balanceReceipt,
+        balanceTime: o.balanceTime,
+        notes: o.notes || '',
       }
     })
   } catch (e) {
@@ -107,6 +117,38 @@ const handleConfirmPayment = async (orderId: string) => {
     alert('確認收款成功！')
   } catch (e) {
     console.error('Failed to confirm payment:', e)
+    alert('操作失敗，請重試')
+  } finally {
+    processingId.value = null
+  }
+}
+
+const handleConfirmDeposit = async (orderId: string) => {
+  if (!confirm('確認已收到訂金？確認後請通知買家到店支付尾款。')) return
+  processingId.value = orderId
+  try {
+    // 預約訂單確認訂金：更新 status = confirmed
+    await ordersApi.updateStatus(orderId, 'confirmed')
+    await loadOrders()
+    alert('已確認收到訂金！請通知買家到店支付尾款。')
+  } catch (e) {
+    console.error('Failed to confirm deposit:', e)
+    alert('操作失敗，請重試')
+  } finally {
+    processingId.value = null
+  }
+}
+
+const handleConfirmBalance = async (orderId: string) => {
+  if (!confirm('確認已收到尾款（到店支付）？')) return
+  processingId.value = orderId
+  try {
+    // 預約訂單確認尾款：更新 status = delivered（完成）
+    await ordersApi.updateStatus(orderId, 'delivered')
+    await loadOrders()
+    alert('已確認收到尾款，交易完成！')
+  } catch (e) {
+    console.error('Failed to confirm balance:', e)
     alert('操作失敗，請重試')
   } finally {
     processingId.value = null
@@ -196,7 +238,17 @@ onMounted(() => loadOrders())
             </td>
             <td class="quantity">x{{ order.quantity }}</td>
             <td class="unit-price">{{ formatPrice(order.unitPrice) }}</td>
-            <td class="amount">{{ formatPrice(order.amount) }}</td>
+            <td class="amount">
+              <span v-if="order.type === 'reservation_deposit'" class="deposit-info">
+                <span class="deposit-label">訂金</span>
+                <span class="deposit-amount">{{ formatPrice(order.amount) }}</span>
+                <span v-if="order.fullPrice" class="remaining-info">
+                  <span class="remaining-label">+到尾款</span>
+                  <span class="remaining-amount">{{ formatPrice(order.fullPrice - order.amount) }}</span>
+                </span>
+              </span>
+              <span v-else>{{ formatPrice(order.amount) }}</span>
+            </td>
             <td>
               <div>{{ order.buyerNickname }}</div>
               <div class="buyer-email">{{ order.buyerEmail }}</div>
@@ -208,47 +260,94 @@ onMounted(() => loadOrders())
             </td>
             <td class="date">{{ formatDate(order.createdAt) }}</td>
             <td>
-              <div v-if="order.transferReceipt" class="receipt-cell">
-                <img
-                  :src="resolveImageUrl(order.transferReceipt)"
-                  class="receipt-thumbnail"
-                  @click="viewReceipt(order.transferReceipt)"
-                  alt="轉帳憑證"
-                />
+              <div class="receipts-cell">
+                <!-- 訂金憑證 -->
+                <div v-if="order.transferReceipt" class="receipt-row">
+                  <span class="receipt-label">訂金</span>
+                  <img
+                    :src="resolveImageUrl(order.transferReceipt)"
+                    class="receipt-thumbnail"
+                    @click="viewReceipt(order.transferReceipt)"
+                    alt="訂金憑證"
+                  />
+                </div>
+                <!-- 尾款憑證 -->
+                <div v-if="order.balanceReceipt" class="receipt-row">
+                  <span class="receipt-label">尾款</span>
+                  <img
+                    :src="resolveImageUrl(order.balanceReceipt)"
+                    class="receipt-thumbnail"
+                    @click="viewReceipt(order.balanceReceipt)"
+                    alt="尾款憑證"
+                  />
+                </div>
                 <button
-                  v-if="order.status === 'paid' || order.status === 'pending_paid'"
+                  v-if="order.transferReceipt && (order.status === 'paid' || order.status === 'pending_paid')"
                   class="btn-action confirm"
                   @click="handleConfirmPayment(order.id)"
                   :disabled="processingId === order.id"
                 >
                   {{ processingId === order.id ? '處理中...' : '確認收款' }}
                 </button>
-              </div>
-              <div v-if="!order.transferReceipt && order.status === 'pending_paid'" class="warning-text">
-                ⏳ 等待買家上傳憑證
-              </div>
-              <div v-if="!order.transferReceipt && order.status === 'paid'" class="warning-text">
-                ⚠️ 待確認
+                <div v-if="!order.transferReceipt && order.status === 'pending_paid'" class="warning-text">
+                  ⏳ 等待買家上傳憑證
+                </div>
+                <div v-if="!order.transferReceipt && order.status === 'paid'" class="warning-text">
+                  ⚠️ 待確認
+                </div>
               </div>
             </td>
             <td>
-              <button
-                v-if="order.status === 'pending_paid'"
-                class="btn-warning"
-                @click="handleUpdateStatus(order.id, 'cancelled')"
-              >
-                取消
-              </button>
-              <div v-if="order.status === 'pending_paid'" class="warning-text">
-                ⚠️ 買家未付款
-              </div>
-              <button
-                v-if="order.status === 'confirmed'"
-                @click="handleUpdateStatus(order.id, 'shipped')"
-                class="btn-action ship"
-              >
-                發貨
-              </button>
+              <!-- 預約訂單：待確認訂金 -->
+              <span v-if="order.type === 'reservation_deposit' && order.status === 'pending'" class="reservation-status pending">
+                ⏳ 待付訂金
+              </span>
+              <!-- 預約訂單：已收到訂金，待商家確認 -->
+              <span v-if="order.type === 'reservation_deposit' && order.status === 'pending_paid'" class="reservation-status">
+                <button
+                  class="btn-action confirm"
+                  @click="handleConfirmDeposit(order.id)"
+                  :disabled="processingId === order.id"
+                >
+                  {{ processingId === order.id ? '處理中...' : '確認收到訂金' }}
+                </button>
+              </span>
+              <!-- 預約訂單：已確認訂金，待到店付尾款 -->
+              <span v-if="order.type === 'reservation_deposit' && order.status === 'confirmed'" class="reservation-status">
+                <span class="badge-reservation">📅 預約</span>
+                <span class="badge-remaining">待到店付尾款 {{ formatPrice((order.fullPrice || 0) - order.amount) }}</span>
+                <button
+                  class="btn-action confirm"
+                  @click="handleConfirmBalance(order.id)"
+                  :disabled="processingId === order.id"
+                >
+                  {{ processingId === order.id ? '處理中...' : '確認收到尾款' }}
+                </button>
+              </span>
+              <!-- 預約訂單：尾款已付（線下到店完成） -->
+              <span v-if="order.type === 'reservation_deposit' && order.status === 'delivered'" class="reservation-status completed">
+                ✅ 已完成
+              </span>
+              <!-- 普通訂單操作 -->
+              <span v-if="order.type !== 'reservation_deposit'">
+                <button
+                  v-if="order.status === 'pending_paid'"
+                  class="btn-warning"
+                  @click="handleUpdateStatus(order.id, 'cancelled')"
+                >
+                  取消
+                </button>
+                <div v-if="order.status === 'pending_paid'" class="warning-text">
+                  ⚠️ 買家未付款
+                </div>
+                <button
+                  v-if="order.status === 'confirmed'"
+                  @click="handleUpdateStatus(order.id, 'shipped')"
+                  class="btn-action ship"
+                >
+                  發貨
+                </button>
+              </span>
             </td>
           </tr>
         </tbody>
@@ -328,8 +427,22 @@ tr:last-child td { border-bottom: none; }
 .btn-warning { background: #ef444433; color: #ef4444; padding: var(--space-1) var(--space-3); border-radius: var(--radius-md); font-size: var(--text-xs); border: none; cursor: pointer; }
 .warning-text { font-size: var(--text-xs); color: var(--text-muted); margin-top: var(--space-2); }
 .receipt-cell { display: flex; flex-direction: column; align-items: center; gap: var(--space-2); }
-.receipt-thumbnail { width: 40px; height: 40px; border-radius: var(--radius-md); object-fit: cover; cursor: pointer; border: 2px solid var(--border); }
+.receipt-thumbnail { width: 40px; height: 40px; border-radius: var(--radius-md); object-fit: cover; cursor: pointer; border: 2px solid var(--border); transition: border-color var(--transition-fast); }
 .receipt-thumbnail:hover { border-color: var(--primary); }
+.receipts-cell { display: flex; flex-direction: column; gap: var(--space-2); align-items: flex-start; }
+.receipt-row { display: flex; align-items: center; gap: var(--space-2); }
+.receipt-label { font-size: var(--text-xs); color: var(--text-muted); min-width: 24px; }
+.deposit-info { display: flex; flex-direction: column; gap: 2px; font-size: var(--text-xs); }
+.deposit-label { color: var(--text-muted); font-size: 10px; }
+.deposit-amount { color: var(--primary); font-weight: 600; }
+.remaining-info { display: flex; gap: 4px; align-items: center; }
+.remaining-label { color: var(--text-muted); font-size: 10px; }
+.remaining-amount { color: #f59e0b; font-weight: 600; }
+.reservation-status { display: flex; flex-direction: column; gap: var(--space-1); }
+.reservation-status.pending { color: var(--text-muted); font-size: var(--text-xs); }
+.reservation-status.completed { color: #10b981; font-weight: 600; }
+.badge-reservation { background: #f59e0b22; color: #f59e0b; padding: 2px 6px; border-radius: var(--radius-full); font-size: var(--text-xs); width: fit-content; }
+.badge-remaining { color: #f59e0b; font-size: var(--text-xs); font-weight: 500; }
 
 .modal-overlay {
   position: fixed;

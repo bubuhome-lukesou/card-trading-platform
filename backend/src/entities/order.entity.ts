@@ -103,6 +103,12 @@ export class Order {
   @Column({ nullable: true })
   transferTime: Date
 
+  @Column({ nullable: true })
+  balanceReceipt: string
+
+  @Column({ nullable: true })
+  balanceTime: Date
+
   @CreateDateColumn()
   createdAt: Date
 
