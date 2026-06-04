@@ -58,6 +58,7 @@ export declare class Product {
     cardNumber: string;
     listingType: ListingType;
     reservationMax: number | null;
+    reservationLimitPerUser: number | null;
     reservationDeposit: number | null;
     reservationDeadline: Date | null;
     status: ProductStatus;

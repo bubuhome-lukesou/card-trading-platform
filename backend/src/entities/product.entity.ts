@@ -118,6 +118,9 @@ export class Product {
   @Column({ name: 'reservationMax', type: 'int', nullable: true })
   reservationMax: number | null
 
+  @Column({ name: 'reservationLimitPerUser', type: 'int', nullable: true })
+  reservationLimitPerUser: number | null
+
   @Column({ name: 'reservationDeposit', type: 'decimal', precision: 10, scale: 2, nullable: true })
   reservationDeposit: number | null
 

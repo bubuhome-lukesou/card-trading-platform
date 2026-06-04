@@ -436,6 +436,12 @@ const reservationDisplayText = computed(() => {
 
 // Whether the current user has already made a reservation (simplified - always false for now)
 const hasReserved = computed(() => false)
+
+// Check if product is suspended (cancelled/ended)
+const isProductSuspended = computed(() => {
+  if (!product.value) return false
+  return product.value.status === 'cancelled' || product.value.status === 'ended'
+})
 </script>
 
 <template>
@@ -496,7 +502,10 @@ const hasReserved = computed(() => false)
         <!-- Info -->
         <div class="product-info">
           <!-- 商品名稱 -->
-          <h1 class="product-title">{{ getTitle(product) }}</h1>
+          <h1 class="product-title">
+            {{ getTitle(product) }}
+            <span v-if="isProductSuspended" class="suspended-badge">已下架</span>
+          </h1>
 
           <!-- 類別emoji 類別名稱 . 商品種類 . 品相 -->
           <div class="product-meta-row">
@@ -578,7 +587,7 @@ const hasReserved = computed(() => false)
             <div class="action-buttons">
               <button
                 class="btn btn-primary btn-lg"
-                :disabled="processing || !isReservationOpen"
+                :disabled="processing || !isReservationOpen || isProductSuspended"
                 @click="handleReserve"
               >
                 {{ processing ? (t('common.loading') || '處理中...') : (locale === 'zh' ? '立即預約' : 'Reserve Now') }}
@@ -591,14 +600,14 @@ const hasReserved = computed(() => false)
             <div class="action-buttons">
               <button
                 class="btn btn-primary btn-lg"
-                :disabled="processing || isOutOfStock()"
+                :disabled="processing || isOutOfStock() || isProductSuspended"
                 @click="handleBuyNow"
               >
                 {{ processing ? (t('common.loading') || '處理中...') : (locale === 'zh' ? '立即購買' : 'Buy Now') }}
               </button>
               <button
                 class="btn btn-outline"
-                :disabled="processing || isOutOfStock()"
+                :disabled="processing || isOutOfStock() || isProductSuspended"
                 @click="handleAddToCart"
               >
                 {{ locale === 'zh' ? '加到購物車' : 'Add to Cart' }}
@@ -879,6 +888,20 @@ const hasReserved = computed(() => false)
   color: var(--text-primary);
   line-height: 1.3;
   position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.suspended-badge {
+  display: inline-block;
+  font-size: var(--text-xs);
+  font-weight: 700;
+  background: var(--danger);
+  color: white;
+  padding: 2px 10px;
+  border-radius: var(--radius-md);
+  vertical-align: middle;
 }
 
 // Anime card info strip

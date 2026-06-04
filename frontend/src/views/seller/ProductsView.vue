@@ -104,6 +104,7 @@ const formData = ref({
   reservationMax: 10,
   reservationDeposit: 0,
   reservationDeadline: '',
+  reservationLimitPerUser: null,
 })
 
 // Watch formData.productTypeTagId to sync with selectedProductTypeTags for submission
@@ -142,6 +143,7 @@ const resetForm = () => {
     reservationMax: 10,
     reservationDeposit: 0,
     reservationDeadline: '',
+    reservationLimitPerUser: null,
   }
   imagePreviews.value = []
   pendingImageFiles.value = []
@@ -215,6 +217,7 @@ const openEditModal = async (product: any) => {
     reservationMax: product.reservationMax || 10,
     reservationDeposit: product.reservationDeposit || 0,
     reservationDeadline: product.reservationDeadline || '',
+    reservationLimitPerUser: product.reservationLimitPerUser || null,
   }
   showModal.value = true
 }
@@ -670,6 +673,15 @@ onUnmounted(() => {
                 <input
                   v-model="formData.reservationDeadline"
                   type="datetime-local"
+                />
+              </div>
+              <div class="form-group">
+                <label>每人预约上限</label>
+                <input
+                  v-model.number="formData.reservationLimitPerUser"
+                  type="number"
+                  min="1"
+                  placeholder="不限"
                 />
               </div>
             </template>

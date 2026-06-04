@@ -137,6 +137,10 @@ __decorate([
     __metadata("design:type", Number)
 ], Product.prototype, "reservationMax", void 0);
 __decorate([
+    (0, typeorm_1.Column)({ name: 'reservationLimitPerUser', type: 'int', nullable: true }),
+    __metadata("design:type", Number)
+], Product.prototype, "reservationLimitPerUser", void 0);
+__decorate([
     (0, typeorm_1.Column)({ name: 'reservationDeposit', type: 'decimal', precision: 10, scale: 2, nullable: true }),
     __metadata("design:type", Number)
 ], Product.prototype, "reservationDeposit", void 0);

@@ -56,6 +56,11 @@ const isOutOfStock = (item: CartItem) => {
   return item.product?.quantity === 0
 }
 
+// Check if product is suspended (cancelled/ended)
+const isProductSuspended = (product: any) => {
+  return product?.status === 'cancelled' || product?.status === 'ended'
+}
+
 const loadCart = async () => {
   loading.value = true
   try {
@@ -208,7 +213,7 @@ onMounted(() => {
     <!-- Cart Items -->
     <div v-else class="cart-content">
       <div class="cart-items">
-        <div v-for="item in cartItems" :key="item.id" class="cart-item">
+        <div v-for="item in cartItems" :key="item.id" class="cart-item" :class="{ 'is-suspended': isProductSuspended(item.product) }">
           <div class="item-image">
             <img 
               :src="getProductImage(item) || '/placeholder-card.png'" 
@@ -216,6 +221,9 @@ onMounted(() => {
             />
             <div v-if="isOutOfStock(item)" class="out-of-stock-badge">
               Out of Stock
+            </div>
+            <div v-if="isProductSuspended(item.product)" class="suspended-badge">
+              已下架
             </div>
           </div>
 
@@ -230,7 +238,7 @@ onMounted(() => {
             <button 
               class="qty-btn" 
               @click="updateQuantity(item, item.quantity - 1)"
-              :disabled="item.quantity <= 1 || processing"
+              :disabled="item.quantity <= 1 || processing || isProductSuspended(item.product)"
             >
               <Minus :size="14" />
             </button>
@@ -238,7 +246,7 @@ onMounted(() => {
             <button 
               class="qty-btn" 
               @click="updateQuantity(item, item.quantity + 1)"
-              :disabled="processing || isOutOfStock(item) || item.quantity >= (item.product?.quantity ?? 0)"
+              :disabled="processing || isOutOfStock(item) || item.quantity >= (item.product?.quantity ?? 0) || isProductSuspended(item.product)"
             >
               <Plus :size="14" />
             </button>
@@ -271,7 +279,7 @@ onMounted(() => {
         <button 
           class="btn-checkout" 
           @click="handleCheckout"
-          :disabled="processing || cartItems.some(isOutOfStock)"
+          :disabled="processing || cartItems.some(i => isOutOfStock(i) || isProductSuspended(i.product))"
         >
           <Loader2 v-if="processing" class="animate-spin" />
           {{ processing ? '处理中...' : '结算' }}
@@ -409,6 +417,27 @@ onMounted(() => {
   color: white;
   font-size: var(--text-xs);
   font-weight: 700;
+}
+
+.is-suspended {
+  opacity: 0.65;
+}
+
+.suspended-badge {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: var(--text-xs);
+  font-weight: 700;
+  span {
+    background: var(--danger);
+    padding: 4px 8px;
+    border-radius: var(--radius-sm);
+  }
 }
 
 .item-info {

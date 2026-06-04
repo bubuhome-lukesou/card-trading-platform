@@ -5,14 +5,20 @@ import { useRouter } from 'vue-router'
 import { favoritesApi, type FavoriteItem } from '@/api/favorites'
 import { useFavoritesStore } from '@/stores/favorites'
 import { cartApi } from '@/api/cart'
+import { reservationApi } from '@/api/reservations'
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const router = useRouter()
 const favoritesStore = useFavoritesStore()
 
 const favorites = ref<any[]>([])
 const loading = ref(true)
 const processing = ref<string | null>(null)
+
+// Check if product is suspended (cancelled/ended)
+const isProductSuspended = (product: any) => {
+  return product?.status === 'cancelled' || product?.status === 'ended'
+}
 
 const formatPrice = (price: number) => {
   return new Intl.NumberFormat('zh-MO', {
@@ -63,6 +69,18 @@ const handleAddToCart = async (item: any) => {
   }
 }
 
+const handleReserve = async (item: any) => {
+  processing.value = item.productId
+  try {
+    await reservationApi.createReservation(item.productId)
+    processing.value = null
+    alert(locale.value === 'zh' ? '預約成功！' : 'Reservation successful!')
+  } catch (error) {
+    console.error('Reserve failed:', error)
+    processing.value = null
+  }
+}
+
 onMounted(() => {
   loadFavorites()
 })
@@ -84,7 +102,7 @@ onMounted(() => {
     </div>
 
     <div v-else class="favorites-grid">
-      <div v-for="item in favorites" :key="item.id" class="favorite-card">
+      <div v-for="item in favorites" :key="item.id" class="favorite-card" :class="{ 'is-suspended': isProductSuspended(item.product) }">
         <div class="card-image" @click="router.push(`/product/${item.productId}`)">
           <img
             v-if="item.product?.images?.[0]"
@@ -93,6 +111,10 @@ onMounted(() => {
           />
           <span v-else class="category-emoji">🎴</span>
           <button class="remove-btn" @click.stop="handleRemove(item.productId)">✕</button>
+          <!-- 已下架標記 -->
+          <div v-if="isProductSuspended(item.product)" class="suspended-overlay">
+            <span>已下架</span>
+          </div>
         </div>
         <div class="card-info">
           <h3 class="card-title">{{ item.product?.titleZh || item.product?.titleEn }}</h3>
@@ -101,17 +123,28 @@ onMounted(() => {
             <span class="price-value">{{ formatPrice(item.product?.price || 0) }}</span>
           </div>
         </div>
-        <div class="card-actions">
+        <!-- 預約商品：顯示立即預約按鈕 -->
+        <div v-if="item.product?.listingType === 'reservation_only'" class="card-actions">
+          <button
+            class="btn-reserve"
+            :disabled="processing === item.productId || isProductSuspended(item.product)"
+            @click="handleReserve(item)"
+          >
+            {{ processing === item.productId ? '處理中...' : '立即預約' }}
+          </button>
+        </div>
+        <!-- 一般商品：顯示立即購買 + 加入購物車 -->
+        <div v-else class="card-actions">
           <button
             class="btn-buy"
-            :disabled="processing === item.productId"
+            :disabled="processing === item.productId || isProductSuspended(item.product)"
             @click="handleBuyNow(item)"
           >
             {{ processing === item.productId ? '處理中...' : '立即購買' }}
           </button>
           <button
             class="btn-cart"
-            :disabled="processing === item.productId"
+            :disabled="processing === item.productId || isProductSuspended(item.product)"
             @click="handleAddToCart(item)"
           >
             加入購物車
@@ -326,6 +359,54 @@ onMounted(() => {
     opacity: 0.5;
     cursor: not-allowed;
   }
+}
+
+.btn-reserve {
+  flex: 1;
+  padding: var(--space-2);
+  background: var(--primary-gradient);
+  border: none;
+  border-radius: var(--radius-md);
+  color: white;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  &:hover:not(:disabled) {
+    opacity: 0.9;
+    transform: translateY(-1px);
+  }
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+.is-suspended {
+  opacity: 0.65;
+}
+
+.suspended-overlay {
+  position: absolute;
+  inset: 0;
+  background: #00000080;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  span {
+    background: var(--danger);
+    color: white;
+    padding: 4px 12px;
+    border-radius: var(--radius-md);
+    font-size: var(--text-xs);
+    font-weight: 700;
+  }
+}
+
+.is-suspended .btn-reserve,
+.is-suspended .btn-buy,
+.is-suspended .btn-cart {
+  opacity: 0.4;
 }
 
 @media (max-width: 1024px) {
