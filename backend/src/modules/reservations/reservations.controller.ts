@@ -8,14 +8,14 @@ export class ReservationsController {
 
   @UseGuards(JwtAuthGuard)
   @Post()
-  async create(@Body() body: { productId: string }, @Request() req) {
-    // Get product to retrieve reservation settings
+  async create(@Body() body: { productId: string; quantity?: number }, @Request() req) {
     const product = await this.reservationsService.getProduct(body.productId)
     const result = await this.reservationsService.create(
       body.productId,
       req.user.id,
       product.reservationDeposit,
-      product.reservationDeadline
+      product.reservationDeadline,
+      body.quantity ?? 1
     )
     return result
   }

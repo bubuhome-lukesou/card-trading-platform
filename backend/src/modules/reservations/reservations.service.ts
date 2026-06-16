@@ -19,7 +19,7 @@ export class ReservationsService {
     private ordersService: OrdersService,
   ) {}
 
-  async create(productId: string, buyerId: string, depositAmount: number, expireTime: Date): Promise<{ reservation: Reservation; order: Order }> {
+  async create(productId: string, buyerId: string, depositAmount: number, expireTime: Date, quantity: number = 1): Promise<{ reservation: Reservation; order: Order }> {
     // Check product exists and is reservation type
     const product = await this.productRepo.findOne({ where: { id: productId } })
     if (!product) {
@@ -29,28 +29,73 @@ export class ReservationsService {
       throw new BadRequestException('Product is not available for reservation')
     }
 
-    // Check reservation limit
-    if (product.reservationMax) {
-      const count = await this.reservationRepo.count({
-        where: { productId, status: ReservationStatus.DEPOSIT_PAID }
-      })
-      if (count >= product.reservationMax) {
-        throw new BadRequestException('Reservation limit reached')
+    // Validate quantity
+    if (quantity < 1) {
+      throw new BadRequestException('Quantity must be at least 1')
+    }
+
+    // Check per-user reservation limit
+    if (product.reservationLimitPerUser) {
+      const userExisting = await this.reservationRepo
+        .createQueryBuilder('r')
+        .where('r.productId = :productId', { productId })
+        .andWhere('r.buyerId = :buyerId', { buyerId })
+        .andWhere('r.status IN (:...statuses)', { statuses: [ReservationStatus.PENDING, ReservationStatus.DEPOSIT_PAID] })
+        .getOne()
+      const userReservedQty = userExisting ? (userExisting.quantity || 1) : 0
+      if (userReservedQty + quantity > product.reservationLimitPerUser) {
+        throw new BadRequestException(`You can only reserve up to ${product.reservationLimitPerUser} per user`)
       }
     }
 
-    // Check if buyer already reserved
+    // Check total reservation limit (based on quantity sum)
+    const totalReserved = await this.reservationRepo
+      .createQueryBuilder('r')
+      .where('r.productId = :productId', { productId })
+      .andWhere('r.status IN (:...statuses)', { statuses: [ReservationStatus.PENDING, ReservationStatus.DEPOSIT_PAID] })
+      .select('COALESCE(SUM(r.quantity), 0)', 'total')
+      .getRawOne()
+    const currentTotal = parseInt(totalReserved?.total || '0', 10)
+    const maxQty = product.reservationMax || product.quantity || 999
+
+    if (currentTotal + quantity > maxQty) {
+      throw new BadRequestException(`Only ${maxQty - currentTotal} spots remaining`)
+    }
+
+    // Check if buyer already has a pending/deposit_paid reservation
     const existing = await this.reservationRepo.findOne({
       where: { productId, buyerId, status: ReservationStatus.DEPOSIT_PAID }
     })
     if (existing) {
-      throw new BadRequestException('You have already made a reservation for this product')
+      throw new BadRequestException('You have already made a deposit-paid reservation for this product')
+    }
+
+    // Also check PENDING reservation
+    const existingPending = await this.reservationRepo.findOne({
+      where: { productId, buyerId, status: ReservationStatus.PENDING }
+    })
+    if (existingPending) {
+      // Update quantity instead of creating new
+      existingPending.quantity = quantity
+      const updatedReservation = await this.reservationRepo.save(existingPending)
+      const order = await this.ordersService.create({
+        buyerId,
+        sellerId: product.sellerId,
+        productId,
+        type: OrderType.RESERVATION_DEPOSIT,
+        status: OrderStatus.PENDING,
+        totalPrice: depositAmount * quantity,
+        quantity,
+        notes: `預約訂金 - 預約ID: ${updatedReservation.id} x ${quantity}`,
+      })
+      return { reservation: updatedReservation, order }
     }
 
     // Create reservation record
     const reservation = this.reservationRepo.create({
       productId,
       buyerId,
+      quantity,
       depositAmount,
       expireTime,
       status: ReservationStatus.PENDING,
@@ -64,9 +109,9 @@ export class ReservationsService {
       productId,
       type: OrderType.RESERVATION_DEPOSIT,
       status: OrderStatus.PENDING,
-      totalPrice: depositAmount,
-      quantity: 1,
-      notes: `預約訂金 - 預約ID: ${savedReservation.id}`,
+      totalPrice: depositAmount * quantity,
+      quantity,
+      notes: `預約訂金 - 預約ID: ${savedReservation.id} x ${quantity}`,
     })
 
     return { reservation: savedReservation, order }

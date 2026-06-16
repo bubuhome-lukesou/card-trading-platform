@@ -298,7 +298,10 @@ const formatDate = (dateStr: string, showTime = false) => {
 }
 
 const getMaxQuantity = () => {
-  return product.value?.quantity ?? 1
+  if (!product.value) return 1
+  const remaining = getRemainingSpots()
+  const userLimit = product.value.reservationLimitPerUser ?? remaining
+  return Math.min(remaining, userLimit, product.value.quantity ?? 1)
 }
 
 const decreaseQuantity = () => {
@@ -400,8 +403,8 @@ const handleReserve = async () => {
   processing.value = true
   message.value = ''
   try {
-    await reservationApi.createReservation(product.value.id)
-    message.value = locale.value === 'zh' ? '預約成功！' : 'Reservation successful!'
+    await reservationApi.createReservation(product.value.id, selectedQuantity.value)
+    message.value = locale.value === 'zh' ? `預約成功！已預約 ${selectedQuantity.value} 件` : `Reservation successful! Reserved ${selectedQuantity.value} item(s)`
     messageType.value = 'success'
     // Reload product to get updated reservation count
     await loadProduct()
@@ -420,18 +423,30 @@ const isReservationOpen = computed(() => {
     const deadline = new Date(product.value.reservationDeadline)
     if (new Date() > deadline) return false
   }
-  if (product.value.reservationMax && product.value.reservationCount !== undefined) {
-    if (product.value.reservationCount >= product.value.reservationMax) return false
+  // Check remaining spots
+  const remaining = getRemainingSpots()
+  if (remaining <= 0) return false
+  // Check per-user limit
+  if (product.value.reservationLimitPerUser) {
+    const userReserved = product.value.reservationCount || 0
+    if (userReserved >= product.value.reservationLimitPerUser) return false
   }
   return true
 })
 
+// Get remaining reservation spots
+const getRemainingSpots = () => {
+  if (!product.value) return 0
+  const total = product.value.quantity || 0
+  const reserved = product.value.reservationCount || 0
+  return Math.max(0, total - reserved)
+}
+
 // Display text for reservation spots
 const reservationDisplayText = computed(() => {
   if (!product.value) return ''
-  const spots = product.value.reservationMax || 0
-  const count = product.value.reservationCount || 0
-  return `${count}/${spots}`
+  const remaining = getRemainingSpots()
+  return `${remaining} ${locale.value === 'zh' ? '位剩餘' : 'spots left'}`
 })
 
 // Whether the current user has already made a reservation (simplified - always false for now)

@@ -36,6 +36,9 @@ export class Reservation {
   @JoinColumn({ name: 'buyerId' })
   buyer: User
 
+  @Column({ type: 'int', default: 1 })
+  quantity: number
+
   @Column({ name: 'depositAmount', type: 'decimal', precision: 10, scale: 2 })
   depositAmount: number
 
