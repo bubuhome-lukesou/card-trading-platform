@@ -55,7 +55,8 @@ export enum ProductStatus {
   ACTIVE = 'active',
   SOLD = 'sold',
   ENDED = 'ended',
-  CANCELLED = 'cancelled'
+  CANCELLED = 'cancelled',
+  REMOVED = 'removed'
 }
 
 @Entity('products')

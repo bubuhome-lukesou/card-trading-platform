@@ -279,8 +279,7 @@ const handleDelete = async (productId: string) => {
   
   loading.value = true
   try {
-    // TODO: Call API to delete product
-    await new Promise(resolve => setTimeout(resolve, 500))
+    await productApi.deleteProduct(productId)
     products.value = products.value.filter(p => p.id !== productId)
   } catch (error) {
     console.error('Failed to delete product:', error)

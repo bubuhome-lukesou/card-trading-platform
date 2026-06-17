@@ -239,7 +239,9 @@ export class ProductsService {
       throw new ForbiddenException('You can only delete your own products')
     }
 
-    await this.productRepo.remove(product)
+    // Soft delete: mark as removed instead of hard delete (preserves order history)
+    product.status = 'removed'
+    await this.productRepo.save(product)
   }
 
   async findBySeller(sellerId: string): Promise<Product[]> {
