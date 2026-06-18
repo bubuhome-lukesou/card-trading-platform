@@ -240,7 +240,7 @@ export class ProductsService {
     }
 
     // Soft delete: mark as removed instead of hard delete (preserves order history)
-    product.status = 'removed'
+    product.status = ProductStatus.REMOVED
     await this.productRepo.save(product)
   }
 
