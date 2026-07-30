@@ -179,6 +179,15 @@ export class CreateProductDto {
   @IsNumber({}, { each: true })
   productTypeTags?: number[]
 
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  languageTagId?: number | null
+
+  @IsOptional()
+  @IsString()
+  language?: string
+
   // Reservation fields
   @IsOptional()
   @Type(() => Number)
@@ -301,6 +310,15 @@ export class UpdateProductDto {
   @IsArray()
   @IsNumber({}, { each: true })
   productTypeTags?: number[]
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  languageTagId?: number | null
+
+  @IsOptional()
+  @IsString()
+  language?: string
 
   // Reservation fields
   @IsOptional()

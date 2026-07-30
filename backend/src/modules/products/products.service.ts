@@ -181,9 +181,9 @@ export class ProductsService {
       status,
       tags,
       isActive: dto.isActive !== undefined ? dto.isActive : true
-    })
+    } as any)
 
-    return this.productRepo.save(product)
+    return this.productRepo.save(product) as any
   }
 
   async update(id: string, dto: UpdateProductDto, userId: string): Promise<Product> {

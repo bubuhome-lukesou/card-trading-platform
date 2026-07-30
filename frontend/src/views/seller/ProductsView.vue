@@ -84,6 +84,8 @@ const productTypes = ref<any[]>([])
 const selectedProductTypeTags = ref<number[]>([])
 const productTypesLoaded = ref(false)
 
+// 語言（獨立下拉選單，不從 API 讀取）
+
 // 预设仅销售模式，隐藏拍卖相关字段
 const formData = ref({
   titleZh: '',
@@ -97,6 +99,7 @@ const formData = ref({
   images: [] as string[],
   tags: [] as number[],
   productTypeTagId: null as number | null,
+  language: null as string | null,
   isActive: true,
   // Listing type
   listingType: 'sale_only' as 'sale_only' | 'auction_only' | 'both' | 'reservation_only',
@@ -138,6 +141,7 @@ const resetForm = () => {
     images: [],
     tags: [],
     productTypeTagId: null,
+    language: null,
     isActive: true,
     listingType: 'sale_only',
     reservationMax: 10,
@@ -189,14 +193,17 @@ const openEditModal = async (product: any) => {
   const productTypeTagId = product.productTypeTagId
   console.log('[DEBUG] openEditModal - product.productTypeTagId:', productTypeTagId)
   selectedProductTypeTags.value = productTypeTagId ? [productTypeTagId] : []
-  
-  // Ensure availableTags is loaded before modal opens
+
+  // Set selectedProductTypeTags for proper dropdown display
   await loadTags()
   await loadProductTypes()
-  
+
   // Sync formData.productTypeTagId for dropdown display
   formData.value.productTypeTagId = productTypeTagId || null
-  
+
+  // Sync formData.language for dropdown display
+  formData.value.language = product.language || null
+
   // Directly set selectedProductTypeTags to ensure it's not empty on submit
   selectedProductTypeTags.value = productTypeTagId ? [productTypeTagId] : []
 
@@ -212,6 +219,7 @@ const openEditModal = async (product: any) => {
     images: [...existingImages],
     tags: [...selectedTags.value],
     productTypeTagId: productTypeTagId || null,
+    language: product.language || null,
     isActive: product.isActive !== false,
     listingType: product.listingType || 'sale_only',
     reservationMax: product.reservationMax || 10,
@@ -427,8 +435,8 @@ const createNewTag = async () => {
 const loadTags = async () => {
   try {
     const response = await tagApi.getTags()
-    // Filter out product_type tags - those are shown in the dedicated 商品種類 dropdown
-    availableTags.value = (response.data || []).filter((t: any) => t.type !== 'product_type')
+    // Filter out product_type and language tags - those have dedicated dropdowns
+    availableTags.value = (response.data || []).filter((t: any) => t.type !== 'product_type' && t.type !== 'language')
   } catch (error) {
     console.error('Failed to load tags:', error)
   }
@@ -692,6 +700,19 @@ onUnmounted(() => {
                 <option v-for="pt in productTypes" :key="pt.id" :value="pt.id">
                   {{ pt.name }}
                 </option>
+              </select>
+            </div>
+
+            <!-- 語言（獨立下拉選單） -->
+            <div class="form-group">
+              <label>語言</label>
+              <select v-model="formData.language" class="form-select">
+                <option value="">— 不限 —</option>
+                <option value="日文">日文</option>
+                <option value="英文">英文</option>
+                <option value="繁體中文">繁體中文</option>
+                <option value="簡體中文">簡體中文</option>
+                <option value="韓文">韓文</option>
               </select>
             </div>
 

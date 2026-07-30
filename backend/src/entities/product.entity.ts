@@ -59,6 +59,16 @@ export enum ProductStatus {
   REMOVED = 'removed'
 }
 
+// 語言 enum（獨立管理，不依賴 Tag）
+export enum ProductLanguage {
+  JAPANESE = 'japanese',   // 日文
+  ENGLISH = 'english',     // 英文
+  TRADITIONAL_CHINESE = 'traditional_chinese', // 繁體中文
+  SIMPLIFIED_CHINESE = 'simplified_chinese',   // 簡體中文
+  KOREAN = 'korean',       // 韓文
+  OTHER = 'other',         // 其他
+}
+
 @Entity('products')
 export class Product {
   @PrimaryGeneratedColumn('uuid')
@@ -85,6 +95,18 @@ export class Product {
 
   @Column({ name: 'productTypeTagId', type: 'int', nullable: true })
   productTypeTagId: number | null
+
+  // 語言標籤關聯（type='language' 的 Tag）
+  @Column({ name: 'languageTagId', type: 'int', nullable: true })
+  languageTagId: number | null
+
+  @ManyToOne(() => Tag, { nullable: true })
+  @JoinColumn({ name: 'languageTagId' })
+  languageTag: Tag | null
+
+  // 語言（冗余存值，方便查詢，enum ProductLanguage）
+  @Column({ type: 'enum', enum: ProductLanguage, nullable: true })
+  language: ProductLanguage | null
 
   @Column({ type: 'enum', enum: ProductCondition })
   condition: ProductCondition
