@@ -96,6 +96,7 @@
       "series": "Series",
       "productTypes": "Product Type",
       "condition": "Condition",
+      "language": "Language",
       "priceRange": "Price Range",
       "listingType": "Listing Type",
       "all": "All",

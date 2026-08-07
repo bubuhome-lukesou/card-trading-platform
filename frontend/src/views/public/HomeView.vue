@@ -109,6 +109,21 @@ const getProductTypeTagName = (tagId: number | null | undefined) => {
   return tag?.name || ''
 }
 
+// Language display mapping
+const languageLabels: Record<string, string> = {
+  japanese: '日文',
+  english: '英文',
+  traditional_chinese: '繁體中文',
+  simplified_chinese: '簡體中文',
+  korean: '韓文',
+  other: '其他'
+}
+
+const getLanguageLabel = (lang: string | null | undefined) => {
+  if (!lang) return ''
+  return languageLabels[lang] || lang
+}
+
 const isProductFavorited = (productId: number) => favoritesStore.isFavorited(String(productId))
 
 const toggleProductFavorite = (e: Event, productId: number) => {
@@ -325,6 +340,10 @@ onMounted(() => {
                 <span class="listing-tag-name">{{ getProductTypeTagName(item.productTypeTagId) }}</span>
                 <span class="listing-sep">•</span>
                 <span class="listing-condition">{{ item.condition }}</span>
+                <template v-if="getLanguageLabel(item.language)">
+                  <span class="listing-sep">•</span>
+                  <span class="listing-language">{{ getLanguageLabel(item.language) }}</span>
+                </template>
               </div>
               <div class="listing-price">MOP ${{ Number(item.price).toLocaleString() }}</div>
             </div>
@@ -794,6 +813,11 @@ onMounted(() => {
 
 .listing-condition {
   // 品相顯示在 listing-meta 文字區域（非絕對定位）
+  color: var(--text-muted);
+  font-size: 10px;
+}
+
+.listing-language {
   color: var(--text-muted);
   font-size: 10px;
 }

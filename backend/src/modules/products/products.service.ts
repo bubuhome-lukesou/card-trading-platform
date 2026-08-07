@@ -67,6 +67,11 @@ export class ProductsService {
       }
     }
 
+    // Filter by language
+    if ((filters as any).language?.length) {
+      queryBuilder.andWhere('product.language IN (:...languages)', { languages: (filters as any).language })
+    }
+
     // Sorting
     switch (filters.sortBy) {
       case 'price_asc':

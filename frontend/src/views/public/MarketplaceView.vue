@@ -26,6 +26,7 @@ const filtersExpanded = ref({
   listingType: true,
   productTypes: true,
   condition: true,
+  language: true,
   price: true
 })
 
@@ -43,6 +44,7 @@ const filters = ref<any>({
   sortBy: 'newest',
   tags: [] as string[],
   productTypes: [] as string[],
+  language: [] as string[],
   page: 1,
   limit: 20
 })
@@ -65,6 +67,14 @@ const filterOptions = ref({
     { value: 'C', label: 'C', labelZh: 'C級 - 較明顯磨損' },
     { value: 'D', label: 'D', labelZh: 'D級 - 嚴重磨損' }
   ],
+  languages: [
+    { value: 'japanese', label: '日文', labelEn: 'Japanese' },
+    { value: 'english', label: '英文', labelEn: 'English' },
+    { value: 'traditional_chinese', label: '繁體中文', labelEn: 'Traditional Chinese' },
+    { value: 'simplified_chinese', label: '簡體中文', labelEn: 'Simplified Chinese' },
+    { value: 'korean', label: '韓文', labelEn: 'Korean' },
+    { value: 'other', label: '其他', labelEn: 'Other' }
+  ],
   productTypes: [] as Tag[]
 })
 
@@ -85,6 +95,7 @@ const activeFiltersCount = computed(() => {
   if (filters.value.priceMin || filters.value.priceMax) count++
   if (filters.value.listingType !== 'all') count++
   if (filters.value.productTypes?.length) count += filters.value.productTypes.length
+  if (filters.value.language?.length) count += filters.value.language.length
   return count
 })
 
@@ -118,6 +129,11 @@ const activeFiltersList = computed(() => {
   filters.value.productTypes?.forEach((tagId: string) => {
     const tag = filterOptions.value.productTypes.find(x => String(x.id) === tagId)
     list.push({ key: 'productTypes', value: tag?.name || tagId, rawValue: tagId })
+  })
+
+  filters.value.language?.forEach((lang: string) => {
+    const langOpt = filterOptions.value.languages.find(x => x.value === lang)
+    list.push({ key: 'language', value: langOpt?.label || lang, rawValue: lang })
   })
 
   return list
@@ -162,7 +178,7 @@ const updateFilter = (key: string, value: any) => {
   fetchProducts()
 }
 
-const toggleArrayFilter = (key: 'category' | 'rarity' | 'condition' | 'tags' | 'productTypes', value: string) => {
+const toggleArrayFilter = (key: 'category' | 'rarity' | 'condition' | 'tags' | 'productTypes' | 'language', value: string) => {
   const arr = filters.value[key] || []
   const index = arr.indexOf(value)
   if (index === -1) {
@@ -222,7 +238,8 @@ const clearAllFilters = () => {
     listingType: 'all',
     sortBy: 'newest',
     page: 1,
-    limit: 20
+    limit: 20,
+    language: []
   }
   updateUrl()
   fetchProducts()
@@ -240,6 +257,7 @@ const updateUrl = () => {
   if (filters.value.sortBy !== 'newest') query.sort = filters.value.sortBy
   if (filters.value.tags?.length) query.tags = filters.value.tags.join(',')
   if (filters.value.productTypes?.length) query.productTypeTags = filters.value.productTypes.join(',')
+  if (filters.value.language?.length) query.language = filters.value.language.join(',')
   if (filters.value.page !== 1) query.page = String(filters.value.page)
 
   router.replace({ query })
@@ -256,6 +274,7 @@ const parseUrlFilters = () => {
   if (query.listing) filters.value.listingType = query.listing as 'all' | 'sale' | 'auction'
   if (query.sort) filters.value.sortBy = query.sort as string
   if (query.productTypes) filters.value.productTypes = (query.productTypes as string).split(',')
+  if (query.language) filters.value.language = (query.language as string).split(',')
   if (query.page) filters.value.page = Number(query.page)
   if (query.productTypeTags) filters.value.productTypes = (query.productTypeTags as string).split(',')
 }
@@ -431,6 +450,32 @@ watch(() => route.query, () => {
                 <span class="checkmark" />
                 <span class="filter-label">
                   {{ cond.labelZh }}
+                </span>
+              </label>
+            </div>
+          </div>
+
+          <!-- Language -->
+          <div class="filter-section">
+            <h4 class="filter-title" @click="filtersExpanded.language = !filtersExpanded.language">
+              {{ t('product.filters.language') }}
+              <ChevronDown class="filter-chevron" :class="{ collapsed: !filtersExpanded.language }" />
+            </h4>
+            <div v-show="filtersExpanded.language" class="filter-options">
+              <label
+                v-for="lang in filterOptions.languages"
+                :key="lang.value"
+                class="filter-option"
+                :class="{ active: filters.language.includes(lang.value) }"
+              >
+                <input
+                  type="checkbox"
+                  :checked="filters.language.includes(lang.value)"
+                  @change="toggleArrayFilter('language', lang.value)"
+                />
+                <span class="checkmark" />
+                <span class="filter-label">
+                  {{ lang.label }}
                 </span>
               </label>
             </div>

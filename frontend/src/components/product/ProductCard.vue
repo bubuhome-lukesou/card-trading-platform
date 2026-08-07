@@ -67,6 +67,23 @@ const listingBadgeText = computed(() => {
   if (props.product.listingType === 'reservation_only') return 'Reserve'
   return 'Sale'
 })
+
+// Language display mapping
+const languageLabels: Record<string, { zh: string, en: string }> = {
+  japanese: { zh: '日文', en: 'Japanese' },
+  english: { zh: '英文', en: 'English' },
+  traditional_chinese: { zh: '繁體中文', en: 'Traditional Chinese' },
+  simplified_chinese: { zh: '簡體中文', en: 'Simplified Chinese' },
+  korean: { zh: '韓文', en: 'Korean' },
+  other: { zh: '其他', en: 'Other' }
+}
+
+const languageLabel = computed(() => {
+  const lang = (props.product as any).language
+  if (!lang) return ''
+  const labels = languageLabels[lang]
+  return locale.value === 'zh' ? labels?.zh || lang : labels?.en || lang
+})
 </script>
 
 <template>
@@ -114,6 +131,10 @@ const listingBadgeText = computed(() => {
         <span class="listing-tag-name">{{ productTypeTagName }}</span>
         <span class="listing-sep">•</span>
         <span class="listing-condition">{{ product.condition }}</span>
+        <template v-if="languageLabel">
+          <span class="listing-sep">•</span>
+          <span class="listing-language">{{ languageLabel }}</span>
+        </template>
       </div>
       <div class="listing-price">MOP ${{ Number(product.price).toLocaleString() }}</div>
     </div>
@@ -314,6 +335,11 @@ const listingBadgeText = computed(() => {
 }
 
 .listing-condition {
+  color: var(--text-muted);
+  font-size: 10px;
+}
+
+.listing-language {
   color: var(--text-muted);
   font-size: 10px;
 }

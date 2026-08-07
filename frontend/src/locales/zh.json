@@ -118,6 +118,7 @@
       "auctionOnly": "僅拍賣",
       "productTypes": "商品種類",
       "condition": "品相",
+      "language": "語言",
       "priceRange": "價格範圍"
     },
     "sort": {

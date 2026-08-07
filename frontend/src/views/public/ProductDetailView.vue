@@ -96,6 +96,23 @@ const getGeneralTags = (product: any) => {
   return product.tags.filter((tag: any) => tag.type !== 'product_type' && tag.type !== 'PRODUCT_TYPE')
 }
 
+// Language display mapping
+const languageLabels: Record<string, { zh: string; en: string }> = {
+  japanese: { zh: '日文', en: 'Japanese' },
+  english: { zh: '英文', en: 'English' },
+  traditional_chinese: { zh: '繁體中文', en: 'Traditional Chinese' },
+  simplified_chinese: { zh: '簡體中文', en: 'Simplified Chinese' },
+  korean: { zh: '韓文', en: 'Korean' },
+  other: { zh: '其他', en: 'Other' }
+}
+
+const getLanguageLabel = (lang: string | null | undefined) => {
+  if (!lang) return ''
+  const labels = languageLabels[lang]
+  if (!labels) return lang
+  return locale.value === 'zh' ? labels.zh : labels.en
+}
+
 // Fetch related products (you may like)
 const fetchRelatedProducts = async () => {
   if (!product.value) return
@@ -530,6 +547,10 @@ const isProductSuspended = computed(() => {
             <span v-if="getProductTypeTag(product)" class="meta-product-type">{{ getProductTypeTag(product).name }}</span>
             <span v-if="getProductTypeTag(product)" class="meta-sep">·</span>
             <span class="meta-condition">{{ product.condition }}</span>
+            <template v-if="getLanguageLabel(product.language)">
+              <span class="meta-sep">·</span>
+              <span class="meta-language">{{ getLanguageLabel(product.language) }}</span>
+            </template>
           </div>
 
           <!-- 標簽 -->
@@ -951,6 +972,11 @@ const isProductSuspended = computed(() => {
 }
 
 .meta-condition {
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+}
+
+.meta-language {
   color: var(--text-secondary);
   font-size: 0.8rem;
 }

@@ -703,16 +703,17 @@ onUnmounted(() => {
               </select>
             </div>
 
-            <!-- 語言（獨立下拉選單） -->
+            <!-- 語言（獨立下拉選單，使用 enum 值發送） -->
             <div class="form-group">
               <label>語言</label>
               <select v-model="formData.language" class="form-select">
-                <option value="">— 不限 —</option>
-                <option value="日文">日文</option>
-                <option value="英文">英文</option>
-                <option value="繁體中文">繁體中文</option>
-                <option value="簡體中文">簡體中文</option>
-                <option value="韓文">韓文</option>
+                <option :value="null">— 不限 —</option>
+                <option value="japanese">日文</option>
+                <option value="english">英文</option>
+                <option value="traditional_chinese">繁體中文</option>
+                <option value="simplified_chinese">簡體中文</option>
+                <option value="korean">韓文</option>
+                <option value="other">其他</option>
               </select>
             </div>
 

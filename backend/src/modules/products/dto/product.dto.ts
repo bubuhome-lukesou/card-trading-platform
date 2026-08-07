@@ -81,6 +81,15 @@ export class ProductFiltersDto {
     return undefined
   })
   tags?: string[]
+
+  @IsOptional()
+  @Transform(({ value }) => {
+    if (typeof value === 'string') return value.split(',').map(s => s.trim()).filter(Boolean)
+    if (Array.isArray(value)) return value.flatMap(v => typeof v === 'string' ? v.split(',').map(s => s.trim()) : v).filter(Boolean)
+    return undefined
+  })
+  @IsString({ each: true })
+  language?: string[]
 }
 
 export class CreateProductDto {
@@ -186,7 +195,7 @@ export class CreateProductDto {
 
   @IsOptional()
   @IsString()
-  language?: string
+  language?: string  // ProductLanguage enum value: japanese, english, traditional_chinese, simplified_chinese, korean, other
 
   // Reservation fields
   @IsOptional()
