@@ -371,7 +371,7 @@ onMounted(() => {
 
 <style scoped lang="scss">
 .home {
-  background: var(--bg-dark);
+  background: transparent;
 }
 
 // Hero Banner
@@ -383,7 +383,7 @@ onMounted(() => {
   align-items: center;
   justify-content: center;
   overflow: hidden;
-  background: linear-gradient(180deg, var(--bg-card) 0%, var(--bg-dark) 100%);
+  background: linear-gradient(180deg, rgba(26, 26, 46, 0.5) 0%, rgba(15, 15, 26, 0.3) 100%);
 }
 
 .banner-content {
@@ -450,7 +450,9 @@ onMounted(() => {
 
 // Stats Bar
 .stats-bar {
-  background: var(--bg-card);
+  background: rgba(26, 26, 46, 0.3);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   padding: var(--space-6) 0;
   border-bottom: 1px solid var(--border);
 }
@@ -529,7 +531,7 @@ onMounted(() => {
 
 // Categories Grid
 .categories-section {
-  background: var(--bg-dark);
+  background: transparent;
 }
 
 .categories-grid {

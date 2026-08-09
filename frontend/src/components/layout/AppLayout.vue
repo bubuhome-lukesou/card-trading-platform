@@ -253,7 +253,7 @@ const userMenuItems = computed(() => {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  background: var(--bg-dark);
+  background: transparent;
 }
 
   // Header

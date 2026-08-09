@@ -285,7 +285,7 @@ onMounted(() => {
 .seller-apply-page {
   min-height: 100vh;
   padding: var(--space-8) var(--space-4);
-  background: var(--bg-dark);
+  background: transparent;
 }
 
 .container {

@@ -260,14 +260,20 @@ const nextImage = () => {
 
 // Touch handlers for mobile swipe
 const onTouchStart = (e: TouchEvent) => {
-  e.preventDefault()
   touchStartX.value = e.changedTouches[0].screenX
 }
 
 const onTouchEnd = (e: TouchEvent) => {
-  e.preventDefault()
   touchEndX.value = e.changedTouches[0].screenX
-  handleSwipe()
+  const diff = touchStartX.value - touchEndX.value
+  if (Math.abs(diff) > 50) {
+    // Swipe — switch images, prevent click
+    e.preventDefault()
+    handleSwipe()
+  } else {
+    // Tap — open lightbox (let click handler work, don't preventDefault)
+    openLightbox()
+  }
 }
 
 const handleSwipe = () => {
@@ -479,1027 +485,1381 @@ const isProductSuspended = computed(() => {
 <template>
   <div class="product-detail">
     <div class="container">
+      <!-- Loading -->
       <div v-if="loading" class="loading-state">
         <Loader2 class="spinner" />
         <p>{{ t('common.loading') || '加載中...' }}</p>
       </div>
+
+      <!-- Product exists -->
       <div v-else-if="product" class="product-layout">
-        <!-- Images -->
-        <div class="product-images">
-          <!-- Vintage Card Display — no frame, just aged card presentation -->
+        <!-- ════════════════ LEFT: Image Gallery ════════════════ -->
+        <div class="gallery-wrap">
           <div
-            class="vintage-card"
+            class="main-image"
             :style="{ '--cat-color': categoryColor }"
             @touchstart="onTouchStart"
             @touchend="onTouchEnd"
           >
-            <!-- Category badge -->
-            <div class="category-badge">
+            <!-- Category pill -->
+            <div class="cat-pill">
               <span class="cat-emoji">{{ getCategoryInfo(product.category).emoji }}</span>
-              <span class="cat-name">{{ getCategoryLabel(product.category) }}</span>
+              <span class="cat-text">{{ getCategoryLabel(product.category) }}</span>
             </div>
 
-            <button v-if="product.images?.length > 1" class="nav-btn nav-prev" @click.stop="prevImage">‹</button>
+            <!-- Nav arrows -->
+            <button v-if="product.images?.length > 1" class="nav-btn nav-prev" @click.stop="prevImage">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+            </button>
+
             <img
               :src="product.images?.[currentImageIndex] || '/placeholder-card.png'"
               :alt="getTitle(product)"
               @click="openLightbox"
-              style="cursor: zoom-in;"
+              class="hero-img"
             />
-            <button v-if="product.images?.length > 1" class="nav-btn nav-next" @click.stop="nextImage">›</button>
-            <div v-if="product.images?.length > 1" class="image-counter">{{ currentImageIndex + 1 }} / {{ product.images.length }}</div>
+
+            <button v-if="product.images?.length > 1" class="nav-btn nav-next" @click.stop="nextImage">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+            </button>
+
+            <!-- Zoom hint -->
             <div class="zoom-hint">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <circle cx="11" cy="11" r="8"/>
                 <path d="m21 21-4.35-4.35"/>
                 <path d="M11 8v6M8 11h6"/>
               </svg>
-              {{ locale === 'zh' ? '點擊放大' : 'Click to zoom' }}
+              <span>{{ locale === 'zh' ? '點擊放大' : 'Click to zoom' }}</span>
+            </div>
+
+            <!-- Counter -->
+            <div v-if="product.images?.length > 1" class="img-counter">
+              {{ currentImageIndex + 1 }} / {{ product.images.length }}
             </div>
           </div>
 
-          <div v-if="product.images?.length > 1" class="thumbnail-list">
+          <!-- Thumbnails -->
+          <div v-if="product.images?.length > 1" class="thumb-strip">
             <img
               v-for="(img, idx) in product.images"
               :key="idx"
               :src="img"
               :alt="`${getTitle(product)} ${Number(idx) + 1}`"
-              class="thumbnail"
+              class="thumb"
               :class="{ active: idx === currentImageIndex }"
               @click="selectImage(Number(idx))"
             />
           </div>
         </div>
 
-        <!-- Info -->
-        <div class="product-info">
-          <!-- 商品名稱 -->
-          <h1 class="product-title">
-            {{ getTitle(product) }}
-            <span v-if="isProductSuspended" class="suspended-badge">已下架</span>
-          </h1>
+        <!-- ════════════════ RIGHT: Info (Glass Card) ════════════════ -->
+        <div class="info-wrap">
+          <div class="glass-card">
+            <!-- Title -->
+            <h1 class="product-title">
+              {{ getTitle(product) }}
+              <span v-if="isProductSuspended" class="suspended-badge">{{ locale === 'zh' ? '已下架' : 'Suspended' }}</span>
+            </h1>
 
-          <!-- 類別emoji 類別名稱 . 商品種類 . 品相 -->
-          <div class="product-meta-row">
-            <span class="meta-emoji">{{ getCategoryInfo(product.category).emoji }}</span>
-            <span class="meta-category">{{ getCategoryLabel(product.category) }}</span>
-            <span class="meta-sep">·</span>
-            <span v-if="getProductTypeTag(product)" class="meta-product-type">{{ getProductTypeTag(product).name }}</span>
-            <span v-if="getProductTypeTag(product)" class="meta-sep">·</span>
-            <span class="meta-condition">{{ product.condition }}</span>
-            <template v-if="getLanguageLabel(product.language)">
-              <span class="meta-sep">·</span>
-              <span class="meta-language">{{ getLanguageLabel(product.language) }}</span>
+            <!-- Spec table -->
+            <div class="spec-table">
+              <div class="spec-row">
+                <div class="spec-cell">
+                  <span class="spec-label">{{ locale === 'zh' ? '品牌' : 'Brand' }}</span>
+                  <span class="spec-value">{{ getCategoryInfo(product.category).emoji }} {{ getCategoryLabel(product.category) }}</span>
+                </div>
+                <div class="spec-cell">
+                  <span class="spec-label">{{ locale === 'zh' ? '語言' : 'Language' }}</span>
+                  <span class="spec-value">{{ getLanguageLabel(product.language) || '—' }}</span>
+                </div>
+              </div>
+              <div class="spec-row">
+                <div class="spec-cell">
+                  <span class="spec-label">{{ locale === 'zh' ? '品相' : 'Condition' }}</span>
+                  <span class="spec-value">
+                    <span class="condition-dot" :style="{ backgroundColor: conditionColor }"></span>
+                    {{ product.condition }}{{ locale === 'zh' ? '品, ' + ({ S: '完美品相', A: '輕微瑕疵', B: '正常使用痕跡', C: '較明顯磨損', D: '嚴重磨損' } as Record<string, string>)[product.condition] || '' : '' }}
+                  </span>
+                </div>
+                <div class="spec-cell">
+                  <span class="spec-label">{{ locale === 'zh' ? '商品種類' : 'Type' }}</span>
+                  <span class="spec-value">{{ getProductTypeTag(product) ? getProductTypeTag(product).name : '—' }}</span>
+                </div>
+              </div>
+              <div class="spec-row" v-if="getGeneralTags(product).length > 0">
+                <div class="spec-cell spec-cell-full">
+                  <span class="spec-label">{{ locale === 'zh' ? '其它標籤' : 'Tags' }}</span>
+                  <span class="spec-value spec-tags">
+                    <span
+                      v-for="tag in getGeneralTags(product)"
+                      :key="tag.id"
+                      class="tag-chip"
+                      :style="tag.color ? { '--tag-color': tag.color } : {}"
+                      @click="router.push({ path: '/marketplace', query: { search: tag.name } })"
+                    >
+                      <span class="tag-dot" :style="{ backgroundColor: tag.color || '#818cf8' }"></span>
+                      {{ tag.name }}
+                    </span>
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Description -->
+            <div v-if="getDescription(product)" class="description-block">
+              <h3 class="desc-heading">{{ locale === 'zh' ? '商品描述' : 'Description' }}</h3>
+              <p class="desc-text">{{ getDescription(product) }}</p>
+            </div>
+
+            <!-- Price -->
+            <div class="price-block">
+              <span class="price-currency">MOP</span>
+              <span class="price-amount">${{ Number(product.price).toLocaleString() }}</span>
+            </div>
+
+            <!-- Quantity selector -->
+            <div v-if="product.quantity > 0" class="quantity-section">
+              <span class="qty-label">{{ locale === 'zh' ? '數量' : 'Quantity' }}</span>
+              <div class="qty-controls">
+                <button class="qty-btn" @click="decreaseQuantity" :disabled="selectedQuantity <= 1">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                </button>
+                <input
+                  type="number"
+                  class="qty-input"
+                  v-model.number="selectedQuantity"
+                  :min="1"
+                  :max="getMaxQuantity()"
+                  @change="selectedQuantity = Math.max(1, Math.min(selectedQuantity, getMaxQuantity()))"
+                />
+                <button class="qty-btn" @click="increaseQuantity" :disabled="selectedQuantity >= getMaxQuantity()">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                </button>
+              </div>
+              <span v-if="product.quantity !== undefined" class="stock-info">
+                {{ locale === 'zh' ? '庫存' : 'Stock' }}: {{ product.quantity }}
+              </span>
+            </div>
+            <div v-else class="out-of-stock">
+              {{ locale === 'zh' ? '已售罄' : 'Out of Stock' }}
+            </div>
+
+            <!-- Message -->
+            <transition name="msg-fade">
+              <div v-if="message" class="action-message" :class="messageType">
+                {{ message }}
+              </div>
+            </transition>
+
+            <!-- Reservation mode UI -->
+            <template v-if="product && product.listingType === 'reservation_only'">
+              <div class="reservation-box">
+                <div class="res-header">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                    <line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+                  </svg>
+                  <span>{{ locale === 'zh' ? '預約資訊' : 'Reservation Info' }}</span>
+                </div>
+                <div class="res-grid">
+                  <div class="res-item">
+                    <span class="res-label">{{ locale === 'zh' ? '預約名額' : 'Spots' }}</span>
+                    <span class="res-value">{{ reservationDisplayText }}</span>
+                  </div>
+                  <div class="res-item" v-if="product.reservationDeposit">
+                    <span class="res-label">{{ locale === 'zh' ? '訂金' : 'Deposit' }}</span>
+                    <span class="res-value">MOP ${{ product.reservationDeposit }}</span>
+                  </div>
+                  <div class="res-item" v-if="product.reservationDeadline">
+                    <span class="res-label">{{ locale === 'zh' ? '截止報名' : 'Deadline' }}</span>
+                    <span class="res-value">{{ formatDate(product.reservationDeadline, true) }}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="action-row">
+                <button
+                  class="btn btn-primary"
+                  :disabled="processing || !isReservationOpen || isProductSuspended"
+                  @click="handleReserve"
+                >
+                  <Loader2 v-if="processing" class="btn-spinner" />
+                  {{ processing ? (t('common.loading') || '處理中...') : (locale === 'zh' ? '立即預約' : 'Reserve Now') }}
+                </button>
+                <button
+                  class="btn btn-fav"
+                  :class="{ active: isFavorited }"
+                  :disabled="favoriteLoading"
+                  @click="handleToggleFavorite"
+                >
+                  <Heart class="fav-icon" :class="{ 'icon-filled': isFavorited }" />
+                </button>
+              </div>
+            </template>
+
+            <!-- Normal purchase UI -->
+            <template v-else>
+              <div class="action-row">
+                <button
+                  class="btn btn-primary"
+                  :disabled="processing || isOutOfStock() || isProductSuspended"
+                  @click="handleBuyNow"
+                >
+                  <Loader2 v-if="processing" class="btn-spinner" />
+                  {{ processing ? (t('common.loading') || '處理中...') : (locale === 'zh' ? '立即購買' : 'Buy Now') }}
+                </button>
+                <button
+                  class="btn btn-secondary"
+                  :disabled="processing || isOutOfStock() || isProductSuspended"
+                  @click="handleAddToCart"
+                >
+                  {{ locale === 'zh' ? '加到購物車' : 'Add to Cart' }}
+                </button>
+                <button
+                  class="btn btn-fav"
+                  :class="{ active: isFavorited }"
+                  :disabled="favoriteLoading"
+                  @click="handleToggleFavorite"
+                >
+                  <Heart class="fav-icon" :class="{ 'icon-filled': isFavorited }" />
+                </button>
+              </div>
             </template>
           </div>
-
-          <!-- 標簽 -->
-          <div v-if="getGeneralTags(product).length > 0" class="product-tags">
-            <span
-              v-for="tag in getGeneralTags(product)"
-              :key="tag.id"
-              class="product-tag"
-              :style="tag.color ? { backgroundColor: tag.color + '18', color: tag.color, borderColor: tag.color + '50' } : {}"
-              @click="router.push({ path: '/marketplace', query: { search: tag.name } })"
-            >
-              <span class="tag-dot" :style="{ backgroundColor: tag.color || '#6366f1' }"></span>
-              {{ tag.name }}
-            </span>
-          </div>
-
-          <!-- 商品描述 -->
-          <div v-if="getDescription(product)" class="product-description">
-            <p>{{ getDescription(product) }}</p>
-          </div>
-
-          <!-- MOP 200 價格 -->
-          <div class="price-section">
-            <span class="price">MOP ${{ Number(product.price).toLocaleString() }}</span>
-          </div>
-
-          <!-- -數量+  庫存:x -->
-          <div v-if="product.quantity > 0" class="quantity-row">
-            <div class="qty-controls">
-              <button class="qty-btn" @click="decreaseQuantity" :disabled="selectedQuantity <= 1">−</button>
-              <input
-                type="number"
-                class="qty-input"
-                v-model.number="selectedQuantity"
-                :min="1"
-                :max="getMaxQuantity()"
-                @change="selectedQuantity = Math.max(1, Math.min(selectedQuantity, getMaxQuantity()))"
-              />
-              <button class="qty-btn" @click="increaseQuantity" :disabled="selectedQuantity >= getMaxQuantity()">+</button>
-            </div>
-            <span v-if="product.quantity !== undefined" class="stock-count">
-              {{ locale === 'zh' ? '庫存:' : 'Stock:' }} {{ product.quantity }}
-            </span>
-          </div>
-          <div v-else class="stock-count out-of-stock-text">
-            {{ locale === 'zh' ? '已售罄' : 'Out of Stock' }}
-          </div>
-
-          <!-- Message -->
-          <div v-if="message" class="action-message" :class="messageType">
-            {{ message }}
-          </div>
-
-          <!-- 預約模式 UI -->
-          <template v-if="product && product.listingType === 'reservation_only'">
-            <div class="reservation-info">
-              <div class="reservation-item">
-                <span class="reservation-label">{{ locale === 'zh' ? '預約名額' : 'Spots' }}</span>
-                <span class="reservation-value">{{ reservationDisplayText }}</span>
-              </div>
-              <div class="reservation-item" v-if="product.reservationDeposit">
-                <span class="reservation-label">{{ locale === 'zh' ? '訂金' : 'Deposit' }}</span>
-                <span class="reservation-value">MOP ${{ product.reservationDeposit }}</span>
-              </div>
-              <div class="reservation-item" v-if="product.reservationDeadline">
-                <span class="reservation-label">{{ locale === 'zh' ? '截止報名' : 'Deadline' }}</span>
-                <span class="reservation-value">{{ formatDate(product.reservationDeadline, true) }}</span>
-              </div>
-            </div>
-            <div class="action-buttons">
-              <button
-                class="btn btn-primary btn-lg"
-                :disabled="processing || !isReservationOpen || isProductSuspended"
-                @click="handleReserve"
-              >
-                {{ processing ? (t('common.loading') || '處理中...') : (locale === 'zh' ? '立即預約' : 'Reserve Now') }}
-              </button>
-            </div>
-          </template>
-
-          <!-- 一般購買 UI -->
-          <template v-else>
-            <div class="action-buttons">
-              <button
-                class="btn btn-primary btn-lg"
-                :disabled="processing || isOutOfStock() || isProductSuspended"
-                @click="handleBuyNow"
-              >
-                {{ processing ? (t('common.loading') || '處理中...') : (locale === 'zh' ? '立即購買' : 'Buy Now') }}
-              </button>
-              <button
-                class="btn btn-outline"
-                :disabled="processing || isOutOfStock() || isProductSuspended"
-                @click="handleAddToCart"
-              >
-                {{ locale === 'zh' ? '加到購物車' : 'Add to Cart' }}
-              </button>
-            </div>
-          </template>
-
-          <!-- 加到我的最愛 -->
-          <button
-            class="btn btn-favorite"
-            :class="{ active: isFavorited }"
-            :disabled="favoriteLoading"
-            @click="handleToggleFavorite"
-          >
-            <Heart class="favorite-icon" :class="{ 'icon-filled': isFavorited }" />
-            {{ favoriteLoading ? (t('common.loading') || '...') : (isFavorited ? (locale === 'zh' ? '已加入我的最愛' : 'Saved') : (locale === 'zh' ? '加到我的最愛' : 'Add to Favorites')) }}
-          </button>
         </div>
       </div>
+
+      <!-- Error -->
       <div v-else class="error-state">
         <p>{{ t('common.error') || '商品不存在' }}</p>
       </div>
 
-      <!-- 你可能喜歡 -->
-      <div v-if="!loading && relatedProducts.length > 0" class="related-section">
+      <!-- ════════════════ You May Also Like ════════════════ -->
+      <section v-if="!loading && relatedProducts.length > 0" class="related-section">
         <h2 class="related-title">{{ locale === 'zh' ? '你可能喜歡' : 'You May Also Like' }}</h2>
         <div v-if="relatedLoading" class="loading-state">
           <Loader2 class="spinner" />
         </div>
-        <div v-else class="products-grid">
+        <div v-else class="related-grid">
           <ProductCard
             v-for="p in relatedProducts"
             :key="p.id"
             :product="p"
           />
         </div>
-      </div>
+      </section>
     </div>
   </div>
 
-  <!-- Lightbox for image zoom -->
-  <div v-if="lightboxOpen" class="lightbox" @click.self="closeLightbox">
-    <button class="lightbox-close" @click="closeLightbox">✕</button>
-    <button v-if="product.images?.length > 1" class="lightbox-nav lightbox-prev" @click.stop="prevImage">‹</button>
-    <img :src="product.images?.[currentImageIndex]" :alt="getTitle(product)" class="lightbox-img" @click.stop />
-    <button v-if="product.images?.length > 1" class="lightbox-nav lightbox-next" @click.stop="nextImage">›</button>
-    <div v-if="product.images?.length > 1" class="lightbox-counter">{{ currentImageIndex + 1 }} / {{ product.images.length }}</div>
-    <div class="lightbox-hint">{{ locale === 'zh' ? '按 ESC 關閉 · 左右鍵切換' : 'Press ESC to close · Arrow keys to navigate' }}</div>
-  </div>
+  <!-- ════════════════ Lightbox ════════════════ -->
+  <transition name="lightbox-fade">
+    <div v-if="lightboxOpen" class="lightbox" @click.self="closeLightbox">
+      <button class="lb-close" @click="closeLightbox">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+      <button v-if="product.images?.length > 1" class="lb-nav lb-prev" @click.stop="prevImage">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+      </button>
+      <img :src="product.images?.[currentImageIndex]" :alt="getTitle(product)" class="lb-img" @click.stop />
+      <button v-if="product.images?.length > 1" class="lb-nav lb-next" @click.stop="nextImage">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+      </button>
+      <div v-if="product.images?.length > 1" class="lb-counter">{{ currentImageIndex + 1 }} / {{ product.images.length }}</div>
+      <div class="lb-hint">{{ locale === 'zh' ? '按 ESC 關閉 · 左右鍵切換' : 'ESC to close · Arrow keys to navigate' }}</div>
+    </div>
+  </transition>
 </template>
 
 <style scoped lang="scss">
 // ============================================
-// Product Detail - Premium Background Design
+// Product Detail — Premium Minimalist Dark
+// Gradient: #6366f1 → #818cf8 · 16px radius · glassmorphism
 // ============================================
 
-.spinner {
-  animation: spin 1s linear infinite;
-  width: 24px;
-  height: 24px;
-  color: var(--primary);
-}
+$grad-start: #6366f1;
+$grad-end: #818cf8;
+$bg-page: #0a0a0f;
+$bg-card-glass: rgba(255, 255, 255, 0.04);
+$border-glass: rgba(255, 255, 255, 0.08);
+$text-hi: #f4f4f8;
+$text-mid: #a0a0b0;
+$text-lo: #6b6b7b;
+$radius: 16px;
 
+// ── Animations ──
 @keyframes spin {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
+}
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+// ── Base ──
+.product-detail {
+  min-height: 100vh;
+  background: transparent;
+  padding: 0;
+}
+
+.container {
+  position: relative;
+  z-index: 1;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 32px 24px 80px;
+}
+
+.spinner {
+  animation: spin 1s linear infinite;
+  width: 28px;
+  height: 28px;
+  color: $grad-end;
 }
 
 .loading-state {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 12px;
-  padding: 48px;
-  color: var(--text-secondary);
+  gap: 16px;
+  padding: 80px 0;
+  color: $text-mid;
+  font-size: 0.95rem;
+}
+
+.error-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 80px 0;
+  color: $text-mid;
+  font-size: 1.1rem;
 }
 
 // ════════════════════════════════════════════
-// 🎴 Background Layer — immersive card theme
-// ════════════════════════════════════════════
-.product-detail {
-  position: relative;
-  min-height: 100vh;
-  background: #0d0d1a;
-}
-
-.container {
-  position: relative;
-  z-index: 1;
-}
-
-// ════════════════════════════════════════════
-// Product Layout — glassmorphism card
+// Layout — Two columns
 // ════════════════════════════════════════════
 .product-layout {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 48px;
-  padding: 32px 0;
-  width: 100%;
-  box-sizing: border-box;
+  align-items: start;
+  animation: fadeUp 0.5s ease;
+  min-width: 0;
+  max-width: 100%;
 }
 
-@media (max-width: 900px) {
+@media (max-width: 960px) {
   .product-layout {
     grid-template-columns: 1fr;
     gap: 24px;
-    padding: 0;
   }
 }
 
 // ════════════════════════════════════════════
-// 🎴 Product Images — Vintage Card Style
+// Gallery (Left)
 // ════════════════════════════════════════════
-.product-images {
+.gallery-wrap {
   display: flex;
   flex-direction: column;
   gap: 16px;
-  width: 100%;
-  position: relative;
+  position: sticky;
+  top: 24px;
 }
 
-// Vintage card — clean display with no border
-.vintage-card {
+@media (max-width: 960px) {
+  .gallery-wrap {
+    position: static;
+  }
+}
+
+.main-image {
   position: relative;
-  background: #0e0c0a;
-  border-radius: 8px;
-  padding: 0;
+  background: linear-gradient(145deg, #131318 0%, #0e0e14 100%);
+  border-radius: $radius;
+  overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 300px;
+  min-height: 440px;
+  border: 1px solid $border-glass;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  transition: box-shadow 0.3s ease;
 
-  img {
-    max-width: 100%;
-    max-height: 520px;
-    object-fit: contain;
-    display: block;
-    border-radius: 6px;
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse at 50% 30%, rgba(99, 102, 241, 0.06) 0%, transparent 60%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  &:hover {
+    box-shadow: 0 12px 40px rgba(99, 102, 241, 0.15);
   }
 }
 
-// Floating category badge — vintage leather tag style
-.category-badge {
-  position: absolute;
-  top: 24px;
-  left: 24px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  background: linear-gradient(135deg, #3d2b1f 0%, #2a1f16 100%);
-  border: 1px solid rgba(210,180,140,0.3);
-  border-radius: 8px;
-  padding: 8px 14px 8px 10px;
-  z-index: 10;
-  box-shadow:
-    0 2px 8px rgba(0,0,0,0.5),
-    inset 0 1px 0 rgba(255,255,255,0.08);
-  backdrop-filter: blur(8px);
+.hero-img {
+  max-width: 100%;
+  max-height: 520px;
+  object-fit: contain;
+  display: block;
+  cursor: zoom-in;
+  transition: transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  position: relative;
+  z-index: 1;
 
-  .cat-emoji {
-    font-size: 1.3rem;
-    line-height: 1;
-    filter: drop-shadow(0 1px 2px rgba(0,0,0,0.5));
-  }
-
-  .cat-name {
-    font-size: 0.78rem;
-    font-weight: 600;
-    color: #d4b896;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
+  &:hover {
+    transform: scale(1.03);
   }
 }
 
-.zoom-hint {
+// Category pill (floating top-left)
+.cat-pill {
   position: absolute;
-  bottom: 12px;
-  right: 12px;
+  top: 16px;
+  left: 16px;
   display: flex;
   align-items: center;
   gap: 6px;
-  background: rgba(0, 0, 0, 0.6);
-  color: rgba(255, 255, 255, 0.8);
-  padding: 6px 12px;
-  border-radius: 20px;
-  font-size: 12px;
+  background: rgba(10, 10, 15, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid $border-glass;
+  border-radius: 100px;
+  padding: 6px 14px 6px 10px;
+  z-index: 5;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
+
+  .cat-emoji {
+    font-size: 1.1rem;
+    line-height: 1;
+  }
+
+  .cat-text {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: $text-hi;
+    letter-spacing: 0.03em;
+  }
 }
 
-@media (max-width: 640px) {
-  .zoom-hint { display: none; }
-  .category-badge { top: 16px; left: 16px; }
-  .vintage-card { padding: 14px; }
-  .vintage-card img { max-height: 320px; }
-}
-
+// Nav buttons
 .nav-btn {
   position: absolute;
   top: 50%;
   transform: translateY(-50%);
-  width: 40px;
-  height: 40px;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
-  background: linear-gradient(135deg, rgba(61,43,31,0.9) 0%, rgba(42,31,22,0.9) 100%);
-  color: #d4b896;
-  border: 1px solid rgba(210,180,140,0.2);
-  font-size: 24px;
+  background: rgba(10, 10, 15, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid $border-glass;
+  color: $text-hi;
   cursor: pointer;
-  z-index: 10;
+  z-index: 5;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.2s;
+  transition: all 0.25s ease;
+  opacity: 0;
+}
 
-  &:hover {
-    background: linear-gradient(135deg, rgba(80,60,40,0.95) 0%, rgba(60,45,30,0.95) 100%);
-    border-color: rgba(210,180,140,0.4);
+.main-image:hover .nav-btn {
+  opacity: 1;
+}
+
+.nav-btn:hover {
+  background: rgba(99, 102, 241, 0.3);
+  border-color: rgba(129, 140, 248, 0.5);
+}
+
+.nav-prev { left: 16px; }
+.nav-next { right: 16px; }
+
+// Zoom hint
+.zoom-hint {
+  position: absolute;
+  bottom: 16px;
+  right: 16px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(10, 10, 15, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  color: $text-mid;
+  padding: 6px 12px;
+  border-radius: 100px;
+  font-size: 0.72rem;
+  border: 1px solid $border-glass;
+  z-index: 5;
+  opacity: 0;
+  transition: opacity 0.25s ease;
+}
+
+.main-image:hover .zoom-hint {
+  opacity: 1;
+}
+
+// Image counter
+.img-counter {
+  position: absolute;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(10, 10, 15, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  color: $text-hi;
+  padding: 4px 14px;
+  border-radius: 100px;
+  font-size: 0.72rem;
+  border: 1px solid $border-glass;
+  z-index: 5;
+}
+
+// Thumbnails
+.thumb-strip {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  padding: 4px 0;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(129, 140, 248, 0.3) transparent;
+
+  &::-webkit-scrollbar {
+    height: 4px;
+  }
+  &::-webkit-scrollbar-thumb {
+    background: rgba(129, 140, 248, 0.3);
+    border-radius: 2px;
   }
 }
 
-.nav-prev { left: 12px; }
-.nav-next { right: 12px; }
-
-.image-counter {
-  position: absolute;
-  bottom: 48px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: rgba(42,31,22,0.85);
-  color: #d4b896;
-  padding: 4px 14px;
-  border-radius: 20px;
-  font-size: 12px;
-  border: 1px solid rgba(210,180,140,0.15);
-}
-
-.thumbnail-list {
-  display: flex;
-  gap: 12px;
-  overflow-x: auto;
-  padding: 4px;
-  scrollbar-width: thin;
-  scrollbar-color: rgba(210,180,140,0.2) transparent;
-}
-
-.thumbnail {
-  width: 72px;
-  height: 72px;
+.thumb {
+  width: 76px;
+  height: 76px;
   object-fit: cover;
-  border-radius: 6px;
-  border: 2px solid rgba(210,180,140,0.15);
+  border-radius: 10px;
+  border: 2px solid transparent;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.25s ease;
   flex-shrink: 0;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+  opacity: 0.5;
+  background: #131318;
+
+  &:hover {
+    opacity: 0.85;
+    transform: translateY(-2px);
+  }
+
+  &.active {
+    opacity: 1;
+    border-color: $grad-end;
+    box-shadow: 0 0 0 1px $grad-end, 0 4px 16px rgba(99, 102, 241, 0.25);
+  }
 }
 
-.thumbnail:hover {
-  opacity: 0.8;
-  transform: translateY(-2px);
-  border-color: rgba(210,180,140,0.3);
-}
-
-.thumbnail.active {
-  border-color: #d4b896;
-  box-shadow: 0 0 12px rgba(212,184,150,0.4);
-}
-
-.product-info {
+// ════════════════════════════════════════════
+// Info — Glass Card (Right)
+// ════════════════════════════════════════════
+.info-wrap {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: break-word;
 }
 
-.product-title {
-  font-size: 1.75rem;
-  font-weight: 800;
-  color: var(--text-primary);
-  line-height: 1.3;
+.glass-card {
+  background: $bg-card-glass;
+  backdrop-filter: blur(20px) saturate(140%);
+  -webkit-backdrop-filter: blur(20px) saturate(140%);
+  border: 1px solid $border-glass;
+  border-radius: $radius;
+  padding: 36px 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
   position: relative;
+  overflow: visible;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(129, 140, 248, 0.5), transparent);
+    border-radius: $radius $radius 0 0;
+    pointer-events: none;
+  }
+}
+
+// Title
+.product-title {
+  font-size: 1.9rem;
+  font-weight: 800;
+  color: $text-hi;
+  line-height: 1.25;
+  margin: 0;
   display: flex;
   align-items: center;
-  gap: var(--space-3);
+  gap: 12px;
+  flex-wrap: wrap;
+  letter-spacing: -0.02em;
 }
 
 .suspended-badge {
-  display: inline-block;
-  font-size: var(--text-xs);
-  font-weight: 700;
-  background: var(--danger);
-  color: white;
-  padding: 2px 10px;
-  border-radius: var(--radius-md);
-  vertical-align: middle;
-}
-
-// Anime card info strip
-.product-meta-row {
-  display: flex;
-  flex-wrap: wrap;
+  display: inline-flex;
   align-items: center;
-  gap: 10px;
-  font-size: 0.85rem;
-}
-
-.meta-emoji {
-  font-size: 1.2rem;
-  filter: drop-shadow(0 0 4px rgba(255,255,255,0.3));
-}
-
-.meta-category {
-  font-weight: 600;
-  color: var(--text-primary);
-  letter-spacing: 0.01em;
-}
-
-.meta-sep {
-  color: var(--text-secondary);
-  opacity: 0.4;
-  font-size: 0.75rem;
-}
-
-.meta-product-type {
+  font-size: 0.7rem;
   font-weight: 700;
-  color: var(--primary);
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  color: white;
+  padding: 3px 10px;
+  border-radius: 100px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
-.meta-condition {
-  color: var(--text-secondary);
-  font-size: 0.8rem;
-}
-
-.meta-language {
-  color: var(--text-secondary);
-  font-size: 0.8rem;
-}
-
-/* 標簽 — anime badge style */
-.product-tags {
+// Spec table
+.spec-table {
   display: flex;
+  flex-direction: column;
+  border: 1px solid $border-glass;
+  border-radius: 12px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.02);
+  min-width: 0;
+  max-width: 100%;
+}
+
+.spec-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  min-width: 0;
+
+  & + .spec-row {
+    border-top: 1px solid $border-glass;
+  }
+}
+
+.spec-cell {
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  overflow-wrap: break-word;
+  word-break: break-word;
+
+  & + .spec-cell {
+    border-left: 1px solid $border-glass;
+  }
+}
+
+.spec-cell-full {
+  grid-column: 1 / -1;
+  border-left: none;
+}
+
+.spec-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: $text-lo;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.spec-value {
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: $text-hi;
+  display: flex;
+  align-items: center;
+  gap: 8px;
   flex-wrap: wrap;
+}
+
+.condition-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  box-shadow: 0 0 8px currentColor;
+}
+
+.spec-tags {
   gap: 8px;
 }
 
-.product-tag {
+// Tag chips (inside spec table)
+.tag-chip {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 6px 12px;
-  border-radius: var(--radius-full);
-  font-size: 0.8rem;
-  border: 1px solid;
-  cursor: pointer;
-  transition: all 0.2s;
+  padding: 4px 12px;
+  border-radius: 100px;
+  font-size: 0.75rem;
   font-weight: 500;
-  letter-spacing: 0.02em;
+  background: color-mix(in srgb, var(--tag-color, #818cf8) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--tag-color, #818cf8) 30%, transparent);
+  color: var(--tag-color, #818cf8);
+  cursor: pointer;
+  transition: all 0.2s ease;
 
   &:hover {
     transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-    opacity: 0.9;
+    background: color-mix(in srgb, var(--tag-color, #818cf8) 18%, transparent);
+    box-shadow: 0 4px 12px color-mix(in srgb, var(--tag-color, #818cf8) 20%, transparent);
   }
 }
 
 .tag-dot {
-  width: 8px;
-  height: 8px;
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
   flex-shrink: 0;
 }
 
-// ════════════════════════════════════════════
-// 💰 Price Section — Vintage Gold Bar Style
-// ════════════════════════════════════════════
-.price-section {
+// Price
+.price-block {
   display: flex;
   align-items: baseline;
   gap: 8px;
-  background: transparent !important;
-  padding: 0;
-  border-radius: 0;
-  border: none;
-  box-shadow: none;
+  padding: 4px 0;
 }
 
-.price {
-  font-size: 2.1rem;
+.price-currency {
+  font-size: 1rem;
+  font-weight: 600;
+  color: $text-lo;
+  letter-spacing: 0.05em;
+}
+
+.price-amount {
+  font-size: 2.6rem;
   font-weight: 800;
-  color: #d4b896;
-  text-shadow: 0 0 20px rgba(212,184,150,0.3);
-  position: relative;
-  z-index: 1;
-  letter-spacing: -0.01em;
+  background: linear-gradient(135deg, $grad-start, $grad-end);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  letter-spacing: -0.03em;
+  line-height: 1;
 }
 
-.price-unit {
-  font-size: 0.9rem;
-  color: #8a7a6a;
-  font-weight: 500;
-  position: relative;
-  z-index: 1;
-}
-
-/* 商品描述 */
-.product-description {
+// Description
+.description-block {
   padding: 16px 0;
-  font-size: 0.95rem;
-  line-height: 1.6;
-  color: var(--text-secondary);
-  border-bottom: 1px solid var(--border);
+  border-top: 1px solid $border-glass;
 }
 
-.product-description p {
+.desc-heading {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: $text-lo;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin: 0 0 10px 0;
+}
+
+.desc-text {
+  font-size: 0.92rem;
+  line-height: 1.7;
+  color: $text-mid;
   margin: 0;
   white-space: pre-wrap;
 }
 
-/* MOP 200 價格 */
-
-/* 數量 + 庫存 row */
-.quantity-row {
+// Quantity
+.quantity-section {
   display: flex;
   align-items: center;
-  gap: 20px;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.qty-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: $text-lo;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
 }
 
 .qty-controls {
   display: flex;
-  flex-direction: row;
-  gap: 25px;
   align-items: center;
+  gap: 0;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid $border-glass;
+  border-radius: 12px;
+  overflow: hidden;
 }
 
 .qty-btn {
-  width: 52px;
-  height: 52px;
-  font-size: 24px;
-  line-height: 1;
-  padding: 0;
+  width: 44px;
+  height: 44px;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: var(--radius-md);
+  background: transparent;
+  border: none;
+  color: $text-hi;
+  cursor: pointer;
+  transition: all 0.2s ease;
+
+  &:hover:not(:disabled) {
+    background: rgba(129, 140, 248, 0.15);
+    color: $grad-end;
+  }
+
+  &:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+  }
 }
 
 .qty-input {
-  width: 140px;
-  height: 52px;
-  padding: 0 16px;
-  background: var(--bg-elevated);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  color: var(--text-primary);
-  font-size: var(--text-lg);
+  width: 60px;
+  height: 44px;
+  background: transparent;
+  border: none;
+  border-left: 1px solid $border-glass;
+  border-right: 1px solid $border-glass;
+  color: $text-hi;
+  font-size: 1.05rem;
+  font-weight: 700;
   text-align: center;
-  font-family: var(--font-num);
+  -moz-appearance: textfield;
+
+  &::-webkit-outer-spin-button,
+  &::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+
+  &:focus {
+    outline: none;
+    background: rgba(129, 140, 248, 0.08);
+  }
 }
 
-.qty-input:focus {
-  outline: none;
-  border-color: var(--primary);
+.stock-info {
+  font-size: 0.82rem;
+  color: $text-lo;
+  font-weight: 500;
 }
 
-.stock-count {
-  color: var(--text-secondary);
-  font-size: var(--text-base);
+.out-of-stock {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #ef4444;
+  padding: 8px 0;
 }
 
-.out-of-stock-text {
-  color: var(--danger);
-  font-weight: 600;
+// Message
+.action-message {
+  padding: 12px 16px;
+  border-radius: 12px;
+  font-size: 0.88rem;
+  font-weight: 500;
+
+  &.success {
+    background: rgba(34, 197, 94, 0.1);
+    border: 1px solid rgba(34, 197, 94, 0.25);
+    color: #4ade80;
+  }
+
+  &.error {
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.25);
+    color: #f87171;
+  }
 }
 
-/* Reservation info */
-.reservation-info {
+.msg-fade-enter-active, .msg-fade-leave-active {
+  transition: all 0.3s ease;
+}
+.msg-fade-enter-from, .msg-fade-leave-to {
+  opacity: 0;
+  transform: translateY(-8px);
+}
+
+// Reservation box
+.reservation-box {
+  background: rgba(99, 102, 241, 0.06);
+  border: 1px solid rgba(129, 140, 248, 0.2);
+  border-radius: 12px;
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.res-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: $grad-end;
+  letter-spacing: 0.02em;
+}
+
+.res-grid {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  padding: 16px;
-  background: rgba(255, 255, 255, 0.03);
-  border-radius: 8px;
-  margin: 16px 0;
 }
 
-.reservation-item {
+.res-item {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  font-size: 0.9rem;
+  font-size: 0.85rem;
 }
 
-.reservation-label {
-  color: var(--text-secondary);
+.res-label {
+  color: $text-lo;
 }
 
-.reservation-value {
-  color: var(--text-primary);
+.res-value {
+  color: $text-hi;
   font-weight: 600;
 }
 
-/* Action buttons */
-.action-buttons {
+// Action buttons
+.action-row {
   display: flex;
-  gap: 12px;
-  margin-top: 8px;
+  gap: 10px;
+  margin-top: 4px;
 }
 
 .btn {
-  flex: 1;
-  padding: 16px 24px;
-  font-size: 1rem;
-  font-weight: 600;
-  border-radius: var(--radius-lg);
+  padding: 15px 24px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  border-radius: 12px;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.25s ease;
   border: none;
-}
-
-.btn-primary {
-  background: var(--primary);
-  color: white;
-}
-
-.btn-primary:hover:not(:disabled) { background: var(--primary-dark); }
-
-.btn-outline {
-  background: transparent;
-  color: var(--primary);
-  border: 2px solid var(--primary);
-}
-
-.btn-outline:hover:not(:disabled) { background: var(--primary-light); }
-
-.btn:disabled { opacity: 0.5; cursor: not-allowed; }
-
-/* 加到我的最愛按鈕 */
-.btn-favorite {
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
+  letter-spacing: 0.01em;
+}
+
+.btn-primary {
   flex: 1;
-  padding: 14px 24px;
-  font-size: 0.95rem;
-  font-weight: 600;
-  border-radius: var(--radius-lg);
-  cursor: pointer;
-  transition: all 0.2s;
-  background: transparent;
-  color: var(--text-secondary);
-  border: 2px solid var(--border);
+  background: linear-gradient(135deg, $grad-start, $grad-end);
+  color: white;
+  box-shadow: 0 4px 16px rgba(99, 102, 241, 0.3);
+
+  &:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(99, 102, 241, 0.4);
+  }
+
+  &:active:not(:disabled) {
+    transform: translateY(0);
+  }
 }
 
-.btn-favorite:hover:not(:disabled) {
-  border-color: var(--accent);
-  color: var(--accent);
+.btn-secondary {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.05);
+  color: $text-hi;
+  border: 1px solid $border-glass;
+
+  &:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(129, 140, 248, 0.4);
+    transform: translateY(-2px);
+  }
 }
 
-.btn-favorite.active {
-  border-color: var(--accent);
-  color: var(--accent);
-  background: rgba(239, 68, 68, 0.08);
+.btn-fav {
+  width: 52px;
+  flex-shrink: 0;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid $border-glass;
+  color: $text-mid;
+  padding: 15px;
+
+  &:hover:not(:disabled) {
+    border-color: rgba(239, 68, 68, 0.4);
+    color: #f87171;
+    background: rgba(239, 68, 68, 0.08);
+  }
+
+  &.active {
+    border-color: rgba(239, 68, 68, 0.5);
+    color: #ef4444;
+    background: rgba(239, 68, 68, 0.1);
+  }
 }
 
-.btn-favorite .favorite-icon {
+.fav-icon {
+  width: 20px;
+  height: 20px;
+  transition: all 0.25s ease;
+}
+
+.icon-filled {
+  fill: #ef4444;
+}
+
+.btn-spinner {
   width: 18px;
   height: 18px;
-  transition: all 0.2s;
+  animation: spin 1s linear infinite;
 }
 
-.btn-favorite .icon-filled {
-  fill: var(--accent);
+.btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  transform: none !important;
+  box-shadow: none !important;
 }
 
-/* Message */
-.action-message {
-  padding: 12px 16px;
-  border-radius: var(--radius-md);
-  font-size: 0.9rem;
-  margin: 8px 0;
-}
-
-.action-message.success {
-  background: rgba(34, 197, 94, 0.1);
-  color: #22c55e;
-}
-
-.action-message.error {
-  background: rgba(239, 68, 68, 0.1);
-  color: #ef4444;
-}
-
-/* 你可能喜歡 */
+// ════════════════════════════════════════════
+// Related Products
+// ════════════════════════════════════════════
 .related-section {
-  padding: 40px 0 24px;
+  margin-top: 64px;
+  padding-top: 8px;
 }
 
 .related-title {
-  font-size: 1.25rem;
-  font-weight: 700;
-  color: var(--text-primary);
-  margin-bottom: 20px;
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: $text-hi;
+  margin-bottom: 24px;
+  letter-spacing: -0.01em;
+  position: relative;
+  padding-left: 16px;
+
+  &::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 4px;
+    height: 24px;
+    border-radius: 2px;
+    background: linear-gradient(180deg, $grad-start, $grad-end);
+  }
 }
 
-.products-grid {
+.related-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-  gap: 16px;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 20px;
 }
 
-/* Lightbox */
+// ════════════════════════════════════════════
+// Lightbox
+// ════════════════════════════════════════════
 .lightbox {
   position: fixed;
   inset: 0;
   z-index: 9999;
-  background: rgba(0, 0, 0, 0.95);
+  background: rgba(5, 5, 10, 0.96);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   display: flex;
   align-items: center;
   justify-content: center;
-  animation: fadeIn 0.2s ease;
 }
 
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+.lightbox-fade-enter-active, .lightbox-fade-leave-active {
+  transition: opacity 0.25s ease;
+}
+.lightbox-fade-enter-from, .lightbox-fade-leave-to {
+  opacity: 0;
 }
 
-.lightbox-img {
+.lb-img {
   max-width: 90vw;
   max-height: 85vh;
   object-fit: contain;
-  border-radius: var(--radius-md);
+  border-radius: 12px;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.6);
+  animation: fadeUp 0.3s ease;
 }
 
-.lightbox-close {
+.lb-close {
   position: absolute;
-  top: 20px;
-  right: 20px;
-  width: 44px;
-  height: 44px;
+  top: 24px;
+  right: 24px;
+  width: 48px;
+  height: 48px;
   border-radius: 50%;
-  background: rgba(255,255,255,0.15);
-  border: none;
-  color: #fff;
-  font-size: 20px;
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: $text-hi;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background 0.2s;
+  transition: all 0.2s ease;
+
+  &:hover {
+    background: rgba(239, 68, 68, 0.2);
+    border-color: rgba(239, 68, 68, 0.4);
+    transform: rotate(90deg);
+  }
 }
 
-.lightbox-close:hover { background: rgba(255,255,255,0.3); }
-
-.lightbox-nav {
+.lb-nav {
   position: absolute;
   top: 50%;
   transform: translateY(-50%);
-  width: 52px;
-  height: 52px;
+  width: 56px;
+  height: 56px;
   border-radius: 50%;
-  background: rgba(255,255,255,0.15);
-  border: none;
-  color: #fff;
-  font-size: 28px;
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: $text-hi;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background 0.2s;
+  transition: all 0.2s ease;
+
+  &:hover {
+    background: rgba(99, 102, 241, 0.25);
+    border-color: rgba(129, 140, 248, 0.5);
+  }
 }
 
-.lightbox-nav:hover { background: rgba(255,255,255,0.3); }
-.lightbox-prev { left: 20px; }
-.lightbox-next { right: 20px; }
+.lb-prev { left: 24px; }
+.lb-next { right: 24px; }
 
-.lightbox-counter {
+.lb-counter {
   position: absolute;
-  bottom: 50px;
+  bottom: 56px;
   left: 50%;
   transform: translateX(-50%);
-  background: rgba(0,0,0,0.6);
-  color: #fff;
-  padding: 6px 16px;
-  border-radius: 20px;
-  font-size: 14px;
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  color: $text-hi;
+  padding: 6px 18px;
+  border-radius: 100px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  border: 1px solid rgba(255, 255, 255, 0.12);
 }
 
-.lightbox-hint {
+.lb-hint {
   position: absolute;
-  bottom: 20px;
+  bottom: 24px;
   left: 50%;
   transform: translateX(-50%);
-  color: rgba(255,255,255,0.5);
-  font-size: 12px;
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 0.75rem;
+  letter-spacing: 0.03em;
+}
+
+// ════════════════════════════════════════════
+// Responsive
+// ════════════════════════════════════════════
+@media (max-width: 960px) {
+  .container {
+    padding: 20px 16px 60px;
+  }
+
+  .glass-card {
+    padding: 28px 20px;
+  }
+
+  .product-title {
+    font-size: 1.5rem;
+  }
+
+  .price-amount {
+    font-size: 2.1rem;
+  }
+
+  .main-image {
+    min-height: 340px;
+  }
+
+  .hero-img {
+    max-height: 380px;
+  }
 }
 
 @media (max-width: 640px) {
-  .nav-btn {
-    width: 32px;
-    height: 32px;
-    font-size: 18px;
+  .container {
+    padding: 16px 12px 48px;
   }
 
-  .main-image img { max-height: 280px; }
+  .product-layout {
+    gap: 16px;
+  }
+
+  .glass-card {
+    padding: 24px 16px;
+    gap: 16px;
+    overflow: visible;
+  }
 
   .product-title {
     font-size: 1.3rem;
   }
 
-  .product-meta-row {
-    font-size: 0.8rem;
-    gap: 6px;
+  .price-amount {
+    font-size: 1.8rem;
   }
 
-  .meta-emoji { font-size: 1rem; }
-  .meta-category { font-weight: 600; }
-
-  .product-tags {
-    gap: 6px;
+  .main-image {
+    min-height: 280px;
   }
 
-  .product-tag {
-    padding: 4px 10px;
-    font-size: 0.8rem;
+  .hero-img {
+    max-height: 300px;
   }
 
-  .product-description {
+  .nav-btn {
+    width: 36px;
+    height: 36px;
+    opacity: 1; // always visible on mobile
+  }
+
+  .nav-prev { left: 10px; }
+  .nav-next { right: 10px; }
+
+  .thumb {
+    width: 60px;
+    height: 60px;
+  }
+
+  .spec-row {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .spec-cell + .spec-cell {
+    border-left: 1px solid $border-glass;
+    border-top: none;
+  }
+
+  .spec-cell-full {
+    border-top: 1px solid $border-glass;
+    border-left: none;
+  }
+
+  .spec-label {
+    font-size: 0.68rem;
+  }
+
+  .spec-value {
+    font-size: 0.85rem;
+    word-break: break-word;
+    overflow-wrap: break-word;
+  }
+
+  // Description always visible on mobile
+  .description-block {
+    display: block !important;
+  }
+
+  .desc-heading {
+    font-size: 0.75rem;
+  }
+
+  .desc-text {
     font-size: 0.88rem;
-    padding: 12px 0;
-  }
-
-  .price-section { gap: 8px; }
-
-  .price {
-    font-size: 1.5rem;
-  }
-
-  .quantity-row {
-    flex-direction: row;
-    align-items: center;
-    gap: 16px;
-  }
-
-  .qty-controls {
-    gap: 16px;
+    word-break: break-word;
+    overflow-wrap: break-word;
   }
 
   .qty-btn {
-    width: 44px;
-    height: 44px;
-    font-size: 20px;
+    width: 40px;
+    height: 40px;
   }
 
   .qty-input {
-    width: 100px;
-    height: 44px;
-    font-size: var(--text-base);
+    width: 50px;
+    height: 40px;
+    font-size: 0.95rem;
   }
 
-  .stock-count {
-    font-size: var(--text-base);
-    white-space: nowrap;
-    display: inline-flex;
-    align-items: center;
+  .action-row {
+    flex-direction: column;
+    gap: 8px;
   }
-
-  .action-buttons { flex-direction: column; }
 
   .btn {
     width: 100%;
     padding: 14px 20px;
-    font-size: 0.95rem;
   }
 
-  .btn-favorite {
+  .btn-fav {
     width: 100%;
-    padding: 12px 20px;
-    font-size: 0.9rem;
+    height: 48px;
   }
 
   .related-section {
-    padding: 24px 0 16px;
+    margin-top: 40px;
   }
 
   .related-title {
-    font-size: 1.1rem;
-    margin-bottom: 14px;
+    font-size: 1.15rem;
   }
 
-  .products-grid {
+  .related-grid {
     grid-template-columns: repeat(2, 1fr);
-    gap: 10px;
+    gap: 12px;
   }
 
-  .lightbox-nav {
+  .lb-nav {
+    width: 42px;
+    height: 42px;
+  }
+
+  .lb-prev { left: 12px; }
+  .lb-next { right: 12px; }
+
+  .lb-close {
     width: 40px;
     height: 40px;
-    font-size: 22px;
+    top: 14px;
+    right: 14px;
   }
 
-  .lightbox-prev { left: 10px; }
-  .lightbox-next { right: 10px; }
-
-  .lightbox-close {
-    width: 36px;
-    height: 36px;
-    top: 12px;
-    right: 12px;
+  .lb-counter {
+    bottom: 48px;
+    font-size: 0.78rem;
   }
 
-  .product-detail {
-    max-width: 100% !important;
-    width: 100% !important;
-    overflow-x: hidden !important;
-    box-sizing: border-box;
-    padding-left: 0;
-    padding-right: 0;
-  }
-
-  .container {
-    max-width: 100% !important;
-    margin: 0 !important;
-    padding-left: 16px !important;
-    padding-right: 16px !important;
-    overflow: hidden !important;
-    box-sizing: border-box;
-    width: 100% !important;
-  }
-
-  .product-layout {
-    padding-left: 0;
-    padding-right: 0;
-    width: 100% !important;
-    box-sizing: border-box;
-    overflow: hidden !important;
-  }
-
-  .product-images {
-    width: 100% !important;
-    max-width: 100% !important;
-    overflow: hidden !important;
-    box-sizing: border-box;
-  }
-
-  .main-image {
-    width: 100% !important;
-    max-width: 100% !important;
-    overflow: hidden !important;
-    box-sizing: border-box;
-  }
-
-  .main-image img {
-    width: 100% !important;
-    max-width: 100% !important;
-    height: auto;
+  .lb-hint {
+    font-size: 0.68rem;
   }
 }
 </style>

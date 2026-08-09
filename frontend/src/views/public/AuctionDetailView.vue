@@ -285,7 +285,7 @@ onUnmounted(() => {
 <style scoped>
 .auction-detail-page {
   min-height: 100vh;
-  background: var(--bg-dark);
+  background: transparent;
   padding: var(--space-6);
 }
 

@@ -110,7 +110,7 @@ const handleLogin = async () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--bg-dark);
+  background: transparent;
   padding: var(--space-6);
 }
 

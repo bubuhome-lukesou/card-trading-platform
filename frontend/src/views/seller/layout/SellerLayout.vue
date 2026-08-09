@@ -119,7 +119,7 @@ const handleLogout = async () => {
 .seller-layout {
   display: flex;
   min-height: 100vh;
-  background: var(--bg-dark);
+  background: transparent;
 }
 
 /* Desktop Sidebar */

@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="420" height="420" viewBox="0 0 420 420">
+  <defs>
+    <!-- 青海波 (Seigaiha) — 浮世繪經典波紋 -->
+    <pattern id="seigaiha" x="0" y="0" width="70" height="70" patternUnits="userSpaceOnUse">
+      <!-- 多層同心圓弧 — 波浪 -->
+      <path d="M35 42 A 28 28 0 0 1 7 42" fill="none" stroke="#5c6a9c" stroke-width="1.5" opacity="0.25"/>
+      <path d="M35 42 A 22 22 0 0 1 13 42" fill="none" stroke="#5c6a9c" stroke-width="1.2" opacity="0.2"/>
+      <path d="M35 42 A 16 16 0 0 1 19 42" fill="none" stroke="#5c6a9c" stroke-width="1" opacity="0.15"/>
+      <path d="M35 42 A 10 10 0 0 1 25 42" fill="none" stroke="#5c6a9c" stroke-width="0.8" opacity="0.12"/>
+      <circle cx="35" cy="42" r="1.5" fill="#7c8abc" opacity="0.2"/>
+      <!-- 第二排（錯位） -->
+      <path d="M70 7 A 28 28 0 0 1 42 7" fill="none" stroke="#5c6a9c" stroke-width="1.5" opacity="0.25"/>
+      <path d="M70 7 A 22 22 0 0 1 48 7" fill="none" stroke="#5c6a9c" stroke-width="1.2" opacity="0.2"/>
+      <path d="M70 7 A 16 16 0 0 1 54 7" fill="none" stroke="#5c6a9c" stroke-width="1" opacity="0.15"/>
+      <path d="M70 7 A 10 10 0 0 1 60 7" fill="none" stroke="#5c6a9c" stroke-width="0.8" opacity="0.12"/>
+      <circle cx="70" cy="7" r="1.5" fill="#7c8abc" opacity="0.2"/>
+      <!-- 第三排 -->
+      <path d="M0 7 A 28 28 0 0 1 -28 7" fill="none" stroke="#5c6a9c" stroke-width="1.5" opacity="0.25"/>
+      <path d="M0 7 A 22 22 0 0 1 -22 7" fill="none" stroke="#5c6a9c" stroke-width="1.2" opacity="0.2"/>
+      <path d="M0 7 A 16 16 0 0 1 -16 7" fill="none" stroke="#5c6a9c" stroke-width="1" opacity="0.15"/>
+    </pattern>
+
+    <!-- 櫻花瓣 — 散落點綴 -->
+    <pattern id="sakura" x="20" y="40" width="140" height="140" patternUnits="userSpaceOnUse">
+      <g transform="translate(35,30) scale(1)" opacity="0.18">
+        <circle cx="0" cy="0" r="3.5" fill="none" stroke="#d4a0c0" stroke-width="1.2"/>
+        <circle cx="4.5" cy="-2.5" r="3.5" fill="none" stroke="#d4a0c0" stroke-width="1.2"/>
+        <circle cx="-4.5" cy="-2.5" r="3.5" fill="none" stroke="#d4a0c0" stroke-width="1.2"/>
+        <circle cx="2.8" cy="3.5" r="3.5" fill="none" stroke="#d4a0c0" stroke-width="1.2"/>
+        <circle cx="-2.8" cy="3.5" r="3.5" fill="none" stroke="#d4a0c0" stroke-width="1.2"/>
+        <circle cx="0" cy="0" r="1" fill="#d4a0c0" opacity="0.5"/>
+      </g>
+      <g transform="translate(105,90) scale(0.8)" opacity="0.14">
+        <circle cx="0" cy="0" r="3.5" fill="none" stroke="#d4a0c0" stroke-width="1.2"/>
+        <circle cx="4.5" cy="-2.5" r="3.5" fill="none" stroke="#d4a0c0" stroke-width="1.2"/>
+        <circle cx="-4.5" cy="-2.5" r="3.5" fill="none" stroke="#d4a0c0" stroke-width="1.2"/>
+        <circle cx="2.8" cy="3.5" r="3.5" fill="none" stroke="#d4a0c0" stroke-width="1.2"/>
+        <circle cx="-2.8" cy="3.5" r="3.5" fill="none" stroke="#d4a0c0" stroke-width="1.2"/>
+        <circle cx="0" cy="0" r="1" fill="#d4a0c0" opacity="0.5"/>
+      </g>
+    </pattern>
+  </defs>
+
+  <!-- 深色底 -->
+  <rect width="420" height="420" fill="#0d0d1a"/>
+
+  <!-- 左上淡紅光暈 — 富士山日出感 -->
+  <ellipse cx="0" cy="0" rx="200" ry="140" fill="#cc4444" opacity="0.1"/>
+
+  <!-- 右下淡藍光暈 — 海浪感 -->
+  <ellipse cx="420" cy="420" rx="200" ry="140" fill="#3366aa" opacity="0.08"/>
+
+  <!-- 中央淡紫光暈 -->
+  <ellipse cx="210" cy="210" rx="160" ry="130" fill="#8b5cf6" opacity="0.05"/>
+
+  <!-- 青海波紋疊加 -->
+  <rect width="420" height="420" fill="url(#seigaiha)"/>
+
+  <!-- 櫻花點綴疊加 -->
+  <rect width="420" height="420" fill="url(#sakura)"/>
+</svg>

@@ -152,12 +152,28 @@ body {
   color: var(--text-primary);
   background-color: var(--bg-dark);
   overflow-x: hidden;
+
+  // ═══ 日系寶可夢風格背景 ═══
+  background-image:
+    url('@/assets/pokeball-bg.svg'),
+    // 顶部的柔和光晕 — 模仿精灵球的红蓝光
+    radial-gradient(ellipse at 15% 0%, rgba(239, 68, 68, 0.12) 0%, transparent 40%),
+    radial-gradient(ellipse at 85% 0%, rgba(59, 130, 246, 0.10) 0%, transparent 40%),
+    radial-gradient(ellipse at 50% 100%, rgba(168, 85, 247, 0.08) 0%, transparent 55%),
+    // 底层渐变 — 深夜日本天空的蓝紫调
+    linear-gradient(180deg, #0d0d1a 0%, #141430 30%, #11112a 60%, #0d0d1a 100%);
+  background-attachment: fixed;
+  background-repeat: repeat, no-repeat, no-repeat, no-repeat, no-repeat;
+  background-size: 400px 400px, cover, cover, cover, cover;
+  background-position: 0 0, center, center, center, center;
 }
 
 #app {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+  position: relative;
+  z-index: 1;
 }
 
 // ============================================
