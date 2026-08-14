@@ -234,6 +234,10 @@ export class ProductsService {
     }
 
     Object.assign(product, dto)
+    // findOne() parses images from string to array; convert back to string for save
+    if (Array.isArray(product.images)) {
+      product.images = JSON.stringify(product.images)
+    }
     return this.productRepo.save(product)
   }
 
@@ -246,6 +250,10 @@ export class ProductsService {
 
     // Soft delete: mark as removed instead of hard delete (preserves order history)
     product.status = ProductStatus.REMOVED
+    // findOne() parses images from string to array; convert back to string for save
+    if (Array.isArray(product.images)) {
+      product.images = JSON.stringify(product.images)
+    }
     await this.productRepo.save(product)
   }
 
