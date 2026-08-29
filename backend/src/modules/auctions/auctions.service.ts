@@ -195,68 +195,99 @@ export class AuctionsService {
   }
 
   async placeBid(auctionId: string, amount: number, userId: string) {
-    const auction = await this.findOne(auctionId)
+    // Retry loop handles concurrent bid races via optimistic locking
+    const maxRetries = 3
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+      // Always fetch fresh auction state inside the loop
+      const auction = await this.auctionRepo.findOne({
+        where: { id: auctionId },
+        relations: ['product', 'seller']
+      })
 
-    if (auction.sellerId === userId) {
-      throw new ForbiddenException('Sellers cannot bid on their own auctions')
-    }
+      if (!auction) {
+        throw new NotFoundException('Auction not found')
+      }
 
-    // Prevent highest bidder from bidding again
-    if (auction.winnerId === userId) {
-      throw new BadRequestException('You are already the highest bidder')
-    }
+      if (auction.sellerId === userId) {
+        throw new ForbiddenException('Sellers cannot bid on their own auctions')
+      }
 
-    if (auction.status !== AuctionStatus.ACTIVE) {
-      throw new BadRequestException('Auction is not active')
-    }
+      // Prevent highest bidder from bidding again
+      if (auction.winnerId === userId) {
+        throw new BadRequestException('You are already the highest bidder')
+      }
 
-    const now = new Date()
-    if (now < auction.startTime) {
-      throw new BadRequestException('Auction has not started yet')
-    }
-    if (now > auction.endTime) {
-      throw new BadRequestException('Auction has ended')
-    }
+      if (auction.status !== AuctionStatus.ACTIVE) {
+        throw new BadRequestException('Auction is not active')
+      }
 
-    // Check if bid is higher than current price
-    if (amount <= auction.currentPrice) {
-      throw new BadRequestException(`Bid must be higher than current price: HK$${auction.currentPrice}`)
-    }
+      const now = new Date()
+      if (now < auction.startTime) {
+        throw new BadRequestException('Auction has not started yet')
+      }
+      if (now > auction.endTime) {
+        throw new BadRequestException('Auction has ended')
+      }
 
-    // Create bid
-    const bid = this.bidRepo.create({
-      auctionId,
-      bidderId: userId,
-      amount
-    })
-    await this.bidRepo.save(bid)
+      // Check if bid is higher than current price
+      if (amount <= auction.currentPrice) {
+        throw new BadRequestException(`Bid must be higher than current price: HK$${auction.currentPrice}`)
+      }
 
-    // Update auction — use update() to reliably persist scalar fields
-    const updateData: any = {
-      currentPrice: amount,
-      bidCount: auction.bidCount + 1,
-      winnerId: userId  // the new highest bidder
-    }
+      // --- Optimistic lock: only update if currentPrice hasn't changed ---
+      // This prevents two concurrent bids at the same price from both succeeding
+      const result = await this.auctionRepo
+        .createQueryBuilder()
+        .update(Auction)
+        .set({
+          currentPrice: amount,
+          bidCount: () => 'bidCount + 1',  // atomic increment
+          winnerId: userId,
+          endTime: (() => {
+            const timeLeft = auction.endTime.getTime() - now.getTime()
+            const extensionThreshold = 5 * 60 * 1000
+            if (timeLeft < extensionThreshold) {
+              return new Date(now.getTime() + auction.extensionMinutes * 60 * 1000)
+            }
+            return auction.endTime
+          })()
+        })
+        .where('id = :id AND currentPrice = :expectedPrice', {
+          id: auctionId,
+          expectedPrice: auction.currentPrice
+        })
+        .execute()
 
-    // Bid extension: if bid placed within last 5 minutes, extend by extensionMinutes
-    const timeLeft = auction.endTime.getTime() - now.getTime()
-    const extensionThreshold = 5 * 60 * 1000 // 5 minutes in ms
+      // If no rows were updated, another bid beat us — retry with fresh state
+      if (result.affected === 0) {
+        if (attempt < maxRetries - 1) {
+          continue  // retry: re-read auction and re-validate
+        }
+        // Final attempt failed — another bidder placed a higher bid concurrently
+        const refreshed = await this.auctionRepo.findOne({ where: { id: auctionId } })
+        throw new BadRequestException(
+          `Another bid was placed simultaneously. Current price is now HK$${refreshed?.currentPrice}. Please try again with a higher bid.`
+        )
+      }
 
-    if (timeLeft < extensionThreshold) {
-      updateData.endTime = new Date(now.getTime() + auction.extensionMinutes * 60 * 1000)
-    }
+      // Auction updated successfully — now save the bid record
+      const bid = this.bidRepo.create({
+        auctionId,
+        bidderId: userId,
+        amount
+      })
+      await this.bidRepo.save(bid)
 
-    await this.auctionRepo.update(auctionId, updateData)
+      // Reload to get final state
+      const updatedAuction = await this.auctionRepo.findOne({ where: { id: auctionId } })
 
-    // Reload to get updated endTime if extended
-    const updatedAuction = await this.auctionRepo.findOne({ where: { id: auctionId } })
-
-    return {
-      bid,
-      auction: {
-        currentPrice: updatedAuction.currentPrice,
-        endTime: updatedAuction.endTime,
-        bidCount: updatedAuction.bidCount
+      return {
+        bid,
+        auction: {
+          currentPrice: updatedAuction.currentPrice,
+          endTime: updatedAuction.endTime,
+          bidCount: updatedAuction.bidCount
+        }
       }
     }
   }
