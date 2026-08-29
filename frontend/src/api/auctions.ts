@@ -17,11 +17,6 @@ export const auctionApi = {
     return api.post<Auction>('/auctions', data)
   },
 
-  // Update auction (seller only)
-  updateAuction(id: string, data: any) {
-    return api.patch<Auction>(`/auctions/${id}`, data)
-  },
-
   // Cancel auction (seller only)
   cancelAuction(id: string) {
     return api.post(`/auctions/${id}/cancel`)
@@ -32,14 +27,14 @@ export const auctionApi = {
     return api.post<Bid>(`/auctions/${auctionId}/bids`, { amount })
   },
 
-  // Get auction bids
+  // Get auction bids (via bids controller)
   getBids(auctionId: string) {
-    return api.get<Bid[]>(`/auctions/${auctionId}/bids`)
+    return api.get<Bid[]>(`/bids/auction/${auctionId}`)
   },
 
-  // Get my bids
+  // Get my bids (via bids controller)
   getMyBids() {
-    return api.get<Bid[]>('/auctions/my-bids')
+    return api.get<Bid[]>('/bids/my')
   },
 
   // Get seller's auctions (with auth)

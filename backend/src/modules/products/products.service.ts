@@ -278,14 +278,31 @@ export class ProductsService {
   }
 
   async decreaseQuantity(productId: string, amount: number): Promise<void> {
-    const product = await this.productRepo.findOne({ where: { id: productId } })
-    if (!product) {
-      throw new NotFoundException('Product not found')
+    // Atomic update — prevents TOCTOU race condition
+    const result = await this.productRepo
+      .createQueryBuilder()
+      .update(Product)
+      .set({ quantity: () => 'quantity - :amount' })
+      .where('id = :productId AND quantity >= :amount', { productId, amount })
+      .execute()
+    if (result.affected === 0) {
+      throw new BadRequestException('Out of stock or insufficient quantity')
     }
-    const currentQty = product.quantity ?? 1
-    if (currentQty - amount < 0) {
-      throw new BadRequestException('Out of stock')
-    }
-    await this.productRepo.update(productId, { quantity: currentQty - amount })
+    // Auto-mark as SOLD when quantity reaches 0
+    await this.productRepo
+      .createQueryBuilder()
+      .update(Product)
+      .set({ status: ProductStatus.SOLD })
+      .where('id = :productId AND quantity <= 0', { productId })
+      .execute()
+  }
+
+  async increaseQuantity(productId: string, amount: number): Promise<void> {
+    await this.productRepo
+      .createQueryBuilder()
+      .update(Product)
+      .set({ quantity: () => 'quantity + :amount' })
+      .where('id = :productId', { productId, amount })
+      .execute()
   }
 }

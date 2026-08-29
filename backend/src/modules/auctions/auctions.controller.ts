@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Put, Body, Param, Query, UseGuards, Request } from '@nestjs/common'
+import { Controller, Get, Post, Body, Param, Query, UseGuards, Request } from '@nestjs/common'
 import { AuctionsService } from './auctions.service'
 import { CreateAuctionDto, PlaceBidDto, AuctionFiltersDto } from './dto/auction.dto'
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard'
@@ -36,7 +36,7 @@ export class AuctionsController {
   }
 
   @UseGuards(JwtAuthGuard)
-  @Put(':id/cancel')
+  @Post(':id/cancel')
   async cancel(@Param('id') id: string, @Request() req: any) {
     return this.auctionsService.cancel(id, req.user.id)
   }

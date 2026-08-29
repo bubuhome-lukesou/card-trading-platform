@@ -117,8 +117,18 @@ export class ReservationsService {
     return { reservation: savedReservation, order }
   }
 
-  async confirmDeposit(reservationId: string): Promise<Reservation> {
+  async confirmDeposit(reservationId: string, userId: string): Promise<Reservation> {
     const reservation = await this.findOne(reservationId)
+    
+    // Only the seller of the product can confirm deposit
+    const product = await this.productRepo.findOne({ where: { id: reservation.productId } })
+    if (!product) {
+      throw new NotFoundException('Product not found')
+    }
+    if (product.sellerId !== userId) {
+      throw new ForbiddenException('Only the seller can confirm deposits')
+    }
+    
     reservation.status = ReservationStatus.DEPOSIT_PAID
     reservation.depositPaidAt = new Date()
     return this.reservationRepo.save(reservation)
@@ -176,8 +186,12 @@ export class ReservationsService {
   }
 
   async getReservationCount(productId: string): Promise<number> {
+    // Count both PENDING and DEPOSIT_PAID to prevent overselling
     return this.reservationRepo.count({
-      where: { productId, status: ReservationStatus.DEPOSIT_PAID }
+      where: [
+        { productId, status: ReservationStatus.PENDING },
+        { productId, status: ReservationStatus.DEPOSIT_PAID },
+      ]
     })
   }
 

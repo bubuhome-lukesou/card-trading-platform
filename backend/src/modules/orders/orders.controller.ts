@@ -20,8 +20,13 @@ export class OrdersController {
   }
 
   @Get(':id')
-  getOrder(@Param('id') id: string) {
-    return this.ordersService.findOne(id);
+  async getOrder(@Param('id') id: string, @Request() req) {
+    const order = await this.ordersService.findOne(id);
+    // Permission check — only buyer or seller can view
+    if (order.buyerId !== req.user.id && order.sellerId !== req.user.id) {
+      return { message: 'You do not have permission to view this order', statusCode: 403 };
+    }
+    return order;
   }
 
   @Post()
@@ -30,33 +35,32 @@ export class OrdersController {
   }
 
   @Post(':id/confirm-payment')
-  confirmPayment(@Param('id') id: string) {
-    return this.ordersService.confirmPayment(id);
+  confirmPayment(@Param('id') id: string, @Request() req) {
+    return this.ordersService.confirmPayment(id, req.user.id);
   }
 
   @Patch(':id/status')
-  updateStatus(@Param('id') id: string, @Body('status') status: string) {
-    return this.ordersService.updateStatus(id, status);
+  updateStatus(@Param('id') id: string, @Body('status') status: string, @Request() req) {
+    return this.ordersService.updateStatus(id, status, req.user.id);
   }
 
   @Post(':id/transfer-receipt')
   @UseInterceptors(FileInterceptor('receipt'))
-  uploadTransferReceipt(@Param('id') id: string, @UploadedFile() file: Express.Multer.File) {
+  uploadTransferReceipt(@Param('id') id: string, @UploadedFile() file: Express.Multer.File, @Request() req) {
     if (!file) {
       return { success: false, error: 'No file uploaded' };
     }
     const receiptUrl = `/uploads/${file.filename}`;
-    return this.ordersService.updateTransferReceipt(id, receiptUrl);
+    return this.ordersService.updateTransferReceipt(id, receiptUrl, req.user.id);
   }
 
   @Post(':id/balance-receipt')
   @UseInterceptors(FileInterceptor('receipt'))
-  uploadBalanceReceipt(@Param('id') id: string, @UploadedFile() file: Express.Multer.File) {
+  uploadBalanceReceipt(@Param('id') id: string, @UploadedFile() file: Express.Multer.File, @Request() req) {
     if (!file) {
       return { success: false, error: 'No file uploaded' };
     }
     const receiptUrl = `/uploads/${file.filename}`;
-    return this.ordersService.updateBalanceReceipt(id, receiptUrl);
+    return this.ordersService.updateBalanceReceipt(id, receiptUrl, req.user.id);
   }
 }
-

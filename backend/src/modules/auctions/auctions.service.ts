@@ -1,9 +1,10 @@
 import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common'
 import { InjectRepository } from '@nestjs/typeorm'
-import { Repository, LessThanOrEqual, MoreThanOrEqual, Not } from 'typeorm'
+import { Repository, LessThanOrEqual, MoreThanOrEqual, Not, In } from 'typeorm'
 import { Cron } from '@nestjs/schedule'
 import { Auction, AuctionStatus, Bid } from '../../entities/auction.entity'
 import { Product, ProductStatus } from '../../entities/product.entity'
+import { Order, OrderType, OrderStatus } from '../../entities/order.entity'
 import { CreateAuctionDto, AuctionFiltersDto } from './dto/auction.dto'
 
 @Injectable()
@@ -14,7 +15,9 @@ export class AuctionsService {
     @InjectRepository(Bid)
     private readonly bidRepo: Repository<Bid>,
     @InjectRepository(Product)
-    private readonly productRepo: Repository<Product>
+    private readonly productRepo: Repository<Product>,
+    @InjectRepository(Order)
+    private readonly orderRepo: Repository<Order>
   ) {}
 
   // Cron job to activate pending auctions every minute
@@ -50,20 +53,58 @@ export class AuctionsService {
     })
 
     for (const auction of expiredAuctions) {
-      auction.status = AuctionStatus.ENDED
-      if (auction.bidCount > 0) {
-        const highestBid = await this.bidRepo.findOne({
-          where: { auctionId: auction.id },
-          order: { amount: 'DESC' }
-        })
-        auction.winnerId = highestBid?.bidderId
+      try {
+        auction.status = AuctionStatus.ENDED
+        if (auction.bidCount > 0) {
+          const highestBid = await this.bidRepo.findOne({
+            where: { auctionId: auction.id },
+            order: { amount: 'DESC' }
+          })
+          // Check reserve price — if not met, flow back (no winner)
+          if (auction.reservePrice && Number(highestBid?.amount) < Number(auction.reservePrice)) {
+            auction.winnerId = null
+          } else {
+            auction.winnerId = highestBid?.bidderId ?? null
+          }
+        }
+        await this.auctionRepo.save(auction)
+
+        // If there's a winner, create AUCTION_WIN order and mark product SOLD
+        if (auction.winnerId) {
+          await this.createAuctionWinOrder(auction)
+          const product = await this.productRepo.findOne({ where: { id: auction.productId } })
+          if (product) {
+            product.status = ProductStatus.SOLD
+            await this.productRepo.save(product)
+          }
+        }
+      } catch (err) {
+        console.error(`[Cron] Error ending auction ${auction.id}:`, err)
       }
-      await this.auctionRepo.save(auction)
     }
 
     if (expiredAuctions.length > 0) {
       console.log(`[Cron] Ended ${expiredAuctions.length} expired auctions`)
     }
+  }
+
+  // Create an AUCTION_WIN order for the auction winner
+  private async createAuctionWinOrder(auction: Auction) {
+    const orderNumber = 'AUC-' + Date.now().toString(36).toUpperCase() + '-' + Math.random().toString(36).substring(2, 6).toUpperCase()
+    const order = this.orderRepo.create({
+      orderNumber,
+      buyerId: auction.winnerId,
+      sellerId: auction.sellerId,
+      productId: auction.productId,
+      type: OrderType.AUCTION_WIN,
+      status: OrderStatus.PENDING,
+      totalPrice: auction.currentPrice,
+      quantity: 1,
+      shippingCost: 0,
+      platformFee: 0,
+      notes: `拍賣成交 - Auction ID: ${auction.id}`,
+    })
+    return this.orderRepo.save(order)
   }
 
   async findAll(filters: AuctionFiltersDto) {
@@ -324,13 +365,19 @@ export class AuctionsService {
         where: { auctionId },
         order: { amount: 'DESC' }
       })
-      auction.winnerId = highestBid.bidderId
+      // Check reserve price — if not met, flow back (no winner)
+      if (auction.reservePrice && Number(highestBid?.amount) < Number(auction.reservePrice)) {
+        auction.winnerId = null
+      } else {
+        auction.winnerId = highestBid?.bidderId ?? null
+      }
     }
 
     await this.auctionRepo.save(auction)
 
-    // Update product status
+    // If there's a winner, create AUCTION_WIN order and update product status
     if (auction.winnerId) {
+      await this.createAuctionWinOrder(auction)
       const product = await this.productRepo.findOne({ where: { id: auction.productId } })
       if (product) {
         product.status = ProductStatus.SOLD

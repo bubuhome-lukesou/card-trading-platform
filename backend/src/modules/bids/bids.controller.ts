@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Param, Body, Query, UseGuards, Request } from '@nestjs/common';
+import { Controller, Get, Param, Query, UseGuards, Request } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { BidsService } from './bids.service';
 
@@ -17,12 +17,7 @@ export class BidsController {
     return this.bidsService.findByAuction(auctionId);
   }
 
-  @Post()
-  createBid(@Request() req, @Body() body: { auctionId: string; amount: number }) {
-    return this.bidsService.create({
-      auctionId: body.auctionId,
-      userId: req.user.id,
-      amount: body.amount,
-    });
-  }
+  // NOTE: POST /bids (createBid) removed — use POST /auctions/:id/bids instead.
+  // The auctions.service.placeBid has proper validation: status checks, time checks,
+  // seller self-bid prevention, optimistic locking, and price validation.
 }

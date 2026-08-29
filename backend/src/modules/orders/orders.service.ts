@@ -1,10 +1,20 @@
-import { Injectable, NotFoundException, forwardRef, Inject } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, ForbiddenException, forwardRef, Inject } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Order } from '../../entities/order.entity';
+import { Order, OrderStatus, OrderType } from '../../entities/order.entity';
 import { Product } from '../../entities/product.entity';
-import { OrderStatus } from '../../entities/order.entity';
 import { ProductsService } from '../products/products.service';
+
+// Valid order status transitions (state machine)
+const VALID_TRANSITIONS: Record<string, string[]> = {
+  [OrderStatus.PENDING]: [OrderStatus.PENDING_PAID, OrderStatus.CANCELLED],
+  [OrderStatus.PENDING_PAID]: [OrderStatus.CONFIRMED, OrderStatus.CANCELLED],
+  [OrderStatus.CONFIRMED]: [OrderStatus.SHIPPED, OrderStatus.CANCELLED],
+  [OrderStatus.SHIPPED]: [OrderStatus.DELIVERED],
+  [OrderStatus.DELIVERED]: [],
+  [OrderStatus.CANCELLED]: [],
+  [OrderStatus.REFUNDED]: [],
+};
 
 @Injectable()
 export class OrdersService {
@@ -76,42 +86,99 @@ export class OrdersService {
     const order = this.orderRepo.create(data);
     const savedOrder = await this.orderRepo.save(order);
 
-    // Decrease product quantity after order is created
-    if (data.productId) {
+    // Only decrease product quantity for non-reservation orders
+    // Reservation orders manage availability via reservationCount, not product.quantity
+    if (data.productId && data.type !== OrderType.RESERVATION_DEPOSIT && data.type !== OrderType.RESERVATION_FULL) {
       const qty = data.quantity || 1;
-      await this.productsService.decreaseQuantity(data.productId, qty);
+      try {
+        await this.productsService.decreaseQuantity(data.productId, qty);
+      } catch (err) {
+        // If stock decrement fails, cancel the order to maintain consistency
+        savedOrder.status = OrderStatus.CANCELLED;
+        await this.orderRepo.save(savedOrder);
+        throw err;
+      }
     }
 
     return savedOrder;
   }
 
-  async confirmPayment(orderId: string): Promise<Order> {
+  async confirmPayment(orderId: string, userId: string): Promise<Order> {
     const order = await this.findOne(orderId);
+    // Only seller can confirm payment
+    if (order.sellerId !== userId) {
+      throw new ForbiddenException('Only the seller can confirm payment');
+    }
+    // Must be in PENDING_PAID status
+    if (order.status !== OrderStatus.PENDING_PAID) {
+      throw new BadRequestException('Order must be in pending_paid status to confirm payment');
+    }
     order.status = OrderStatus.CONFIRMED;
     order.paymentTime = new Date();
     return this.orderRepo.save(order);
   }
 
-  async updateTransferReceipt(orderId: string, receiptUrl: string): Promise<Order> {
+  async updateTransferReceipt(orderId: string, receiptUrl: string, userId: string): Promise<Order> {
     const order = await this.findOne(orderId);
+    // Only buyer can upload receipt
+    if (order.buyerId !== userId) {
+      throw new ForbiddenException('Only the buyer can upload receipts');
+    }
+    // Must be in PENDING status
+    if (order.status !== OrderStatus.PENDING) {
+      throw new BadRequestException('Cannot upload receipt in current order status');
+    }
     order.transferReceipt = receiptUrl;
     order.transferTime = new Date();
-    // Auto-change status to 'pending_paid' so seller can confirm
     order.status = OrderStatus.PENDING_PAID;
     return this.orderRepo.save(order);
   }
 
-  async updateBalanceReceipt(orderId: string, receiptUrl: string): Promise<Order> {
+  async updateBalanceReceipt(orderId: string, receiptUrl: string, userId: string): Promise<Order> {
     const order = await this.findOne(orderId);
+    // Only buyer can upload receipt
+    if (order.buyerId !== userId) {
+      throw new ForbiddenException('Only the buyer can upload receipts');
+    }
     order.balanceReceipt = receiptUrl;
     order.balanceTime = new Date();
-    // 尾款憑證上傳後，狀態不變（仍為 confirmed），等待賣家確認
     return this.orderRepo.save(order);
   }
 
-  async updateStatus(id: string, status: string) {
+  async updateStatus(id: string, status: string, userId: string) {
     const order = await this.findOne(id);
+    
+    // Check permission — buyer or seller depending on transition
+    const isBuyer = order.buyerId === userId;
+    const isSeller = order.sellerId === userId;
+    if (!isBuyer && !isSeller) {
+      throw new ForbiddenException('You do not have permission to update this order');
+    }
+
+    // Validate state machine transition
+    const allowed = VALID_TRANSITIONS[order.status] || [];
+    if (!allowed.includes(status)) {
+      throw new BadRequestException(
+        `Cannot transition from ${order.status} to ${status}`
+      );
+    }
+
+    // If cancelling, restore product stock (only for non-reservation orders)
+    if (status === OrderStatus.CANCELLED && order.productId && 
+        order.type !== OrderType.RESERVATION_DEPOSIT && order.type !== OrderType.RESERVATION_FULL) {
+      const qty = order.quantity || 1;
+      await this.productsService.increaseQuantity(order.productId, qty);
+    }
+
     order.status = status as any;
+    
+    // Set timestamps
+    if (status === OrderStatus.SHIPPED) {
+      order.shippingTime = new Date();
+    } else if (status === OrderStatus.DELIVERED) {
+      order.deliveryTime = new Date();
+    }
+    
     return this.orderRepo.save(order);
   }
 }

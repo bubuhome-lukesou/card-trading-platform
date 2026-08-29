@@ -45,8 +45,8 @@ export class ReservationsController {
 
   @Post(':id/confirm-deposit')
   @UseGuards(JwtAuthGuard)
-  async confirmDeposit(@Param('id') id: string) {
-    return this.reservationsService.confirmDeposit(id)
+  async confirmDeposit(@Param('id') id: string, @Request() req) {
+    return this.reservationsService.confirmDeposit(id, req.user.id)
   }
 
   @Delete(':id')
