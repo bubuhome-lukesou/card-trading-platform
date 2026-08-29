@@ -187,22 +187,27 @@ onUnmounted(() => {
     <!-- Auction Detail — 閒魚風格垂直佈局 -->
     <div v-else-if="auction" class="auction-container">
 
-      <!-- ===== TOP: 出價記錄橫條 ===== -->
+      <!-- ===== TOP: 出價記錄 — 圓形頭像 + 底下價格 ===== -->
       <div v-if="sortedBids.length > 0" class="bid-bar-section">
         <div class="bid-bar-header">
           <span class="bid-bar-title">出價記錄</span>
           <span class="bid-bar-count">{{ sortedBids.length }}條</span>
         </div>
-        <div class="bid-bar-scroll">
+        <div class="bid-avatars-scroll">
           <div
             v-for="(bid, idx) in sortedBids"
             :key="bid.id"
-            class="bid-bar-chip"
-            :class="{ 'bid-bar-top': idx === 0 }"
+            class="bid-avatar-item"
+            :class="{ 'bid-avatar-top': idx === 0 }"
           >
-            <span v-if="idx === 0" class="crown">👑</span>
-            <span class="chip-name">{{ bid.bidder?.nickname || '匿名' }}</span>
-            <span class="chip-amount">{{ formatPrice(Number(bid.amount)) }}</span>
+            <div class="bid-avatar-wrapper">
+              <span v-if="idx === 0" class="crown">👑</span>
+              <div class="bid-avatar">
+                {{ (bid.bidder?.nickname || '匿').charAt(0) }}
+              </div>
+            </div>
+            <span class="bid-avatar-name">{{ bid.bidder?.nickname || '匿名' }}</span>
+            <span class="bid-avatar-amount">{{ formatPrice(Number(bid.amount)) }}</span>
           </div>
         </div>
       </div>
@@ -423,7 +428,7 @@ onUnmounted(() => {
 
 @keyframes spin { to { transform: rotate(360deg); } }
 
-/* ===== TOP: 出價記錄橫條 ===== */
+/* ===== TOP: 出價記錄 — 圓形頭像 ===== */
 .bid-bar-section {
   background: var(--bg-card);
   border-radius: var(--radius-lg);
@@ -442,7 +447,7 @@ onUnmounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: var(--space-2);
+  margin-bottom: var(--space-3);
 }
 
 .bid-bar-title {
@@ -456,45 +461,81 @@ onUnmounted(() => {
   color: var(--text-muted);
 }
 
-.bid-bar-scroll {
+.bid-avatars-scroll {
   display: flex;
-  gap: var(--space-2);
+  gap: var(--space-4);
   overflow-x: auto;
-  padding-bottom: 2px;
+  padding: var(--space-2) var(--space-1);
   -webkit-overflow-scrolling: touch;
   scrollbar-width: thin;
 }
 
-.bid-bar-scroll::-webkit-scrollbar { height: 3px; }
-.bid-bar-scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+.bid-avatars-scroll::-webkit-scrollbar { height: 3px; }
+.bid-avatars-scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
 
-.bid-bar-chip {
+.bid-avatar-item {
   display: flex;
+  flex-direction: column;
   align-items: center;
   gap: 4px;
-  padding: 6px 12px;
-  background: var(--bg-elevated);
-  border-radius: var(--radius-full);
-  white-space: nowrap;
   flex-shrink: 0;
-  font-size: var(--text-xs);
+  width: 56px;
 }
 
-.bid-bar-top {
-  background: linear-gradient(135deg, rgba(255, 193, 7, 0.2), rgba(255, 152, 0, 0.15));
-  border: 1px solid rgba(255, 193, 7, 0.3);
+.bid-avatar-wrapper {
+  position: relative;
+  width: 44px;
+  height: 44px;
 }
 
-.crown { font-size: 14px; }
-
-.chip-name {
-  color: var(--text-secondary);
-  font-weight: 500;
+.crown {
+  position: absolute;
+  top: -14px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 16px;
+  z-index: 2;
+  filter: drop-shadow(0 1px 2px rgba(0,0,0,0.3));
 }
 
-.chip-amount {
-  color: var(--primary);
+.bid-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--bg-elevated);
+  border: 2px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--text-base);
   font-weight: 700;
+  color: var(--text-secondary);
+}
+
+.bid-avatar-top .bid-avatar {
+  background: linear-gradient(135deg, #f59e0b, #f97316);
+  border-color: #fbbf24;
+  color: white;
+  box-shadow: 0 2px 8px rgba(245, 158, 11, 0.3);
+}
+
+.bid-avatar-name {
+  font-size: 10px;
+  color: var(--text-muted);
+  max-width: 56px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bid-avatar-amount {
+  font-size: var(--text-xs);
+  font-weight: 700;
+  color: var(--primary);
+}
+
+.bid-avatar-top .bid-avatar-amount {
+  color: #f59e0b;
 }
 
 /* ===== MIDDLE ===== */
