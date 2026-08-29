@@ -135,10 +135,16 @@ export class AuctionsService {
   }
 
   async findOne(id: string) {
-    const auction = await this.auctionRepo.findOne({
-      where: { id },
-      relations: ['product', 'seller', 'bids', 'bids.bidder']
-    })
+    const auction = await this.auctionRepo
+      .createQueryBuilder('auction')
+      .leftJoinAndSelect('auction.product', 'product')
+      .leftJoinAndSelect('auction.seller', 'seller')
+      .leftJoinAndSelect('auction.bids', 'bid', 'bid.status = :status', { status: 'active' })
+      .leftJoinAndSelect('bid.bidder', 'bidder')
+      .where('auction.id = :id', { id })
+      .orderBy('bid.amount', 'DESC')
+      .addOrderBy('bid.createdAt', 'DESC')
+      .getOne()
 
     if (!auction) {
       throw new NotFoundException('Auction not found')

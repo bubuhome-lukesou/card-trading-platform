@@ -19,6 +19,15 @@ const bidSuccess = ref('')
 
 const auctionId = computed(() => route.params.id as string)
 
+// Sort bids by amount DESC (highest first), then by time DESC (newest first)
+const sortedBids = computed(() => {
+  return [...bids.value].sort((a, b) => {
+    const amountDiff = Number(b.amount) - Number(a.amount)
+    if (amountDiff !== 0) return amountDiff
+    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  })
+})
+
 const currentPrice = computed(() => {
   if (!auction.value) return 0
   return Number(auction.value.currentPrice || auction.value.startingPrice)
@@ -268,7 +277,7 @@ onUnmounted(() => {
         <div v-if="bids.length > 0" class="bid-history">
           <h3>出價記錄</h3>
           <div class="bids-list">
-            <div v-for="bid in bids.slice().reverse()" :key="bid.id" class="bid-item">
+            <div v-for="bid in sortedBids" :key="bid.id" class="bid-item">
               <div class="bidder-info">
                 <span class="bidder-name">{{ bid.bidder?.nickname || '匿名' }}</span>
                 <span class="bid-time">{{ formatDateTime(bid.createdAt) }}</span>
