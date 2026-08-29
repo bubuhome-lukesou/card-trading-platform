@@ -184,7 +184,7 @@ onUnmounted(() => {
       <button @click="loadAuction" class="btn-retry">重試</button>
     </div>
 
-    <!-- Auction Detail — 閒魚風格垂直佈局 -->
+    <!-- Auction Detail — 閒魚風格，桌面端雙列 -->
     <div v-else-if="auction" class="auction-container">
 
       <!-- ===== TOP: 出價記錄 — 圓形頭像 + 底下價格 ===== -->
@@ -215,172 +215,177 @@ onUnmounted(() => {
         <span>暫無出價記錄，成為第一個出價者！</span>
       </div>
 
-      <!-- ===== MIDDLE: 圖片 + 價格 + 計時 + 出價 ===== -->
-      <div class="middle-section">
+      <!-- ===== 雙列區：左=中間核心區  右=商品詳情 ===== -->
+      <div class="two-col-layout">
 
-        <!-- 圖片輪播 -->
-        <div class="image-gallery">
-          <div class="image-container">
-            <img
-              v-if="parsedImages.length > 0"
-              :src="parsedImages[currentImageIndex]"
-              :alt="auction.product?.titleEn"
-              class="product-image"
-            />
-            <div v-else class="image-placeholder">🃏</div>
-          </div>
-          <!-- 多圖指示器 -->
-          <div v-if="parsedImages.length > 1" class="image-dots">
-            <span
-              v-for="(_, idx) in parsedImages"
-              :key="idx"
-              class="image-dot"
-              :class="{ active: idx === currentImageIndex }"
-              @click="currentImageIndex = idx"
-            ></span>
-          </div>
-          <!-- 多圖左右切換 -->
-          <template v-if="parsedImages.length > 1">
-            <button v-if="currentImageIndex > 0" class="img-nav img-prev" @click="currentImageIndex--">‹</button>
-            <button v-if="currentImageIndex < parsedImages.length - 1" class="img-nav img-next" @click="currentImageIndex++">›</button>
-          </template>
-          <!-- 圖片計數 -->
-          <span v-if="parsedImages.length > 1" class="img-counter">{{ currentImageIndex + 1 }}/{{ parsedImages.length }}</span>
-        </div>
+        <!-- LEFT: 圖片 + 價格 + 計時 + 規則 + 出價 -->
+        <div class="middle-section">
 
-        <!-- 當前價格 + 剩餘時間 -->
-        <div class="price-time-card">
-          <div class="price-block">
-            <span class="price-label">當前最高價</span>
-            <span class="current-price">{{ formatPrice(currentPrice) }}</span>
-            <span class="bid-count">{{ auction.bidCount || 0 }} 次出價 · 起拍價 {{ formatPrice(Number(auction.startingPrice)) }}</span>
+          <!-- 圖片輪播 -->
+          <div class="image-gallery">
+            <div class="image-container">
+              <img
+                v-if="parsedImages.length > 0"
+                :src="parsedImages[currentImageIndex]"
+                :alt="auction.product?.titleEn"
+                class="product-image"
+              />
+              <div v-else class="image-placeholder">🃏</div>
+            </div>
+            <!-- 多圖指示器 -->
+            <div v-if="parsedImages.length > 1" class="image-dots">
+              <span
+                v-for="(_, idx) in parsedImages"
+                :key="idx"
+                class="image-dot"
+                :class="{ active: idx === currentImageIndex }"
+                @click="currentImageIndex = idx"
+              ></span>
+            </div>
+            <!-- 多圖左右切換 -->
+            <template v-if="parsedImages.length > 1">
+              <button v-if="currentImageIndex > 0" class="img-nav img-prev" @click="currentImageIndex--">‹</button>
+              <button v-if="currentImageIndex < parsedImages.length - 1" class="img-nav img-next" @click="currentImageIndex++">›</button>
+            </template>
+            <!-- 圖片計數 -->
+            <span v-if="parsedImages.length > 1" class="img-counter">{{ currentImageIndex + 1 }}/{{ parsedImages.length }}</span>
           </div>
-          <div class="time-block" :class="{ 'ending-soon': isEndingSoon }">
-            <span class="time-label">{{ isEnded ? '已結束' : '剩餘時間' }}</span>
-            <span class="time-value">{{ timeRemaining }}</span>
-          </div>
-        </div>
 
-        <!-- 拍賣規則 -->
-        <div class="rules-card">
-          <div class="rules-title">拍賣規則</div>
-          <div class="rules-list">
-            <div class="rule-item">
-              <span class="rule-key">起拍價</span>
-              <span class="rule-val">{{ formatPrice(Number(auction.startingPrice)) }}</span>
+          <!-- 當前價格 + 剩餘時間 -->
+          <div class="price-time-card">
+            <div class="price-block">
+              <span class="price-label">當前最高價</span>
+              <span class="current-price">{{ formatPrice(currentPrice) }}</span>
+              <span class="bid-count">{{ auction.bidCount || 0 }} 次出價 · 起拍價 {{ formatPrice(Number(auction.startingPrice)) }}</span>
             </div>
-            <div v-if="auction.reservePrice" class="rule-item">
-              <span class="rule-key">底價</span>
-              <span class="rule-val">{{ formatPrice(Number(auction.reservePrice)) }}</span>
-            </div>
-            <div v-if="auction.buyNowPrice" class="rule-item">
-              <span class="rule-key">一口價</span>
-              <span class="rule-val">{{ formatPrice(Number(auction.buyNowPrice)) }}</span>
-            </div>
-            <div class="rule-item">
-              <span class="rule-key">最低加價</span>
-              <span class="rule-val">{{ formatPrice(Number(auction.bidIncrement || 10)) }}</span>
-            </div>
-            <div class="rule-item">
-              <span class="rule-key">結束延長</span>
-              <span class="rule-val">最後{{ auction.extensionMinutes || 5 }}分鐘出價延長{{ auction.extensionMinutes || 5 }}分鐘</span>
-            </div>
-            <div class="rule-item">
-              <span class="rule-key">開始時間</span>
-              <span class="rule-val">{{ formatDateTime(auction.startTime) }}</span>
-            </div>
-            <div class="rule-item">
-              <span class="rule-key">結束時間</span>
-              <span class="rule-val">{{ formatDateTime(auction.endTime) }}</span>
+            <div class="time-block" :class="{ 'ending-soon': isEndingSoon }">
+              <span class="time-label">{{ isEnded ? '已結束' : '剩餘時間' }}</span>
+              <span class="time-value">{{ timeRemaining }}</span>
             </div>
           </div>
-        </div>
 
-        <!-- 出價框 -->
-        <div v-if="canBid" class="bid-action-card">
-          <div class="bid-input-row">
-            <span class="currency-prefix">MOP</span>
-            <input
-              v-model.number="bidAmount"
-              type="number"
-              :min="minimumBid"
-              step="10"
-              class="bid-input"
-              placeholder="輸入出價金額"
-            />
-            <button
-              @click="handlePlaceBid"
-              class="btn-bid"
-              :disabled="placingBid"
-            >
-              <span v-if="placingBid" class="spinner-small"></span>
-              {{ placingBid ? '出價中' : '立即出價' }}
-            </button>
+          <!-- 拍賣規則 -->
+          <div class="rules-card">
+            <div class="rules-title">拍賣規則</div>
+            <div class="rules-list">
+              <div class="rule-item">
+                <span class="rule-key">起拍價</span>
+                <span class="rule-val">{{ formatPrice(Number(auction.startingPrice)) }}</span>
+              </div>
+              <div v-if="auction.reservePrice" class="rule-item">
+                <span class="rule-key">底價</span>
+                <span class="rule-val">{{ formatPrice(Number(auction.reservePrice)) }}</span>
+              </div>
+              <div v-if="auction.buyNowPrice" class="rule-item">
+                <span class="rule-key">一口價</span>
+                <span class="rule-val">{{ formatPrice(Number(auction.buyNowPrice)) }}</span>
+              </div>
+              <div class="rule-item">
+                <span class="rule-key">最低加價</span>
+                <span class="rule-val">{{ formatPrice(Number(auction.bidIncrement || 10)) }}</span>
+              </div>
+              <div class="rule-item">
+                <span class="rule-key">結束延長</span>
+                <span class="rule-val">最後{{ auction.extensionMinutes || 5 }}分鐘出價延長{{ auction.extensionMinutes || 5 }}分鐘</span>
+              </div>
+              <div class="rule-item">
+                <span class="rule-key">開始時間</span>
+                <span class="rule-val">{{ formatDateTime(auction.startTime) }}</span>
+              </div>
+              <div class="rule-item">
+                <span class="rule-key">結束時間</span>
+                <span class="rule-val">{{ formatDateTime(auction.endTime) }}</span>
+              </div>
+            </div>
           </div>
-          <p class="bid-hint">最低出價: {{ formatPrice(minimumBid) }}</p>
-          <p v-if="bidError" class="bid-error">{{ bidError }}</p>
-          <p v-if="bidSuccess" class="bid-success">{{ bidSuccess }}</p>
-        </div>
 
-        <!-- 賣家觀看 -->
-        <div v-else-if="isSeller" class="seller-notice">
-          <span>這是您的拍賣商品</span>
-        </div>
-
-        <!-- 已結束 -->
-        <div v-else-if="isEnded" class="ended-notice">
-          <span v-if="auction.winner">🏆 成交價: {{ formatPrice(currentPrice) }}</span>
-          <span v-else>拍賣已結束 — 無人出價</span>
-        </div>
-
-        <!-- 未登入 -->
-        <div v-else class="login-notice">
-          <button @click="router.push('/login')" class="btn-login">登入後出價</button>
-        </div>
-
-      </div>
-
-      <!-- ===== BOTTOM: 商品詳細資料 ===== -->
-      <div class="detail-section">
-        <!-- 標題區 -->
-        <div class="detail-card">
-          <div class="detail-header">
-            <span class="category-badge">{{ auction.product?.category || '其他' }}</span>
-            <span class="status-badge" :class="auction.status">
-              {{ auction.status === 'active' ? '🔥 進行中' : auction.status === 'ended' ? '已結束' : '⏳ 待開始' }}
-            </span>
+          <!-- 出價框 -->
+          <div v-if="canBid" class="bid-action-card">
+            <div class="bid-input-row">
+              <span class="currency-prefix">MOP</span>
+              <input
+                v-model.number="bidAmount"
+                type="number"
+                :min="minimumBid"
+                step="10"
+                class="bid-input"
+                placeholder="輸入出價金額"
+              />
+              <button
+                @click="handlePlaceBid"
+                class="btn-bid"
+                :disabled="placingBid"
+              >
+                <span v-if="placingBid" class="spinner-small"></span>
+                {{ placingBid ? '出價中' : '立即出價' }}
+              </button>
+            </div>
+            <p class="bid-hint">最低出價: {{ formatPrice(minimumBid) }}</p>
+            <p v-if="bidError" class="bid-error">{{ bidError }}</p>
+            <p v-if="bidSuccess" class="bid-success">{{ bidSuccess }}</p>
           </div>
-          <h1 class="product-title">{{ auction.product?.titleEn || '卡牌商品' }}</h1>
-          <p v-if="auction.product?.titleZh" class="product-subtitle">{{ auction.product?.titleZh }}</p>
-          <p v-if="auction.product?.descriptionEn || auction.product?.descriptionZh" class="product-description">
-            {{ auction.product?.descriptionEn || auction.product?.descriptionZh }}
-          </p>
+
+          <!-- 賣家觀看 -->
+          <div v-else-if="isSeller" class="seller-notice">
+            <span>這是您的拍賣商品</span>
+          </div>
+
+          <!-- 已結束 -->
+          <div v-else-if="isEnded" class="ended-notice">
+            <span v-if="auction.winner">🏆 成交價: {{ formatPrice(currentPrice) }}</span>
+            <span v-else>拍賣已結束 — 無人出價</span>
+          </div>
+
+          <!-- 未登入 -->
+          <div v-else class="login-notice">
+            <button @click="router.push('/login')" class="btn-login">登入後出價</button>
+          </div>
+
         </div>
 
-        <!-- 規格表 -->
-        <div class="detail-card">
-          <h3 class="card-title">商品規格</h3>
-          <table class="spec-table">
-            <tr><td>稀有度</td><td>{{ auction.product?.rarity || '-' }}</td></tr>
-            <tr><td>品相</td><td>{{ auction.product?.condition || '-' }}</td></tr>
-            <tr><td>品牌</td><td>{{ auction.product?.brand || '-' }}</td></tr>
-            <tr><td>系列</td><td>{{ auction.product?.series || '-' }}</td></tr>
-            <tr><td>語言</td><td>{{ auction.product?.language || '-' }}</td></tr>
-          </table>
-        </div>
+        <!-- RIGHT: 商品詳細資料 -->
+        <div class="detail-section">
+          <!-- 標題區 -->
+          <div class="detail-card">
+            <div class="detail-header">
+              <span class="category-badge">{{ auction.product?.category || '其他' }}</span>
+              <span class="status-badge" :class="auction.status">
+                {{ auction.status === 'active' ? '🔥 進行中' : auction.status === 'ended' ? '已結束' : '⏳ 待開始' }}
+              </span>
+            </div>
+            <h1 class="product-title">{{ auction.product?.titleEn || '卡牌商品' }}</h1>
+            <p v-if="auction.product?.titleZh" class="product-subtitle">{{ auction.product?.titleZh }}</p>
+            <p v-if="auction.product?.descriptionEn || auction.product?.descriptionZh" class="product-description">
+              {{ auction.product?.descriptionEn || auction.product?.descriptionZh }}
+            </p>
+          </div>
 
-        <!-- 賣家資訊 -->
-        <div class="detail-card">
-          <h3 class="card-title">賣家資訊</h3>
-          <div class="seller-row">
-            <div class="seller-avatar">{{ (auction.seller?.nickname || '?').charAt(0) }}</div>
-            <div class="seller-detail">
-              <span class="seller-name">{{ auction.seller?.nickname || '未知' }}</span>
-              <span class="seller-id">ID: {{ auction.seller?.id?.slice(0, 8) || '—' }}</span>
+          <!-- 規格表 -->
+          <div class="detail-card">
+            <h3 class="card-title">商品規格</h3>
+            <table class="spec-table">
+              <tr><td>稀有度</td><td>{{ auction.product?.rarity || '-' }}</td></tr>
+              <tr><td>品相</td><td>{{ auction.product?.condition || '-' }}</td></tr>
+              <tr><td>品牌</td><td>{{ auction.product?.brand || '-' }}</td></tr>
+              <tr><td>系列</td><td>{{ auction.product?.series || '-' }}</td></tr>
+              <tr><td>語言</td><td>{{ auction.product?.language || '-' }}</td></tr>
+            </table>
+          </div>
+
+          <!-- 賣家資訊 -->
+          <div class="detail-card">
+            <h3 class="card-title">賣家資訊</h3>
+            <div class="seller-row">
+              <div class="seller-avatar">{{ (auction.seller?.nickname || '?').charAt(0) }}</div>
+              <div class="seller-detail">
+                <span class="seller-name">{{ auction.seller?.nickname || '未知' }}</span>
+                <span class="seller-id">ID: {{ auction.seller?.id?.slice(0, 8) || '—' }}</span>
+              </div>
             </div>
           </div>
         </div>
-      </div>
+
+      </div><!-- /two-col-layout -->
 
     </div>
   </div>
@@ -391,7 +396,7 @@ onUnmounted(() => {
   min-height: 100vh;
   background: transparent;
   padding: var(--space-3);
-  max-width: 640px;
+  max-width: 1100px;
   margin: 0 auto;
 }
 
@@ -539,8 +544,42 @@ onUnmounted(() => {
 }
 
 /* ===== MIDDLE ===== */
+
+/* 雙列佈局：桌面端左右並排，手機端單列 */
+.two-col-layout {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
 .middle-section {
-  margin-bottom: var(--space-3);
+  margin-bottom: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.detail-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+@media (min-width: 820px) {
+  .two-col-layout {
+    flex-direction: row;
+    align-items: flex-start;
+  }
+
+  .middle-section {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .detail-section {
+    width: 340px;
+    flex-shrink: 0;
+  }
 }
 
 /* 圖片 */
