@@ -99,6 +99,15 @@ const loadAuction = async () => {
   try {
     const response = await auctionApi.getAuction(auctionId.value)
     auction.value = response.data
+    // Parse product images if stored as JSON string
+    const rawImages = response.data?.product?.images
+    if (typeof rawImages === 'string') {
+      try {
+        auction.value.product.images = JSON.parse(rawImages)
+      } catch {
+        auction.value.product.images = []
+      }
+    }
     bids.value = response.data.bids || []
     bidAmount.value = Number(response.data.currentPrice || response.data.startingPrice) + 10
   } catch (err: any) {

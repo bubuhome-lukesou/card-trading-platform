@@ -23,7 +23,13 @@ const fetchAuctions = async () => {
   try {
     const status = activeTab.value === 'live' ? 'active' : activeTab.value
     const response = await auctionApi.getAuctions({ status } as any)
-    auctions.value = response.data.data
+    // Parse product images from JSON string to array
+    auctions.value = (response.data.data || []).map((a: any) => {
+      if (a.product && typeof a.product.images === 'string') {
+        try { a.product.images = JSON.parse(a.product.images) } catch { a.product.images = [] }
+      }
+      return a
+    })
   } catch (error) {
     console.error('Failed to fetch auctions:', error)
   } finally {
