@@ -16,6 +16,7 @@ const bidAmount = ref(0)
 const placingBid = ref(false)
 const bidError = ref('')
 const bidSuccess = ref('')
+const currentImageIndex = ref(0)
 
 const auctionId = computed(() => route.params.id as string)
 
@@ -26,6 +27,16 @@ const sortedBids = computed(() => {
     if (amountDiff !== 0) return amountDiff
     return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
   })
+})
+
+const parsedImages = computed<string[]>(() => {
+  const imgs = auction.value?.product?.images
+  if (!imgs) return []
+  if (Array.isArray(imgs)) return imgs
+  if (typeof imgs === 'string') {
+    try { return JSON.parse(imgs) } catch { return [] }
+  }
+  return []
 })
 
 const currentPrice = computed(() => {
@@ -57,14 +68,15 @@ const timeRemaining = computed(() => {
   return `${minutes}分 ${seconds}秒`
 })
 
-const isEnded = computed(() => {
-  if (!auction.value) return false
-  return auction.value.status === 'ended' || auction.value.status === 'cancelled' || timeRemaining.value === '已结束'
+const isEndingSoon = computed(() => {
+  if (!auction.value?.endTime) return false
+  const diff = new Date(auction.value.endTime).getTime() - Date.now()
+  return diff > 0 && diff < 10 * 60 * 1000 // less than 10 min
 })
 
-const isActive = computed(() => {
+const isEnded = computed(() => {
   if (!auction.value) return false
-  return auction.value.status === 'active' && !isEnded.value
+  return auction.value.status === 'ended' || auction.value.status === 'cancelled' || timeRemaining.value === '已結束'
 })
 
 const isSeller = computed(() => {
@@ -133,7 +145,7 @@ const handlePlaceBid = async () => {
   placingBid.value = true
   
   try {
-    const response = await auctionApi.placeBid(auctionId.value, bidAmount.value)
+    await auctionApi.placeBid(auctionId.value, bidAmount.value)
     bidSuccess.value = '出價成功！'
     await loadAuction()
     setTimeout(() => bidSuccess.value = '', 3000)
@@ -149,7 +161,7 @@ let pollInterval: ReturnType<typeof setInterval>
 
 onMounted(() => {
   loadAuction()
-  pollInterval = setInterval(loadAuction, 10000) // Refresh every 10 seconds
+  pollInterval = setInterval(loadAuction, 10000)
 })
 
 onUnmounted(() => {
@@ -172,130 +184,199 @@ onUnmounted(() => {
       <button @click="loadAuction" class="btn-retry">重試</button>
     </div>
 
-    <!-- Auction Detail -->
+    <!-- Auction Detail — 閒魚風格垂直佈局 -->
     <div v-else-if="auction" class="auction-container">
-      <div class="auction-main">
-        <!-- Image Section -->
-        <div class="auction-image-section">
+
+      <!-- ===== TOP: 出價記錄橫條 ===== -->
+      <div v-if="sortedBids.length > 0" class="bid-bar-section">
+        <div class="bid-bar-header">
+          <span class="bid-bar-title">出價記錄</span>
+          <span class="bid-bar-count">{{ sortedBids.length }}條</span>
+        </div>
+        <div class="bid-bar-scroll">
+          <div
+            v-for="(bid, idx) in sortedBids"
+            :key="bid.id"
+            class="bid-bar-chip"
+            :class="{ 'bid-bar-top': idx === 0 }"
+          >
+            <span v-if="idx === 0" class="crown">👑</span>
+            <span class="chip-name">{{ bid.bidder?.nickname || '匿名' }}</span>
+            <span class="chip-amount">{{ formatPrice(Number(bid.amount)) }}</span>
+          </div>
+        </div>
+      </div>
+      <div v-else class="bid-bar-section bid-bar-empty">
+        <span>暫無出價記錄，成為第一個出價者！</span>
+      </div>
+
+      <!-- ===== MIDDLE: 圖片 + 價格 + 計時 + 出價 ===== -->
+      <div class="middle-section">
+
+        <!-- 圖片輪播 -->
+        <div class="image-gallery">
           <div class="image-container">
-            <img 
-              v-if="auction.product?.images?.length" 
-              :src="auction.product.images[0]" 
+            <img
+              v-if="parsedImages.length > 0"
+              :src="parsedImages[currentImageIndex]"
               :alt="auction.product?.titleEn"
               class="product-image"
             />
             <div v-else class="image-placeholder">🃏</div>
           </div>
+          <!-- 多圖指示器 -->
+          <div v-if="parsedImages.length > 1" class="image-dots">
+            <span
+              v-for="(_, idx) in parsedImages"
+              :key="idx"
+              class="image-dot"
+              :class="{ active: idx === currentImageIndex }"
+              @click="currentImageIndex = idx"
+            ></span>
+          </div>
+          <!-- 多圖左右切換 -->
+          <template v-if="parsedImages.length > 1">
+            <button v-if="currentImageIndex > 0" class="img-nav img-prev" @click="currentImageIndex--">‹</button>
+            <button v-if="currentImageIndex < parsedImages.length - 1" class="img-nav img-next" @click="currentImageIndex++">›</button>
+          </template>
+          <!-- 圖片計數 -->
+          <span v-if="parsedImages.length > 1" class="img-counter">{{ currentImageIndex + 1 }}/{{ parsedImages.length }}</span>
         </div>
 
-        <!-- Info Section -->
-        <div class="auction-info-section">
-          <div class="auction-header">
+        <!-- 當前價格 + 剩餘時間 -->
+        <div class="price-time-card">
+          <div class="price-block">
+            <span class="price-label">當前最高價</span>
+            <span class="current-price">{{ formatPrice(currentPrice) }}</span>
+            <span class="bid-count">{{ auction.bidCount || 0 }} 次出價 · 起拍價 {{ formatPrice(Number(auction.startingPrice)) }}</span>
+          </div>
+          <div class="time-block" :class="{ 'ending-soon': isEndingSoon }">
+            <span class="time-label">{{ isEnded ? '已結束' : '剩餘時間' }}</span>
+            <span class="time-value">{{ timeRemaining }}</span>
+          </div>
+        </div>
+
+        <!-- 拍賣規則 -->
+        <div class="rules-card">
+          <div class="rules-title">拍賣規則</div>
+          <div class="rules-list">
+            <div class="rule-item">
+              <span class="rule-key">起拍價</span>
+              <span class="rule-val">{{ formatPrice(Number(auction.startingPrice)) }}</span>
+            </div>
+            <div v-if="auction.reservePrice" class="rule-item">
+              <span class="rule-key">底價</span>
+              <span class="rule-val">{{ formatPrice(Number(auction.reservePrice)) }}</span>
+            </div>
+            <div v-if="auction.buyNowPrice" class="rule-item">
+              <span class="rule-key">一口價</span>
+              <span class="rule-val">{{ formatPrice(Number(auction.buyNowPrice)) }}</span>
+            </div>
+            <div class="rule-item">
+              <span class="rule-key">最低加價</span>
+              <span class="rule-val">{{ formatPrice(Number(auction.bidIncrement || 10)) }}</span>
+            </div>
+            <div class="rule-item">
+              <span class="rule-key">結束延長</span>
+              <span class="rule-val">最後{{ auction.extensionMinutes || 5 }}分鐘出價延長{{ auction.extensionMinutes || 5 }}分鐘</span>
+            </div>
+            <div class="rule-item">
+              <span class="rule-key">開始時間</span>
+              <span class="rule-val">{{ formatDateTime(auction.startTime) }}</span>
+            </div>
+            <div class="rule-item">
+              <span class="rule-key">結束時間</span>
+              <span class="rule-val">{{ formatDateTime(auction.endTime) }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 出價框 -->
+        <div v-if="canBid" class="bid-action-card">
+          <div class="bid-input-row">
+            <span class="currency-prefix">MOP</span>
+            <input
+              v-model.number="bidAmount"
+              type="number"
+              :min="minimumBid"
+              step="10"
+              class="bid-input"
+              placeholder="輸入出價金額"
+            />
+            <button
+              @click="handlePlaceBid"
+              class="btn-bid"
+              :disabled="placingBid"
+            >
+              <span v-if="placingBid" class="spinner-small"></span>
+              {{ placingBid ? '出價中' : '立即出價' }}
+            </button>
+          </div>
+          <p class="bid-hint">最低出價: {{ formatPrice(minimumBid) }}</p>
+          <p v-if="bidError" class="bid-error">{{ bidError }}</p>
+          <p v-if="bidSuccess" class="bid-success">{{ bidSuccess }}</p>
+        </div>
+
+        <!-- 賣家觀看 -->
+        <div v-else-if="isSeller" class="seller-notice">
+          <span>這是您的拍賣商品</span>
+        </div>
+
+        <!-- 已結束 -->
+        <div v-else-if="isEnded" class="ended-notice">
+          <span v-if="auction.winner">🏆 成交價: {{ formatPrice(currentPrice) }}</span>
+          <span v-else>拍賣已結束 — 無人出價</span>
+        </div>
+
+        <!-- 未登入 -->
+        <div v-else class="login-notice">
+          <button @click="router.push('/login')" class="btn-login">登入後出價</button>
+        </div>
+
+      </div>
+
+      <!-- ===== BOTTOM: 商品詳細資料 ===== -->
+      <div class="detail-section">
+        <!-- 標題區 -->
+        <div class="detail-card">
+          <div class="detail-header">
             <span class="category-badge">{{ auction.product?.category || '其他' }}</span>
             <span class="status-badge" :class="auction.status">
               {{ auction.status === 'active' ? '🔥 進行中' : auction.status === 'ended' ? '已結束' : '⏳ 待開始' }}
             </span>
           </div>
-
-          <h1 class="product-title">{{ auction.product?.titleEn || auction.product?.titleZh || '卡牌商品' }}</h1>
-          <p class="product-subtitle">{{ auction.product?.titleZh }}</p>
-
-          <div class="product-description">
-            {{ auction.product?.descriptionEn || auction.product?.descriptionZh || '暫無描述' }}
-          </div>
-
-          <!-- Specs -->
-          <div class="product-specs">
-            <div class="spec-item">
-              <span class="spec-label">稀有度</span>
-              <span class="spec-value">{{ auction.product?.rarity || '-' }}</span>
-            </div>
-            <div class="spec-item">
-              <span class="spec-label">品相</span>
-              <span class="spec-value">{{ auction.product?.condition || '-' }}</span>
-            </div>
-            <div class="spec-item">
-              <span class="spec-label">賣家</span>
-              <span class="spec-value">{{ auction.seller?.nickname || '未知' }}</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Bid Section -->
-      <div class="bid-section">
-        <!-- Current Price -->
-        <div class="price-card">
-          <div class="price-info">
-            <span class="price-label">當前價格</span>
-            <span class="current-price">{{ formatPrice(currentPrice) }}</span>
-            <span class="bid-count">{{ auction.bidCount || 0 }} 次出價</span>
-          </div>
-
-          <div class="time-info">
-            <span class="time-label">剩餘時間</span>
-            <span class="time-value" :class="{ 'ending-soon': timeRemaining.includes('分') && !timeRemaining.includes('天') }">
-              ⏱️ {{ timeRemaining }}
-            </span>
-          </div>
-        </div>
-
-        <!-- Bid Form -->
-        <div v-if="canBid" class="bid-form">
-          <div class="bid-input-group">
-            <span class="currency-prefix">MOP</span>
-            <input 
-              v-model.number="bidAmount" 
-              type="number" 
-              :min="minimumBid"
-              step="10"
-              class="bid-input"
-            />
-          </div>
-          <p class="bid-hint">最低出價: {{ formatPrice(minimumBid) }}</p>
-          
-          <p v-if="bidError" class="bid-error">{{ bidError }}</p>
-          <p v-if="bidSuccess" class="bid-success">{{ bidSuccess }}</p>
-          
-          <button 
-            @click="handlePlaceBid" 
-            class="btn-bid"
-            :disabled="placingBid || !authStore.isAuthenticated"
-          >
-            <span v-if="placingBid" class="spinner-small"></span>
-            {{ placingBid ? '出價中...' : '立即出價' }}
-          </button>
-          
-          <p v-if="!authStore.isAuthenticated" class="login-hint">
-            請先 <router-link to="/login">登入</router-link> 才能出價
+          <h1 class="product-title">{{ auction.product?.titleEn || '卡牌商品' }}</h1>
+          <p v-if="auction.product?.titleZh" class="product-subtitle">{{ auction.product?.titleZh }}</p>
+          <p v-if="auction.product?.descriptionEn || auction.product?.descriptionZh" class="product-description">
+            {{ auction.product?.descriptionEn || auction.product?.descriptionZh }}
           </p>
         </div>
 
-        <!-- Seller View -->
-        <div v-else-if="isSeller" class="seller-notice">
-          <p>這是您的拍賣商品</p>
+        <!-- 規格表 -->
+        <div class="detail-card">
+          <h3 class="card-title">商品規格</h3>
+          <table class="spec-table">
+            <tr><td>稀有度</td><td>{{ auction.product?.rarity || '-' }}</td></tr>
+            <tr><td>品相</td><td>{{ auction.product?.condition || '-' }}</td></tr>
+            <tr><td>品牌</td><td>{{ auction.product?.brand || '-' }}</td></tr>
+            <tr><td>系列</td><td>{{ auction.product?.series || '-' }}</td></tr>
+            <tr><td>語言</td><td>{{ auction.product?.language || '-' }}</td></tr>
+          </table>
         </div>
 
-        <!-- Auction Ended -->
-        <div v-else-if="isEnded" class="ended-notice">
-          <p v-if="auction.winner">🏆 成交價: {{ formatPrice(auction.currentPrice) }}</p>
-          <p v-else>拍賣已結束</p>
-        </div>
-
-        <!-- Bid History -->
-        <div v-if="bids.length > 0" class="bid-history">
-          <h3>出價記錄</h3>
-          <div class="bids-list">
-            <div v-for="bid in sortedBids" :key="bid.id" class="bid-item">
-              <div class="bidder-info">
-                <span class="bidder-name">{{ bid.bidder?.nickname || '匿名' }}</span>
-                <span class="bid-time">{{ formatDateTime(bid.createdAt) }}</span>
-              </div>
-              <span class="bid-amount">{{ formatPrice(bid.amount) }}</span>
+        <!-- 賣家資訊 -->
+        <div class="detail-card">
+          <h3 class="card-title">賣家資訊</h3>
+          <div class="seller-row">
+            <div class="seller-avatar">{{ (auction.seller?.nickname || '?').charAt(0) }}</div>
+            <div class="seller-detail">
+              <span class="seller-name">{{ auction.seller?.nickname || '未知' }}</span>
+              <span class="seller-id">ID: {{ auction.seller?.id?.slice(0, 8) || '—' }}</span>
             </div>
           </div>
         </div>
       </div>
+
     </div>
   </div>
 </template>
@@ -304,9 +385,12 @@ onUnmounted(() => {
 .auction-detail-page {
   min-height: 100vh;
   background: transparent;
-  padding: var(--space-6);
+  padding: var(--space-3);
+  max-width: 640px;
+  margin: 0 auto;
 }
 
+/* ===== Loading / Error ===== */
 .loading-container,
 .error-container {
   display: flex;
@@ -317,9 +401,16 @@ onUnmounted(() => {
   gap: var(--space-4);
 }
 
-.error-icon {
-  font-size: 48px;
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid var(--border);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
 }
+
+.error-icon { font-size: 48px; }
 
 .btn-retry {
   padding: var(--space-3) var(--space-6);
@@ -330,30 +421,100 @@ onUnmounted(() => {
   cursor: pointer;
 }
 
-.auction-container {
-  max-width: 1200px;
-  margin: 0 auto;
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ===== TOP: 出價記錄橫條 ===== */
+.bid-bar-section {
+  background: var(--bg-card);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+  padding: var(--space-3);
+  margin-bottom: var(--space-3);
 }
 
-.auction-main {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: var(--space-6);
-  margin-bottom: var(--space-6);
+.bid-bar-empty {
+  text-align: center;
+  color: var(--text-muted);
+  font-size: var(--text-sm);
 }
 
-@media (max-width: 768px) {
-  .auction-main {
-    grid-template-columns: 1fr;
-  }
+.bid-bar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-2);
+}
+
+.bid-bar-title {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.bid-bar-count {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+
+.bid-bar-scroll {
+  display: flex;
+  gap: var(--space-2);
+  overflow-x: auto;
+  padding-bottom: 2px;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+}
+
+.bid-bar-scroll::-webkit-scrollbar { height: 3px; }
+.bid-bar-scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+.bid-bar-chip {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 12px;
+  background: var(--bg-elevated);
+  border-radius: var(--radius-full);
+  white-space: nowrap;
+  flex-shrink: 0;
+  font-size: var(--text-xs);
+}
+
+.bid-bar-top {
+  background: linear-gradient(135deg, rgba(255, 193, 7, 0.2), rgba(255, 152, 0, 0.15));
+  border: 1px solid rgba(255, 193, 7, 0.3);
+}
+
+.crown { font-size: 14px; }
+
+.chip-name {
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.chip-amount {
+  color: var(--primary);
+  font-weight: 700;
+}
+
+/* ===== MIDDLE ===== */
+.middle-section {
+  margin-bottom: var(--space-3);
+}
+
+/* 圖片 */
+.image-gallery {
+  position: relative;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  margin-bottom: var(--space-3);
 }
 
 .image-container {
   aspect-ratio: 1;
-  background: var(--bg-card);
-  border-radius: var(--radius-xl);
-  overflow: hidden;
-  border: 1px solid var(--border);
+  width: 100%;
 }
 
 .product-image {
@@ -372,19 +533,321 @@ onUnmounted(() => {
   background: var(--bg-elevated);
 }
 
-.auction-info-section {
+.image-dots {
+  position: absolute;
+  bottom: 8px;
+  left: 50%;
+  transform: translateX(-50%);
   display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
+  gap: 6px;
+  z-index: 2;
 }
 
-.auction-header {
+.image-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.4);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.image-dot.active {
+  background: white;
+  width: 18px;
+  border-radius: 4px;
+}
+
+.img-nav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: rgba(0,0,0,0.4);
+  color: white;
+  border: none;
+  font-size: 24px;
   display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 2;
+  line-height: 1;
+}
+
+.img-prev { left: 8px; }
+.img-next { right: 8px; }
+
+.img-counter {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: rgba(0,0,0,0.5);
+  color: white;
+  font-size: var(--text-xs);
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+}
+
+/* 價格 + 計時 */
+.price-time-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: stretch;
+  background: var(--bg-card);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+  overflow: hidden;
+  margin-bottom: var(--space-3);
+}
+
+.price-block {
+  flex: 1;
+  padding: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.price-label {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+
+.current-price {
+  font-size: 28px;
+  font-weight: 800;
+  color: var(--primary);
+  line-height: 1.2;
+}
+
+.bid-count {
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+}
+
+.time-block {
+  padding: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 2px;
+  background: var(--bg-elevated);
+  min-width: 100px;
+}
+
+.time-label {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+
+.time-value {
+  font-size: var(--text-lg);
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.time-block.ending-soon {
+  background: rgba(239, 68, 68, 0.1);
+}
+
+.time-block.ending-soon .time-value {
+  color: #ef4444;
+  animation: pulse 1s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+/* 拍賣規則 */
+.rules-card {
+  background: var(--bg-card);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+  padding: var(--space-4);
+  margin-bottom: var(--space-3);
+}
+
+.rules-title {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: var(--space-3);
+}
+
+.rules-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.rule-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-size: var(--text-sm);
   gap: var(--space-3);
 }
 
+.rule-key {
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.rule-val {
+  color: var(--text-primary);
+  font-weight: 500;
+  text-align: right;
+  word-break: break-word;
+}
+
+/* 出價框 */
+.bid-action-card {
+  background: var(--bg-card);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+  padding: var(--space-4);
+  margin-bottom: var(--space-3);
+}
+
+.bid-input-row {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.currency-prefix {
+  display: flex;
+  align-items: center;
+  padding: 0 var(--space-3);
+  background: var(--bg-elevated);
+  color: var(--text-secondary);
+  font-weight: 600;
+  font-size: var(--text-sm);
+}
+
+.bid-input {
+  flex: 1;
+  padding: var(--space-3);
+  background: var(--bg-dark);
+  border: 1px solid var(--border);
+  border-left: none;
+  border-right: none;
+  color: var(--text-primary);
+  font-size: var(--text-lg);
+  font-weight: 600;
+  min-width: 0;
+}
+
+.bid-input:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+
+.btn-bid {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-5);
+  background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+  border: none;
+  color: white;
+  font-size: var(--text-base);
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: opacity 0.2s;
+}
+
+.btn-bid:hover:not(:disabled) { opacity: 0.9; }
+.btn-bid:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.spinner-small {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255,255,255,0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+.bid-hint {
+  margin-top: var(--space-2);
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+
+.bid-error {
+  margin-top: var(--space-2);
+  color: #ef4444;
+  font-size: var(--text-sm);
+  background: rgba(239, 68, 68, 0.1);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+}
+
+.bid-success {
+  margin-top: var(--space-2);
+  color: #22c55e;
+  font-size: var(--text-sm);
+  background: rgba(34, 197, 94, 0.1);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+}
+
+.seller-notice,
+.ended-notice,
+.login-notice {
+  background: var(--bg-card);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+  padding: var(--space-5);
+  text-align: center;
+  color: var(--text-secondary);
+  margin-bottom: var(--space-3);
+}
+
+.btn-login {
+  padding: var(--space-3) var(--space-6);
+  background: var(--primary);
+  border: none;
+  border-radius: var(--radius-lg);
+  color: white;
+  font-size: var(--text-base);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* ===== BOTTOM: 商品詳情 ===== */
+.detail-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.detail-card {
+  background: var(--bg-card);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+  padding: var(--space-4);
+}
+
+.detail-header {
+  display: flex;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+
 .category-badge {
-  padding: var(--space-1) var(--space-3);
+  padding: 2px 10px;
   background: var(--bg-elevated);
   border-radius: var(--radius-full);
   font-size: var(--text-xs);
@@ -392,7 +855,7 @@ onUnmounted(() => {
 }
 
 .status-badge {
-  padding: var(--space-1) var(--space-3);
+  padding: 2px 10px;
   border-radius: var(--radius-full);
   font-size: var(--text-xs);
   font-weight: 600;
@@ -414,287 +877,90 @@ onUnmounted(() => {
 }
 
 .product-title {
-  font-size: var(--text-2xl);
+  font-size: var(--text-xl);
   font-weight: 700;
   color: var(--text-primary);
+  margin-bottom: 4px;
 }
 
 .product-subtitle {
-  font-size: var(--text-lg);
+  font-size: var(--text-base);
   color: var(--text-muted);
+  margin-bottom: var(--space-3);
 }
 
 .product-description {
   color: var(--text-secondary);
   line-height: 1.6;
+  font-size: var(--text-sm);
 }
 
-.product-specs {
-  display: flex;
-  gap: var(--space-6);
-  padding: var(--space-4);
-  background: var(--bg-card);
-  border-radius: var(--radius-lg);
-  border: 1px solid var(--border);
-}
-
-.spec-item {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-}
-
-.spec-label {
-  font-size: var(--text-xs);
-  color: var(--text-muted);
-}
-
-.spec-value {
+.card-title {
+  font-size: var(--text-sm);
   font-weight: 600;
-  color: var(--text-primary);
-}
-
-/* Bid Section */
-.bid-section {
-  background: var(--bg-card);
-  border-radius: var(--radius-xl);
-  border: 1px solid var(--border);
-  padding: var(--space-6);
-}
-
-.price-card {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-end;
-  padding-bottom: var(--space-6);
-  border-bottom: 1px solid var(--border);
-  margin-bottom: var(--space-6);
-}
-
-.price-info {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-}
-
-.price-label {
-  font-size: var(--text-sm);
-  color: var(--text-muted);
-}
-
-.current-price {
-  font-size: 36px;
-  font-weight: 700;
-  color: var(--primary);
-}
-
-.bid-count {
-  font-size: var(--text-sm);
   color: var(--text-secondary);
+  margin-bottom: var(--space-3);
 }
 
-.time-info {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-  text-align: right;
-}
-
-.time-label {
+/* 規格表 */
+.spec-table {
+  width: 100%;
+  border-collapse: collapse;
   font-size: var(--text-sm);
+}
+
+.spec-table td {
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.spec-table td:first-child {
   color: var(--text-muted);
+  width: 30%;
 }
 
-.time-value {
-  font-size: var(--text-xl);
-  font-weight: 600;
+.spec-table td:last-child {
   color: var(--text-primary);
+  font-weight: 500;
 }
 
-.time-value.ending-soon {
-  color: #ef4444;
+.spec-table tr:last-child td {
+  border-bottom: none;
 }
 
-/* Bid Form */
-.bid-form {
+/* 賣家 */
+.seller-row {
   display: flex;
-  flex-direction: column;
+  align-items: center;
   gap: var(--space-3);
 }
 
-.bid-input-group {
-  display: flex;
-  align-items: center;
-  background: var(--bg-dark);
-  border: 2px solid var(--border);
-  border-radius: var(--radius-lg);
-  overflow: hidden;
-  transition: border-color 0.2s;
-}
-
-.bid-input-group:focus-within {
-  border-color: var(--primary);
-}
-
-.currency-prefix {
-  padding: var(--space-3) var(--space-4);
-  background: var(--bg-elevated);
-  color: var(--text-secondary);
-  font-weight: 600;
-}
-
-.bid-input {
-  flex: 1;
-  padding: var(--space-3) var(--space-4);
-  background: transparent;
-  border: none;
-  color: var(--text-primary);
-  font-size: var(--text-lg);
-  font-weight: 600;
-}
-
-.bid-input:focus {
-  outline: none;
-}
-
-.bid-hint {
-  font-size: var(--text-xs);
-  color: var(--text-muted);
-}
-
-.bid-error {
-  color: var(--danger);
-  font-size: var(--text-sm);
-  background: rgba(239, 68, 68, 0.1);
-  padding: var(--space-2) var(--space-3);
-  border-radius: var(--radius-md);
-}
-
-.bid-success {
-  color: #22c55e;
-  font-size: var(--text-sm);
-  background: rgba(34, 197, 94, 0.1);
-  padding: var(--space-2) var(--space-3);
-  border-radius: var(--radius-md);
-}
-
-.btn-bid {
+.seller-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--primary);
+  color: white;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: var(--space-2);
-  padding: var(--space-4);
-  background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
-  border: none;
-  border-radius: var(--radius-lg);
-  color: white;
   font-size: var(--text-lg);
   font-weight: 700;
-  cursor: pointer;
-  transition: all 0.2s;
 }
 
-.btn-bid:hover:not(:disabled) {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(102, 126, 234, 0.4);
+.seller-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
-.btn-bid:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.spinner-small {
-  width: 18px;
-  height: 18px;
-  border: 2px solid rgba(255,255,255,0.3);
-  border-top-color: white;
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-
-.login-hint {
-  text-align: center;
-  color: var(--text-muted);
-  font-size: var(--text-sm);
-}
-
-.login-hint a {
-  color: var(--primary);
-  text-decoration: none;
-}
-
-.seller-notice,
-.ended-notice {
-  padding: var(--space-4);
-  background: var(--bg-elevated);
-  border-radius: var(--radius-lg);
-  text-align: center;
-  color: var(--text-secondary);
-}
-
-/* Bid History */
-.bid-history {
-  margin-top: var(--space-6);
-  padding-top: var(--space-6);
-  border-top: 1px solid var(--border);
-}
-
-.bid-history h3 {
-  font-size: var(--text-lg);
+.seller-name {
   font-weight: 600;
-  margin-bottom: var(--space-4);
-}
-
-.bids-list {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  max-height: 300px;
-  overflow-y: auto;
-}
-
-.bid-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: var(--space-3);
-  background: var(--bg-dark);
-  border-radius: var(--radius-md);
-}
-
-.bidder-info {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-}
-
-.bidder-name {
-  font-weight: 500;
   color: var(--text-primary);
 }
 
-.bid-time {
+.seller-id {
   font-size: var(--text-xs);
   color: var(--text-muted);
-}
-
-.bid-amount {
-  font-weight: 700;
-  color: var(--primary);
-}
-
-/* Spinner */
-.spinner {
-  width: 40px;
-  height: 40px;
-  border: 3px solid var(--border);
-  border-top-color: var(--primary);
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
 }
 </style>
