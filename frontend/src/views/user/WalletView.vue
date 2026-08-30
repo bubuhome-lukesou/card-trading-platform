@@ -59,7 +59,7 @@ const loadData = async () => {
     // Load wallet transactions + balance in parallel
     const [txRes, balRes] = await Promise.all([
       api.get('/wallet/transactions?page=1&limit=20'),
-      api.get('/wallet/balance'),
+      api.get('/wallet'),
     ])
     const txList = txRes.data?.data || txRes.data || []
     transactions.value = txList.map((tx: any) => ({
