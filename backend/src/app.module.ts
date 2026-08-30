@@ -45,7 +45,7 @@ import { ReservationsModule } from './modules/reservations/reservations.module'
       password: process.env.DB_PASSWORD || 'CardAuction2026!',
       database: process.env.DB_DATABASE || 'card_auction',
       entities: [User, Product, Auction, Bid, Order, Favorite, WalletTransaction, Page, Tag, CartItem, Settings, SellerApplication, Reservation],
-      synchronize: true,
+      synchronize: process.env.NODE_ENV === 'development',
       logging: process.env.NODE_ENV === 'development'
     }),
     TypeOrmModule.forFeature([Settings]),
