@@ -573,6 +573,12 @@ const isProductSuspended = computed(() => {
               <span v-if="isProductSuspended" class="suspended-badge">{{ locale === 'zh' ? '已下架' : 'Suspended' }}</span>
             </h1>
 
+            <!-- 賣家名稱 -->
+            <div v-if="product.seller" class="seller-info-row">
+              <div class="seller-avatar-sm">{{ (product.seller.nickname || '?').charAt(0) }}</div>
+              <span class="seller-name-text">{{ product.seller.nickname || (locale === 'zh' ? '未知商家' : 'Unknown Seller') }}</span>
+            </div>
+
             <!-- Spec table -->
             <div class="spec-table">
               <div class="spec-row">
@@ -1136,6 +1142,38 @@ $radius: 16px;
   margin: 0;
   display: flex;
   align-items: center;
+}
+
+/* 賣家名稱行 */
+.seller-info-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: var(--space-4);
+  padding: 8px 12px;
+  background: var(--bg-elevated);
+  border-radius: var(--radius-md);
+  width: fit-content;
+}
+.seller-avatar-sm {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--primary-gradient);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+.seller-name-text {
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+.product-title {
   gap: 12px;
   flex-wrap: wrap;
   letter-spacing: -0.02em;

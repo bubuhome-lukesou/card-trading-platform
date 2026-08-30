@@ -21,6 +21,7 @@ export class ProductsService {
     const queryBuilder = this.productRepo
       .createQueryBuilder('product')
       .leftJoinAndSelect('product.tags', 'tag')
+      .leftJoinAndSelect('product.seller', 'seller')
       .where('product.status = :status', { status: filters.status || ProductStatus.ACTIVE })
       .andWhere('product.isActive = :isActive', { isActive: true })
 
