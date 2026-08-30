@@ -32,6 +32,8 @@ const orders = ref<Order[]>([])
 const loading = ref(true)
 const filterStatus = ref('all')
 const uploadingReceipt = ref<string | null>(null)
+const processingPay = ref<string | null>(null)
+const expandedOrderId = ref<string | null>(null)
 const showReceiptModal = ref(false)
 const receiptImageUrl = ref('')
 const apiBaseUrl = import.meta.env.VITE_API_URL || ''
@@ -153,13 +155,39 @@ const loadOrders = async () => {
 }
 
 const handlePay = async (orderId: string) => {
+  processingPay.value = orderId
   try {
-    await ordersApi.updateStatus(orderId, 'paid')
-    await loadOrders()
+    // For pending orders: buyer uploads receipt to move to pending_paid
+    // Since there's no payment gateway, "立即支付" triggers receipt upload
+    const fileInput = document.createElement('input')
+    fileInput.type = 'file'
+    fileInput.accept = 'image/*'
+    fileInput.onchange = async (e: any) => {
+      const file = e.target.files[0]
+      if (!file) {
+        processingPay.value = null
+        return
+      }
+      try {
+        await ordersApi.uploadTransferReceipt(orderId, file)
+        await loadOrders()
+      } catch (error) {
+        console.error('Payment receipt upload failed:', error)
+        alert('上傳憑證失敗，請重試')
+      } finally {
+        processingPay.value = null
+      }
+    }
+    fileInput.click()
   } catch (error) {
     console.error('Payment failed:', error)
     alert('支付失敗，請重試')
+    processingPay.value = null
   }
+}
+
+const toggleOrderDetail = (orderId: string) => {
+  expandedOrderId.value = expandedOrderId.value === orderId ? null : orderId
 }
 
 const handleReceive = async (orderId: string) => {
@@ -381,14 +409,14 @@ onMounted(() => {
             <div v-if="order.type === 'reservation' && order.fullPrice" class="reservation-info">
               <span class="reservation-label">📅 預約</span>
               <span class="deposit-info">訂金已付 {{ formatPrice(order.amount) }}</span>
-              <span class="remaining-info">到尾款 {{ formatPrice(order.fullPrice - order.amount) }}</span>
+              <span class="remaining-info">到尾款 {{ formatPrice((order.fullPrice || 0) * order.quantity - order.amount) }}</span>
             </div>
           </div>
           <div class="order-amount">
             <div class="amount-label">金額</div>
             <div v-if="order.type === 'reservation'" class="reservation-amount">
               <div class="deposit-value">{{ formatPrice(order.amount) }}</div>
-              <div class="remaining-value">+ {{ formatPrice((order.fullPrice || 0) - order.amount) }} 到尾款</div>
+              <div class="remaining-value">+ {{ formatPrice((order.fullPrice || 0) * order.quantity - order.amount) }} 到尾款</div>
             </div>
             <div v-else class="amount-value">{{ formatPrice(order.amount) }}</div>
           </div>
@@ -427,9 +455,9 @@ onMounted(() => {
             v-if="order.status === 'pending' && order.type !== 'reservation'"
             class="btn-pay"
             @click="handlePay(order.id)"
-            disabled
+            :disabled="processingPay === order.id"
           >
-            立即支付
+            {{ processingPay === order.id ? '處理中...' : '立即支付' }}
           </button>
           <button
             v-if="order.status === 'pending' && order.type !== 'reservation'"
@@ -453,9 +481,24 @@ onMounted(() => {
           >
             確認收貨
           </button>
-          <router-link :to="`/product/${order.id}`" class="btn-detail">
-            訂單詳情
-          </router-link>
+          <button
+            class="btn-detail"
+            @click="toggleOrderDetail(order.id)"
+          >
+            {{ expandedOrderId === order.id ? '收起詳情' : '訂單詳情' }}
+          </button>
+        </div>
+
+        <!-- 訂單詳情展開區 -->
+        <div v-if="expandedOrderId === order.id" class="order-detail-expand">
+          <div class="detail-row"><span>訂單編號</span><span>{{ order.orderNumber }}</span></div>
+          <div class="detail-row"><span>下單時間</span><span>{{ formatDate(order.createdAt) }}</span></div>
+          <div class="detail-row"><span>數量</span><span>{{ order.quantity }}</span></div>
+          <div class="detail-row"><span>總價</span><span>{{ formatPrice(order.amount) }}</span></div>
+          <div class="detail-row" v-if="order.type === 'reservation' && order.fullPrice">
+            <span>尾款</span><span>{{ formatPrice(order.fullPrice * order.quantity - order.amount) }}</span>
+          </div>
+          <div class="detail-row"><span>賣家</span><span>{{ order.sellerNickname }}</span></div>
         </div>
 
         <!-- 轉帳憑證：獨立顯示，任何狀態有憑證就顯示 -->
@@ -917,6 +960,32 @@ onMounted(() => {
 
 .btn-detail:hover {
   background: var(--border);
+}
+
+.order-detail-expand {
+  background: var(--bg-elevated);
+  border-radius: 8px;
+  padding: 12px 16px;
+  margin: 8px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.order-detail-expand .detail-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.order-detail-expand .detail-row span:first-child {
+  color: var(--text-muted);
+}
+
+.order-detail-expand .detail-row span:last-child {
+  color: var(--text-primary);
+  font-weight: 500;
 }
 
 .modal-overlay {

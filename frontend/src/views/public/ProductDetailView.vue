@@ -228,6 +228,15 @@ watch(
 onMounted(async () => {
   window.addEventListener('keydown', handleKeydown)
   await loadProduct()
+  // U10: Load user's reservations to check if they've already reserved this product
+  if (authStore.isAuthenticated) {
+    try {
+      const res = await reservationApi.getMyReservations()
+      myReservations.value = Array.isArray(res.data) ? res.data : (res.data?.data || [])
+    } catch {
+      myReservations.value = []
+    }
+  }
 })
 
 const selectImage = (index: number) => {
@@ -431,6 +440,11 @@ const handleReserve = async () => {
     messageType.value = 'success'
     // Reload product to get updated reservation count
     await loadProduct()
+    // Reload user's reservations to update hasReserved
+    try {
+      const res = await reservationApi.getMyReservations()
+      myReservations.value = Array.isArray(res.data) ? res.data : (res.data?.data || [])
+    } catch {}
   } catch (error: any) {
     message.value = error?.response?.data?.message || (t('common.error') || '操作失敗')
     messageType.value = 'error'
@@ -472,8 +486,15 @@ const reservationDisplayText = computed(() => {
   return `${remaining} ${locale.value === 'zh' ? '位剩餘' : 'spots left'}`
 })
 
-// Whether the current user has already made a reservation (simplified - always false for now)
-const hasReserved = computed(() => false)
+// Whether the current user has already made a reservation for this product
+const myReservations = ref<any[]>([])
+const hasReserved = computed(() => {
+  if (!product.value || !authStore.isAuthenticated) return false
+  return myReservations.value.some(r =>
+    r.productId === product.value.id &&
+    (r.status === 'pending' || r.status === 'deposit_paid' || r.status === 'confirmed')
+  )
+})
 
 // Check if product is suspended (cancelled/ended)
 const isProductSuspended = computed(() => {
@@ -679,7 +700,11 @@ const isProductSuspended = computed(() => {
               </div>
 
               <div class="action-row">
+                <div v-if="hasReserved" class="already-reserved-notice">
+                  {{ locale === 'zh' ? '您已預約此商品' : 'You have already reserved this item' }}
+                </div>
                 <button
+                  v-else
                   class="btn btn-primary"
                   :disabled="processing || !isReservationOpen || isProductSuspended"
                   @click="handleReserve"
@@ -1466,6 +1491,18 @@ $radius: 16px;
   justify-content: center;
   gap: 8px;
   letter-spacing: 0.01em;
+}
+
+.already-reserved-notice {
+  flex: 1;
+  text-align: center;
+  padding: 12px 16px;
+  background: rgba(34, 197, 94, 0.15);
+  border: 1px solid rgba(34, 197, 94, 0.3);
+  border-radius: 8px;
+  color: #4ade80;
+  font-size: 14px;
+  font-weight: 500;
 }
 
 .btn-primary {
