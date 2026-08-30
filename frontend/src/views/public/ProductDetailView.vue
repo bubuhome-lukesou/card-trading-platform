@@ -575,6 +575,7 @@ const isProductSuspended = computed(() => {
 
             <!-- 賣家名稱 -->
             <div v-if="product.seller" class="seller-info-row">
+              <span class="seller-label">{{ locale === 'zh' ? '商鋪' : 'Seller' }}</span>
               <div class="seller-avatar-sm">{{ (product.seller.nickname || '?').charAt(0) }}</div>
               <span class="seller-name-text">{{ product.seller.nickname || (locale === 'zh' ? '未知商家' : 'Unknown Seller') }}</span>
             </div>
@@ -1154,6 +1155,11 @@ $radius: 16px;
   background: var(--bg-elevated);
   border-radius: var(--radius-md);
   width: fit-content;
+}
+.seller-label {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  font-weight: 400;
 }
 .seller-avatar-sm {
   width: 28px;
