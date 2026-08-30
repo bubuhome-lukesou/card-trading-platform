@@ -98,6 +98,9 @@ export class Order {
   quantity: number
 
   @Column({ nullable: true })
+  reservationId: string | null  // R4: link to reservation for deposit/balance orders
+
+  @Column({ nullable: true })
   transferReceipt: string
 
   @Column({ nullable: true })

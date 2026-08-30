@@ -49,6 +49,13 @@ export class ReservationsController {
     return this.reservationsService.confirmDeposit(id, req.user.id)
   }
 
+  // R5: Seller confirms a deposit-paid reservation
+  @Post(':id/confirm')
+  @UseGuards(JwtAuthGuard)
+  async confirmReservation(@Param('id') id: string, @Request() req) {
+    return this.reservationsService.confirmReservation(id, req.user.id)
+  }
+
   @Delete(':id')
   @UseGuards(JwtAuthGuard)
   async cancel(@Param('id') id: string, @Request() req) {
