@@ -6,6 +6,7 @@ import { AuthController } from './auth.controller'
 import { AuthService } from './auth.service'
 import { JwtStrategy } from './guards/jwt.strategy'
 import { User } from '../../entities/user.entity'
+import { SmsModule } from '../sms/sms.module'
 
 @Module({
   imports: [
@@ -14,7 +15,8 @@ import { User } from '../../entities/user.entity'
     JwtModule.register({
       secret: process.env.JWT_SECRET || 'card-quest-secret-key-2024',
       signOptions: { expiresIn: '7d' }
-    })
+    }),
+    SmsModule,
   ],
   controllers: [AuthController],
   providers: [AuthService, JwtStrategy],

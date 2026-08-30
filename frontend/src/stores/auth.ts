@@ -102,6 +102,16 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
+  // 手機登入：直接設置 token 和 user
+  function setPhoneLogin(data: { accessToken: string; user: User }) {
+    token.value = data.accessToken
+    user.value = data.user
+    role.value = data.user.role
+    localStorage.setItem('token', data.accessToken)
+    localStorage.setItem('role', data.user.role)
+    api.defaults.headers.common['Authorization'] = `Bearer ${data.accessToken}`
+  }
+
   function logout() {
     user.value = null
     token.value = null
@@ -130,6 +140,7 @@ export const useAuthStore = defineStore('auth', () => {
     // Actions
     login,
     register,
+    setPhoneLogin,
     fetchUser,
     updateProfile,
     logout

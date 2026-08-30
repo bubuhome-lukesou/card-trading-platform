@@ -68,3 +68,31 @@ export class AuthResponseDto {
   user: any
   accessToken: string
 }
+
+// 手機驗證碼登入/註冊
+export class SendCodeDto {
+  @IsString()
+  regionCode: string  // e.g. '+853'
+
+  @IsString()
+  phone: string  // 不含區號，純號碼
+}
+
+export class PhoneLoginDto {
+  @IsString()
+  regionCode: string  // e.g. '+853'
+
+  @IsString()
+  phone: string  // 不含區號
+
+  @IsString()
+  @MinLength(4)
+  @MaxLength(8)
+  code: string  // 驗證碼
+
+  @IsOptional()
+  @IsString()
+  @MinLength(3)
+  @MaxLength(20)
+  nickname?: string  // 新用戶可指定暱稱
+}
