@@ -802,8 +802,8 @@ const isProductSuspended = computed(() => {
 $grad-start: #6366f1;
 $grad-end: #818cf8;
 $bg-page: #0a0a0f;
-$bg-card-glass: rgba(255, 255, 255, 0.04);
-$border-glass: rgba(255, 255, 255, 0.08);
+$bg-card-glass: rgba(30, 30, 46, 0.95);
+$border-glass: rgba(255, 255, 255, 0.12);
 $text-hi: #f4f4f8;
 $text-mid: #a0a0b0;
 $text-lo: #6b6b7b;
@@ -1106,8 +1106,6 @@ $radius: 16px;
 
 .glass-card {
   background: $bg-card-glass;
-  backdrop-filter: blur(20px) saturate(140%);
-  -webkit-backdrop-filter: blur(20px) saturate(140%);
   border: 1px solid $border-glass;
   border-radius: $radius;
   padding: 36px 32px;
