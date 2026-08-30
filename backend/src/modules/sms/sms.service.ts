@@ -66,7 +66,7 @@ export class SmsService {
           SmsSdkAppId: process.env.TENCENT_SMS_APP_ID || '1400000000', // 需要配置實際的 AppId
           SignName: process.env.TENCENT_SMS_SIGN || '卡牌交易平台',
           TemplateId: process.env.TENCENT_SMS_TEMPLATE_ID || '1000000', // 需要配置實際的模板 ID
-          TemplateParamSet: [code, '5'], // 驗證碼, 有效分鐘數
+          TemplateParamSet: [code], // 驗證碼
         }
         const response = await this.smsClient.SendSms(params)
         console.log('[SMS] SendSms response:', JSON.stringify(response))
