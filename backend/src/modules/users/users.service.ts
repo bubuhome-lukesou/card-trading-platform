@@ -73,5 +73,21 @@ export class UsersService {
       pickupQrCode: user.pickupQrCode || '',
     };
   }
+
+  async updateNotifications(id: string, data: {
+    emailNotifications?: boolean
+    wechatNotifications?: boolean
+    bidUpdates?: boolean
+    outbidAlerts?: boolean
+    auctionEnding?: boolean
+  }) {
+    const user = await this.findById(id);
+    if (data.emailNotifications !== undefined) user.emailNotifications = data.emailNotifications;
+    if (data.wechatNotifications !== undefined) user.wechatNotifications = data.wechatNotifications;
+    if (data.bidUpdates !== undefined) user.bidUpdates = data.bidUpdates;
+    if (data.outbidAlerts !== undefined) user.outbidAlerts = data.outbidAlerts;
+    if (data.auctionEnding !== undefined) user.auctionEnding = data.auctionEnding;
+    return this.userRepo.save(user);
+  }
 }
 

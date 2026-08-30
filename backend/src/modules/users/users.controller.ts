@@ -30,6 +30,18 @@ export class UsersController {
     return this.usersService.updatePickupInfo(req.user.id, body);
   }
 
+  @UseGuards(JwtAuthGuard)
+  @Patch('notifications')
+  updateNotifications(@Request() req, @Body() body: {
+    emailNotifications?: boolean
+    wechatNotifications?: boolean
+    bidUpdates?: boolean
+    outbidAlerts?: boolean
+    auctionEnding?: boolean
+  }) {
+    return this.usersService.updateNotifications(req.user.id, body);
+  }
+
   @Get('seller/:sellerId/pickup-info')
   getSellerPickupInfo(@Param('sellerId') sellerId: string) {
     return this.usersService.getSellerInfo(sellerId);

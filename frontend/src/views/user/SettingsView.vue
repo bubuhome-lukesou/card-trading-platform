@@ -29,6 +29,7 @@ const notificationSettings = ref({
 
 const loading = ref(false)
 const passLoading = ref(false)
+const notifLoading = ref(false)
 const successMessage = ref('')
 const errorMessage = ref('')
 const passErrorMessage = ref('')
@@ -102,6 +103,19 @@ const toggleLanguage = () => {
   locale.value = locale.value === 'zh' ? 'en' : 'zh'
 }
 
+// 通知設置 — 切換時自動保存
+const handleNotificationChange = async () => {
+  notifLoading.value = true
+  try {
+    await api.patch('/users/notifications', { ...notificationSettings.value })
+    showToast(locale.value === 'zh' ? '通知設置已更新' : 'Notifications updated')
+  } catch (err: any) {
+    showToast(err.response?.data?.message || (locale.value === 'zh' ? '更新失敗' : 'Update failed'))
+  } finally {
+    notifLoading.value = false
+  }
+}
+
 onMounted(() => {
   loadProfile()
 })
@@ -161,6 +175,58 @@ onMounted(() => {
         <button @click="handlePasswordChange" class="btn-save" :disabled="passLoading">
           {{ passLoading ? (locale === 'zh' ? '修改中...' : 'Changing...') : (locale === 'zh' ? '修改密碼' : 'Change Password') }}
         </button>
+      </div>
+    </div>
+
+    <!-- Notifications Section -->
+    <div class="settings-section">
+      <h3 class="section-title">🔔 {{ locale === 'zh' ? '通知設置' : 'Notifications' }}</h3>
+      <div class="settings-card">
+        <div class="setting-item">
+          <div class="setting-info">
+            <div class="setting-label">{{ locale === 'zh' ? '郵件通知' : 'Email Notifications' }}</div>
+          </div>
+          <label class="toggle">
+            <input type="checkbox" v-model="notificationSettings.emailNotifications" @change="handleNotificationChange" />
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+        <div class="setting-item">
+          <div class="setting-info">
+            <div class="setting-label">{{ locale === 'zh' ? '微信通知' : 'WeChat Notifications' }}</div>
+          </div>
+          <label class="toggle">
+            <input type="checkbox" v-model="notificationSettings.wechatNotifications" @change="handleNotificationChange" />
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+        <div class="setting-item">
+          <div class="setting-info">
+            <div class="setting-label">{{ locale === 'zh' ? '出價更新' : 'Bid Updates' }}</div>
+          </div>
+          <label class="toggle">
+            <input type="checkbox" v-model="notificationSettings.bidUpdates" @change="handleNotificationChange" />
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+        <div class="setting-item">
+          <div class="setting-info">
+            <div class="setting-label">{{ locale === 'zh' ? '出局提醒' : 'Outbid Alerts' }}</div>
+          </div>
+          <label class="toggle">
+            <input type="checkbox" v-model="notificationSettings.outbidAlerts" @change="handleNotificationChange" />
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+        <div class="setting-item">
+          <div class="setting-info">
+            <div class="setting-label">{{ locale === 'zh' ? '拍賣結束提醒' : 'Auction Ending' }}</div>
+          </div>
+          <label class="toggle">
+            <input type="checkbox" v-model="notificationSettings.auctionEnding" @change="handleNotificationChange" />
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
       </div>
     </div>
 
@@ -294,6 +360,20 @@ onMounted(() => {
 
 .setting-info { display: flex; flex-direction: column; gap: 2px; }
 .setting-label { font-size: var(--text-sm); font-weight: 500; color: var(--text-primary); }
+
+/* Toggle Switch */
+.toggle { position: relative; display: inline-block; width: 48px; height: 26px; }
+.toggle input { opacity: 0; width: 0; height: 0; }
+.toggle-slider {
+  position: absolute; cursor: pointer; inset: 0;
+  background: var(--bg-elevated); border-radius: 26px; transition: all 0.2s;
+}
+.toggle-slider:before {
+  content: ''; position: absolute; height: 20px; width: 20px; left: 3px; bottom: 3px;
+  background: white; border-radius: 50%; transition: all 0.2s;
+}
+.toggle input:checked + .toggle-slider { background: var(--primary-gradient); }
+.toggle input:checked + .toggle-slider:before { transform: translateX(22px); }
 .setting-desc { font-size: var(--text-xs); color: var(--text-secondary); }
 
 .btn-language {

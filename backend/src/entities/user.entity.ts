@@ -68,6 +68,22 @@ export class User {
   @Column({ nullable: true })
   lastLoginAt: Date
 
+  // 通知設置
+  @Column({ type: 'boolean', default: true })
+  emailNotifications: boolean
+
+  @Column({ type: 'boolean', default: true })
+  wechatNotifications: boolean
+
+  @Column({ type: 'boolean', default: true })
+  bidUpdates: boolean
+
+  @Column({ type: 'boolean', default: true })
+  outbidAlerts: boolean
+
+  @Column({ type: 'boolean', default: true })
+  auctionEnding: boolean
+
   // 賣家取貨資訊
   @Column({ type: 'varchar', length: 2000, nullable: true })
   pickupInfo: string

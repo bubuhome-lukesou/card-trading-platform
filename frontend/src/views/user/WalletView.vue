@@ -52,31 +52,53 @@ const getTransactionClass = (type: string) => {
   return map[type] || 'default'
 }
 
-// P3: Load real orders as transactions
+// Load real wallet transactions from wallet API
 const loadData = async () => {
   loading.value = true
   try {
-    const res = await api.get('/orders')
-    const orders = res.data?.data || res.data || []
-    transactions.value = orders.map((o: any) => {
-      const isRefund = o.status === 'cancelled' || o.status === 'refunded'
-      return {
-        id: o.id,
-        type: isRefund ? 'refund' as const : 'payment' as const,
-        amount: isRefund ? Number(o.totalPrice) : -Number(o.totalPrice),
-        description: o.product?.titleZh || o.product?.titleEn || o.orderNumber || 'Order',
-        createdAt: o.createdAt,
-      }
-    }).slice(0, 20) // 最近 20 條
+    // Load wallet transactions + balance in parallel
+    const [txRes, balRes] = await Promise.all([
+      api.get('/wallet/transactions?page=1&limit=20'),
+      api.get('/wallet/balance'),
+    ])
+    const txList = txRes.data?.data || txRes.data || []
+    transactions.value = txList.map((tx: any) => ({
+      id: tx.id,
+      type: tx.type === 'withdrawal' ? 'withdraw' as const : tx.type === 'deposit' ? 'deposit' as const : tx.type === 'refund' ? 'refund' as const : 'payment' as const,
+      amount: Number(tx.amount),
+      description: tx.description || tx.type,
+      createdAt: tx.createdAt,
+    }))
+    // Update auth store balance from wallet API
+    const newBalance = Number(balRes.data?.balance) || 0
+    if (authStore.user) {
+      authStore.user.balance = newBalance
+    }
   } catch (error) {
-    console.error('Failed to load transactions:', error)
-    transactions.value = []
+    console.error('Failed to load wallet:', error)
+    // Fallback: load from orders
+    try {
+      const res = await api.get('/orders')
+      const orders = res.data?.data || res.data || []
+      transactions.value = orders.map((o: any) => {
+        const isRefund = o.status === 'cancelled' || o.status === 'refunded'
+        return {
+          id: o.id,
+          type: isRefund ? 'refund' as const : 'payment' as const,
+          amount: isRefund ? Number(o.totalPrice) : -Number(o.totalPrice),
+          description: o.product?.titleZh || o.product?.titleEn || o.orderNumber || 'Order',
+          createdAt: o.createdAt,
+        }
+      }).slice(0, 20)
+    } catch {
+      transactions.value = []
+    }
   } finally {
     loading.value = false
   }
 }
 
-const handleWithdraw = () => {
+const handleWithdraw = async () => {
   if (withdrawAmount.value <= 0) {
     showToast(locale.value === 'zh' ? '請輸入有效金額' : 'Please enter a valid amount')
     return
@@ -85,13 +107,39 @@ const handleWithdraw = () => {
     showToast(locale.value === 'zh' ? '餘額不足' : 'Insufficient balance')
     return
   }
-  showToast(locale.value === 'zh' ? `提現 ${formatPrice(withdrawAmount.value)} - 功能開發中` : `Withdraw ${formatPrice(withdrawAmount.value)} - Coming soon`)
-  showWithdrawModal.value = false
-  withdrawAmount.value = 0
+  try {
+    await api.post('/wallet/withdraw', { amount: withdrawAmount.value })
+    showToast(locale.value === 'zh' ? `提現 ${formatPrice(withdrawAmount.value)} 成功` : `Withdrawal ${formatPrice(withdrawAmount.value)} successful`)
+    showWithdrawModal.value = false
+    withdrawAmount.value = 0
+    await loadData()
+  } catch (err: any) {
+    showToast(err.response?.data?.message || (locale.value === 'zh' ? '提現失敗' : 'Withdrawal failed'))
+  }
 }
 
+const showDepositModal = ref(false)
+const depositAmount = ref(0)
+
 const handleDeposit = () => {
-  showToast(locale.value === 'zh' ? '充值功能開發中...' : 'Deposit coming soon...')
+  showDepositModal.value = true
+  depositAmount.value = 0
+}
+
+const confirmDeposit = async () => {
+  if (depositAmount.value <= 0) {
+    showToast(locale.value === 'zh' ? '請輸入有效金額' : 'Please enter a valid amount')
+    return
+  }
+  try {
+    await api.post('/wallet/deposit', { amount: depositAmount.value, description: locale.value === 'zh' ? '充值' : 'Deposit' })
+    showToast(locale.value === 'zh' ? `充值 ${formatPrice(depositAmount.value)} 成功` : `Deposit ${formatPrice(depositAmount.value)} successful`)
+    showDepositModal.value = false
+    depositAmount.value = 0
+    await loadData()
+  } catch (err: any) {
+    showToast(err.response?.data?.message || (locale.value === 'zh' ? '充值失敗' : 'Deposit failed'))
+  }
 }
 
 onMounted(() => {
@@ -188,6 +236,40 @@ onMounted(() => {
         <div class="modal-footer">
           <button @click="showWithdrawModal = false" class="btn-cancel">取消</button>
           <button @click="handleWithdraw" class="btn-submit">確認提現</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Deposit Modal -->
+    <div v-if="showDepositModal" class="modal-overlay" @click.self="showDepositModal = false">
+      <div class="modal">
+        <div class="modal-header">
+          <h2>{{ locale === 'zh' ? '充值' : 'Deposit' }}</h2>
+          <button @click="showDepositModal = false" class="modal-close">✕</button>
+        </div>
+        <div class="modal-body">
+          <div class="balance-info">
+            {{ locale === 'zh' ? '目前餘額' : 'Current Balance' }}: <strong>{{ formatPrice(balance) }}</strong>
+          </div>
+          <div class="form-group">
+            <label>{{ locale === 'zh' ? '充值金額 (MOP)' : 'Amount (MOP)' }}</label>
+            <input
+              v-model.number="depositAmount"
+              type="number"
+              min="1"
+              :placeholder="locale === 'zh' ? '請輸入充值金額' : 'Enter deposit amount'"
+            />
+          </div>
+          <div class="quick-amounts">
+            <button @click="depositAmount = 100" class="btn-quick">100</button>
+            <button @click="depositAmount = 500" class="btn-quick">500</button>
+            <button @click="depositAmount = 1000" class="btn-quick">1,000</button>
+            <button @click="depositAmount = 5000" class="btn-quick">5,000</button>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button @click="showDepositModal = false" class="btn-cancel">{{ locale === 'zh' ? '取消' : 'Cancel' }}</button>
+          <button @click="confirmDeposit" class="btn-submit">{{ locale === 'zh' ? '確認充值' : 'Confirm Deposit' }}</button>
         </div>
       </div>
     </div>
@@ -429,6 +511,29 @@ onMounted(() => {
   justify-content: center;
   z-index: 1000;
   padding: var(--space-6);
+}
+
+.quick-amounts {
+  display: flex;
+  gap: 8px;
+}
+
+.btn-quick {
+  flex: 1;
+  padding: 8px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-quick:hover {
+  border-color: var(--primary);
+  color: var(--primary);
 }
 
 .modal {
