@@ -282,7 +282,7 @@ const handleSubmit = async () => {
 
 .login-card {
   width: 100%;
-  max-width: 440px;
+  max-width: 460px;
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: var(--radius-2xl);
@@ -381,34 +381,39 @@ const handleSubmit = async () => {
   color: var(--text-secondary);
 }
 
-/* Phone row */
+/* Phone row — 區號和手機號各佔適當寬度 */
 .phone-row {
   display: flex;
-  gap: 12px;
+  gap: 10px;
+  width: 100%;
 }
 
 .region-group {
-  width: 130px;
+  width: 110px;
   flex-shrink: 0;
 }
 
 .phone-group {
   flex: 1;
+  min-width: 0; /* 允許收縮 */
 }
 
 .region-select {
   cursor: pointer;
   appearance: auto;
+  width: 100%;
 }
 
-/* Code row */
+/* Code row — 驗證碼輸入框佔大部分，按鈕固定寬度 */
 .code-row {
   display: flex;
-  gap: 12px;
+  gap: 10px;
+  width: 100%;
 }
 
 .code-row .input {
   flex: 1;
+  min-width: 0; /* 允許收縮，防止溢出 */
 }
 
 .btn-code {
@@ -416,13 +421,13 @@ const handleSubmit = async () => {
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 0 16px;
+  padding: 0 14px;
   height: 44px;
   background: var(--bg-elevated);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   color: var(--primary);
-  font-size: var(--text-sm);
+  font-size: var(--text-xs);
   font-weight: 500;
   cursor: pointer;
   white-space: nowrap;
