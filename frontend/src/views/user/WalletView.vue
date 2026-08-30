@@ -1,8 +1,11 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useAuthStore } from '@/stores/auth'
+import api from '@/api'
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
+const authStore = useAuthStore()
 
 interface Transaction {
   id: string
@@ -12,13 +15,20 @@ interface Transaction {
   createdAt: string
 }
 
-const balance = ref(15000)
-const pendingBalance = ref(3500)
+// P3: Use real balance from auth store
+const balance = computed(() => Number(authStore.user?.balance) || 0)
+const pendingBalance = ref(0)
 const loading = ref(true)
 const transactions = ref<Transaction[]>([])
 const showWithdrawModal = ref(false)
-
 const withdrawAmount = ref(0)
+const toastMessage = ref('')
+let toastTimer: ReturnType<typeof setTimeout> | null = null
+const showToast = (msg: string) => {
+  toastMessage.value = msg
+  if (toastTimer) clearTimeout(toastTimer)
+  toastTimer = setTimeout(() => { toastMessage.value = '' }, 3000)
+}
 
 const formatPrice = (price: number) => {
   return new Intl.NumberFormat('zh-MO', {
@@ -33,36 +43,34 @@ const formatDate = (dateStr: string) => {
 }
 
 const getTransactionIcon = (type: string) => {
-  const map: Record<string, string> = {
-    deposit: '💰',
-    withdraw: '🏧',
-    payment: '💳',
-    refund: '↩️',
-  }
+  const map: Record<string, string> = { deposit: '💰', withdraw: '🏧', payment: '💳', refund: '↩️' }
   return map[type] || '💱'
 }
 
 const getTransactionClass = (type: string) => {
-  const map: Record<string, string> = {
-    deposit: 'success',
-    withdraw: 'warning',
-    payment: 'danger',
-    refund: 'info',
-  }
+  const map: Record<string, string> = { deposit: 'success', withdraw: 'warning', payment: 'danger', refund: 'info' }
   return map[type] || 'default'
 }
 
+// P3: Load real orders as transactions
 const loadData = async () => {
   loading.value = true
   try {
-    transactions.value = [
-      { id: '1', type: 'deposit', amount: 20000, description: '充值', createdAt: '2026-04-20' },
-      { id: '2', type: 'payment', amount: -12800, description: '購買 Pokemon 1st Edition Base Set', createdAt: '2026-04-21' },
-      { id: '3', type: 'payment', amount: -6800, description: '購買 Yu-Gi-Oh Blue-Eyes White Dragon', createdAt: '2026-04-20' },
-      { id: '4', type: 'refund', amount: 500, description: '退款', createdAt: '2026-04-19' },
-    ]
+    const res = await api.get('/orders')
+    const orders = res.data?.data || res.data || []
+    transactions.value = orders.map((o: any) => {
+      const isRefund = o.status === 'cancelled' || o.status === 'refunded'
+      return {
+        id: o.id,
+        type: isRefund ? 'refund' as const : 'payment' as const,
+        amount: isRefund ? Number(o.totalPrice) : -Number(o.totalPrice),
+        description: o.product?.titleZh || o.product?.titleEn || o.orderNumber || 'Order',
+        createdAt: o.createdAt,
+      }
+    }).slice(0, 20) // 最近 20 條
   } catch (error) {
-    console.error('Failed to load wallet:', error)
+    console.error('Failed to load transactions:', error)
+    transactions.value = []
   } finally {
     loading.value = false
   }
@@ -70,20 +78,20 @@ const loadData = async () => {
 
 const handleWithdraw = () => {
   if (withdrawAmount.value <= 0) {
-    alert('請輸入有效金額')
+    showToast(locale.value === 'zh' ? '請輸入有效金額' : 'Please enter a valid amount')
     return
   }
   if (withdrawAmount.value > balance.value) {
-    alert('餘額不足')
+    showToast(locale.value === 'zh' ? '餘額不足' : 'Insufficient balance')
     return
   }
-  alert(`提現 ${formatPrice(withdrawAmount.value)} - 功能開發中`)
+  showToast(locale.value === 'zh' ? `提現 ${formatPrice(withdrawAmount.value)} - 功能開發中` : `Withdraw ${formatPrice(withdrawAmount.value)} - Coming soon`)
   showWithdrawModal.value = false
   withdrawAmount.value = 0
 }
 
 const handleDeposit = () => {
-  alert('充值功能開發中...')
+  showToast(locale.value === 'zh' ? '充值功能開發中...' : 'Deposit coming soon...')
 }
 
 onMounted(() => {
@@ -93,7 +101,11 @@ onMounted(() => {
 
 <template>
   <div class="wallet-page">
-    <h1 class="page-title">我的錢包</h1>
+    <!-- Toast -->
+    <Transition name="toast">
+      <div v-if="toastMessage" class="toast">{{ toastMessage }}</div>
+    </Transition>
+    <h1 class="page-title">{{ locale === 'zh' ? '我的帳戶' : 'My Wallet' }}</h1>
 
     <!-- Balance Cards -->
     <div class="balance-grid">
@@ -188,6 +200,23 @@ onMounted(() => {
   flex-direction: column;
   gap: var(--space-6);
 }
+
+.toast {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 12px 24px;
+  border-radius: 8px;
+  background: var(--primary-gradient);
+  color: white;
+  font-size: 14px;
+  font-weight: 500;
+  z-index: 9999;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+.toast-enter-active, .toast-leave-active { transition: all 0.3s ease; }
+.toast-enter-from, .toast-leave-to { opacity: 0; transform: translateX(-50%) translateY(-10px); }
 
 .page-title {
   font-size: var(--text-2xl);

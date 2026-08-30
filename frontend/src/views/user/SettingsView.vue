@@ -2,6 +2,7 @@
 import { ref, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
+import api from '@/api'
 
 const { t, locale } = useI18n()
 const authStore = useAuthStore()
@@ -10,7 +11,6 @@ const formData = ref({
   nickname: '',
   email: '',
   phone: '',
-  wechat: '',
 })
 
 const passwordData = ref({
@@ -28,45 +28,73 @@ const notificationSettings = ref({
 })
 
 const loading = ref(false)
+const passLoading = ref(false)
 const successMessage = ref('')
+const errorMessage = ref('')
+const passErrorMessage = ref('')
+const toastMessage = ref('')
+let toastTimer: ReturnType<typeof setTimeout> | null = null
+const showToast = (msg: string) => {
+  toastMessage.value = msg
+  if (toastTimer) clearTimeout(toastTimer)
+  toastTimer = setTimeout(() => { toastMessage.value = '' }, 3000)
+}
 
 const loadProfile = async () => {
   formData.value = {
-    nickname: authStore.user?.nickname || 'CardCollector',
-    email: authStore.user?.email || 'user@email.com',
-    phone: '+853 1234 5678',
-    wechat: 'card_collector',
+    nickname: authStore.user?.nickname || '',
+    email: authStore.user?.email || '',
+    phone: authStore.user?.phone || '',
   }
 }
 
 const handleProfileUpdate = async () => {
   loading.value = true
+  errorMessage.value = ''
   try {
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    successMessage.value = '個人資料已更新'
-    setTimeout(() => successMessage.value = '', 3000)
-  } catch (error) {
-    console.error('Failed to update profile:', error)
+    const res = await api.patch('/users/profile', {
+      nickname: formData.value.nickname,
+      phone: formData.value.phone,
+    })
+    // Update auth store
+    if (authStore.user) {
+      authStore.user.nickname = formData.value.nickname
+      authStore.user.phone = formData.value.phone
+    }
+    showToast(locale.value === 'zh' ? '個人資料已更新' : 'Profile updated')
+  } catch (err: any) {
+    errorMessage.value = err.response?.data?.message || (locale.value === 'zh' ? '更新失敗' : 'Update failed')
+    showToast(errorMessage.value)
   } finally {
     loading.value = false
   }
 }
 
 const handlePasswordChange = async () => {
+  passErrorMessage.value = ''
   if (passwordData.value.newPassword !== passwordData.value.confirmPassword) {
-    alert('兩次輸入的密碼不一致')
+    passErrorMessage.value = locale.value === 'zh' ? '兩次輸入的密碼不一致' : 'Passwords do not match'
+    showToast(passErrorMessage.value)
     return
   }
-  loading.value = true
+  if (passwordData.value.newPassword.length < 6) {
+    passErrorMessage.value = locale.value === 'zh' ? '新密碼至少 6 位' : 'Password must be at least 6 characters'
+    showToast(passErrorMessage.value)
+    return
+  }
+  passLoading.value = true
   try {
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    successMessage.value = '密碼已修改'
+    await api.patch('/users/password', {
+      currentPassword: passwordData.value.currentPassword,
+      newPassword: passwordData.value.newPassword,
+    })
+    showToast(locale.value === 'zh' ? '密碼已修改' : 'Password changed')
     passwordData.value = { currentPassword: '', newPassword: '', confirmPassword: '' }
-    setTimeout(() => successMessage.value = '', 3000)
-  } catch (error) {
-    console.error('Failed to change password:', error)
+  } catch (err: any) {
+    passErrorMessage.value = err.response?.data?.message || (locale.value === 'zh' ? '密碼修改失敗' : 'Failed to change password')
+    showToast(passErrorMessage.value)
   } finally {
-    loading.value = false
+    passLoading.value = false
   }
 }
 
@@ -81,132 +109,72 @@ onMounted(() => {
 
 <template>
   <div class="settings-page">
-    <h1 class="page-title">賬戶設置</h1>
+    <!-- Toast -->
+    <Transition name="toast">
+      <div v-if="toastMessage" class="toast">{{ toastMessage }}</div>
+    </Transition>
 
-    <div v-if="successMessage" class="success-toast">
-      ✅ {{ successMessage }}
-    </div>
+    <h1 class="page-title">{{ locale === 'zh' ? '賬戶設置' : 'Account Settings' }}</h1>
 
     <!-- Profile Section -->
     <div class="settings-section">
-      <h3 class="section-title">👤 個人資料</h3>
+      <h3 class="section-title">👤 {{ locale === 'zh' ? '個人資料' : 'Profile' }}</h3>
       <div class="settings-card">
         <div class="form-grid">
           <div class="form-group">
-            <label>暱稱</label>
+            <label>{{ locale === 'zh' ? '暱稱' : 'Nickname' }}</label>
             <input v-model="formData.nickname" type="text" />
           </div>
           <div class="form-group">
-            <label>郵箱</label>
-            <input v-model="formData.email" type="email" disabled />
+            <label>{{ locale === 'zh' ? '郵箱' : 'Email' }}</label>
+            <input :value="formData.email" type="email" disabled :placeholder="locale === 'zh' ? '未設定' : 'Not set'" />
           </div>
           <div class="form-group">
-            <label>電話</label>
-            <input v-model="formData.phone" type="tel" />
-          </div>
-          <div class="form-group">
-            <label>微信</label>
-            <input v-model="formData.wechat" type="text" />
+            <label>{{ locale === 'zh' ? '電話' : 'Phone' }}</label>
+            <input v-model="formData.phone" type="tel" :placeholder="locale === 'zh' ? '未設定' : 'Not set'" />
           </div>
         </div>
         <button @click="handleProfileUpdate" class="btn-save" :disabled="loading">
-          {{ loading ? '儲存中...' : '儲存修改' }}
+          {{ loading ? (locale === 'zh' ? '儲存中...' : 'Saving...') : (locale === 'zh' ? '儲存修改' : 'Save') }}
         </button>
       </div>
     </div>
 
     <!-- Password Section -->
     <div class="settings-section">
-      <h3 class="section-title">🔐 修改密碼</h3>
+      <h3 class="section-title">🔐 {{ locale === 'zh' ? '修改密碼' : 'Change Password' }}</h3>
       <div class="settings-card">
         <div class="form-grid">
           <div class="form-group">
-            <label>當前密碼</label>
+            <label>{{ locale === 'zh' ? '當前密碼' : 'Current Password' }}</label>
             <input v-model="passwordData.currentPassword" type="password" />
           </div>
           <div class="form-group">
-            <label>新密碼</label>
+            <label>{{ locale === 'zh' ? '新密碼' : 'New Password' }}</label>
             <input v-model="passwordData.newPassword" type="password" />
           </div>
           <div class="form-group">
-            <label>確認新密碼</label>
+            <label>{{ locale === 'zh' ? '確認新密碼' : 'Confirm New Password' }}</label>
             <input v-model="passwordData.confirmPassword" type="password" />
           </div>
         </div>
-        <button @click="handlePasswordChange" class="btn-save" :disabled="loading">
-          修改密碼
+        <button @click="handlePasswordChange" class="btn-save" :disabled="passLoading">
+          {{ passLoading ? (locale === 'zh' ? '修改中...' : 'Changing...') : (locale === 'zh' ? '修改密碼' : 'Change Password') }}
         </button>
-      </div>
-    </div>
-
-    <!-- Notifications Section -->
-    <div class="settings-section">
-      <h3 class="section-title">🔔 通知設置</h3>
-      <div class="settings-card">
-        <div class="setting-item">
-          <div class="setting-info">
-            <div class="setting-label">郵件通知</div>
-            <div class="setting-desc">接收郵件通知</div>
-          </div>
-          <label class="toggle">
-            <input type="checkbox" v-model="notificationSettings.emailNotifications" />
-            <span class="toggle-slider"></span>
-          </label>
-        </div>
-        <div class="setting-item">
-          <div class="setting-info">
-            <div class="setting-label">微信通知</div>
-            <div class="setting-desc">通過微信接收通知</div>
-          </div>
-          <label class="toggle">
-            <input type="checkbox" v-model="notificationSettings.wechatNotifications" />
-            <span class="toggle-slider"></span>
-          </label>
-        </div>
-        <div class="setting-item">
-          <div class="setting-info">
-            <div class="setting-label">出價更新</div>
-            <div class="setting-desc">拍賣出價變化時通知</div>
-          </div>
-          <label class="toggle">
-            <input type="checkbox" v-model="notificationSettings.bidUpdates" />
-            <span class="toggle-slider"></span>
-          </label>
-        </div>
-        <div class="setting-item">
-          <div class="setting-info">
-            <div class="setting-label">出局提醒</div>
-            <div class="setting-desc">您的出價被超過時通知</div>
-          </div>
-          <label class="toggle">
-            <input type="checkbox" v-model="notificationSettings.outbidAlerts" />
-            <span class="toggle-slider"></span>
-          </label>
-        </div>
-        <div class="setting-item">
-          <div class="setting-info">
-            <div class="setting-label">拍賣結束提醒</div>
-            <div class="setting-desc">您參與的拍賣即將結束時通知</div>
-          </div>
-          <label class="toggle">
-            <input type="checkbox" v-model="notificationSettings.auctionEnding" />
-            <span class="toggle-slider"></span>
-          </label>
-        </div>
       </div>
     </div>
 
     <!-- Language Section -->
     <div class="settings-section">
-      <h3 class="section-title">🌐 語言設置</h3>
+      <h3 class="section-title">🌐 {{ locale === 'zh' ? '語言設置' : 'Language' }}</h3>
       <div class="settings-card">
         <div class="setting-item">
           <div class="setting-info">
-            <div class="setting-label">介面語言</div>
-            <div class="setting-desc">選擇您偏好的語言</div>
+            <div class="setting-label">{{ locale === 'zh' ? '介面語言' : 'Interface Language' }}</div>
+            <div class="setting-desc">{{ locale === 'zh' ? '選擇您偏好的語言' : 'Choose your preferred language' }}</div>
           </div>
           <button @click="toggleLanguage" class="btn-language">
-            {{ locale === 'zh' ? '🇨🇳 中文' : '🇬🇧 English' }}
+            {{ locale === 'zh' ? '🇬🇧 English' : '🇨🇳 中文' }}
           </button>
         </div>
       </div>
@@ -228,14 +196,23 @@ onMounted(() => {
   color: var(--text-primary);
 }
 
-.success-toast {
-  padding: var(--space-4);
-  background: #10b981;
+/* Toast */
+.toast {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 12px 24px;
+  border-radius: 8px;
+  background: var(--primary-gradient);
   color: white;
-  border-radius: var(--radius-lg);
-  text-align: center;
+  font-size: 14px;
   font-weight: 500;
+  z-index: 9999;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
+.toast-enter-active, .toast-leave-active { transition: all 0.3s ease; }
+.toast-enter-from, .toast-leave-to { opacity: 0; transform: translateX(-50%) translateY(-10px); }
 
 .settings-section {
   display: flex;
@@ -305,86 +282,19 @@ onMounted(() => {
   transition: all var(--transition-fast);
 }
 
-.btn-save:hover:not(:disabled) {
-  opacity: 0.9;
-}
-
-.btn-save:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
+.btn-save:hover:not(:disabled) { opacity: 0.9; }
+.btn-save:disabled { opacity: 0.5; cursor: not-allowed; }
 
 .setting-item {
   display: flex;
   justify-content: space-between;
   align-items: center;
   padding: var(--space-4) 0;
-  border-bottom: 1px solid var(--border);
 }
 
-.setting-item:last-child {
-  border-bottom: none;
-}
-
-.setting-info {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.setting-label {
-  font-size: var(--text-sm);
-  font-weight: 500;
-  color: var(--text-primary);
-}
-
-.setting-desc {
-  font-size: var(--text-xs);
-  color: var(--text-secondary);
-}
-
-/* Toggle Switch */
-.toggle {
-  position: relative;
-  display: inline-block;
-  width: 48px;
-  height: 26px;
-}
-
-.toggle input {
-  opacity: 0;
-  width: 0;
-  height: 0;
-}
-
-.toggle-slider {
-  position: absolute;
-  cursor: pointer;
-  inset: 0;
-  background: var(--bg-elevated);
-  border-radius: 26px;
-  transition: all var(--transition-fast);
-}
-
-.toggle-slider:before {
-  content: '';
-  position: absolute;
-  height: 20px;
-  width: 20px;
-  left: 3px;
-  bottom: 3px;
-  background: white;
-  border-radius: 50%;
-  transition: all var(--transition-fast);
-}
-
-.toggle input:checked + .toggle-slider {
-  background: var(--primary-gradient);
-}
-
-.toggle input:checked + .toggle-slider:before {
-  transform: translateX(22px);
-}
+.setting-info { display: flex; flex-direction: column; gap: 2px; }
+.setting-label { font-size: var(--text-sm); font-weight: 500; color: var(--text-primary); }
+.setting-desc { font-size: var(--text-xs); color: var(--text-secondary); }
 
 .btn-language {
   padding: var(--space-2) var(--space-4);
@@ -395,17 +305,11 @@ onMounted(() => {
   font-size: var(--text-sm);
   font-weight: 500;
   cursor: pointer;
-  transition: all var(--transition-fast);
 }
 
-.btn-language:hover {
-  border-color: var(--primary);
-  color: var(--primary);
-}
+.btn-language:hover { border-color: var(--primary); color: var(--primary); }
 
 @media (max-width: 640px) {
-  .form-grid {
-    grid-template-columns: 1fr;
-  }
+  .form-grid { grid-template-columns: 1fr; }
 }
 </style>

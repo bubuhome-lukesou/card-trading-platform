@@ -6,6 +6,7 @@ import { Heart, Loader2 } from 'lucide-vue-next'
 import { productApi } from '@/api/products'
 import { cartApi } from '@/api/cart'
 import { favoritesApi } from '@/api/favorites'
+import { useFavoritesStore } from '@/stores/favorites'
 import { reservationApi } from '@/api/reservations'
 import { useAuthStore } from '@/stores/auth'
 import { tagApi } from '@/api/tags'
@@ -15,6 +16,7 @@ const { t, locale } = useI18n()
 const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
+const favoritesStore = useFavoritesStore()
 
 const loading = ref(true)
 const product = ref<any>(null)
@@ -24,8 +26,28 @@ const message = ref('')
 const messageType = ref<'success' | 'error'>('success')
 const selectedQuantity = ref(1)
 const lightboxOpen = ref(false)
-const isFavorited = ref(false)
+// P2: Use favoritesStore for sync across pages
+const isFavorited = computed(() => favoritesStore.isFavorited(product.value?.id || ''))
 const favoriteLoading = ref(false)
+
+// Load favorites on mount
+const loadFavorites = async () => {
+  if (authStore.isAuthenticated) {
+    await favoritesStore.loadFavorites()
+  }
+}
+
+// Toggle favorite via store
+const handleToggleFavorite = async () => {
+  if (!authStore.isAuthenticated) {
+    router.push('/login')
+    return
+  }
+  if (favoriteLoading.value) return
+  favoriteLoading.value = true
+  await favoritesStore.toggleFavorite(product.value.id)
+  favoriteLoading.value = false
+}
 const relatedProducts = ref<any[]>([])
 const relatedLoading = ref(false)
 const allTags = ref<any[]>([])
@@ -159,40 +181,7 @@ const fetchRelatedProducts = async () => {
   }
 }
 
-// Check if favorited
-const checkFavorite = async () => {
-  if (!authStore.isAuthenticated || !product.value) return
-  try {
-    const res = await favoritesApi.check(product.value.id)
-    isFavorited.value = res.data.isFavorite
-  } catch (err) {
-    // Ignore
-  }
-}
-
-// Toggle favorite
-const handleToggleFavorite = async () => {
-  if (!authStore.isAuthenticated) {
-    router.push('/login')
-    return
-  }
-  if (favoriteLoading.value) return
-  favoriteLoading.value = true
-  try {
-    if (isFavorited.value) {
-      await favoritesApi.remove(product.value.id)
-      isFavorited.value = false
-    } else {
-      await favoritesApi.add(product.value.id)
-      isFavorited.value = true
-    }
-  } catch (err: any) {
-    message.value = err?.response?.data?.message || (t('common.error') || '操作失敗')
-    messageType.value = 'error'
-  } finally {
-    favoriteLoading.value = false
-  }
-}
+// Old favorite functions removed — now using favoritesStore
 
 // Load product data (shared by mount and route watcher)
 const loadProduct = async () => {
@@ -206,7 +195,6 @@ const loadProduct = async () => {
     allTags.value = tagsRes.data || []
     currentImageIndex.value = 0
     selectedQuantity.value = 1
-    await checkFavorite()
     await fetchRelatedProducts()
   } catch (error) {
     console.error('Failed to load product:', error)
@@ -228,6 +216,8 @@ watch(
 onMounted(async () => {
   window.addEventListener('keydown', handleKeydown)
   await loadProduct()
+  // P2: Load favorites from store for cross-page sync
+  await loadFavorites()
   // U10: Load user's reservations to check if they've already reserved this product
   if (authStore.isAuthenticated) {
     try {

@@ -16,6 +16,9 @@ export interface User {
   createdAt: string
   pickupInfo?: string
   pickupQrCode?: string
+  phone?: string
+  balance?: number
+  lastLoginAt?: string
 }
 
 // Tag types
