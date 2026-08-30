@@ -272,7 +272,7 @@ export class AuctionsService {
 
       // Check if bid is higher than current price
       if (amount <= auction.currentPrice) {
-        throw new BadRequestException(`Bid must be higher than current price: HK$${auction.currentPrice}`)
+        throw new BadRequestException(`Bid must be higher than current price: MOP $${auction.currentPrice}`)
       }
 
       // --- Optimistic lock: only update if currentPrice hasn't changed ---
@@ -286,9 +286,10 @@ export class AuctionsService {
           winnerId: userId,
           endTime: (() => {
             const timeLeft = auction.endTime.getTime() - now.getTime()
-            const extensionThreshold = 5 * 60 * 1000
-            if (timeLeft < extensionThreshold) {
-              return new Date(now.getTime() + auction.extensionMinutes * 60 * 1000)
+            // U5: Use extensionMinutes for both threshold and extension duration
+            const extMs = (auction.extensionMinutes || 5) * 60 * 1000
+            if (timeLeft < extMs) {
+              return new Date(now.getTime() + extMs)
             }
             return auction.endTime
           })()

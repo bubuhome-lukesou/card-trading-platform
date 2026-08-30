@@ -3,6 +3,9 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { auctionApi } from '@/api/auctions'
+import { useI18n } from 'vue-i18n'
+
+const { t, locale } = useI18n()
 
 const route = useRoute()
 const router = useRouter()
@@ -17,6 +20,8 @@ const placingBid = ref(false)
 const bidError = ref('')
 const bidSuccess = ref('')
 const currentImageIndex = ref(0)
+// U1: Tick ref to force timeRemaining re-evaluation every second
+const tick = ref(0)
 
 const auctionId = computed(() => route.params.id as string)
 
@@ -52,20 +57,24 @@ const minimumBid = computed(() => {
 
 const timeRemaining = computed(() => {
   if (!auction.value?.endTime) return ''
+  // U1: Use tick to force re-evaluation every second
+  void tick.value
   const end = new Date(auction.value.endTime)
   const now = new Date()
   const diff = end.getTime() - now.getTime()
   
-  if (diff <= 0) return '已結束'
+  if (diff <= 0) return locale.value === 'zh' ? '已結束' : 'Ended'
   
   const days = Math.floor(diff / (1000 * 60 * 60 * 24))
   const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
   const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
   const seconds = Math.floor((diff % (1000 * 60)) / 1000)
   
-  if (days > 0) return `${days}天 ${hours}小時`
-  if (hours > 0) return `${hours}小時 ${minutes}分`
-  return `${minutes}分 ${seconds}秒`
+  if (days > 0) return locale.value === 'zh' ? `${days}天 ${hours}小時` : `${days}d ${hours}h`
+  if (hours > 0) return locale.value === 'zh' ? `${hours}小時 ${minutes}分` : `${hours}h ${minutes}m`
+  if (minutes > 0) return locale.value === 'zh' ? `${minutes}分 ${seconds}秒` : `${minutes}m ${seconds}s`
+  // U1: Last minute — show seconds
+  return `${seconds}s`
 })
 
 const isEndingSoon = computed(() => {
@@ -88,9 +97,9 @@ const canBid = computed(() => {
 })
 
 const formatPrice = (price: number) => {
-  return new Intl.NumberFormat('zh-HK', {
+  return new Intl.NumberFormat('zh-MO', {
     style: 'currency',
-    currency: 'HKD',
+    currency: 'MOP',
     minimumFractionDigits: 0,
   }).format(price)
 }
@@ -123,7 +132,7 @@ const loadAuction = async () => {
     bids.value = response.data.bids || []
     bidAmount.value = Number(response.data.currentPrice || response.data.startingPrice) + 10
   } catch (err: any) {
-    error.value = err?.response?.data?.message || '無法加載拍賣詳情'
+    error.value = err?.response?.data?.message || (locale.value === 'zh' ? '無法加載拍賣詳情' : 'Failed to load auction')
   } finally {
     loading.value = false
   }
@@ -136,7 +145,7 @@ const handlePlaceBid = async () => {
   }
   
   if (bidAmount.value < minimumBid.value) {
-    bidError.value = `最低出價金額為 ${formatPrice(minimumBid.value)}`
+    bidError.value = locale.value === 'zh' ? `最低出價金額為 ${formatPrice(minimumBid.value)}` : `Minimum bid is ${formatPrice(minimumBid.value)}`
     return
   }
   
@@ -146,11 +155,11 @@ const handlePlaceBid = async () => {
   
   try {
     await auctionApi.placeBid(auctionId.value, bidAmount.value)
-    bidSuccess.value = '出價成功！'
+    bidSuccess.value = locale.value === 'zh' ? '出價成功！' : 'Bid placed successfully!'
     await loadAuction()
     setTimeout(() => bidSuccess.value = '', 3000)
   } catch (err: any) {
-    bidError.value = err?.response?.data?.message || '出價失敗，請重試'
+    bidError.value = err?.response?.data?.message || (locale.value === 'zh' ? '出價失敗，請重試' : 'Bid failed, please retry')
   } finally {
     placingBid.value = false
   }
@@ -158,14 +167,18 @@ const handlePlaceBid = async () => {
 
 // Poll for updates
 let pollInterval: ReturnType<typeof setInterval>
+let tickInterval: ReturnType<typeof setInterval>
 
 onMounted(() => {
   loadAuction()
   pollInterval = setInterval(loadAuction, 10000)
+  // U1: Tick every second for countdown accuracy
+  tickInterval = setInterval(() => { tick.value++ }, 1000)
 })
 
 onUnmounted(() => {
   if (pollInterval) clearInterval(pollInterval)
+  if (tickInterval) clearInterval(tickInterval)
 })
 </script>
 
@@ -174,14 +187,14 @@ onUnmounted(() => {
     <!-- Loading -->
     <div v-if="loading" class="loading-container">
       <div class="spinner"></div>
-      <p>加載中...</p>
+      <p>{{ locale === 'zh' ? '加載中...' : 'Loading...' }}</p>
     </div>
 
     <!-- Error -->
     <div v-else-if="error" class="error-container">
       <div class="error-icon">⚠️</div>
       <h2>{{ error }}</h2>
-      <button @click="loadAuction" class="btn-retry">重試</button>
+      <button @click="loadAuction" class="btn-retry">{{ locale === 'zh' ? '重試' : 'Retry' }}</button>
     </div>
 
     <!-- Auction Detail — 閒魚風格，桌面端雙列 -->
@@ -190,8 +203,8 @@ onUnmounted(() => {
       <!-- ===== TOP: 出價記錄 — 圓形頭像 + 底下價格 ===== -->
       <div v-if="sortedBids.length > 0" class="bid-bar-section">
         <div class="bid-bar-header">
-          <span class="bid-bar-title">出價記錄</span>
-          <span class="bid-bar-count">{{ sortedBids.length }}條</span>
+          <span class="bid-bar-title">{{ locale === 'zh' ? '出價記錄' : 'Bid History' }}</span>
+          <span class="bid-bar-count">{{ sortedBids.length }}{{ locale === 'zh' ? '條' : ' bids' }}</span>
         </div>
         <div class="bid-avatars-scroll">
           <div
@@ -212,7 +225,7 @@ onUnmounted(() => {
         </div>
       </div>
       <div v-else class="bid-bar-section bid-bar-empty">
-        <span>暫無出價記錄，成為第一個出價者！</span>
+        <span>{{ locale === 'zh' ? '暫無出價記錄，成為第一個出價者！' : 'No bids yet. Be the first!' }}</span>
       </div>
 
       <!-- ===== 雙列區：左=中間核心區  右=商品詳情 ===== -->
@@ -254,46 +267,46 @@ onUnmounted(() => {
           <!-- 當前價格 + 剩餘時間 -->
           <div class="price-time-card">
             <div class="price-block">
-              <span class="price-label">當前最高價</span>
+              <span class="price-label">{{ locale === 'zh' ? '當前最高價' : 'Current Price' }}</span>
               <span class="current-price">{{ formatPrice(currentPrice) }}</span>
-              <span class="bid-count">{{ auction.bidCount || 0 }} 次出價 · 起拍價 {{ formatPrice(Number(auction.startingPrice)) }}</span>
+              <span class="bid-count">{{ auction.bidCount || 0 }} {{ locale === 'zh' ? '次出價' : 'bids' }} · {{ locale === 'zh' ? '起拍價' : 'Start' }} {{ formatPrice(Number(auction.startingPrice)) }}</span>
             </div>
             <div class="time-block" :class="{ 'ending-soon': isEndingSoon }">
-              <span class="time-label">{{ isEnded ? '已結束' : '剩餘時間' }}</span>
+              <span class="time-label">{{ isEnded ? (locale === 'zh' ? '已結束' : 'Ended') : (locale === 'zh' ? '剩餘時間' : 'Time Left') }}</span>
               <span class="time-value">{{ timeRemaining }}</span>
             </div>
           </div>
 
           <!-- 拍賣規則 -->
           <div class="rules-card">
-            <div class="rules-title">拍賣規則</div>
+            <div class="rules-title">{{ locale === 'zh' ? '拍賣規則' : 'Auction Rules' }}</div>
             <div class="rules-list">
               <div class="rule-item">
-                <span class="rule-key">起拍價</span>
+                <span class="rule-key">{{ locale === 'zh' ? '起拍價' : 'Starting Price' }}</span>
                 <span class="rule-val">{{ formatPrice(Number(auction.startingPrice)) }}</span>
               </div>
               <div v-if="auction.reservePrice" class="rule-item">
-                <span class="rule-key">底價</span>
+                <span class="rule-key">{{ locale === 'zh' ? '底價' : 'Reserve' }}</span>
                 <span class="rule-val">{{ formatPrice(Number(auction.reservePrice)) }}</span>
               </div>
               <div v-if="auction.buyNowPrice" class="rule-item">
-                <span class="rule-key">一口價</span>
+                <span class="rule-key">{{ locale === 'zh' ? '一口價' : 'Buy Now' }}</span>
                 <span class="rule-val">{{ formatPrice(Number(auction.buyNowPrice)) }}</span>
               </div>
               <div class="rule-item">
-                <span class="rule-key">最低加價</span>
+                <span class="rule-key">{{ locale === 'zh' ? '最低加價' : 'Min Increment' }}</span>
                 <span class="rule-val">{{ formatPrice(Number(auction.bidIncrement || 10)) }}</span>
               </div>
               <div class="rule-item">
-                <span class="rule-key">結束延長</span>
-                <span class="rule-val">最後{{ auction.extensionMinutes || 5 }}分鐘出價延長{{ auction.extensionMinutes || 5 }}分鐘</span>
+                <span class="rule-key">{{ locale === 'zh' ? '結束延長' : 'Extension' }}</span>
+                <span class="rule-val">{{ locale === 'zh' ? `最後${auction.extensionMinutes || 5}分鐘出價延長${auction.extensionMinutes || 5}分鐘` : `Last ${auction.extensionMinutes || 5} min → +${auction.extensionMinutes || 5} min` }}</span>
               </div>
               <div class="rule-item">
-                <span class="rule-key">開始時間</span>
+                <span class="rule-key">{{ locale === 'zh' ? '開始時間' : 'Start' }}</span>
                 <span class="rule-val">{{ formatDateTime(auction.startTime) }}</span>
               </div>
               <div class="rule-item">
-                <span class="rule-key">結束時間</span>
+                <span class="rule-key">{{ locale === 'zh' ? '結束時間' : 'End' }}</span>
                 <span class="rule-val">{{ formatDateTime(auction.endTime) }}</span>
               </div>
             </div>
@@ -309,7 +322,7 @@ onUnmounted(() => {
                 :min="minimumBid"
                 step="10"
                 class="bid-input"
-                placeholder="輸入出價金額"
+                :placeholder="locale === 'zh' ? '輸入出價金額' : 'Enter bid amount'"
               />
               <button
                 @click="handlePlaceBid"
@@ -317,28 +330,28 @@ onUnmounted(() => {
                 :disabled="placingBid"
               >
                 <span v-if="placingBid" class="spinner-small"></span>
-                {{ placingBid ? '出價中' : '立即出價' }}
+                {{ placingBid ? (locale === 'zh' ? '出價中' : 'Bidding...') : (locale === 'zh' ? '立即出價' : 'Place Bid') }}
               </button>
             </div>
-            <p class="bid-hint">最低出價: {{ formatPrice(minimumBid) }}</p>
+            <p class="bid-hint">{{ locale === 'zh' ? '最低出價' : 'Min bid' }}: {{ formatPrice(minimumBid) }}</p>
             <p v-if="bidError" class="bid-error">{{ bidError }}</p>
             <p v-if="bidSuccess" class="bid-success">{{ bidSuccess }}</p>
           </div>
 
           <!-- 賣家觀看 -->
           <div v-else-if="isSeller" class="seller-notice">
-            <span>這是您的拍賣商品</span>
+            <span>{{ locale === 'zh' ? '這是您的拍賣商品' : 'This is your auction' }}</span>
           </div>
 
           <!-- 已結束 -->
           <div v-else-if="isEnded" class="ended-notice">
-            <span v-if="auction.winner">🏆 成交價: {{ formatPrice(currentPrice) }}</span>
-            <span v-else>拍賣已結束 — 無人出價</span>
+            <span v-if="auction.winner">🏆 {{ locale === 'zh' ? '成交價' : 'Final Price' }}: {{ formatPrice(currentPrice) }}</span>
+            <span v-else>{{ locale === 'zh' ? '拍賣已結束 — 無人出價' : 'Auction ended — no bids' }}</span>
           </div>
 
           <!-- 未登入 -->
           <div v-else class="login-notice">
-            <button @click="router.push('/login')" class="btn-login">登入後出價</button>
+            <button @click="router.push('/login')" class="btn-login">{{ locale === 'zh' ? '登入後出價' : 'Login to Bid' }}</button>
           </div>
 
         </div>
@@ -350,10 +363,10 @@ onUnmounted(() => {
             <div class="detail-header">
               <span class="category-badge">{{ auction.product?.category || '其他' }}</span>
               <span class="status-badge" :class="auction.status">
-                {{ auction.status === 'active' ? '🔥 進行中' : auction.status === 'ended' ? '已結束' : '⏳ 待開始' }}
+                {{ auction.status === 'active' ? (locale === 'zh' ? '🔥 進行中' : '🔥 Active') : auction.status === 'ended' ? (locale === 'zh' ? '已結束' : 'Ended') : (locale === 'zh' ? '⏳ 待開始' : '⏳ Pending') }}
               </span>
             </div>
-            <h1 class="product-title">{{ auction.product?.titleEn || '卡牌商品' }}</h1>
+            <h1 class="product-title">{{ auction.product?.titleEn || (locale === 'zh' ? '卡牌商品' : 'Card Product') }}</h1>
             <p v-if="auction.product?.titleZh" class="product-subtitle">{{ auction.product?.titleZh }}</p>
             <p v-if="auction.product?.descriptionEn || auction.product?.descriptionZh" class="product-description">
               {{ auction.product?.descriptionEn || auction.product?.descriptionZh }}
@@ -362,19 +375,19 @@ onUnmounted(() => {
 
           <!-- 規格表 -->
           <div class="detail-card">
-            <h3 class="card-title">商品規格</h3>
+            <h3 class="card-title">{{ locale === 'zh' ? '商品規格' : 'Specifications' }}</h3>
             <table class="spec-table">
-              <tr><td>稀有度</td><td>{{ auction.product?.rarity || '-' }}</td></tr>
-              <tr><td>品相</td><td>{{ auction.product?.condition || '-' }}</td></tr>
-              <tr><td>品牌</td><td>{{ auction.product?.brand || '-' }}</td></tr>
-              <tr><td>系列</td><td>{{ auction.product?.series || '-' }}</td></tr>
-              <tr><td>語言</td><td>{{ auction.product?.language || '-' }}</td></tr>
+              <tr><td>{{ locale === 'zh' ? '稀有度' : 'Rarity' }}</td><td>{{ auction.product?.rarity || '-' }}</td></tr>
+              <tr><td>{{ locale === 'zh' ? '品相' : 'Condition' }}</td><td>{{ auction.product?.condition || '-' }}</td></tr>
+              <tr><td>{{ locale === 'zh' ? '品牌' : 'Brand' }}</td><td>{{ auction.product?.brand || '-' }}</td></tr>
+              <tr><td>{{ locale === 'zh' ? '系列' : 'Series' }}</td><td>{{ auction.product?.series || '-' }}</td></tr>
+              <tr><td>{{ locale === 'zh' ? '語言' : 'Language' }}</td><td>{{ auction.product?.language || '-' }}</td></tr>
             </table>
           </div>
 
           <!-- 賣家資訊 -->
           <div class="detail-card">
-            <h3 class="card-title">賣家資訊</h3>
+            <h3 class="card-title">{{ locale === 'zh' ? '賣家資訊' : 'Seller Info' }}</h3>
             <div class="seller-row">
               <div class="seller-avatar">{{ (auction.seller?.nickname || '?').charAt(0) }}</div>
               <div class="seller-detail">

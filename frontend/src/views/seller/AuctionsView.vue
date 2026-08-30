@@ -296,7 +296,7 @@ onMounted(() => {
             </td>
             <td>
               <div class="action-buttons">
-                <button v-if="auction.status === 'active'" class="btn-action view">
+                <button v-if="auction.status === 'active'" class="btn-action view" @click="$router.push(`/auction/${auction.id}`)">
                   查看
                 </button>
                 <button 

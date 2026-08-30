@@ -34,6 +34,15 @@ const filterStatus = ref('all')
 const uploadingReceipt = ref<string | null>(null)
 const processingPay = ref<string | null>(null)
 const expandedOrderId = ref<string | null>(null)
+const toastMessage = ref('')
+const toastType = ref<'success' | 'error'>('success')
+let toastTimer: ReturnType<typeof setTimeout> | null = null
+const showToast = (msg: string, type: 'success' | 'error' = 'success') => {
+  toastMessage.value = msg
+  toastType.value = type
+  if (toastTimer) clearTimeout(toastTimer)
+  toastTimer = setTimeout(() => { toastMessage.value = '' }, 3000)
+}
 const showReceiptModal = ref(false)
 const receiptImageUrl = ref('')
 const apiBaseUrl = import.meta.env.VITE_API_URL || ''
@@ -173,7 +182,7 @@ const handlePay = async (orderId: string) => {
         await loadOrders()
       } catch (error) {
         console.error('Payment receipt upload failed:', error)
-        alert('上傳憑證失敗，請重試')
+        showToast('上傳憑證失敗，請重試', 'error')
       } finally {
         processingPay.value = null
       }
@@ -181,7 +190,7 @@ const handlePay = async (orderId: string) => {
     fileInput.click()
   } catch (error) {
     console.error('Payment failed:', error)
-    alert('支付失敗，請重試')
+    showToast('支付失敗，請重試', 'error')
     processingPay.value = null
   }
 }
@@ -196,7 +205,7 @@ const handleReceive = async (orderId: string) => {
     await loadOrders()
   } catch (error) {
     console.error('Confirm failed:', error)
-    alert('操作失敗，請重試')
+    showToast('操作失敗，請重試', 'error')
   }
 }
 
@@ -222,10 +231,10 @@ const confirmReserve = async () => {
     await loadOrders()
     showPickupModal.value = false
     pendingReserveOrderId.value = null
-    alert('預約拿貨成功！')
+    showToast('預約拿貨成功！')
   } catch (error) {
     console.error('Reserve failed:', error)
-    alert('操作失敗，請重試')
+    showToast('操作失敗，請重試', 'error')
   } finally {
     submittingReserve.value = false
   }
@@ -266,11 +275,11 @@ const handleUploadBalance = async (orderId: string, file: File) => {
   uploadingReceipt.value = orderId
   try {
     await ordersApi.uploadBalanceReceipt(orderId, file)
-    alert('尾款憑證上傳成功！')
+    showToast('尾款憑證上傳成功！')
     await loadOrders()
   } catch (error) {
     console.error('Upload failed:', error)
-    alert('上傳失敗，請重試')
+    showToast('上傳失敗，請重試', 'error')
   } finally {
     uploadingReceipt.value = null
   }
@@ -280,11 +289,11 @@ const handleUploadReceipt = async (orderId: string, file: File) => {
   uploadingReceipt.value = orderId
   try {
     await ordersApi.uploadTransferReceipt(orderId, file)
-    alert('上傳成功！')
+    showToast('上傳成功！')
     await loadOrders()
   } catch (error) {
     console.error('Upload failed:', error)
-    alert('上傳失敗，請重試')
+    showToast('上傳失敗，請重試', 'error')
   } finally {
     uploadingReceipt.value = null
   }
@@ -302,6 +311,12 @@ onMounted(() => {
 
 <template>
   <div class="orders-page">
+    <!-- Toast notification -->
+    <Transition name="toast">
+      <div v-if="toastMessage" class="toast" :class="toastType">
+        {{ toastMessage }}
+      </div>
+    </Transition>
     <h1 class="page-title">我的訂單</h1>
 
     <!-- Filter Tabs -->
@@ -986,6 +1001,35 @@ onMounted(() => {
 .order-detail-expand .detail-row span:last-child {
   color: var(--text-primary);
   font-weight: 500;
+}
+
+/* Toast notification */
+.toast {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  z-index: 9999;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+.toast.success {
+  background: rgba(34, 197, 94, 0.95);
+  color: white;
+}
+.toast.error {
+  background: rgba(239, 68, 68, 0.95);
+  color: white;
+}
+.toast-enter-active, .toast-leave-active {
+  transition: all 0.3s ease;
+}
+.toast-enter-from, .toast-leave-to {
+  opacity: 0;
+  transform: translateX(-50%) translateY(-10px);
 }
 
 .modal-overlay {
