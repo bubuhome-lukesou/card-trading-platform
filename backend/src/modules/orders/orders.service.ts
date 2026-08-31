@@ -140,8 +140,13 @@ export class OrdersService {
     if (order.buyerId !== userId) {
       throw new ForbiddenException('Only the buyer can upload receipts');
     }
+    // Must be in PENDING status (buyer uploads balance receipt before seller confirms)
+    if (order.status !== OrderStatus.PENDING) {
+      throw new BadRequestException('Cannot upload balance receipt in current order status');
+    }
     order.balanceReceipt = receiptUrl;
     order.balanceTime = new Date();
+    order.status = OrderStatus.PENDING_PAID;
     return this.orderRepo.save(order);
   }
 

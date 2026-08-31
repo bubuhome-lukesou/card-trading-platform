@@ -35,13 +35,13 @@ export class ReservationsService {
       throw new BadRequestException('Quantity must be at least 1')
     }
 
-    // Check per-user reservation limit
+    // Check per-user reservation limit (include CONFIRMED to prevent overbooking)
     if (product.reservationLimitPerUser) {
       const userExisting = await this.reservationRepo
         .createQueryBuilder('r')
         .where('r.productId = :productId', { productId })
         .andWhere('r.buyerId = :buyerId', { buyerId })
-        .andWhere('r.status IN (:...statuses)', { statuses: [ReservationStatus.PENDING, ReservationStatus.DEPOSIT_PAID] })
+        .andWhere('r.status IN (:...statuses)', { statuses: [ReservationStatus.PENDING, ReservationStatus.DEPOSIT_PAID, ReservationStatus.CONFIRMED] })
         .getOne()
       const userReservedQty = userExisting ? (userExisting.quantity || 1) : 0
       if (userReservedQty + quantity > product.reservationLimitPerUser) {
@@ -49,11 +49,11 @@ export class ReservationsService {
       }
     }
 
-    // Check total reservation limit (based on quantity sum)
+    // Check total reservation limit (based on quantity sum, include CONFIRMED to prevent overbooking)
     const totalReserved = await this.reservationRepo
       .createQueryBuilder('r')
       .where('r.productId = :productId', { productId })
-      .andWhere('r.status IN (:...statuses)', { statuses: [ReservationStatus.PENDING, ReservationStatus.DEPOSIT_PAID] })
+      .andWhere('r.status IN (:...statuses)', { statuses: [ReservationStatus.PENDING, ReservationStatus.DEPOSIT_PAID, ReservationStatus.CONFIRMED] })
       .select('COALESCE(SUM(r.quantity), 0)', 'total')
       .getRawOne()
     const currentTotal = parseInt(totalReserved?.total || '0', 10)
@@ -76,7 +76,7 @@ export class ReservationsService {
       where: { productId, buyerId, status: ReservationStatus.PENDING }
     })
     if (existingPending) {
-      // R7: Validate new quantity doesn't exceed per-user limit
+      // R7: Validate new quantity doesn't exceed per-user limit (include CONFIRMED)
       if (product.reservationLimitPerUser && quantity > product.reservationLimitPerUser) {
         throw new BadRequestException(`You can only reserve up to ${product.reservationLimitPerUser} per user`)
       }
@@ -268,11 +268,12 @@ export class ReservationsService {
   }
 
   async getReservationCount(productId: string): Promise<number> {
-    // Count both PENDING and DEPOSIT_PAID to prevent overselling
+    // Count PENDING, DEPOSIT_PAID, and CONFIRMED to prevent overselling
     return this.reservationRepo.count({
       where: [
         { productId, status: ReservationStatus.PENDING },
         { productId, status: ReservationStatus.DEPOSIT_PAID },
+        { productId, status: ReservationStatus.CONFIRMED },
       ]
     })
   }
