@@ -7,10 +7,10 @@ export class Favorite {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ type: 'uuid' })
+  @Column({ type: 'varchar', length: 36 })
   userId: string;
 
-  @Column({ type: 'uuid' })
+  @Column({ type: 'varchar', length: 36 })
   productId: string;
 
   @ManyToOne(() => Product, { nullable: true })

@@ -15,7 +15,7 @@ export class WalletTransaction {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ type: 'uuid' })
+  @Column({ type: 'varchar', length: 36 })
   userId: string;
 
   @Column({ type: 'decimal', precision: 10, scale: 2 })
@@ -27,7 +27,7 @@ export class WalletTransaction {
   @Column({ nullable: true })
   description: string;
 
-  @Column({ nullable: true })
+  @Column({ type: 'varchar', length: 36, nullable: true })
   orderId: string;
 
   @Column({ type: 'decimal', precision: 10, scale: 2, default: 0 })

@@ -22,14 +22,14 @@ export class Reservation {
   @PrimaryGeneratedColumn('uuid')
   id: string
 
-  @Column()
+  @Column({ type: 'varchar', length: 36 })
   productId: string
 
   @ManyToOne(() => Product)
   @JoinColumn({ name: 'productId' })
   product: Product
 
-  @Column()
+  @Column({ type: 'varchar', length: 36 })
   buyerId: string
 
   @ManyToOne(() => User)

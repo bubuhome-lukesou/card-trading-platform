@@ -25,14 +25,14 @@ export class Auction {
   @PrimaryGeneratedColumn('uuid')
   id: string
 
-  @Column()
+  @Column({ type: 'varchar', length: 36 })
   productId: string
 
   @ManyToOne(() => Product, product => product.auctions)
   @JoinColumn({ name: 'productId' })
   product: Product
 
-  @Column()
+  @Column({ type: 'varchar', length: 36 })
   sellerId: string
 
   @ManyToOne(() => User)

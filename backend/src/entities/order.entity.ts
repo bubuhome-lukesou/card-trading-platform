@@ -36,21 +36,21 @@ export class Order {
   @Column({ unique: true })
   orderNumber: string
 
-  @Column()
+  @Column({ type: 'varchar', length: 36 })
   buyerId: string
 
   @ManyToOne(() => User)
   @JoinColumn({ name: 'buyerId' })
   buyer: User
 
-  @Column()
+  @Column({ type: 'varchar', length: 36 })
   sellerId: string
 
   @ManyToOne(() => User)
   @JoinColumn({ name: 'sellerId' })
   seller: User
 
-  @Column()
+  @Column({ type: 'varchar', length: 36 })
   productId: string
 
   @ManyToOne(() => Product)

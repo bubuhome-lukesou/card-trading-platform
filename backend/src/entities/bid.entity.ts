@@ -14,14 +14,14 @@ export class Bid {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ type: 'uuid' })
+  @Column({ type: 'varchar', length: 36 })
   auctionId: string;
 
   @ManyToOne(() => Auction, auction => auction.bids)
   @JoinColumn({ name: 'auctionId' })
   auction: Auction;
 
-  @Column({ type: 'uuid' })
+  @Column({ type: 'varchar', length: 36 })
   bidderId: string;
 
   @ManyToOne(() => User)

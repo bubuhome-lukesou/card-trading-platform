@@ -20,7 +20,7 @@ export class SellerApplication {
   @PrimaryGeneratedColumn('uuid')
   id: string
 
-  @Column({ nullable: true })
+  @Column({ type: 'varchar', length: 36, nullable: true })
   userId: string
 
   @ManyToOne(() => User, { onDelete: 'CASCADE', nullable: true })
