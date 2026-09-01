@@ -102,7 +102,8 @@
       "all": "All",
       "saleOnly": "Sale Only",
       "auctionOnly": "Auction Only",
-      "clearAll": "Clear All"
+      "clearAll": "Clear All",
+      "hideSold": "Hide Sold"
     },
     "sort": {
       "popular": "Popular",
@@ -140,6 +141,7 @@
     "live": "Live",
     "upcoming": "Upcoming",
     "ended": "Ended",
+    "hideEnded": "Hide Ended",
     "status": {
       "active": "Active",
       "upcoming": "Upcoming",
