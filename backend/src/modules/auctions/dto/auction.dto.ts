@@ -53,6 +53,10 @@ export class AuctionFiltersDto {
   @IsOptional()
   @IsString()
   sellerId?: string
+
+  @IsOptional()
+  @Type(() => Boolean)
+  hideEnded?: boolean
 }
 
 export class CreateAuctionDto {

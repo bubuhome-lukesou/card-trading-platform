@@ -14,12 +14,16 @@ import {
   LogOut,
   Store,
   Settings,
-  Package
+  Package,
+  Sun,
+  Moon
 } from 'lucide-vue-next'
+import { useTheme } from '@/composables/useTheme'
 
 const { t, locale } = useI18n()
 const router = useRouter()
 const authStore = useAuthStore()
+const { theme, toggleTheme } = useTheme()
 
 const mobileMenuOpen = ref(false)
 const userMenuOpen = ref(false)
@@ -91,6 +95,12 @@ const userMenuItems = computed(() => {
 
         <!-- Right Actions -->
         <div class="header-actions">
+          <!-- Theme Toggle -->
+          <button class="action-btn theme-toggle" @click="toggleTheme" :title="theme === 'dark' ? 'Switch to Light' : 'Switch to Dark'">
+            <Sun v-if="theme === 'dark'" class="icon" />
+            <Moon v-else class="icon" />
+          </button>
+
           <!-- Language -->
           <button class="action-btn lang-toggle" @click="toggleLocale">
             <Globe class="icon" />
@@ -419,6 +429,16 @@ const userMenuItems = computed(() => {
 
   @media (max-width: 768px) {
     display: none;
+  }
+}
+
+.theme-toggle {
+  padding: var(--space-2);
+  font-size: var(--text-sm);
+
+  .icon {
+    width: 20px;
+    height: 20px;
   }
 }
 

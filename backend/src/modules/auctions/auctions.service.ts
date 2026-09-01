@@ -144,6 +144,13 @@ export class AuctionsService {
       )
     }
 
+    // Filter out ended/cancelled auctions (only show active and pending)
+    if (filters.hideEnded) {
+      queryBuilder.andWhere('auction.status IN (:...visibleStatuses)', {
+        visibleStatuses: [AuctionStatus.ACTIVE, AuctionStatus.PENDING]
+      })
+    }
+
     // Sorting
     switch (filters.sortBy) {
       case 'endingSoon':

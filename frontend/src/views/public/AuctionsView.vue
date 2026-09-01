@@ -11,6 +11,7 @@ const { t } = useI18n()
 const auctions = ref<Auction[]>([])
 const loading = ref(false)
 const activeTab = ref<'live' | 'upcoming' | 'ended'>('live')
+const hideEnded = ref(true)
 
 const tabs = computed(() => [
   { key: 'live', label: t('auction.live'), icon: Gavel },
@@ -21,8 +22,11 @@ const tabs = computed(() => [
 const fetchAuctions = async () => {
   loading.value = true
   try {
-    const status = activeTab.value === 'live' ? 'active' : activeTab.value
-    const response = await auctionApi.getAuctions({ status } as any)
+    const params: any = { status: activeTab.value === 'live' ? 'active' : activeTab.value }
+    if (hideEnded.value) {
+      params.hideEnded = true
+    }
+    const response = await auctionApi.getAuctions(params as any)
     // Parse product images from JSON string to array
     auctions.value = (response.data.data || []).map((a: any) => {
       if (a.product && typeof a.product.images === 'string') {
@@ -81,17 +85,32 @@ fetchAuctions()
       <h1 class="page-title">{{ t('auction.list') }}</h1>
 
       <!-- Tabs -->
-      <div class="tabs">
-        <button
-          v-for="tab in tabs"
-          :key="tab.key"
-          class="tab"
-          :class="{ active: activeTab === tab.key }"
-          @click="activeTab = tab.key as any; fetchAuctions()"
-        >
-          <component :is="tab.icon" class="tab-icon" />
-          {{ tab.label }}
-        </button>
+      <div class="tabs-row">
+        <div class="tabs">
+          <button
+            v-for="tab in tabs"
+            :key="tab.key"
+            class="tab"
+            :class="{ active: activeTab === tab.key }"
+            @click="activeTab = tab.key as any; fetchAuctions()"
+          >
+            <component :is="tab.icon" class="tab-icon" />
+            {{ tab.label }}
+          </button>
+        </div>
+
+        <!-- Hide Ended Toggle -->
+        <label class="hide-ended-toggle">
+          <input
+            type="checkbox"
+            v-model="hideEnded"
+            @change="fetchAuctions()"
+          />
+          <span class="toggle-track" :class="{ active: hideEnded }">
+            <span class="toggle-thumb" />
+          </span>
+          <span class="toggle-label">{{ t('auction.hideEnded') || '隱藏已結束' }}</span>
+        </label>
       </div>
 
       <!-- Loading -->
@@ -149,14 +168,73 @@ fetchAuctions()
   margin-bottom: var(--space-8);
 }
 
+.tabs-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-8);
+  flex-wrap: wrap;
+  gap: var(--space-4);
+}
+
 .tabs {
   display: flex;
   gap: var(--space-2);
   background: var(--bg-card);
   padding: var(--space-1);
   border-radius: var(--radius-lg);
-  margin-bottom: var(--space-8);
   width: fit-content;
+}
+
+// Hide Ended Toggle
+.hide-ended-toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  cursor: pointer;
+  user-select: none;
+
+  input[type="checkbox"] {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+  }
+
+  .toggle-track {
+    position: relative;
+    width: 36px;
+    height: 20px;
+    background: var(--border);
+    border-radius: var(--radius-full);
+    transition: background var(--transition-fast);
+    flex-shrink: 0;
+
+    &.active {
+      background: var(--primary);
+    }
+  }
+
+  .toggle-thumb {
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 16px;
+    height: 16px;
+    background: white;
+    border-radius: 50%;
+    transition: transform var(--transition-fast);
+
+    .active & {
+      transform: translateX(16px);
+    }
+  }
+
+  .toggle-label {
+    font-size: var(--text-sm);
+    color: var(--text-secondary);
+    white-space: nowrap;
+  }
 }
 
 .tab {

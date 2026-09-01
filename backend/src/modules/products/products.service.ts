@@ -73,6 +73,11 @@ export class ProductsService {
       queryBuilder.andWhere('product.language IN (:...languages)', { languages: (filters as any).language })
     }
 
+    // Filter out sold items (quantity = 0)
+    if (filters.hideSold) {
+      queryBuilder.andWhere('product.quantity > 0')
+    }
+
     // Sorting
     switch (filters.sortBy) {
       case 'price_asc':

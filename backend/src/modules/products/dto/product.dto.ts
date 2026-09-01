@@ -90,6 +90,10 @@ export class ProductFiltersDto {
   })
   @IsString({ each: true })
   language?: string[]
+
+  @IsOptional()
+  @Type(() => Boolean)
+  hideSold?: boolean
 }
 
 export class CreateProductDto {

@@ -45,6 +45,7 @@ const filters = ref<any>({
   tags: [] as string[],
   productTypes: [] as string[],
   language: [] as string[],
+  hideSold: true,
   page: 1,
   limit: 20
 })
@@ -239,7 +240,8 @@ const clearAllFilters = () => {
     sortBy: 'newest',
     page: 1,
     limit: 20,
-    language: []
+    language: [],
+    hideSold: true
   }
   updateUrl()
   fetchProducts()
@@ -524,6 +526,19 @@ watch(() => route.query, () => {
                   {{ activeFiltersCount }}
                 </span>
               </button>
+
+              <!-- Hide Sold Toggle -->
+              <label class="hide-sold-toggle">
+                <input
+                  type="checkbox"
+                  v-model="filters.hideSold"
+                  @change="updateFilter('hideSold', filters.hideSold)"
+                />
+                <span class="toggle-track" :class="{ active: filters.hideSold }">
+                  <span class="toggle-thumb" />
+                </span>
+                <span class="toggle-label">{{ t('product.filters.hideSold') || '隱藏已售出' }}</span>
+              </label>
             </div>
 
             <!-- Sort -->
@@ -887,6 +902,61 @@ watch(() => route.query, () => {
   display: flex;
   align-items: center;
   gap: var(--space-3);
+}
+
+// Hide Sold Toggle
+.hide-sold-toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  cursor: pointer;
+  user-select: none;
+
+  input[type="checkbox"] {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+  }
+
+  .toggle-track {
+    position: relative;
+    width: 36px;
+    height: 20px;
+    background: var(--border);
+    border-radius: var(--radius-full);
+    transition: background var(--transition-fast);
+    flex-shrink: 0;
+
+    &.active {
+      background: var(--primary);
+    }
+  }
+
+  .toggle-thumb {
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 16px;
+    height: 16px;
+    background: white;
+    border-radius: 50%;
+    transition: transform var(--transition-fast);
+
+    .active & {
+      transform: translateX(16px);
+    }
+  }
+
+  .toggle-label {
+    font-size: var(--text-sm);
+    color: var(--text-secondary);
+    white-space: nowrap;
+
+    @media (max-width: 768px) {
+      display: none;
+    }
+  }
 }
 
 .filter-toggle {
