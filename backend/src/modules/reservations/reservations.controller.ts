@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Delete, Body, Param, UseGuards, Request } from '@nestjs/common'
+import { Controller, Get, Post, Delete, Body, Param, UseGuards, Request, BadRequestException } from '@nestjs/common'
 import { ReservationsService } from './reservations.service'
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard'
 
@@ -10,6 +10,22 @@ export class ReservationsController {
   @Post()
   async create(@Body() body: { productId: string; quantity?: number }, @Request() req) {
     const product = await this.reservationsService.getProduct(body.productId)
+
+    // Validate reservation settings before creating
+    if (product.reservationDeposit == null || Number(product.reservationDeposit) <= 0) {
+      throw new BadRequestException('This product has no valid reservation deposit set')
+    }
+    if (product.reservationDeadline == null) {
+      throw new BadRequestException('This product has no reservation deadline set')
+    }
+    const deadline = new Date(product.reservationDeadline)
+    if (deadline <= new Date()) {
+      throw new BadRequestException('This product reservation deadline has passed')
+    }
+    if (product.price == null || Number(product.price) <= 0) {
+      throw new BadRequestException('This product has no valid price set')
+    }
+
     const result = await this.reservationsService.create(
       body.productId,
       req.user.id,
