@@ -59,13 +59,24 @@ export class SmsService {
     // 騰訊雲短信參數
     const phoneNumber = phone.startsWith('+') ? phone : `+${phone}`
 
+    // 根據區號選擇簽名和模板
+    // 港澳台（+853/+852/+886）用 HIMACSMS 簽名 + 模板 2720933
+    // 大陸（+86）用珠海横琴宇澳科技有限公司簽名 + 模板 2720934
+    const isMainland = phoneNumber.startsWith('+86')
+    const signName = isMainland
+      ? (process.env.TENCENT_SMS_SIGN_CN || '珠海横琴宇澳科技有限公司')
+      : (process.env.TENCENT_SMS_SIGN || 'HIMACSMS')
+    const templateId = isMainland
+      ? (process.env.TENCENT_SMS_TEMPLATE_ID_CN || '2720934')
+      : (process.env.TENCENT_SMS_TEMPLATE_ID || '2720933')
+
     try {
       if (this.smsClient) {
         const params = {
           PhoneNumberSet: [phoneNumber],
-          SmsSdkAppId: process.env.TENCENT_SMS_APP_ID || '1400000000', // 需要配置實際的 AppId
-          SignName: process.env.TENCENT_SMS_SIGN || '卡牌交易平台',
-          TemplateId: process.env.TENCENT_SMS_TEMPLATE_ID || '1000000', // 需要配置實際的模板 ID
+          SmsSdkAppId: process.env.TENCENT_SMS_APP_ID || '1401046724',
+          SignName: signName,
+          TemplateId: templateId,
           TemplateParamSet: [code], // 驗證碼
         }
         const response = await this.smsClient.SendSms(params)
