@@ -900,6 +900,8 @@ $radius: 16px;
 @media (max-width: 960px) {
   .gallery-wrap {
     position: static;
+    max-width: 100%;
+    overflow: visible;
   }
 }
 
@@ -1056,9 +1058,13 @@ $radius: 16px;
   display: flex;
   gap: 10px;
   overflow-x: auto;
-  padding: 4px 0;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-x;
+  padding: 4px 0 8px;
   scrollbar-width: thin;
   scrollbar-color: rgba(129, 140, 248, 0.3) transparent;
+  scroll-behavior: smooth;
 
   &::-webkit-scrollbar {
     height: 4px;
@@ -1066,6 +1072,13 @@ $radius: 16px;
   &::-webkit-scrollbar-thumb {
     background: rgba(129, 140, 248, 0.3);
     border-radius: 2px;
+  }
+  // Hide scrollbar on mobile but keep scrollable
+  @media (max-width: 960px) {
+    &::-webkit-scrollbar {
+      display: none;
+    }
+    scrollbar-width: none;
   }
 }
 
