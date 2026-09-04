@@ -77,6 +77,13 @@ export class AuctionsService {
             product.status = ProductStatus.SOLD
             await this.productRepo.save(product)
           }
+        } else {
+          // A1: No winner (no bids or reserve not met) — restore product to ACTIVE for re-sale
+          const product = await this.productRepo.findOne({ where: { id: auction.productId } })
+          if (product && product.status !== ProductStatus.SOLD) {
+            product.status = ProductStatus.ACTIVE
+            await this.productRepo.save(product)
+          }
         }
       } catch (err) {
         console.error(`[Cron] Error ending auction ${auction.id}:`, err)
@@ -214,6 +221,25 @@ export class AuctionsService {
       throw new ForbiddenException('You can only create auctions for your own products')
     }
 
+    // A2: Validate product status — must be ACTIVE or DRAFT (not SOLD/CANCELLED/REMOVED)
+    if (product.status === ProductStatus.SOLD || product.status === ProductStatus.CANCELLED || product.status === ProductStatus.REMOVED) {
+      throw new BadRequestException(`Cannot create auction for a product with status: ${product.status}`)
+    }
+
+    // A2: Check no existing active/pending auction for this product
+    const existingAuction = await this.auctionRepo.findOne({
+      where: { productId: dto.productId, status: AuctionStatus.ACTIVE }
+    })
+    if (existingAuction) {
+      throw new BadRequestException('This product already has an active auction')
+    }
+    const existingPending = await this.auctionRepo.findOne({
+      where: { productId: dto.productId, status: AuctionStatus.PENDING }
+    })
+    if (existingPending) {
+      throw new BadRequestException('This product already has a pending auction')
+    }
+
     const auction = this.auctionRepo.create({
       productId: dto.productId,
       sellerId: userId,
@@ -348,12 +374,23 @@ export class AuctionsService {
       throw new ForbiddenException('Only the seller can cancel the auction')
     }
 
+    // A7: Check auction status — can only cancel PENDING or ACTIVE auctions
+    if (auction.status === AuctionStatus.ENDED || auction.status === AuctionStatus.CANCELLED) {
+      throw new BadRequestException(`Cannot cancel auction with status: ${auction.status}`)
+    }
+
     if (auction.bidCount > 0) {
       throw new BadRequestException('Cannot cancel auction with existing bids')
     }
 
     auction.status = AuctionStatus.CANCELLED
     await this.auctionRepo.save(auction)
+
+    // Restore product to ACTIVE if it was set to ACTIVE for the auction
+    const product = await this.productRepo.findOne({ where: { id: auction.productId } })
+    if (product && product.status === ProductStatus.ACTIVE) {
+      // Keep as ACTIVE so seller can re-list — don't change to SOLD/CANCELLED
+    }
 
     return auction
   }
@@ -389,6 +426,13 @@ export class AuctionsService {
       const product = await this.productRepo.findOne({ where: { id: auction.productId } })
       if (product) {
         product.status = ProductStatus.SOLD
+        await this.productRepo.save(product)
+      }
+    } else {
+      // A1: No winner — restore product to ACTIVE for re-sale
+      const product = await this.productRepo.findOne({ where: { id: auction.productId } })
+      if (product && product.status !== ProductStatus.SOLD) {
+        product.status = ProductStatus.ACTIVE
         await this.productRepo.save(product)
       }
     }

@@ -1,8 +1,8 @@
 import { Injectable, NotFoundException, BadRequestException, ForbiddenException, forwardRef, Inject } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, DataSource } from 'typeorm';
 import { Order, OrderStatus, OrderType } from '../../entities/order.entity';
-import { Product } from '../../entities/product.entity';
+import { Product, ProductStatus, ListingType } from '../../entities/product.entity';
 import { ProductsService } from '../products/products.service';
 
 // Valid order status transitions (state machine)
@@ -16,6 +16,15 @@ const VALID_TRANSITIONS: Record<string, string[]> = {
   [OrderStatus.REFUNDED]: [],
 };
 
+// Role-restricted transitions: who is allowed to trigger each transition
+// buyer-only: only the buyer can trigger; seller-only: only the seller; either: both
+const TRANSITION_PERMISSIONS: Record<string, Record<string, 'buyer' | 'seller' | 'either'>> = {
+  [OrderStatus.PENDING]: { [OrderStatus.PENDING_PAID]: 'buyer', [OrderStatus.CANCELLED]: 'either' },
+  [OrderStatus.PENDING_PAID]: { [OrderStatus.CONFIRMED]: 'seller', [OrderStatus.CANCELLED]: 'either' },
+  [OrderStatus.CONFIRMED]: { [OrderStatus.SHIPPED]: 'seller', [OrderStatus.CANCELLED]: 'either' },
+  [OrderStatus.SHIPPED]: { [OrderStatus.DELIVERED]: 'buyer' },
+};
+
 @Injectable()
 export class OrdersService {
   constructor(
@@ -25,6 +34,7 @@ export class OrdersService {
     private productRepo: Repository<Product>,
     @Inject(forwardRef(() => ProductsService))
     private productsService: ProductsService,
+    private dataSource: DataSource,
   ) {}
 
   async findByBuyer(buyerId: string, page = 1, limit = 20) {
@@ -58,49 +68,106 @@ export class OrdersService {
     return order;
   }
 
+  // Create order from validated data — internal use only (e.g. reservations, auction wins)
   async create(data: Partial<Order>) {
     if (!data.orderNumber) {
       data.orderNumber = 'ORD-' + Date.now().toString(36).toUpperCase() + '-' + Math.random().toString(36).substring(2,6).toUpperCase();
     }
-    
-    // If productId is provided but totalPrice is not set, calculate from product
-    if (!data.totalPrice && data.totalPrice !== 0 && data.productId) {
+
+    // Always fetch product to force-calculate totalPrice (prevent amount tampering)
+    if (data.productId) {
       const product = await this.productRepo.findOne({ where: { id: data.productId } });
       if (product) {
-        data.totalPrice = product.price * (data.quantity || 1);
+        // Force sellerId from product (prevent injection)
         data.sellerId = product.sellerId;
+        // Force totalPrice from product price (prevent frontend tampering)
+        const qty = data.quantity || 1;
+        if (data.type === OrderType.RESERVATION_DEPOSIT) {
+          // For reservation deposits, use depositAmount * qty (already set by reservations service)
+          // totalPrice should already be set — keep it as is
+        } else {
+          data.totalPrice = Number(product.price) * qty;
+        }
       }
     }
-    
-    // Set sellerId from product if not provided
-    if (!data.sellerId && data.productId) {
-      const product = await this.productRepo.findOne({ where: { id: data.productId } });
-      if (product) data.sellerId = product.sellerId;
-    }
-    
+
     // Set required MySQL fields that TypeORM treats as optional
     if (!data.totalPrice && data.totalPrice !== 0) data.totalPrice = 0;
     if (data.shippingCost === undefined) data.shippingCost = 0;
     if (data.platformFee === undefined) data.platformFee = 0;
     if (!data.status) data.status = OrderStatus.PENDING;
-    const order = this.orderRepo.create(data);
-    const savedOrder = await this.orderRepo.save(order);
 
-    // Only decrease product quantity for non-reservation orders
-    // Reservation orders manage availability via reservationCount, not product.quantity
-    if (data.productId && data.type !== OrderType.RESERVATION_DEPOSIT && data.type !== OrderType.RESERVATION_FULL) {
-      const qty = data.quantity || 1;
-      try {
-        await this.productsService.decreaseQuantity(data.productId, qty);
-      } catch (err) {
-        // If stock decrement fails, cancel the order to maintain consistency
-        savedOrder.status = OrderStatus.CANCELLED;
-        await this.orderRepo.save(savedOrder);
-        throw err;
+    // Use transaction for order creation + stock decrement (atomic)
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      const order = this.orderRepo.create(data);
+      const savedOrder = await queryRunner.manager.save(order);
+
+      // Only decrease product quantity for non-reservation orders
+      if (data.productId && data.type !== OrderType.RESERVATION_DEPOSIT && data.type !== OrderType.RESERVATION_FULL) {
+        const qty = data.quantity || 1;
+        // Atomic stock decrement within the same transaction
+        const result = await queryRunner.manager
+          .createQueryBuilder()
+          .update(Product)
+          .set({ quantity: () => 'quantity - :qty' })
+          .where('id = :id AND quantity >= :qty', { id: data.productId, qty })
+          .execute();
+        if (result.affected === 0) {
+          throw new BadRequestException('Insufficient stock');
+        }
       }
+
+      await queryRunner.commitTransaction();
+      return savedOrder;
+    } catch (err) {
+      await queryRunner.rollbackTransaction();
+      throw err;
+    } finally {
+      await queryRunner.release();
+    }
+  }
+
+  // Create order from buyer request (with full validation)
+  async createFromBuyer(buyerId: string, productId: string, quantity: number = 1): Promise<Order> {
+    // Fetch and validate product
+    const product = await this.productRepo.findOne({ where: { id: productId } });
+    if (!product) {
+      throw new NotFoundException('Product not found');
+    }
+    // Product must be ACTIVE
+    if (product.status !== ProductStatus.ACTIVE) {
+      throw new BadRequestException('Product is not available for purchase');
+    }
+    // Buyer cannot buy their own product
+    if (product.sellerId === buyerId) {
+      throw new BadRequestException('You cannot purchase your own product');
+    }
+    // Product must allow direct purchase
+    if (product.listingType === ListingType.AUCTION_ONLY || product.listingType === ListingType.RESERVATION_ONLY) {
+      throw new BadRequestException('This product is not available for direct purchase');
+    }
+    // Validate quantity
+    if (quantity < 1) {
+      throw new BadRequestException('Quantity must be at least 1');
+    }
+    // Check stock
+    if (product.quantity !== null && product.quantity !== undefined && product.quantity < quantity) {
+      throw new BadRequestException(`Only ${product.quantity} in stock`);
     }
 
-    return savedOrder;
+    return this.create({
+      buyerId,
+      sellerId: product.sellerId,
+      productId,
+      type: OrderType.DIRECT_PURCHASE,
+      status: OrderStatus.PENDING,
+      totalPrice: Number(product.price) * quantity,
+      quantity,
+    });
   }
 
   async confirmPayment(orderId: string, userId: string): Promise<Order> {
@@ -166,6 +233,15 @@ export class OrdersService {
       throw new BadRequestException(
         `Cannot transition from ${order.status} to ${status}`
       );
+    }
+
+    // Enforce role-based permissions for transitions
+    const transitionRole = TRANSITION_PERMISSIONS[order.status]?.[status];
+    if (transitionRole === 'buyer' && !isBuyer) {
+      throw new ForbiddenException('Only the buyer can perform this action');
+    }
+    if (transitionRole === 'seller' && !isSeller) {
+      throw new ForbiddenException('Only the seller can perform this action');
     }
 
     // If cancelling, restore product stock (only for non-reservation orders)

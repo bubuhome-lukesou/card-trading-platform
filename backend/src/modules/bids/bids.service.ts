@@ -30,20 +30,9 @@ export class BidsService {
     });
   }
 
-  async create(data: { auctionId: string; userId: string; amount: number }) {
-    // Mark previous bids as outbid
-    await this.bidRepo.update(
-      { auctionId: data.auctionId, bidderId: data.userId, status: BidStatus.ACTIVE },
-      { status: BidStatus.OUTBID },
-    );
-    const bid = this.bidRepo.create({ auctionId: data.auctionId, bidderId: data.userId, amount: data.amount, status: BidStatus.ACTIVE });
-    await this.bidRepo.save(bid);
-
-    // Update auction bidCount and currentPrice
-    await this.auctionRepo.increment({ id: data.auctionId }, 'bidCount', 1);
-    await this.auctionRepo.update(data.auctionId, { currentPrice: data.amount });
-
-    return bid;
-  }
+  // NOTE: The unsafe create() method has been removed.
+  // All bid creation must go through AuctionsService.placeBid() which has
+  // proper validation: auction status check, seller self-bid prevention,
+  // minimum bid enforcement, and optimistic locking for concurrency.
+  // This service is now read-only for bid queries.
 }
-

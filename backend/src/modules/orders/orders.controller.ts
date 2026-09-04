@@ -1,7 +1,6 @@
-import { Controller, Get, Post, Patch, Param, Body, Query, UseGuards, UseInterceptors, UploadedFile, Request } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Param, Body, Query, UseGuards, UseInterceptors, UploadedFile, Request, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { OrdersService } from './orders.service';
-import { Order } from '../../entities/order.entity';
 import { FileInterceptor } from '@nestjs/platform-express';
 
 @Controller('orders')
@@ -24,14 +23,20 @@ export class OrdersController {
     const order = await this.ordersService.findOne(id);
     // Permission check — only buyer or seller can view
     if (order.buyerId !== req.user.id && order.sellerId !== req.user.id) {
-      return { message: 'You do not have permission to view this order', statusCode: 403 };
+      throw new ForbiddenException('You do not have permission to view this order');
     }
     return order;
   }
 
   @Post()
-  createOrder(@Request() req, @Body() body: Partial<Order>) {
-    return this.ordersService.create({ ...body, buyerId: req.user.id });
+  createOrder(@Request() req, @Body() body: { productId: string; quantity?: number; type?: string; reservationId?: string }) {
+    // Route to createFromBuyer for direct purchases (with validation)
+    // Reservation/auction orders are created internally, not via this endpoint
+    if (body.type && body.type !== 'direct_purchase') {
+      // For non-direct types, only allow if called internally (reservations service uses ordersService.create directly)
+      throw new BadRequestException('Use the dedicated endpoint for this order type');
+    }
+    return this.ordersService.createFromBuyer(req.user.id, body.productId, body.quantity || 1);
   }
 
   @Post(':id/confirm-payment')

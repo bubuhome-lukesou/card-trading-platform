@@ -42,6 +42,7 @@ export class ReservationsController {
     return this.reservationsService.findByBuyer(req.user.id)
   }
 
+  @UseGuards(JwtAuthGuard)
   @Get('product/:productId')
   async findByProduct(@Param('productId') productId: string) {
     return this.reservationsService.findByProduct(productId)

@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException, BadRequestException, ForbiddenException, forwardRef, Inject } from '@nestjs/common'
 import { InjectRepository } from '@nestjs/typeorm'
-import { Repository, LessThanOrEqual, Not, In } from 'typeorm'
+import { Repository, LessThanOrEqual, Not, In, DataSource } from 'typeorm'
 import { Cron } from '@nestjs/schedule'
 import { Reservation, ReservationStatus } from '../../entities/reservation.entity'
 import { Product, ListingType } from '../../entities/product.entity'
@@ -18,6 +18,7 @@ export class ReservationsService {
     private orderRepo: Repository<Order>,
     @Inject(forwardRef(() => OrdersService))
     private ordersService: OrdersService,
+    private dataSource: DataSource,
   ) {}
 
   async create(productId: string, buyerId: string, depositAmount: number, expireTime: Date, quantity: number = 1): Promise<{ reservation: Reservation; order: Order }> {
@@ -166,6 +167,21 @@ export class ReservationsService {
     if (reservation.status !== ReservationStatus.PENDING) {
       throw new BadRequestException('Reservation must be in pending status to confirm deposit')
     }
+
+    // R4: Verify the deposit order has been paid (PENDING_PAID or CONFIRMED)
+    // This prevents seller from confirming before buyer has uploaded payment proof
+    const depositOrder = await this.orderRepo.findOne({
+      where: { reservationId: reservation.id, type: OrderType.RESERVATION_DEPOSIT }
+    })
+    if (!depositOrder) {
+      throw new BadRequestException('No deposit order found for this reservation')
+    }
+    if (depositOrder.status === OrderStatus.PENDING) {
+      throw new BadRequestException('Buyer has not uploaded payment proof yet. Cannot confirm deposit.')
+    }
+    if (depositOrder.status === OrderStatus.CANCELLED) {
+      throw new BadRequestException('Deposit order has been cancelled. Cannot confirm.')
+    }
     
     reservation.status = ReservationStatus.DEPOSIT_PAID
     reservation.depositPaidAt = new Date()
@@ -211,6 +227,20 @@ export class ReservationsService {
     if (reservation.status !== ReservationStatus.DEPOSIT_PAID) {
       throw new BadRequestException('Reservation must be in deposit_paid status to confirm')
     }
+
+    // R5: Verify the balance (tail payment) order has been paid
+    const balanceOrder = await this.orderRepo.findOne({
+      where: { reservationId: reservation.id, type: OrderType.RESERVATION_FULL }
+    })
+    if (balanceOrder) {
+      if (balanceOrder.status === OrderStatus.PENDING) {
+        throw new BadRequestException('Buyer has not paid the balance yet. Cannot confirm reservation.')
+      }
+      if (balanceOrder.status === OrderStatus.CANCELLED) {
+        throw new BadRequestException('Balance order has been cancelled. Cannot confirm.')
+      }
+    }
+    // If no balance order exists (e.g. deposit = full price), allow confirmation
 
     reservation.status = ReservationStatus.CONFIRMED
     return this.reservationRepo.save(reservation)
@@ -263,19 +293,42 @@ export class ReservationsService {
       throw new ForbiddenException('You do not have permission to cancel this reservation')
     }
 
+    // R8: Only allow cancellation from PENDING or DEPOSIT_PAID states
+    if (reservation.status === ReservationStatus.CONFIRMED || reservation.status === ReservationStatus.CANCELLED || reservation.status === ReservationStatus.EXPIRED) {
+      throw new BadRequestException(`Cannot cancel reservation with status: ${reservation.status}`)
+    }
+
     reservation.status = ReservationStatus.CANCELLED
-    return this.reservationRepo.save(reservation)
+    const saved = await this.reservationRepo.save(reservation)
+
+    // R8: Cancel associated orders (deposit and balance)
+    const orders = await this.orderRepo.find({
+      where: [
+        { reservationId: id, type: OrderType.RESERVATION_DEPOSIT },
+        { reservationId: id, type: OrderType.RESERVATION_FULL },
+      ]
+    })
+    for (const order of orders) {
+      if (order.status === OrderStatus.PENDING || order.status === OrderStatus.PENDING_PAID) {
+        order.status = OrderStatus.CANCELLED
+        await this.orderRepo.save(order)
+      }
+    }
+
+    return saved
   }
 
   async getReservationCount(productId: string): Promise<number> {
-    // Count PENDING, DEPOSIT_PAID, and CONFIRMED to prevent overselling
-    return this.reservationRepo.count({
-      where: [
-        { productId, status: ReservationStatus.PENDING },
-        { productId, status: ReservationStatus.DEPOSIT_PAID },
-        { productId, status: ReservationStatus.CONFIRMED },
-      ]
-    })
+    // R2: Use SUM(quantity) not COUNT to correctly calculate reserved spots
+    const result = await this.reservationRepo
+      .createQueryBuilder('r')
+      .where('r.productId = :productId', { productId })
+      .andWhere('r.status IN (:...statuses)', {
+        statuses: [ReservationStatus.PENDING, ReservationStatus.DEPOSIT_PAID, ReservationStatus.CONFIRMED]
+      })
+      .select('COALESCE(SUM(r.quantity), 0)', 'total')
+      .getRawOne()
+    return parseInt(result?.total || '0', 10)
   }
 
   async getProduct(productId: string): Promise<Product> {
