@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm'
 import { Repository, LessThanOrEqual, MoreThanOrEqual, Not, In } from 'typeorm'
 import { Cron } from '@nestjs/schedule'
 import { Auction, AuctionStatus, Bid } from '../../entities/auction.entity'
+import { BidStatus } from '../../entities/bid.entity'
 import { Product, ProductStatus } from '../../entities/product.entity'
 import { Order, OrderType, OrderStatus } from '../../entities/order.entity'
 import { CreateAuctionDto, AuctionFiltersDto } from './dto/auction.dto'
@@ -56,6 +57,15 @@ export class AuctionsService {
 
     for (const auction of expiredAuctions) {
       try {
+        // A10: Atomic status update first — prevents reprocessing if cron restarts mid-loop
+        const updateResult = await this.auctionRepo
+          .createQueryBuilder()
+          .update(Auction)
+          .set({ status: AuctionStatus.ENDED })
+          .where('id = :id AND status = :status', { id: auction.id, status: AuctionStatus.ACTIVE })
+          .execute()
+        if (updateResult.affected === 0) continue // Already processed by another instance
+
         auction.status = AuctionStatus.ENDED
         if (auction.bidCount > 0) {
           const highestBid = await this.bidRepo.findOne({
@@ -299,10 +309,9 @@ export class AuctionsService {
         throw new ForbiddenException('Sellers cannot bid on their own auctions')
       }
 
-      // Prevent highest bidder from bidding again
-      if (auction.winnerId === userId) {
-        throw new BadRequestException('You are already the highest bidder')
-      }
+      // A9: Allow highest bidder to raise their bid (remove the block)
+      // Previously: if (auction.winnerId === userId) throw...
+      // Now: highest bidder can bid again to raise their price
 
       if (auction.status !== AuctionStatus.ACTIVE) {
         throw new BadRequestException('Auction is not active')
@@ -354,7 +363,7 @@ export class AuctionsService {
         // Final attempt failed — another bidder placed a higher bid concurrently
         const refreshed = await this.auctionRepo.findOne({ where: { id: auctionId } })
         throw new BadRequestException(
-          `Another bid was placed simultaneously. Current price is now HK$${refreshed?.currentPrice}. Please try again with a higher bid.`
+          `Another bid was placed simultaneously. Current price is now MOP $${refreshed?.currentPrice}. Please try again with a higher bid.`
         )
       }
 
@@ -365,6 +374,25 @@ export class AuctionsService {
         amount
       })
       await this.bidRepo.save(bid)
+
+      // A11: Mark previous bids from other bidders as OUTBID
+      await this.bidRepo
+        .createQueryBuilder()
+        .update(Bid)
+        .set({ status: BidStatus.OUTBID })
+        .where('auctionId = :auctionId AND bidderId != :userId AND status = :status', {
+          auctionId,
+          userId,
+          status: BidStatus.ACTIVE,
+        })
+        .execute()
+      // Ensure current bid is ACTIVE
+      await this.bidRepo
+        .createQueryBuilder()
+        .update(Bid)
+        .set({ status: BidStatus.ACTIVE })
+        .where('id = :bidId', { bidId: bid.id })
+        .execute()
 
       // Reload to get final state
       const updatedAuction = await this.auctionRepo.findOne({ where: { id: auctionId } })

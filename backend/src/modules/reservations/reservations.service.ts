@@ -22,96 +22,141 @@ export class ReservationsService {
   ) {}
 
   async create(productId: string, buyerId: string, depositAmount: number, expireTime: Date, quantity: number = 1): Promise<{ reservation: Reservation; order: Order }> {
-    // Check product exists and is reservation type
-    const product = await this.productRepo.findOne({ where: { id: productId } })
-    if (!product) {
-      throw new NotFoundException('Product not found')
-    }
-    if (product.listingType !== ListingType.RESERVATION_ONLY) {
-      throw new BadRequestException('Product is not available for reservation')
-    }
+    // R3: Use transaction with pessimistic lock to prevent concurrent oversell
+    const queryRunner = this.dataSource.createQueryRunner()
+    await queryRunner.connect()
+    await queryRunner.startTransaction()
 
-    // Validate quantity
-    if (quantity < 1) {
-      throw new BadRequestException('Quantity must be at least 1')
-    }
-
-    // Check per-user reservation limit (include CONFIRMED to prevent overbooking)
-    if (product.reservationLimitPerUser) {
-      const userExisting = await this.reservationRepo
-        .createQueryBuilder('r')
-        .where('r.productId = :productId', { productId })
-        .andWhere('r.buyerId = :buyerId', { buyerId })
-        .andWhere('r.status IN (:...statuses)', { statuses: [ReservationStatus.PENDING, ReservationStatus.DEPOSIT_PAID, ReservationStatus.CONFIRMED] })
-        .getOne()
-      const userReservedQty = userExisting ? (userExisting.quantity || 1) : 0
-      if (userReservedQty + quantity > product.reservationLimitPerUser) {
-        throw new BadRequestException(`You can only reserve up to ${product.reservationLimitPerUser} per user`)
+    try {
+      // Check product exists and is reservation type
+      const product = await queryRunner.manager.findOne(Product, { where: { id: productId } })
+      if (!product) {
+        throw new NotFoundException('Product not found')
       }
-    }
-
-    // Check total reservation limit (based on quantity sum, include CONFIRMED to prevent overbooking)
-    const totalReserved = await this.reservationRepo
-      .createQueryBuilder('r')
-      .where('r.productId = :productId', { productId })
-      .andWhere('r.status IN (:...statuses)', { statuses: [ReservationStatus.PENDING, ReservationStatus.DEPOSIT_PAID, ReservationStatus.CONFIRMED] })
-      .select('COALESCE(SUM(r.quantity), 0)', 'total')
-      .getRawOne()
-    const currentTotal = parseInt(totalReserved?.total || '0', 10)
-    const maxQty = product.reservationMax || product.quantity || 999
-
-    if (currentTotal + quantity > maxQty) {
-      throw new BadRequestException(`Only ${maxQty - currentTotal} spots remaining`)
-    }
-
-    // Check if buyer already has a pending/deposit_paid reservation
-    const existing = await this.reservationRepo.findOne({
-      where: { productId, buyerId, status: ReservationStatus.DEPOSIT_PAID }
-    })
-    if (existing) {
-      throw new BadRequestException('You have already made a deposit-paid reservation for this product')
-    }
-
-    // Also check PENDING reservation (update quantity instead of creating new)
-    const existingPending = await this.reservationRepo.findOne({
-      where: { productId, buyerId, status: ReservationStatus.PENDING }
-    })
-    if (existingPending) {
-      // R7: Validate new quantity doesn't exceed per-user limit (include CONFIRMED)
-      if (product.reservationLimitPerUser && quantity > product.reservationLimitPerUser) {
-        throw new BadRequestException(`You can only reserve up to ${product.reservationLimitPerUser} per user`)
+      if (product.listingType !== ListingType.RESERVATION_ONLY) {
+        throw new BadRequestException('Product is not available for reservation')
       }
 
-      // R7: Validate new quantity doesn't exceed total reservation max
-      // Subtract the existing pending quantity, then check if new total exceeds max
-      const totalExcludingThis = currentTotal - (existingPending.quantity || 1)
-      if (totalExcludingThis + quantity > maxQty) {
-        throw new BadRequestException(`Only ${maxQty - totalExcludingThis} spots remaining`)
-      }
-
-      // R7: Validate quantity is at least 1
+      // Validate quantity
       if (quantity < 1) {
         throw new BadRequestException('Quantity must be at least 1')
       }
 
-      existingPending.quantity = quantity
-      existingPending.depositAmount = depositAmount
-      const updatedReservation = await this.reservationRepo.save(existingPending)
-
-      // Update the existing deposit order's total price
-      const existingOrder = await this.orderRepo.findOne({
-        where: { reservationId: updatedReservation.id, type: OrderType.RESERVATION_DEPOSIT }
-      })
-      if (existingOrder) {
-        existingOrder.totalPrice = depositAmount * quantity
-        existingOrder.quantity = quantity
-        existingOrder.notes = `預約訂金 - 預約ID: ${updatedReservation.id} x ${quantity}`
-        await this.orderRepo.save(existingOrder)
-        return { reservation: updatedReservation, order: existingOrder }
+      // R15: reservationMax fallback — use product.quantity, not 999
+      const maxQty = product.reservationMax || product.quantity || 0
+      if (maxQty <= 0) {
+        throw new BadRequestException('This product has no available reservation spots')
       }
 
-      // Fallback: create new order if not found
-      const order = await this.ordersService.create({
+      // Check per-user reservation limit (include CONFIRMED to prevent overbooking)
+      if (product.reservationLimitPerUser) {
+        const userExisting = await queryRunner.manager
+          .createQueryBuilder(Reservation, 'r')
+          .setLock('pessimistic_write')
+          .where('r.productId = :productId', { productId })
+          .andWhere('r.buyerId = :buyerId', { buyerId })
+          .andWhere('r.status IN (:...statuses)', { statuses: [ReservationStatus.PENDING, ReservationStatus.DEPOSIT_PAID, ReservationStatus.CONFIRMED] })
+          .getOne()
+        const userReservedQty = userExisting ? (userExisting.quantity || 1) : 0
+        if (userReservedQty + quantity > product.reservationLimitPerUser) {
+          throw new BadRequestException(`You can only reserve up to ${product.reservationLimitPerUser} per user`)
+        }
+      }
+
+      // R3: Check total reservation limit with pessimistic lock
+      const totalReserved = await queryRunner.manager
+        .createQueryBuilder(Reservation, 'r')
+        .setLock('pessimistic_write')
+        .where('r.productId = :productId', { productId })
+        .andWhere('r.status IN (:...statuses)', { statuses: [ReservationStatus.PENDING, ReservationStatus.DEPOSIT_PAID, ReservationStatus.CONFIRMED] })
+        .select('COALESCE(SUM(r.quantity), 0)', 'total')
+        .getRawOne()
+      const currentTotal = parseInt(totalReserved?.total || '0', 10)
+
+      if (currentTotal + quantity > maxQty) {
+        throw new BadRequestException(`Only ${maxQty - currentTotal} spots remaining`)
+      }
+
+      // Check if buyer already has a pending/deposit_paid reservation
+      const existing = await queryRunner.manager.findOne(Reservation, {
+        where: { productId, buyerId, status: ReservationStatus.DEPOSIT_PAID }
+      })
+      if (existing) {
+        throw new BadRequestException('You have already made a deposit-paid reservation for this product')
+      }
+
+      // Also check PENDING reservation (update quantity instead of creating new)
+      const existingPending = await queryRunner.manager.findOne(Reservation, {
+        where: { productId, buyerId, status: ReservationStatus.PENDING }
+      })
+      if (existingPending) {
+        if (product.reservationLimitPerUser && quantity > product.reservationLimitPerUser) {
+          throw new BadRequestException(`You can only reserve up to ${product.reservationLimitPerUser} per user`)
+        }
+
+        const totalExcludingThis = currentTotal - (existingPending.quantity || 1)
+        if (totalExcludingThis + quantity > maxQty) {
+          throw new BadRequestException(`Only ${maxQty - totalExcludingThis} spots remaining`)
+        }
+
+        if (quantity < 1) {
+          throw new BadRequestException('Quantity must be at least 1')
+        }
+
+        existingPending.quantity = quantity
+        existingPending.depositAmount = depositAmount
+        const updatedReservation = await queryRunner.manager.save(existingPending)
+
+        // Update the existing deposit order's total price
+        const existingOrder = await queryRunner.manager.findOne(Order, {
+          where: { reservationId: updatedReservation.id, type: OrderType.RESERVATION_DEPOSIT }
+        })
+        if (existingOrder) {
+          existingOrder.totalPrice = depositAmount * quantity
+          existingOrder.quantity = quantity
+          existingOrder.notes = `預約訂金 - 預約ID: ${updatedReservation.id} x ${quantity}`
+          await queryRunner.manager.save(existingOrder)
+          await queryRunner.commitTransaction()
+          return { reservation: updatedReservation, order: existingOrder }
+        }
+
+        // Fallback: create new order if not found
+        const orderData = {
+          buyerId,
+          sellerId: product.sellerId,
+          productId,
+          type: OrderType.RESERVATION_DEPOSIT,
+          status: OrderStatus.PENDING,
+          totalPrice: depositAmount * quantity,
+          quantity,
+          notes: `預約訂金 - 預約ID: ${updatedReservation.id} x ${quantity}`,
+          reservationId: updatedReservation.id,
+        }
+        const order = queryRunner.manager.create(Order, {
+          orderNumber: 'ORD-' + Date.now().toString(36).toUpperCase() + '-' + Math.random().toString(36).substring(2, 6).toUpperCase(),
+          shippingCost: 0,
+          platformFee: 0,
+          ...orderData,
+        })
+        const savedOrder = await queryRunner.manager.save(order)
+        await queryRunner.commitTransaction()
+        return { reservation: updatedReservation, order: savedOrder }
+      }
+
+      // Create reservation record
+      const reservation = queryRunner.manager.create(Reservation, {
+        productId,
+        buyerId,
+        quantity,
+        depositAmount,
+        expireTime,
+        status: ReservationStatus.PENDING,
+      })
+      const savedReservation = await queryRunner.manager.save(reservation)
+
+      // Also create an order record for unified tracking
+      const order = queryRunner.manager.create(Order, {
+        orderNumber: 'ORD-' + Date.now().toString(36).toUpperCase() + '-' + Math.random().toString(36).substring(2, 6).toUpperCase(),
         buyerId,
         sellerId: product.sellerId,
         productId,
@@ -119,97 +164,102 @@ export class ReservationsService {
         status: OrderStatus.PENDING,
         totalPrice: depositAmount * quantity,
         quantity,
-        notes: `預約訂金 - 預約ID: ${updatedReservation.id} x ${quantity}`,
-        reservationId: updatedReservation.id,
+        shippingCost: 0,
+        platformFee: 0,
+        notes: `預約訂金 - 預約ID: ${savedReservation.id} x ${quantity}`,
+        reservationId: savedReservation.id,
       })
-      return { reservation: updatedReservation, order }
+      const savedOrder = await queryRunner.manager.save(order)
+
+      await queryRunner.commitTransaction()
+      return { reservation: savedReservation, order: savedOrder }
+    } catch (err) {
+      await queryRunner.rollbackTransaction()
+      throw err
+    } finally {
+      await queryRunner.release()
     }
-
-    // Create reservation record
-    const reservation = this.reservationRepo.create({
-      productId,
-      buyerId,
-      quantity,
-      depositAmount,
-      expireTime,
-      status: ReservationStatus.PENDING,
-    })
-    const savedReservation = await this.reservationRepo.save(reservation)
-
-    // Also create an order record for unified tracking
-    const order = await this.ordersService.create({
-      buyerId,
-      sellerId: product.sellerId,
-      productId,
-      type: OrderType.RESERVATION_DEPOSIT,
-      status: OrderStatus.PENDING,
-      totalPrice: depositAmount * quantity,
-      quantity,
-      notes: `預約訂金 - 預約ID: ${savedReservation.id} x ${quantity}`,
-      reservationId: savedReservation.id,
-    })
-
-    return { reservation: savedReservation, order }
   }
 
   async confirmDeposit(reservationId: string, userId: string): Promise<Reservation> {
-    const reservation = await this.findOne(reservationId)
-    
-    // Only the seller of the product can confirm deposit
-    const product = await this.productRepo.findOne({ where: { id: reservation.productId } })
-    if (!product) {
-      throw new NotFoundException('Product not found')
-    }
-    if (product.sellerId !== userId) {
-      throw new ForbiddenException('Only the seller can confirm deposits')
-    }
+    // R10: Use transaction to prevent concurrent duplicate balance order creation
+    const queryRunner = this.dataSource.createQueryRunner()
+    await queryRunner.connect()
+    await queryRunner.startTransaction()
 
-    if (reservation.status !== ReservationStatus.PENDING) {
-      throw new BadRequestException('Reservation must be in pending status to confirm deposit')
-    }
-
-    // R4: Verify the deposit order has been paid (PENDING_PAID or CONFIRMED)
-    // This prevents seller from confirming before buyer has uploaded payment proof
-    const depositOrder = await this.orderRepo.findOne({
-      where: { reservationId: reservation.id, type: OrderType.RESERVATION_DEPOSIT }
-    })
-    if (!depositOrder) {
-      throw new BadRequestException('No deposit order found for this reservation')
-    }
-    if (depositOrder.status === OrderStatus.PENDING) {
-      throw new BadRequestException('Buyer has not uploaded payment proof yet. Cannot confirm deposit.')
-    }
-    if (depositOrder.status === OrderStatus.CANCELLED) {
-      throw new BadRequestException('Deposit order has been cancelled. Cannot confirm.')
-    }
-    
-    reservation.status = ReservationStatus.DEPOSIT_PAID
-    reservation.depositPaidAt = new Date()
-    const saved = await this.reservationRepo.save(reservation)
-
-    // R4: Create a RESERVATION_FULL (balance) order linked to this reservation
-    const balanceAmount = Number(product.price) - Number(reservation.depositAmount)
-    if (balanceAmount > 0) {
-      // Check if balance order already exists
-      const existingBalance = await this.orderRepo.findOne({
-        where: { reservationId: reservation.id, type: OrderType.RESERVATION_FULL }
+    try {
+      const reservation = await queryRunner.manager.findOne(Reservation, {
+        where: { id: reservationId },
+        relations: ['product', 'buyer']
       })
-      if (!existingBalance) {
-        await this.ordersService.create({
-          buyerId: reservation.buyerId,
-          sellerId: product.sellerId,
-          productId: reservation.productId,
-          type: OrderType.RESERVATION_FULL,
-          status: OrderStatus.PENDING,
-          totalPrice: balanceAmount * (reservation.quantity || 1),
-          quantity: reservation.quantity || 1,
-          notes: `預約尾款 - 預約ID: ${reservation.id} (尾款 = ${product.price} - ${reservation.depositAmount} = ${balanceAmount})`,
-          reservationId: reservation.id,
-        })
+      if (!reservation) {
+        throw new NotFoundException('Reservation not found')
       }
-    }
 
-    return saved
+      // Only the seller of the product can confirm deposit
+      const product = await queryRunner.manager.findOne(Product, { where: { id: reservation.productId } })
+      if (!product) {
+        throw new NotFoundException('Product not found')
+      }
+      if (product.sellerId !== userId) {
+        throw new ForbiddenException('Only the seller can confirm deposits')
+      }
+
+      if (reservation.status !== ReservationStatus.PENDING) {
+        throw new BadRequestException('Reservation must be in pending status to confirm deposit')
+      }
+
+      // R4: Verify the deposit order has been paid (PENDING_PAID or CONFIRMED)
+      const depositOrder = await queryRunner.manager.findOne(Order, {
+        where: { reservationId: reservation.id, type: OrderType.RESERVATION_DEPOSIT }
+      })
+      if (!depositOrder) {
+        throw new BadRequestException('No deposit order found for this reservation')
+      }
+      if (depositOrder.status === OrderStatus.PENDING) {
+        throw new BadRequestException('Buyer has not uploaded payment proof yet. Cannot confirm deposit.')
+      }
+      if (depositOrder.status === OrderStatus.CANCELLED) {
+        throw new BadRequestException('Deposit order has been cancelled. Cannot confirm.')
+      }
+
+      reservation.status = ReservationStatus.DEPOSIT_PAID
+      reservation.depositPaidAt = new Date()
+      const saved = await queryRunner.manager.save(reservation)
+
+      // R4: Create a RESERVATION_FULL (balance) order linked to this reservation
+      const balanceAmount = Number(product.price) - Number(reservation.depositAmount)
+      if (balanceAmount > 0) {
+        const existingBalance = await queryRunner.manager.findOne(Order, {
+          where: { reservationId: reservation.id, type: OrderType.RESERVATION_FULL }
+        })
+        if (!existingBalance) {
+          const balanceOrder = queryRunner.manager.create(Order, {
+            orderNumber: 'ORD-' + Date.now().toString(36).toUpperCase() + '-' + Math.random().toString(36).substring(2, 6).toUpperCase(),
+            buyerId: reservation.buyerId,
+            sellerId: product.sellerId,
+            productId: reservation.productId,
+            type: OrderType.RESERVATION_FULL,
+            status: OrderStatus.PENDING,
+            totalPrice: balanceAmount * (reservation.quantity || 1),
+            quantity: reservation.quantity || 1,
+            shippingCost: 0,
+            platformFee: 0,
+            notes: `預約尾款 - 預約ID: ${reservation.id} (尾款 = ${product.price} - ${reservation.depositAmount} = ${balanceAmount})`,
+            reservationId: reservation.id,
+          })
+          await queryRunner.manager.save(balanceOrder)
+        }
+      }
+
+      await queryRunner.commitTransaction()
+      return saved
+    } catch (err) {
+      await queryRunner.rollbackTransaction()
+      throw err
+    } finally {
+      await queryRunner.release()
+    }
   }
 
   // R5: Seller confirms a deposit-paid reservation → CONFIRMED
@@ -339,11 +389,14 @@ export class ReservationsService {
     return product
   }
 
-  // R6: Cron job to expire overdue reservations every minute
-  // Releases reserved spots by marking them EXPIRED
+  // R6+R12: Cron job to expire overdue reservations every minute
+  // R6: Expire PENDING reservations past deadline
+  // R12: Expire DEPOSIT_PAID reservations where balance order is still PENDING after 30 days
   @Cron('* * * * *')
   async expireOverdueReservations() {
     const now = new Date()
+
+    // R6: Expire PENDING reservations past expireTime
     const overdue = await this.reservationRepo.find({
       where: {
         status: ReservationStatus.PENDING,
@@ -370,6 +423,32 @@ export class ReservationsService {
 
     if (overdue.length > 0) {
       console.log(`[Cron] Expired ${overdue.length} overdue reservations`)
+    }
+
+    // R12: Expire DEPOSIT_PAID reservations where balance order PENDING for >30 days
+    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
+    const staleDepositPaid = await this.reservationRepo
+      .createQueryBuilder('r')
+      .where('r.status = :status', { status: ReservationStatus.DEPOSIT_PAID })
+      .andWhere('r.depositPaidAt <= :cutoff', { cutoff: thirtyDaysAgo })
+      .getMany()
+
+    for (const reservation of staleDepositPaid) {
+      try {
+        // Check if balance order is still PENDING (not paid)
+        const balanceOrder = await this.orderRepo.findOne({
+          where: { reservationId: reservation.id, type: OrderType.RESERVATION_FULL }
+        })
+        if (balanceOrder && balanceOrder.status === OrderStatus.PENDING) {
+          reservation.status = ReservationStatus.EXPIRED
+          await this.reservationRepo.save(reservation)
+          balanceOrder.status = OrderStatus.CANCELLED
+          await this.orderRepo.save(balanceOrder)
+          console.log(`[Cron] Expired stale DEPOSIT_PAID reservation ${reservation.id} (no balance payment for 30+ days)`)
+        }
+      } catch (err) {
+        console.error(`[Cron] Failed to expire stale deposit_paid reservation ${reservation.id}:`, err)
+      }
     }
   }
 }
