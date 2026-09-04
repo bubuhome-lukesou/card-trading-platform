@@ -13,7 +13,7 @@ const formatPrice = (price: number) => {
 }
 
 const handleCancel = (id: string) => {
-  if (confirm('确定要取消此拍卖吗？')) {
+  if (confirm('確定要取消此拍賣嗎？')) {
     const auction = auctions.value.find(a => a.id === id)
     if (auction) auction.status = 'cancelled'
   }
@@ -26,12 +26,12 @@ const handleCancel = (id: string) => {
       <table>
         <thead>
           <tr>
-            <th>拍卖</th>
-            <th>卖家</th>
-            <th>当前价格</th>
-            <th>出价次数</th>
-            <th>状态</th>
-            <th>截止时间</th>
+            <th>拍賣</th>
+            <th>賣家</th>
+            <th>當前價格</th>
+            <th>出價次數</th>
+            <th>狀態</th>
+            <th>截止時間</th>
             <th>操作</th>
           </tr>
         </thead>
@@ -41,7 +41,7 @@ const handleCancel = (id: string) => {
             <td>{{ auction.seller }}</td>
             <td class="price">{{ formatPrice(auction.currentPrice) }}</td>
             <td>{{ auction.bids }}</td>
-            <td><span class="status-badge" :class="auction.status">{{ auction.status === 'active' ? '进行中' : auction.status === 'ended' ? '已结束' : '已取消' }}</span></td>
+            <td><span class="status-badge" :class="auction.status">{{ auction.status === 'active' ? '進行中' : auction.status === 'ended' ? '已結束' : '已取消' }}</span></td>
             <td>{{ auction.endTime }}</td>
             <td>
               <button v-if="auction.status === 'active'" @click="handleCancel(auction.id)" class="btn-action cancel">取消</button>

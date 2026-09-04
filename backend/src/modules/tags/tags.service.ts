@@ -11,7 +11,16 @@ export class TagsService {
     private readonly tagRepo: Repository<Tag>
   ) {}
 
-  async findAll() {
+  async findAll(category?: string) {
+    if (category) {
+      // Return tags matching the category OR tags with category='all'
+      return this.tagRepo
+        .createQueryBuilder('tag')
+        .where('tag.category = :category OR tag.category = :all', { category, all: 'all' })
+        .orderBy('tag.sortOrder', 'ASC')
+        .addOrderBy('tag.name', 'ASC')
+        .getMany()
+    }
     return this.tagRepo.find({
       order: { sortOrder: 'ASC', name: 'ASC' }
     })

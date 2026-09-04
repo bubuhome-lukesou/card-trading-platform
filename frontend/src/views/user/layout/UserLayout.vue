@@ -15,7 +15,7 @@ const sidebarOpen = ref(false)
 const navItems = [
   { path: '/user', name: 'dashboard', icon: '👤', label: 'user.dashboard' },
   { path: '/user/orders', name: 'orders', icon: '📦', label: 'user.myOrders' },
-  { path: '/user/cart', name: 'cart', icon: '🛒', label: '购物车' },
+  { path: '/user/cart', name: 'cart', icon: '🛒', label: '購物車' },
   { path: '/user/favorites', name: 'favorites', icon: '❤️', label: 'user.myFavorites' },
   { path: '/user/wallet', name: 'wallet', icon: '💳', label: 'user.wallet' },
   { path: '/user/settings', name: 'settings', icon: '⚙️', label: 'user.settings' },

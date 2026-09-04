@@ -105,11 +105,9 @@ const getCategoryLabel = (category: string) => {
   return locale.value === 'zh' ? info.zh : info.en
 }
 
-// Get product type tag (from productTypeTagId)
-const getProductTypeTag = (product: any) => {
-  const tagId = (product as any).productTypeTagId
-  if (!tagId) return null
-  return allTags.value.find(t => t.id === tagId && (t.type === 'product_type' || t.type === 'PRODUCT_TYPE')) || null
+// Get product type (now stored as direct string)
+const getProductType = (product: any) => {
+  return (product as any).productType || null
 }
 
 // Get general tags
@@ -153,8 +151,8 @@ const fetchRelatedProducts = async () => {
         let score = 0
         // Same category: +1
         if (p.category === product.value.category) score += 1
-        // Same productTypeTagId: +3
-        if ((p as any).productTypeTagId === (product.value as any).productTypeTagId) score += 3
+        // Same productType: +3
+        if ((p as any).productType === (product.value as any).productType) score += 3
         // Same condition: +1
         if (p.condition === product.value.condition) score += 1
         // Same brand: +1
@@ -602,7 +600,7 @@ const isProductSuspended = computed(() => {
                 </div>
                 <div class="spec-cell">
                   <span class="spec-label">{{ locale === 'zh' ? '商品種類' : 'Type' }}</span>
-                  <span class="spec-value">{{ getProductTypeTag(product) ? getProductTypeTag(product).name : '—' }}</span>
+                  <span class="spec-value">{{ product.productType || '—' }}</span>
                 </div>
               </div>
               <div class="spec-row" v-if="getGeneralTags(product).length > 0">

@@ -60,6 +60,13 @@ watch(showTagCreate, (val) => {
   }
 })
 
+// Task 4: Reload tags when category changes (two-level tag selection)
+watch(() => formData.value.category, (newCategory) => {
+  if (newCategory) {
+    loadTags(newCategory)
+  }
+})
+
 const categories = [
   { value: 'pokemon', label: '寶可夢', emoji: '🎮' },
   { value: 'yugioh', label: '遊戲王', emoji: '🐉' },
@@ -67,7 +74,7 @@ const categories = [
   { value: 'ultraman', label: '奧特曼', emoji: '👾' },
   { value: 'onepiece', label: '海賊王', emoji: '⚔️' },
   { value: 'doraemon', label: '哆啦A梦', emoji: '🤖' },
-  { value: 'sports', label: '体育卡', emoji: '⚽' },
+  { value: 'sports', label: '體育卡', emoji: '⚽' },
   { value: 'other', label: '其他', emoji: '🎴' },
 ]
 
@@ -79,14 +86,10 @@ const conditions = [
   { value: 'D', label: 'D級 - 嚴重磨損' },
 ]
 
-// 商品種類（從 Tag type=product_type 加載，不再用固定下拉選項）
+// 商品種類（從 Tag type=product_type 加載，選擇後直接存名稱字串）
 const productTypes = ref<any[]>([])
-const selectedProductTypeTags = ref<number[]>([])
-const productTypesLoaded = ref(false)
 
-// 語言（獨立下拉選單，不從 API 讀取）
-
-// 预设仅销售模式，隐藏拍卖相关字段
+// 預設僅銷售模式，隐藏拍賣相關字段
 const formData = ref({
   titleZh: '',
   titleEn: '',
@@ -98,7 +101,7 @@ const formData = ref({
   quantity: 1,
   images: [] as string[],
   tags: [] as number[],
-  productTypeTagId: null as number | null,
+  productType: null as string | null,
   language: null as string | null,
   isActive: true,
   // Listing type
@@ -109,24 +112,6 @@ const formData = ref({
   reservationDeadline: '',
   reservationLimitPerUser: null,
 })
-
-// Watch formData.productTypeTagId to sync with selectedProductTypeTags for submission
-watch(() => formData.value.productTypeTagId, (newVal, oldVal) => {
-  console.log('[DEBUG] Watch triggered: oldVal =', oldVal, 'newVal =', newVal)
-  console.log('[DEBUG] Watch selectedProductTypeTags before =', selectedProductTypeTags.value.slice())
-  console.log('[DEBUG] Watch productTypes loaded =', productTypes.value.map(pt => ({ id: pt.id, name: pt.name })))
-  if (newVal && productTypesLoaded.value) {
-    // Add to selectedProductTypeTags if not already present
-    const exists = selectedProductTypeTags.value.includes(newVal)
-    console.log('[DEBUG] Watch: exists in selectedProductTypeTags =', exists)
-    if (!exists) {
-      selectedProductTypeTags.value = [newVal]
-      console.log('[DEBUG] Watch set selectedProductTypeTags to:', selectedProductTypeTags.value)
-    }
-  } else if (!productTypesLoaded.value) {
-    console.log('[DEBUG] Watch: productTypes not loaded yet, skipping')
-  }
-}, { immediate: false })
 
 const resetForm = () => {
   formData.value = {
@@ -140,7 +125,7 @@ const resetForm = () => {
     quantity: 1,
     images: [],
     tags: [],
-    productTypeTagId: null,
+    productType: null,
     language: null,
     isActive: true,
     listingType: 'sale_only',
@@ -154,14 +139,13 @@ const resetForm = () => {
   pendingImagePreviews.value = []
   existingImageUrls.value = []
   selectedTags.value = []
-  selectedProductTypeTags.value = []
 }
 
 const openCreateModal = () => {
   editingProduct.value = null
   resetForm()
-  // 预设商品种类为裸卡 (id=7)
-  formData.value.productTypeTagId = 7
+  // 預設商品种類為裸卡
+  formData.value.productType = '裸卡'
   showModal.value = true
 }
 
@@ -189,23 +173,9 @@ const openEditModal = async (product: any) => {
   const ids = (product.tags || []).map((t: any) => typeof t === 'number' ? t : t.id)
   _tagSelectedSnapshot = [...ids]
   selectedTags.value = [...ids]
-  // Load product types (type=product_type) - from dedicated productTypeTagId field
-  const productTypeTagId = product.productTypeTagId
-  console.log('[DEBUG] openEditModal - product.productTypeTagId:', productTypeTagId)
-  selectedProductTypeTags.value = productTypeTagId ? [productTypeTagId] : []
-
-  // Set selectedProductTypeTags for proper dropdown display
+  // productType is now a direct string value
   await loadTags()
   await loadProductTypes()
-
-  // Sync formData.productTypeTagId for dropdown display
-  formData.value.productTypeTagId = productTypeTagId || null
-
-  // Sync formData.language for dropdown display
-  formData.value.language = product.language || null
-
-  // Directly set selectedProductTypeTags to ensure it's not empty on submit
-  selectedProductTypeTags.value = productTypeTagId ? [productTypeTagId] : []
 
   formData.value = {
     titleZh: product.titleZh,
@@ -218,7 +188,7 @@ const openEditModal = async (product: any) => {
     quantity: product.quantity || 1,
     images: [...existingImages],
     tags: [...selectedTags.value],
-    productTypeTagId: productTypeTagId || null,
+    productType: product.productType || null,
     language: product.language || null,
     isActive: product.isActive !== false,
     listingType: product.listingType || 'sale_only',
@@ -250,18 +220,12 @@ const handleSubmit = async () => {
     }
 
     // Prepare product data - merge existing URLs with newly uploaded URLs
-    // 预设仅销售模式
+    // 預設僅銷售模式
     const productData = {
       ...formData.value,
       images: [...existingImageUrls.value, ...uploadedUrls],
       tags: selectedTags.value,
-      // productTypeTags as array
-      productTypeTags: selectedProductTypeTags.value,
     }
-    console.log('[DEBUG] formData.productTypeTagId:', formData.value.productTypeTagId)
-    console.log('[DEBUG] selectedProductTypeTags.value:', selectedProductTypeTags.value.slice())
-    console.log('[DEBUG] productTypes list:', productTypes.value.map(pt => ({ id: pt.id, name: pt.name })))
-    console.log('[DEBUG] Submitting productData:', JSON.stringify(productData, null, 2))
     
     // Create or update product
     if (editingProduct.value) {
@@ -283,7 +247,7 @@ const handleSubmit = async () => {
 }
 
 const handleDelete = async (productId: string) => {
-  if (!confirm('确定要删除此商品吗？')) return
+  if (!confirm('確定要删除此商品吗？')) return
   
   loading.value = true
   try {
@@ -358,13 +322,13 @@ const handleImageChange = async (event: Event) => {
   const files = Array.from(target.files)
   const currentCount = existingImageUrls.value.length + pendingImagePreviews.value.length
   if (currentCount + files.length > 9) {
-    alert('最多只能上传9张图片')
+    alert('最多只能上傳9张图片')
     return
   }
   
   for (const file of files) {
     if (file.size > 10 * 1024 * 1024) {
-      alert('图片大小不能超过10MB')
+      alert('图片大小不能超過10MB')
       continue
     }
     pendingImageFiles.value.push(file)
@@ -432,23 +396,26 @@ const createNewTag = async () => {
   }
 }
 
-const loadTags = async () => {
+const loadTags = async (category?: string) => {
   try {
-    const response = await tagApi.getTags()
+    const params = category ? { category } : undefined
+    const response = await tagApi.getTags(params)
+    const allTags = response.data || []
     // Filter out product_type and language tags - those have dedicated dropdowns
-    availableTags.value = (response.data || []).filter((t: any) => t.type !== 'product_type' && t.type !== 'language')
+    availableTags.value = allTags.filter((t: any) => t.type !== 'product_type' && t.type !== 'language')
+    // Product types filtered by category
+    productTypes.value = allTags.filter((t: any) => t.type === 'product_type')
   } catch (error) {
     console.error('Failed to load tags:', error)
   }
 }
 
-const loadProductTypes = async () => {
+const loadProductTypes = async (category?: string) => {
   try {
-    const response = await tagApi.getTags()
-    // Filter only tags with type=product_type
+    const params = category ? { category } : undefined
+    const response = await tagApi.getTags(params)
     const allTags = response.data || []
     productTypes.value = allTags.filter((t: any) => t.type === 'product_type')
-    productTypesLoaded.value = true
   } catch (error) {
     console.error('Failed to load product types:', error)
   }
@@ -522,20 +489,20 @@ onUnmounted(() => {
         </button>
       </div>
       <button @click="openCreateModal" class="btn-primary">
-        + 发布新商品
+        + 發布新商品
       </button>
     </div>
 
     <!-- Products Grid -->
     <div v-if="loading" class="loading-state">
       <div class="spinner"></div>
-      <p>加载中...</p>
+      <p>加載中...</p>
     </div>
 
     <div v-else-if="filteredProducts.length === 0" class="empty-state">
       <div class="empty-icon">📦</div>
       <h3>暫無商品</h3>
-      <p>点击上方「+ 发布商品」按钮发布您的第一件商品吧！</p>
+      <p>點击上方「+ 發布商品」按钮發布您的第一件商品吧！</p>
     </div>
 
     <div v-else class="products-grid">
@@ -562,7 +529,7 @@ onUnmounted(() => {
             </span>
           </div>
           <div class="product-price">
-            <span class="price-label">售价</span>
+            <span class="price-label">售價</span>
             <span class="price-value">{{ formatPrice(product.price) }}</span>
           </div>
         </div>
@@ -582,7 +549,7 @@ onUnmounted(() => {
     <div v-if="showModal" class="modal-overlay" @click.self="showModal = false">
       <div class="modal">
         <div class="modal-header">
-          <h2>{{ editingProduct ? '编辑商品' : '发布新商品' }}</h2>
+          <h2>{{ editingProduct ? '编辑商品' : '發布新商品' }}</h2>
           <button @click="showModal = false" class="modal-close">✕</button>
         </div>
 
@@ -629,7 +596,7 @@ onUnmounted(() => {
 
             <!-- Category & Condition -->
             <div class="form-group">
-              <label>商品类别</label>
+              <label>商品類别</label>
               <select v-model="formData.category">
                 <option v-for="cat in categories" :key="cat.value" :value="cat.value">
                   {{ cat.emoji }} {{ cat.label }}
@@ -640,6 +607,7 @@ onUnmounted(() => {
             <div class="form-group">
               <label>商品品相</label>
               <select v-model="formData.condition">
+                <option :value="null">(請選擇)</option>
                 <option v-for="cond in conditions" :key="cond.value" :value="cond.value">
                   {{ cond.label }}
                 </option>
@@ -648,17 +616,17 @@ onUnmounted(() => {
 
             <!-- Listing Type -->
             <div class="form-group">
-              <label>销售模式</label>
+              <label>銷售模式</label>
               <select v-model="formData.listingType">
-                <option value="sale_only">仅直销</option>
-                <option value="reservation_only">仅预付模式</option>
+                <option value="sale_only">僅直銷</option>
+                <option value="reservation_only">僅預付模式</option>
               </select>
             </div>
 
             <!-- Reservation Fields (when reservation_only is selected) -->
             <template v-if="formData.listingType === 'reservation_only'">
               <div class="form-group">
-                <label>预付名额上限</label>
+                <label>預付名額上限</label>
                 <input
                   v-model.number="formData.reservationMax"
                   type="number"
@@ -667,7 +635,7 @@ onUnmounted(() => {
                 />
               </div>
               <div class="form-group">
-                <label>订金金额 (MOP)</label>
+                <label>訂金金額 (MOP)</label>
                 <input
                   v-model.number="formData.reservationDeposit"
                   type="number"
@@ -676,14 +644,14 @@ onUnmounted(() => {
                 />
               </div>
               <div class="form-group">
-                <label>截止预付日期</label>
+                <label>截止預付日期</label>
                 <input
                   v-model="formData.reservationDeadline"
                   type="datetime-local"
                 />
               </div>
               <div class="form-group">
-                <label>每人预约上限</label>
+                <label>每人預约上限</label>
                 <input
                   v-model.number="formData.reservationLimitPerUser"
                   type="number"
@@ -696,8 +664,9 @@ onUnmounted(() => {
             <!-- 商品種類（Tag type=product_type） -->
             <div class="form-group">
               <label>商品種類</label>
-              <select v-model="formData.productTypeTagId" class="form-select" :disabled="!productTypesLoaded">
-                <option v-for="pt in productTypes" :key="pt.id" :value="pt.id">
+              <select v-model="formData.productType" class="form-select">
+                <option :value="null">(請選擇)</option>
+                <option v-for="pt in productTypes" :key="pt.id" :value="pt.name">
                   {{ pt.name }}
                 </option>
               </select>
@@ -707,7 +676,7 @@ onUnmounted(() => {
             <div class="form-group">
               <label>語言</label>
               <select v-model="formData.language" class="form-select">
-                <option :value="null">— 不限 —</option>
+                <option :value="null">(請選擇)</option>
                 <option value="japanese">日文</option>
                 <option value="english">英文</option>
                 <option value="traditional_chinese">繁體中文</option>
@@ -717,9 +686,9 @@ onUnmounted(() => {
               </select>
             </div>
 
-            <!-- 售价 -->
+            <!-- 售價 -->
             <div class="form-group">
-              <label>售价 (MOP)</label>
+              <label>售價 (MOP)</label>
               <input 
                 v-model.number="formData.price" 
                 type="number" 
@@ -781,7 +750,7 @@ onUnmounted(() => {
 
             <!-- Tags -->
             <div class="form-group full-width">
-              <label>商品标签</label>
+              <label>商品標簽</label>
               <!-- Selected tags display -->
               <div v-if="selectedTags.length" class="tags-selected">
                 <span
@@ -800,7 +769,7 @@ onUnmounted(() => {
                   v-model="tagSearch"
                   type="text"
                   class="tag-search-input"
-                  placeholder="搜索标签..."
+                  placeholder="搜索標簽..."
                   @focus="showTagDropdown = true"
                   @blur="closeTagDropdown"
                 />
@@ -809,7 +778,7 @@ onUnmounted(() => {
                   <input
                     v-model="newTagName"
                     type="text"
-                    placeholder="新标签名称"
+                    placeholder="新標簽名称"
                     class="tag-create-input"
                   />
                   <input
@@ -823,14 +792,14 @@ onUnmounted(() => {
                     :disabled="creatingTag || !newTagName.trim()"
                     class="tag-create-btn"
                   >
-                    {{ creatingTag ? '...' : '创建' }}
+                    {{ creatingTag ? '...' : '創建' }}
                   </button>
                   <button type="button" @click="showTagCreate = false; newTagName = ''" class="tag-create-cancel">×</button>
                 </div>
                 <!-- Show hint to create new tag when no match -->
                 <div v-else-if="tagSearch && !filteredTags.find(t => t.name.toLowerCase().includes(tagSearch.toLowerCase()))" class="tag-create-hint">
                   <button type="button" @click="newTagName = tagSearch; showTagCreate = true" class="tag-create-link">
-                    + 创建新标签「{{ tagSearch }}」
+                    + 創建新標簽「{{ tagSearch }}」
                   </button>
                 </div>
                 <!-- Show dropdown only when user types in search box -->
@@ -852,7 +821,7 @@ onUnmounted(() => {
                   </button>
                 </div>
               </div>
-              <p class="form-hint">选择适合商品的标签，可多选</p>
+              <p class="form-hint">選择适合商品的標簽，可多選</p>
             </div>
           </div>
 
@@ -861,7 +830,7 @@ onUnmounted(() => {
               取消
             </button>
             <button type="button" class="btn-submit" :disabled="loading" @click.prevent="handleSubmit">
-              {{ loading ? '保存中...' : (editingProduct ? '保存修改' : '发布商品') }}
+              {{ loading ? '保存中...' : (editingProduct ? '保存修改' : '發布商品') }}
             </button>
           </div>
         </form>

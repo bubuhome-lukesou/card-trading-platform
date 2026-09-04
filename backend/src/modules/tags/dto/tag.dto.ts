@@ -19,6 +19,10 @@ export class CreateTagDto {
   type?: TagType
 
   @IsOptional()
+  @IsString()
+  category?: string
+
+  @IsOptional()
   @IsNumber()
   @Min(0)
   sortOrder?: number
@@ -40,6 +44,10 @@ export class UpdateTagDto {
   @IsOptional()
   @IsEnum(TagType)
   type?: TagType
+
+  @IsOptional()
+  @IsString()
+  category?: string
 
   @IsOptional()
   @IsNumber()

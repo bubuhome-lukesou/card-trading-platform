@@ -2,9 +2,9 @@ import api from '@/api'
 import type { Tag } from '@/types'
 
 export const tagApi = {
-  // Get all tags
-  getTags() {
-    return api.get<Tag[]>('/tags')
+  // Get all tags, optionally filtered by category
+  getTags(params?: { category?: string }) {
+    return api.get<Tag[]>('/tags', { params })
   },
 
   // Get single tag

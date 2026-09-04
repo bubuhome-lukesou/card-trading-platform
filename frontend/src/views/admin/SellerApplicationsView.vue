@@ -113,7 +113,7 @@ onMounted(() => {
             <h4>申請人資料</h4>
             <div class="info-grid">
               <div class="info-item">
-                <label>用戶昵稱</label>
+                <label>用戶暱稱</label>
                 <span>{{ app.nickname || 'N/A' }}</span>
               </div>
               <div class="info-item">

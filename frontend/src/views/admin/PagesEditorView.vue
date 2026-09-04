@@ -76,16 +76,16 @@ const savePage = async () => {
 }
 
 const pageLabels: Record<string, string> = {
-  help: '帮助中心',
+  help: '幫助中心',
   contact: '聯絡我們',
-  faq: '常见问题',
+  faq: '常見問題',
 }
 </script>
 
 <template>
   <div class="pages-editor">
     <div class="editor-header">
-      <h1>{{ t('admin.pages.title') || '页面管理' }}</h1>
+      <h1>{{ t('admin.pages.title') || '頁面管理' }}</h1>
     </div>
 
     <div class="editor-layout">
@@ -104,18 +104,18 @@ const pageLabels: Record<string, string> = {
 
       <!-- Editor -->
       <div class="editor-main">
-        <div v-if="loading" class="loading">加载中...</div>
+        <div v-if="loading" class="loading">加載中...</div>
         <template v-else>
           <div class="form-group">
-            <label>标题 (中文)</label>
-            <input v-model="formData.titleZh" type="text" placeholder="中文标题" />
+            <label>標題 (中文)</label>
+            <input v-model="formData.titleZh" type="text" placeholder="中文標題" />
           </div>
           <div class="form-group">
             <label>Title (English)</label>
             <input v-model="formData.titleEn" type="text" placeholder="English title" />
           </div>
           <div class="form-group">
-            <label>内容 (中文) - 支持 HTML</label>
+            <label>內容 (中文) - 支持 HTML</label>
             <textarea v-model="formData.contentZh" rows="10" placeholder="支持 HTML 格式"></textarea>
           </div>
           <div class="form-group">

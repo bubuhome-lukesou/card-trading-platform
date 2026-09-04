@@ -46,8 +46,8 @@ const categories = [
   { value: 'mtg', label: '萬智牌', emoji: '🧙' },
   { value: 'ultraman', label: '奧特曼', emoji: '👾' },
   { value: 'onepiece', label: '海賊王', emoji: '⚔️' },
-  { value: 'doraemon', label: '哆啦A梦', emoji: '🤖' },
-  { value: 'sports', label: '体育卡', emoji: '⚽' },
+  { value: 'doraemon', label: '哆啦A夢', emoji: '🤖' },
+  { value: 'sports', label: '體育卡', emoji: '⚽' },
   { value: 'other', label: '其他', emoji: '🎴' },
 ]
 
@@ -76,9 +76,9 @@ const formatDateTime = (dateStr: string) => {
 
 const getStatusBadge = (status: string) => {
   const map: Record<string, { class: string; text: string }> = {
-    pending: { class: 'pending', text: '待开始' },
-    active: { class: 'active', text: '进行中' },
-    ended: { class: 'ended', text: '已结束' },
+    pending: { class: 'pending', text: '待開始' },
+    active: { class: 'active', text: '進行中' },
+    ended: { class: 'ended', text: '已結束' },
     cancelled: { class: 'cancelled', text: '已取消' },
   }
   return map[status] || { class: 'default', text: status }
@@ -93,16 +93,16 @@ const getTimeRemaining = (endTime: string) => {
   const end = new Date(endTime).getTime()
   const diff = end - now
   
-  if (diff <= 0) return '已结束'
+  if (diff <= 0) return '已結束'
   
   const hours = Math.floor(diff / (1000 * 60 * 60))
   const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
   
   if (hours > 24) {
     const days = Math.floor(hours / 24)
-    return `${days}天 ${hours % 24}小时`
+    return `${days}天 ${hours % 24}小時`
   }
-  return `${hours}小时 ${minutes}分钟`
+  return `${hours}小時 ${minutes}分鐘`
 }
 
 const loadAuctions = async () => {
@@ -223,38 +223,38 @@ onMounted(() => {
           :class="{ active: filterStatus === 'active' }"
           @click="filterStatus = 'active'"
         >
-          进行中 ({{ auctions.filter(a => a.status === 'active').length }})
+          進行中 ({{ auctions.filter(a => a.status === 'active').length }})
         </button>
         <button 
           class="tab" 
           :class="{ active: filterStatus === 'pending' }"
           @click="filterStatus = 'pending'"
         >
-          待开始 ({{ auctions.filter(a => a.status === 'pending').length }})
+          待開始 ({{ auctions.filter(a => a.status === 'pending').length }})
         </button>
         <button 
           class="tab" 
           :class="{ active: filterStatus === 'ended' }"
           @click="filterStatus = 'ended'"
         >
-          已结束 ({{ auctions.filter(a => a.status === 'ended').length }})
+          已結束 ({{ auctions.filter(a => a.status === 'ended').length }})
         </button>
       </div>
       <button @click="handleCreateAuction" class="btn-primary">
-        + 创建拍卖
+        + 創建拍賣
       </button>
     </div>
 
     <!-- Auctions List -->
     <div v-if="loading" class="loading-state">
       <div class="spinner"></div>
-      <p>加载中...</p>
+      <p>加載中...</p>
     </div>
 
     <div v-if="filteredAuctions.length === 0" class="empty-state">
       <div class="empty-icon">🔨</div>
       <h3>暫無拍賣</h3>
-      <p>点击上方「+ 创建拍卖」按钮来创建您的第一个拍卖吧！</p>
+      <p>點擊上方「+ 創建拍賣」按鈕來創建您的第一個拍賣吧！</p>
     </div>
 
     <div v-else class="auctions-table">
@@ -262,11 +262,11 @@ onMounted(() => {
         <thead>
           <tr>
             <th>商品</th>
-            <th>起拍价</th>
-            <th>当前价格</th>
-            <th>出价次数</th>
-            <th>截止时间</th>
-            <th>状态</th>
+            <th>起拍價</th>
+            <th>當前價格</th>
+            <th>出價次數</th>
+            <th>截止時間</th>
+            <th>狀態</th>
             <th>操作</th>
           </tr>
         </thead>
@@ -307,7 +307,7 @@ onMounted(() => {
                   取消
                 </button>
                 <span v-if="auction.status === 'ended' && auction.winner" class="winner-info">
-                  赢家: {{ auction.winner }}
+                  贏家: {{ auction.winner }}
                 </span>
               </div>
             </td>
@@ -320,15 +320,15 @@ onMounted(() => {
     <div v-if="showModal" class="modal-overlay" @click.self="showModal = false">
       <div class="modal">
         <div class="modal-header">
-          <h2>创建拍卖</h2>
+          <h2>創建拍賣</h2>
           <button @click="showModal = false" class="modal-close">✕</button>
         </div>
 
         <form @submit.prevent="handleSubmit" class="modal-body">
           <div class="form-group">
-            <label>选择商品</label>
+            <label>選擇商品</label>
             <select v-model="formData.productId" required>
-              <option value="">请选择商品</option>
+              <option value="">請選擇商品</option>
               <option v-for="product in sellerProducts" :key="product.id" :value="product.id">
                 {{ product.titleZh || product.titleEn }} ({{ product.status }})
               </option>
@@ -337,7 +337,7 @@ onMounted(() => {
 
           <div class="form-row">
             <div class="form-group">
-              <label>起拍价 (MOP)</label>
+              <label>起拍價 (MOP)</label>
               <input 
                 v-model.number="formData.startingPrice" 
                 type="number" 
@@ -347,7 +347,7 @@ onMounted(() => {
             </div>
 
             <div class="form-group">
-              <label>最低加价 (MOP)</label>
+              <label>最低加價 (MOP)</label>
               <input 
                 v-model.number="formData.bidIncrement" 
                 type="number" 
@@ -358,7 +358,7 @@ onMounted(() => {
           </div>
 
           <div class="form-group">
-            <label>保留价 (MOP) - 可选</label>
+            <label>保留價 (MOP) - 可選</label>
             <input 
               v-model.number="formData.reservePrice" 
               type="number" 
@@ -368,7 +368,7 @@ onMounted(() => {
 
           <div class="form-row">
             <div class="form-group">
-              <label>开始时间</label>
+              <label>開始時間</label>
               <input 
                 v-model="formData.startTime" 
                 type="datetime-local" 
@@ -377,7 +377,7 @@ onMounted(() => {
             </div>
 
             <div class="form-group">
-              <label>截止时间</label>
+              <label>截止時間</label>
               <input 
                 v-model="formData.endTime" 
                 type="datetime-local" 

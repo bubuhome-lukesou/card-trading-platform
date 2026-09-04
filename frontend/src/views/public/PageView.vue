@@ -47,14 +47,14 @@ watch(() => route.path, loadPage)
   <div class="page-view">
     <div class="container">
       <div v-if="loading" class="loading-state">
-        <p>{{ t('common.loading') || '加载中...' }}</p>
+        <p>{{ t('common.loading') || '加載中...' }}</p>
       </div>
       <div v-else-if="pageData" class="page-content">
         <h1 class="page-title">{{ pageTitle }}</h1>
         <div class="page-body" v-html="pageContent"></div>
       </div>
       <div v-else class="error-state">
-        <p>{{ t('common.error') || '页面不存在' }}</p>
+        <p>{{ t('common.error') || '頁面不存在' }}</p>
       </div>
     </div>
   </div>

@@ -188,14 +188,9 @@ export class CreateProductDto {
     if (Array.isArray(value)) return value.flatMap(v => typeof v === 'string' ? v.split(',').map(s => s.trim()) : v).filter(Boolean)
     return undefined
   })
-  @IsArray()
-  @IsNumber({}, { each: true })
-  productTypeTags?: number[]
-
   @IsOptional()
-  @Type(() => Number)
-  @IsNumber()
-  languageTagId?: number | null
+  @IsString()
+  productType?: string
 
   @IsOptional()
   @IsString()
@@ -320,14 +315,9 @@ export class UpdateProductDto {
     if (Array.isArray(value)) return value.flatMap(v => typeof v === 'string' ? v.split(',').map(s => s.trim()) : v).filter(Boolean)
     return undefined
   })
-  @IsArray()
-  @IsNumber({}, { each: true })
-  productTypeTags?: number[]
-
   @IsOptional()
-  @Type(() => Number)
-  @IsNumber()
-  languageTagId?: number | null
+  @IsString()
+  productType?: string
 
   @IsOptional()
   @IsString()

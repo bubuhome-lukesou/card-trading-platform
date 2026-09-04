@@ -30,11 +30,11 @@ const handleReject = (id: string) => {
         <thead>
           <tr>
             <th>商品</th>
-            <th>卖家</th>
-            <th>类别</th>
-            <th>价格</th>
-            <th>状态</th>
-            <th>发布时间</th>
+            <th>賣家</th>
+            <th>類別</th>
+            <th>價格</th>
+            <th>狀態</th>
+            <th>發佈時間</th>
             <th>操作</th>
           </tr>
         </thead>

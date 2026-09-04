@@ -24,6 +24,10 @@ export class Tag {
   @Column({ type: 'enum', enum: TagType, default: TagType.GENERAL })
   type: TagType
 
+  // Two-level tags: category filter (pokemon/yugioh/mtg/all/ultraman/onepiece/doraemon/sports/other)
+  @Column({ type: 'varchar', length: 255, default: 'all' })
+  category: string
+
   @Column({ default: 1 })
   sortOrder: number
 

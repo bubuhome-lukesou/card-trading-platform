@@ -381,7 +381,7 @@ const handleSubmit = async () => {
   color: var(--text-secondary);
 }
 
-/* Phone row — 區號和手機號各佔適當寬度 */
+/* Phone row — 區號和手機號各占適當寬度 */
 .phone-row {
   display: flex;
   gap: 10px;
@@ -404,7 +404,7 @@ const handleSubmit = async () => {
   width: 100%;
 }
 
-/* Code row — 驗證碼輸入框佔大部分，按鈕固定寬度 */
+/* Code row — 驗證碼輸入框占大部分，按鈕固定寬度 */
 .code-row {
   display: flex;
   gap: 10px;

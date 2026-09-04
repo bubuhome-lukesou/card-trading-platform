@@ -93,18 +93,11 @@ export class Product {
   @Column({ nullable: true })
   rarity: string
 
-  @Column({ name: 'productTypeTagId', type: 'int', nullable: true })
-  productTypeTagId: number | null
+  // 商品種類（直接存標籤名稱，如「評分卡」「原箱」）
+  @Column({ nullable: true })
+  productType: string | null
 
-  // 語言標籤關聯（type='language' 的 Tag）
-  @Column({ name: 'languageTagId', type: 'int', nullable: true })
-  languageTagId: number | null
-
-  @ManyToOne(() => Tag, { nullable: true })
-  @JoinColumn({ name: 'languageTagId' })
-  languageTag: Tag | null
-
-  // 語言（冗余存值，方便查詢，enum ProductLanguage）
+  // 語言（enum ProductLanguage）
   @Column({ type: 'enum', enum: ProductLanguage, nullable: true })
   language: ProductLanguage | null
 

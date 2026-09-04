@@ -33,7 +33,7 @@ const handleLogin = async () => {
       if (authStore.isAdmin) {
         router.push('/admin')
       } else {
-        errorMsg.value = '您不是管理员，无权访问后台'
+        errorMsg.value = '您不是管理員，無權訪問後台'
         authStore.logout()
       }
     } else {
@@ -64,15 +64,15 @@ const handleLogin = async () => {
             </defs>
           </svg>
         </div>
-        <h1>管理员登录</h1>
-        <p>Card Quest 后台管理系统</p>
+        <h1>管理員登錄</h1>
+        <p>Card Quest 後台管理系統</p>
       </div>
 
       <form @submit.prevent="handleLogin" class="login-form">
         <p v-if="errorMsg" class="error-msg">{{ errorMsg }}</p>
 
         <div class="form-group">
-          <label>管理员邮箱</label>
+          <label>管理員郵箱</label>
           <input
             v-model="loginForm.email"
             type="email"
@@ -82,22 +82,22 @@ const handleLogin = async () => {
         </div>
 
         <div class="form-group">
-          <label>密码</label>
+          <label>密碼</label>
           <input
             v-model="loginForm.password"
             type="password"
-            placeholder="输入密码..."
+            placeholder="輸入密碼..."
             autocomplete="current-password"
           />
         </div>
 
         <button type="submit" class="btn-login" :disabled="loading">
           <span v-if="loading" class="loading-spinner"></span>
-          {{ loading ? '登录中...' : '登录' }}
+          {{ loading ? '登錄中...' : '登錄' }}
         </button>
 
         <div class="back-link">
-          <router-link to="/">← 返回首页</router-link>
+          <router-link to="/">← 返回首頁</router-link>
         </div>
       </form>
     </div>

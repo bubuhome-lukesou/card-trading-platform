@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, ParseIntPipe, UseGuards } from '@nestjs/common'
+import { Controller, Get, Post, Put, Delete, Body, Param, ParseIntPipe, UseGuards, Query } from '@nestjs/common'
 import { TagsService } from './tags.service'
 import { CreateTagDto, UpdateTagDto } from './dto/tag.dto'
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard'
@@ -11,8 +11,8 @@ export class TagsController {
   constructor(private readonly tagsService: TagsService) {}
 
   @Get()
-  async findAll() {
-    return this.tagsService.findAll()
+  async findAll(@Query('category') category?: string) {
+    return this.tagsService.findAll(category)
   }
 
   @Get(':id')

@@ -168,7 +168,7 @@ const formatDate = (date: string) => {
               <div class="auction-info">
                 <div class="auction-title">{{ auction.product?.title || '-' }}</div>
                 <div class="auction-meta">
-                  <span>{{ auction.bidCount || 0 }} 次出价</span>
+                  <span>{{ auction.bidCount || 0 }} 次出價</span>
                   <span>•</span>
                   <span>截止 {{ formatDate(auction.endTime) }}</span>
                 </div>

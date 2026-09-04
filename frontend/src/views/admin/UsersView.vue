@@ -35,7 +35,7 @@ const handlePageChange = (page: number) => {
 
 const handleSuspend = async (id: string, currentStatus: string) => {
   const newStatus = currentStatus === 'active' ? 'suspended' : 'active'
-  if (!confirm(newStatus === 'suspended' ? '确定要封禁此用户吗？' : '确定要解封此用户吗？')) return
+  if (!confirm(newStatus === 'suspended' ? '確定要封禁此用戶嗎？' : '確定要解封此用戶嗎？')) return
   try {
     await api.patch(`/admin/users/${id}`, { status: newStatus })
     await fetchUsers()
@@ -48,7 +48,7 @@ const handleChangeRole = async (id: string, currentRole: string) => {
   const roles = ['user', 'seller', 'admin']
   const currentIdx = roles.indexOf(currentRole)
   const nextRole = roles[(currentIdx + 1) % roles.length]
-  if (!confirm(`确定要将角色改为 ${nextRole} 吗？`)) return
+  if (!confirm(`確定要將角色改為 ${nextRole} 嗎？`)) return
   try {
     await api.patch(`/admin/users/${id}`, { role: nextRole })
     await fetchUsers()
@@ -73,33 +73,33 @@ onMounted(() => fetchUsers())
     <div class="filters">
       <select v-model="filterRole" @change="handlePageChange(1)">
         <option value="all">全部角色</option>
-        <option value="user">普通用户</option>
+        <option value="user">普通用戶</option>
         <option value="seller">商家</option>
-        <option value="admin">管理员</option>
+        <option value="admin">管理員</option>
       </select>
       <select v-model="filterStatus" @change="handlePageChange(1)">
-        <option value="all">全部状态</option>
+        <option value="all">全部狀態</option>
         <option value="active">正常</option>
         <option value="suspended">已封禁</option>
       </select>
-      <span class="total-count">共 {{ total }} 位用户</span>
+      <span class="total-count">共 {{ total }} 位用戶</span>
     </div>
 
     <div class="data-table">
       <table>
         <thead>
           <tr>
-            <th>用户</th>
-            <th>邮箱</th>
+            <th>用戶</th>
+            <th>郵箱</th>
             <th>角色</th>
-            <th>状态</th>
-            <th>注册时间</th>
-            <th>累计消费</th>
+            <th>狀態</th>
+            <th>註冊時間</th>
+            <th>累計消費</th>
             <th>操作</th>
           </tr>
         </thead>
         <tbody>
-          <tr v-if="loading"><td colspan="7" class="loading">加载中...</td></tr>
+          <tr v-if="loading"><td colspan="7" class="loading">加載中...</td></tr>
           <tr v-else-if="!filteredUsers.length"><td colspan="7" class="empty">暫無數據</td></tr>
           <tr v-for="user in filteredUsers" :key="user.id">
             <td class="nickname">{{ user.nickname || '-' }}</td>
@@ -120,9 +120,9 @@ onMounted(() => fetchUsers())
     </div>
 
     <div v-if="total > limit" class="pagination">
-      <button :disabled="currentPage === 1" @click="handlePageChange(currentPage - 1)">上一页</button>
-      <span>第 {{ currentPage }} / {{ Math.ceil(total / limit) }} 页</span>
-      <button :disabled="currentPage >= Math.ceil(total / limit)" @click="handlePageChange(currentPage + 1)">下一页</button>
+      <button :disabled="currentPage === 1" @click="handlePageChange(currentPage - 1)">上一頁</button>
+      <span>第 {{ currentPage }} / {{ Math.ceil(total / limit) }} 頁</span>
+      <button :disabled="currentPage >= Math.ceil(total / limit)" @click="handlePageChange(currentPage + 1)">下一頁</button>
     </div>
   </div>
 </template>

@@ -98,7 +98,7 @@ const updateQuantity = async (item: CartItem, newQuantity: number) => {
 }
 
 const removeItem = async (itemId: string) => {
-  if (!confirm('确定要从购物车移除这件商品吗？')) return
+  if (!confirm('確定要從購物車移除這件商品嗎？')) return
   
   processing.value = true
   try {
@@ -188,7 +188,7 @@ onMounted(() => {
 <template>
   <div class="cart-page">
     <div class="page-header">
-      <h1 class="page-title">我的购物车</h1>
+      <h1 class="page-title">我的購物車</h1>
       <span class="item-count" v-if="cartItems.length > 0">
         ({{ cartItems.length }} 件商品)
       </span>
@@ -197,14 +197,14 @@ onMounted(() => {
     <!-- Loading State -->
     <div v-if="loading" class="loading-state">
       <div class="spinner"></div>
-      <p>加载中...</p>
+      <p>加載中...</p>
     </div>
 
     <!-- Empty Cart -->
     <div v-else-if="cartItems.length === 0" class="empty-cart">
       <div class="empty-icon">🛒</div>
-      <h3>购物车是空的</h3>
-      <p>快去挑选心仪的卡牌吧！</p>
+      <h3>購物車是空的</h3>
+      <p>快去挑選心儀的卡牌吧！</p>
       <router-link to="/marketplace" class="btn-primary">
         去逛逛
       </router-link>
@@ -253,7 +253,7 @@ onMounted(() => {
           </div>
 
           <div class="item-subtotal">
-            <span class="subtotal-label">小计</span>
+            <span class="subtotal-label">小計</span>
             <span class="subtotal-value">
               {{ formatPrice((item.product?.price || 0) * item.quantity) }}
             </span>
@@ -272,7 +272,7 @@ onMounted(() => {
       <!-- Order Summary -->
       <div class="order-summary">
         <div class="summary-row total">
-          <span>商品总价</span>
+          <span>商品總價</span>
           <span class="total-amount">{{ formatPrice(totalAmount) }}</span>
         </div>
         
@@ -282,7 +282,7 @@ onMounted(() => {
           :disabled="processing || cartItems.some(i => isOutOfStock(i) || isProductSuspended(i.product))"
         >
           <Loader2 v-if="processing" class="animate-spin" />
-          {{ processing ? '处理中...' : '结算' }}
+          {{ processing ? '處理中...' : '結算' }}
         </button>
       </div>
     </div>

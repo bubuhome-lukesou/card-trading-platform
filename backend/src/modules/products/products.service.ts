@@ -60,12 +60,9 @@ export class ProductsService {
       }
     }
 
-    // Filter by productTypeTags (stored as productTypeTagId)
-    if ((filters as any).productTypeTags?.length) {
-      const typeTagIds = (filters as any).productTypeTags.map((t: string) => parseInt(t)).filter((t: number) => !isNaN(t))
-      if (typeTagIds.length > 0) {
-        queryBuilder.andWhere('product.productTypeTagId IN (:...typeTagIds)', { typeTagIds })
-      }
+    // Filter by productType (string match)
+    if ((filters as any).productType) {
+      queryBuilder.andWhere('product.productType = :productType', { productType: (filters as any).productType })
     }
 
     // Filter by language
@@ -173,16 +170,7 @@ export class ProductsService {
       tags = await this.tagRepo.findByIds(dto.tags)
     }
 
-    // productTypeTags - store as productTypeTagId field
-    if ((dto as any).productTypeTags !== undefined) {
-      const typeTagIds = (dto as any).productTypeTags
-      if (typeTagIds && typeTagIds.length > 0) {
-        (dto as any).productTypeTagId = typeTagIds[0] // Take first one
-      } else {
-        (dto as any).productTypeTagId = null
-      }
-      delete (dto as any).productTypeTags
-    }
+    // productType is now a direct string value, no conversion needed
 
     const product = this.productRepo.create({
       ...dto,
@@ -228,18 +216,22 @@ export class ProductsService {
         product.tags = []
       }
     }
-// Handle productTypeTags - store as productTypeTagId field
-    if ((dto as any).productTypeTags !== undefined) {
-      const typeTagIds = (dto as any).productTypeTags
-      if (typeTagIds && typeTagIds.length > 0) {
-        (dto as any).productTypeTagId = typeTagIds[0] // Take first one
-      } else {
-        (dto as any).productTypeTagId = null
-      }
-      delete (dto as any).productTypeTags
-    }
+    // productType is now a direct string value, no conversion needed
 
     Object.assign(product, dto)
+    // Sync status with isActive flag — when seller toggles 上架/下架
+    // status must match so marketplace query (status='active' AND isActive=true) works
+    if (dto.isActive !== undefined) {
+      if (dto.isActive === true) {
+        // 上架: set status to active (only if not sold)
+        if (product.status !== ProductStatus.SOLD) {
+          product.status = ProductStatus.ACTIVE
+        }
+      } else {
+        // 下架: set status to removed
+        product.status = ProductStatus.REMOVED
+      }
+    }
     // findOne() parses images from string to array; convert back to string for save
     if (Array.isArray(product.images)) {
       product.images = JSON.stringify(product.images)

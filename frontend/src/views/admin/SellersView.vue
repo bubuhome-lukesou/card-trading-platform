@@ -57,14 +57,14 @@ onMounted(() => fetchSellers())
         <thead>
           <tr>
             <th>商家</th>
-            <th>邮箱</th>
-            <th>状态</th>
-            <th>注册时间</th>
+            <th>郵箱</th>
+            <th>狀態</th>
+            <th>註冊時間</th>
             <th>操作</th>
           </tr>
         </thead>
         <tbody>
-          <tr v-if="loading"><td colspan="5" class="loading">加载中...</td></tr>
+          <tr v-if="loading"><td colspan="5" class="loading">加載中...</td></tr>
           <tr v-else-if="!sellers.length"><td colspan="5" class="empty">暫無商家數據</td></tr>
           <tr v-for="seller in sellers" :key="seller.id">
             <td class="nickname">{{ seller.nickname || '-' }}</td>
@@ -81,9 +81,9 @@ onMounted(() => fetchSellers())
     </div>
 
     <div v-if="total > limit" class="pagination">
-      <button :disabled="currentPage === 1" @click="handlePageChange(currentPage - 1)">上一页</button>
-      <span>第 {{ currentPage }} / {{ Math.ceil(total / limit) }} 页</span>
-      <button :disabled="currentPage >= Math.ceil(total / limit)" @click="handlePageChange(currentPage + 1)">下一页</button>
+      <button :disabled="currentPage === 1" @click="handlePageChange(currentPage - 1)">上一頁</button>
+      <span>第 {{ currentPage }} / {{ Math.ceil(total / limit) }} 頁</span>
+      <button :disabled="currentPage >= Math.ceil(total / limit)" @click="handlePageChange(currentPage + 1)">下一頁</button>
     </div>
   </div>
 </template>
