@@ -28,9 +28,6 @@ export class ProductsService {
     if (filters.category?.length) {
       queryBuilder.andWhere('product.category IN (:...categories)', { categories: filters.category })
     }
-    if (filters.rarity?.length) {
-      queryBuilder.andWhere('product.rarity IN (:...rarities)', { rarities: filters.rarity })
-    }
     if (filters.condition?.length) {
       queryBuilder.andWhere('product.condition IN (:...conditions)', { conditions: filters.condition })
     }

@@ -61,7 +61,6 @@ export interface Product {
   category: ProductCategory
   brand: string
   series: string
-  rarity?: string | null
   condition: ProductCondition
   price: number
   quantity?: number

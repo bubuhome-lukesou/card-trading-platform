@@ -98,9 +98,6 @@ export class Product {
   @Column({ nullable: true })
   series: string
 
-  @Column({ nullable: true })
-  rarity: string
-
   // 商品種類（enum）
   @Column({ type: 'enum', enum: ProductType, nullable: true })
   productType: ProductType | null
@@ -132,9 +129,6 @@ export class Product {
 
   @Column({ nullable: true })
   thumbnail: string
-
-  @Column({ nullable: true })
-  cardNumber: string
 
   @Column({ type: 'enum', enum: ListingType })
   listingType: ListingType

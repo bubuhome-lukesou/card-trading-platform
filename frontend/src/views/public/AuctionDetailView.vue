@@ -377,7 +377,6 @@ onUnmounted(() => {
           <div class="detail-card">
             <h3 class="card-title">{{ locale === 'zh' ? '商品規格' : 'Specifications' }}</h3>
             <table class="spec-table">
-              <tr><td>{{ locale === 'zh' ? '稀有度' : 'Rarity' }}</td><td>{{ auction.product?.rarity || '-' }}</td></tr>
               <tr><td>{{ locale === 'zh' ? '品相' : 'Condition' }}</td><td>{{ auction.product?.condition || '-' }}</td></tr>
               <tr><td>{{ locale === 'zh' ? '品牌' : 'Brand' }}</td><td>{{ auction.product?.brand || '-' }}</td></tr>
               <tr><td>{{ locale === 'zh' ? '系列' : 'Series' }}</td><td>{{ auction.product?.series || '-' }}</td></tr>

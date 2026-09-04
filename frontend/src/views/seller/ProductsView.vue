@@ -581,7 +581,7 @@ onUnmounted(() => {
               <textarea 
                 v-model="formData.descriptionZh" 
                 rows="3"
-                placeholder="详细描述商品信息、稀有度、品相..."
+                placeholder="詳細描述商品資訊、品相..."
               ></textarea>
             </div>
 

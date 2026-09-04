@@ -1,6 +1,6 @@
 import { IsEnum, IsOptional, IsString, IsNumber, IsArray, Min, Max, IsUUID } from 'class-validator'
 import { Transform, Type } from 'class-transformer'
-import { ProductCategory, ProductRarity, ProductCondition, ListingType, ProductStatus } from '../../../entities/product.entity'
+import { ProductCategory, ProductRarity, ProductCondition, ListingType, ProductStatus, ProductType } from '../../../entities/product.entity'
 
 export class ProductFiltersDto {
   @IsOptional()
@@ -23,7 +23,6 @@ export class ProductFiltersDto {
     if (Array.isArray(value)) return value.flatMap(v => typeof v === 'string' ? v.split(',').map(s => s.trim()) : v).filter(Boolean)
     return undefined
   })
-  rarity?: ProductRarity[]
 
   @IsOptional()
   @Transform(({ value }) => {
@@ -110,7 +109,6 @@ export class CreateProductDto {
 
   @IsOptional()
   @IsEnum(ProductRarity)
-  rarity?: ProductRarity
 
   @IsEnum(ProductCondition)
   condition: ProductCondition
@@ -143,7 +141,6 @@ export class CreateProductDto {
 
   @IsOptional()
   @IsString()
-  cardNumber?: string
 
   @IsOptional()
   @IsEnum(ListingType)
@@ -189,8 +186,8 @@ export class CreateProductDto {
     return undefined
   })
   @IsOptional()
-  @IsString()
-  productType?: string
+  @IsEnum(ProductType)
+  productType?: ProductType
 
   @IsOptional()
   @IsString()
@@ -229,7 +226,6 @@ export class UpdateProductDto {
 
   @IsOptional()
   @IsEnum(ProductRarity)
-  rarity?: ProductRarity
 
   @IsOptional()
   @IsEnum(ProductCondition)
@@ -266,7 +262,6 @@ export class UpdateProductDto {
 
   @IsOptional()
   @IsString()
-  cardNumber?: string
 
   @IsOptional()
   @IsEnum(ListingType)
@@ -316,8 +311,8 @@ export class UpdateProductDto {
     return undefined
   })
   @IsOptional()
-  @IsString()
-  productType?: string
+  @IsEnum(ProductType)
+  productType?: ProductType
 
   @IsOptional()
   @IsString()
