@@ -58,13 +58,13 @@ const handleToggleFavorite = (e: Event) => {
 // Shared listing badge computed (reused across ProductCard, HomeView, etc.)
 const listingBadgeClass = computed(() => {
   if (props.product.listingType === 'auction') return 'is-auction'
-  if (props.product.listingType === 'reservation_only') return 'is-reservation'
+  if (props.product.listingType === 'reservation') return 'is-reservation'
   return 'is-sale'
 })
 
 const listingBadgeText = computed(() => {
   if (props.product.listingType === 'auction') return 'Bid'
-  if (props.product.listingType === 'reservation_only') return 'Reserve'
+  if (props.product.listingType === 'reservation') return 'Reserve'
   return 'Sale'
 })
 
@@ -116,7 +116,7 @@ const languageLabel = computed(() => {
       <!-- Sale/Bid/Reservation badge (top right) -->
       <span class="listing-badge" :class="listingBadgeClass">
         <Gavel v-if="product.listingType === 'auction'" class="badge-icon" />
-        <Calendar v-else-if="product.listingType === 'reservation_only'" class="badge-icon" />
+        <Calendar v-else-if="product.listingType === 'reservation'" class="badge-icon" />
         <ShoppingCart v-else class="badge-icon" />
         {{ listingBadgeText }}
       </span>

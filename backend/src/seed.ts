@@ -55,7 +55,7 @@ async function seed() {
       brand: 'Pokemon',
       series: '1st Edition Base Set',
       cardNumber: '4/102',
-      listingType: ListingType.AUCTION_ONLY,
+      listingType: ListingType.AUCTION,
       images: JSON.stringify(['https://images.unsplash.com/photo-1613771404784-3a5686aa2be3?w=400']),
       thumbnail: 'https://images.unsplash.com/photo-1613771404784-3a5686aa2be3?w=200',
       stock: 1,
@@ -74,7 +74,7 @@ async function seed() {
       brand: 'Konami',
       series: 'LOB',
       cardNumber: 'LOB-001',
-      listingType: ListingType.AUCTION_ONLY,
+      listingType: ListingType.AUCTION,
       images: JSON.stringify(['https://images.unsplash.com/photo-1606152421802-db97b9c7a11b?w=400']),
       thumbnail: 'https://images.unsplash.com/photo-1606152421802-db97b9c7a11b?w=200',
       stock: 1,
@@ -93,7 +93,7 @@ async function seed() {
       brand: 'Wizards of the Coast',
       series: 'Alpha',
       cardNumber: 'None',
-      listingType: ListingType.AUCTION_ONLY,
+      listingType: ListingType.AUCTION,
       images: JSON.stringify(['https://images.unsplash.com/photo-1595841696677-6489ff3f8cd1?w=400']),
       thumbnail: 'https://images.unsplash.com/photo-1595841696677-6489ff3f8cd1?w=200',
       stock: 1,
@@ -112,7 +112,7 @@ async function seed() {
       brand: 'Bandai',
       series: 'Ultra Medal Series',
       cardNumber: 'N/A',
-      listingType: ListingType.SALE_ONLY,
+      listingType: ListingType.SALE,
       images: JSON.stringify(['https://images.unsplash.com/photo-1608889175123-8ee362201f81?w=400']),
       thumbnail: 'https://images.unsplash.com/photo-1608889175123-8ee362201f81?w=200',
       stock: 5,
@@ -131,7 +131,7 @@ async function seed() {
       brand: 'Hot Toys',
       series: 'One Piece',
       cardNumber: 'N/A',
-      listingType: ListingType.SALE_ONLY,
+      listingType: ListingType.SALE,
       images: JSON.stringify(['https://images.unsplash.com/photo-1608889335941-32ac5f2041b9?w=400']),
       thumbnail: 'https://images.unsplash.com/photo-1608889335941-32ac5f2041b9?w=200',
       stock: 2,
@@ -150,7 +150,7 @@ async function seed() {
       brand: 'Upper Deck',
       series: '1993 SP',
       cardNumber: 'SP279',
-      listingType: ListingType.AUCTION_ONLY,
+      listingType: ListingType.AUCTION,
       images: JSON.stringify(['https://images.unsplash.com/photo-1546519638-68e109498ffc?w=400']),
       thumbnail: 'https://images.unsplash.com/photo-1546519638-68e109498ffc?w=200',
       stock: 1,
@@ -169,7 +169,7 @@ async function seed() {
     }
 
     // Create auction for auction-type products
-    if (product.listingType === ListingType.AUCTION_ONLY) {
+    if (product.listingType === ListingType.AUCTION) {
       let auction = await auctionRepo.findOne({ where: { productId: product.id } });
       if (!auction) {
         const startTime = new Date();

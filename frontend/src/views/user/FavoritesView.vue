@@ -124,7 +124,7 @@ onMounted(() => {
           </div>
         </div>
         <!-- 預約商品：顯示立即預約按鈕 -->
-        <div v-if="item.product?.listingType === 'reservation_only'" class="card-actions">
+        <div v-if="item.product?.listingType === 'reservation'" class="card-actions">
           <button
             class="btn-reserve"
             :disabled="processing === item.productId || isProductSuspended(item.product)"

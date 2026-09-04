@@ -105,7 +105,23 @@ const getCategoryLabel = (category: string) => {
   return locale.value === 'zh' ? info.zh : info.en
 }
 
-// Get product type (now stored as direct string)
+// Get product type label from enum value
+const productTypeLabels: Record<string, { zh: string; en: string }> = {
+  graded_card: { zh: '評分卡', en: 'Graded Card' },
+  original_box: { zh: '原箱', en: 'Original Box' },
+  original_case: { zh: '原盒', en: 'Original Case' },
+  original_bag: { zh: '原袋', en: 'Original Bag' },
+  raw_card: { zh: '裸卡', en: 'Raw Card' },
+  other: { zh: '其它', en: 'Other' },
+}
+const getProductTypeLabel = (type: string | null) => {
+  if (!type) return '—'
+  const labels = productTypeLabels[type]
+  if (!labels) return type
+  return labels[locale.value as 'zh' | 'en'] || labels.zh
+}
+
+// Get product type (for matching)
 const getProductType = (product: any) => {
   return (product as any).productType || null
 }
@@ -412,7 +428,7 @@ const handleAddToCart = async () => {
   }
 }
 
-// Handle reservation (for reservation_only listing type)
+// Handle reservation (for reservation listing type)
 const handleReserve = async () => {
   if (!authStore.isAuthenticated) {
     router.push('/login')
@@ -443,7 +459,7 @@ const handleReserve = async () => {
 
 // Check if reservation is still open (deadline not passed and spots available)
 const isReservationOpen = computed(() => {
-  if (!product.value || product.value.listingType !== 'reservation_only') return false
+  if (!product.value || product.value.listingType !== 'reservation') return false
   if (product.value.reservationDeadline) {
     const deadline = new Date(product.value.reservationDeadline)
     if (new Date() > deadline) return false
@@ -600,7 +616,17 @@ const isProductSuspended = computed(() => {
                 </div>
                 <div class="spec-cell">
                   <span class="spec-label">{{ locale === 'zh' ? '商品種類' : 'Type' }}</span>
-                  <span class="spec-value">{{ product.productType || '—' }}</span>
+                  <span class="spec-value">{{ getProductTypeLabel(product.productType) }}</span>
+                </div>
+              </div>
+              <div class="spec-row" v-if="product.rarity || product.cardNumber">
+                <div class="spec-cell" v-if="product.rarity">
+                  <span class="spec-label">{{ locale === 'zh' ? '稀有度' : 'Rarity' }}</span>
+                  <span class="spec-value">{{ product.rarity }}</span>
+                </div>
+                <div class="spec-cell" v-if="product.cardNumber">
+                  <span class="spec-label">{{ locale === 'zh' ? '卡號' : 'Card No.' }}</span>
+                  <span class="spec-value">{{ product.cardNumber }}</span>
                 </div>
               </div>
               <div class="spec-row" v-if="getGeneralTags(product).length > 0">
@@ -669,7 +695,7 @@ const isProductSuspended = computed(() => {
             </transition>
 
             <!-- Reservation mode UI -->
-            <template v-if="product && product.listingType === 'reservation_only'">
+            <template v-if="product && product.listingType === 'reservation'">
               <div class="reservation-box">
                 <div class="res-header">
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">

@@ -147,7 +147,7 @@ export class OrdersService {
       throw new BadRequestException('You cannot purchase your own product');
     }
     // Product must allow direct purchase
-    if (product.listingType === ListingType.AUCTION_ONLY || product.listingType === ListingType.RESERVATION_ONLY) {
+    if (product.listingType === ListingType.AUCTION || product.listingType === ListingType.RESERVATION) {
       throw new BadRequestException('This product is not available for direct purchase');
     }
     // Validate quantity

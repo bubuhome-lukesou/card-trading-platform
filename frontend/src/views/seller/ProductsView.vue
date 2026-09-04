@@ -105,7 +105,7 @@ const formData = ref({
   language: null as string | null,
   isActive: true,
   // Listing type
-  listingType: 'sale_only' as 'sale_only' | 'auction_only' | 'both' | 'reservation_only',
+  listingType: 'sale' as 'sale' | 'auction' | 'reservation',
   // Reservation fields
   reservationMax: 10,
   reservationDeposit: 0,
@@ -128,7 +128,7 @@ const resetForm = () => {
     productType: null,
     language: null,
     isActive: true,
-    listingType: 'sale_only',
+    listingType: 'sale',
     reservationMax: 10,
     reservationDeposit: 0,
     reservationDeadline: '',
@@ -145,7 +145,7 @@ const openCreateModal = () => {
   editingProduct.value = null
   resetForm()
   // 預設商品种類為裸卡
-  formData.value.productType = '裸卡'
+  formData.value.productType = 'raw_card'
   showModal.value = true
 }
 
@@ -191,7 +191,7 @@ const openEditModal = async (product: any) => {
     productType: product.productType || null,
     language: product.language || null,
     isActive: product.isActive !== false,
-    listingType: product.listingType || 'sale_only',
+    listingType: product.listingType || 'sale',
     reservationMax: product.reservationMax || 10,
     reservationDeposit: product.reservationDeposit || 0,
     reservationDeadline: product.reservationDeadline || '',
@@ -513,7 +513,7 @@ onUnmounted(() => {
           <span class="status-badge" :class="getStatusBadge(product.status).class">
             {{ getStatusBadge(product.status).text }}
           </span>
-          <span v-if="product.listingType === 'reservation_only'" class="listing-type-badge reservation">
+          <span v-if="product.listingType === 'reservation'" class="listing-type-badge reservation">
             📅 預約
           </span>
         </div>
@@ -618,13 +618,14 @@ onUnmounted(() => {
             <div class="form-group">
               <label>銷售模式</label>
               <select v-model="formData.listingType">
-                <option value="sale_only">僅直銷</option>
-                <option value="reservation_only">僅預付模式</option>
+                <option value="sale">直銷</option>
+                <option value="auction">拍賣</option>
+                <option value="reservation">預約</option>
               </select>
             </div>
 
-            <!-- Reservation Fields (when reservation_only is selected) -->
-            <template v-if="formData.listingType === 'reservation_only'">
+            <!-- Reservation Fields (when reservation is selected) -->
+            <template v-if="formData.listingType === 'reservation'">
               <div class="form-group">
                 <label>預付名額上限</label>
                 <input
@@ -661,14 +662,17 @@ onUnmounted(() => {
               </div>
             </template>
 
-            <!-- 商品種類（Tag type=product_type） -->
+            <!-- 商品種類（enum） -->
             <div class="form-group">
               <label>商品種類</label>
               <select v-model="formData.productType" class="form-select">
                 <option :value="null">(請選擇)</option>
-                <option v-for="pt in productTypes" :key="pt.id" :value="pt.name">
-                  {{ pt.name }}
-                </option>
+                <option value="graded_card">評分卡</option>
+                <option value="original_box">原箱</option>
+                <option value="original_case">原盒</option>
+                <option value="original_bag">原袋</option>
+                <option value="raw_card">裸卡</option>
+                <option value="other">其它</option>
               </select>
             </div>
 

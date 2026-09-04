@@ -140,13 +140,13 @@ const getCategoryName = (category: string | null | undefined) => {
 
 const getListingBadgeClass = (listingType: string) => {
   if (listingType === 'auction') return 'is-auction'
-  if (listingType === 'reservation_only') return 'is-reservation'
+  if (listingType === 'reservation') return 'is-reservation'
   return 'is-sale'
 }
 
 const getListingBadgeText = (listingType: string) => {
   if (listingType === 'auction') return 'Bid'
-  if (listingType === 'reservation_only') return 'Reserve'
+  if (listingType === 'reservation') return 'Reserve'
   return 'Sale'
 }
 
@@ -326,7 +326,7 @@ onMounted(() => {
               <!-- Sale/Bid/Reservation badge (top right) -->
               <span class="listing-badge" :class="getListingBadgeClass(item.listingType)">
                 <Gavel v-if="item.listingType === 'auction'" class="badge-icon" />
-                <Calendar v-else-if="item.listingType === 'reservation_only'" class="badge-icon" />
+                <Calendar v-else-if="item.listingType === 'reservation'" class="badge-icon" />
                 <ShoppingCart v-else class="badge-icon" />
                 {{ getListingBadgeText(item.listingType) }}
               </span>

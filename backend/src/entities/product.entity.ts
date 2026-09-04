@@ -44,10 +44,18 @@ export enum ProductCondition {
 }
 
 export enum ListingType {
-  BOTH = 'both',
-  SALE_ONLY = 'sale_only',
-  AUCTION_ONLY = 'auction_only',
-  RESERVATION_ONLY = 'reservation_only'
+  SALE = 'sale',
+  AUCTION = 'auction',
+  RESERVATION = 'reservation'
+}
+
+export enum ProductType {
+  GRADED_CARD = 'graded_card',
+  ORIGINAL_BOX = 'original_box',
+  ORIGINAL_CASE = 'original_case',
+  ORIGINAL_BAG = 'original_bag',
+  RAW_CARD = 'raw_card',
+  OTHER = 'other'
 }
 
 export enum ProductStatus {
@@ -93,9 +101,9 @@ export class Product {
   @Column({ nullable: true })
   rarity: string
 
-  // 商品種類（直接存標籤名稱，如「評分卡」「原箱」）
-  @Column({ nullable: true })
-  productType: string | null
+  // 商品種類（enum）
+  @Column({ type: 'enum', enum: ProductType, nullable: true })
+  productType: ProductType | null
 
   // 語言（enum ProductLanguage）
   @Column({ type: 'enum', enum: ProductLanguage, nullable: true })

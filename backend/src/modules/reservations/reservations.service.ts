@@ -33,7 +33,7 @@ export class ReservationsService {
       if (!product) {
         throw new NotFoundException('Product not found')
       }
-      if (product.listingType !== ListingType.RESERVATION_ONLY) {
+      if (product.listingType !== ListingType.RESERVATION) {
         throw new BadRequestException('Product is not available for reservation')
       }
 
