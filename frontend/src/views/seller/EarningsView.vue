@@ -156,7 +156,7 @@ onMounted(() => loadData())
 .empty-state { text-align: center; padding: var(--space-8); color: var(--text-muted); }
 .spinner { width: 32px; height: 32px; border: 3px solid var(--border); border-top-color: var(--primary); border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto; }
 @keyframes spin { to { transform: rotate(360deg); } }
-.transactions-table { overflow-x: auto; }
+.transactions-table { overflow-x: auto; -webkit-overflow-scrolling: touch; touch-action: pan-x; }
 table { width: 100%; border-collapse: collapse; }
 th, td { padding: var(--space-3); text-align: left; border-bottom: 1px solid var(--border); }
 th { font-size: var(--text-xs); font-weight: 500; color: var(--text-secondary); }

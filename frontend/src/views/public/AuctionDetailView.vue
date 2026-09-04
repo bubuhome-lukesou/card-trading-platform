@@ -483,8 +483,10 @@ onUnmounted(() => {
   display: flex;
   gap: var(--space-4);
   overflow-x: auto;
+  overflow-y: hidden;
   padding: var(--space-2) var(--space-1);
   -webkit-overflow-scrolling: touch;
+  touch-action: pan-x;
   scrollbar-width: thin;
 }
 
