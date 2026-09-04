@@ -28,7 +28,7 @@ export interface Tag {
   slug?: string
   color?: string
   sortOrder: number
-  type?: 'general' | 'product_type'
+  type?: 'general' | 'product_type' | 'language'
 }
 
 // Product types

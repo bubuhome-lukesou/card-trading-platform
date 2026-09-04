@@ -26,7 +26,7 @@ const tagLoading = ref(false)
 const showTagForm = ref(false)
 const editingTag = ref<Tag | null>(null)
 const newTagName = ref('')
-const newTagType = ref<'general' | 'product_type'>('product_type')
+const newTagType = ref<'general' | 'product_type' | 'language'>('product_type')
 const tagError = ref('')
 
 const loadTags = async () => {
@@ -168,6 +168,7 @@ const handlePasswordChange = async () => {
 }
 
 const productTypeTags = () => tags.value.filter(t => t.type === 'product_type')
+const languageTags = () => tags.value.filter(t => t.type === 'language')
 const generalTags = () => tags.value.filter(t => t.type === 'general' || !t.type)
 </script>
 
@@ -300,6 +301,21 @@ const generalTags = () => tags.value.filter(t => t.type === 'general' || !t.type
           </div>
         </div>
 
+        <!-- 語言標籤 -->
+        <div class="tag-category">
+          <h4 class="tag-category-title">語言標籤</h4>
+          <div v-if="languageTags().length === 0" class="empty-hint">暫無語言標籤</div>
+          <div class="tag-list">
+            <div v-for="tag in languageTags()" :key="tag.id" class="tag-item">
+              <span class="tag-badge language">{{ tag.name }}</span>
+              <div class="tag-actions">
+                <button class="btn-icon" @click="openTagForm(tag)" title="編輯">✏️</button>
+                <button class="btn-icon btn-danger" @click="handleDeleteTag(tag)" title="刪除">🗑️</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- 一般標籤 -->
         <div class="tag-category">
           <h4 class="tag-category-title">一般標籤</h4>
@@ -344,6 +360,7 @@ const generalTags = () => tags.value.filter(t => t.type === 'general' || !t.type
             <label>標籤類型</label>
             <select v-model="newTagType" class="form-select">
               <option value="product_type">商品種類</option>
+              <option value="language">語言標籤</option>
               <option value="general">一般標籤</option>
             </select>
           </div>
@@ -396,6 +413,7 @@ const generalTags = () => tags.value.filter(t => t.type === 'general' || !t.type
 .tag-item { display: flex; align-items: center; gap: var(--space-2); }
 .tag-badge { padding: var(--space-1) var(--space-3); border-radius: var(--radius-full); font-size: var(--text-sm); font-weight: 500; }
 .tag-badge.product-type { background: rgba(99, 102, 241, 0.1); color: var(--primary); border: 1px solid var(--primary); }
+.tag-badge.language { background: rgba(69, 183, 209, 0.1); color: #45B7D1; border: 1px solid #45B7D1; }
 .tag-badge.general { background: var(--bg-elevated); color: var(--text-secondary); border: 1px solid var(--border); }
 
 .tag-actions { display: flex; gap: var(--space-1); }
