@@ -6,6 +6,7 @@ import { Auction, AuctionStatus, Bid } from '../../entities/auction.entity'
 import { Product, ProductStatus } from '../../entities/product.entity'
 import { Order, OrderType, OrderStatus } from '../../entities/order.entity'
 import { CreateAuctionDto, AuctionFiltersDto } from './dto/auction.dto'
+import { AuctionGateway } from '../../websocket/websocket.gateway'
 
 @Injectable()
 export class AuctionsService {
@@ -17,7 +18,8 @@ export class AuctionsService {
     @InjectRepository(Product)
     private readonly productRepo: Repository<Product>,
     @InjectRepository(Order)
-    private readonly orderRepo: Repository<Order>
+    private readonly orderRepo: Repository<Order>,
+    private readonly auctionGateway: AuctionGateway,
   ) {}
 
   // Cron job to activate pending auctions every minute
@@ -84,6 +86,17 @@ export class AuctionsService {
             product.status = ProductStatus.ACTIVE
             await this.productRepo.save(product)
           }
+        }
+        
+        // A3: Broadcast auction end via WebSocket
+        try {
+          this.auctionGateway.broadcastAuctionEnd(auction.id, {
+            id: auction.winnerId || '',
+            name: '',
+            finalPrice: Number(auction.currentPrice),
+          })
+        } catch (e) {
+          console.error('[Auction] WebSocket broadcastAuctionEnd failed:', e)
         }
       } catch (err) {
         console.error(`[Cron] Error ending auction ${auction.id}:`, err)
@@ -356,6 +369,20 @@ export class AuctionsService {
       // Reload to get final state
       const updatedAuction = await this.auctionRepo.findOne({ where: { id: auctionId } })
 
+      // A3: Broadcast new bid via WebSocket to all clients in the auction room
+      try {
+        this.auctionGateway.broadcastBid(auctionId, {
+          id: bid.id,
+          amount: Number(bid.amount),
+          bidderId: bid.bidderId,
+          bidderName: '', // name not needed on frontend, it fetches bidder details
+          timestamp: bid.createdAt,
+        })
+      } catch (e) {
+        // WebSocket broadcast failure should not block the bid
+        console.error('[Auction] WebSocket broadcastBid failed:', e)
+      }
+
       return {
         bid,
         auction: {
@@ -438,6 +465,79 @@ export class AuctionsService {
     }
 
     return auction
+  }
+
+  // A6: Manual end auction — seller can end auction early (only if seller)
+  async endAuctionManual(auctionId: string, userId: string) {
+    const auction = await this.findOne(auctionId)
+
+    if (auction.sellerId !== userId) {
+      throw new ForbiddenException('Only the seller can end the auction early')
+    }
+
+    if (auction.status !== AuctionStatus.ACTIVE) {
+      throw new BadRequestException('Auction is not active')
+    }
+
+    return this.endAuction(auctionId)
+  }
+
+  // A8: BuyNow — buyer pays buyNowPrice to instantly win the auction
+  async buyNow(auctionId: string, userId: string) {
+    const auction = await this.auctionRepo.findOne({
+      where: { id: auctionId },
+      relations: ['product', 'seller']
+    })
+
+    if (!auction) {
+      throw new NotFoundException('Auction not found')
+    }
+
+    if (auction.sellerId === userId) {
+      throw new ForbiddenException('Sellers cannot buy their own auctions')
+    }
+
+    if (auction.status !== AuctionStatus.ACTIVE) {
+      throw new BadRequestException('Auction is not active')
+    }
+
+    if (!auction.buyNowPrice || Number(auction.buyNowPrice) <= 0) {
+      throw new BadRequestException('This auction does not support buy now')
+    }
+
+    const now = new Date()
+    if (now > auction.endTime) {
+      throw new BadRequestException('Auction has ended')
+    }
+
+    // End auction with this buyer as winner at buyNowPrice
+    auction.status = AuctionStatus.ENDED
+    auction.winnerId = userId
+    auction.currentPrice = auction.buyNowPrice
+    await this.auctionRepo.save(auction)
+
+    // Create AUCTION_WIN order at buyNowPrice
+    await this.createAuctionWinOrder(auction)
+
+    // Mark product as SOLD
+    const product = await this.productRepo.findOne({ where: { id: auction.productId } })
+    if (product) {
+      product.status = ProductStatus.SOLD
+      await this.productRepo.save(product)
+    }
+
+    // Broadcast auction end via WebSocket
+    try {
+      this.auctionGateway.broadcastAuctionEnd(auction.id, {
+        id: userId,
+        name: '',
+        finalPrice: Number(auction.buyNowPrice),
+      })
+    } catch (e) {
+      console.error('[Auction] WebSocket broadcastAuctionEnd (buyNow) failed:', e)
+    }
+
+    return { success: true, message: 'Buy now successful', auctionId, finalPrice: auction.buyNowPrice }
   }
 }
 

@@ -2,13 +2,9 @@ import api from './index'
 
 export interface CreateOrderDto {
   productId: string
-  type: 'direct_purchase' | 'buy_now' | 'auction_win'
+  type?: 'direct_purchase'
   quantity?: number
-  totalPrice?: number
-  shippingCost?: number
-  platformFee?: number
   shippingAddress?: string
-  trackingNumber?: string
 }
 
 export const ordersApi = {
@@ -26,6 +22,9 @@ export const ordersApi = {
   },
   updateStatus(id: string, status: string) {
     return api.patch(`/orders/${id}/status`, { status })
+  },
+  confirmPayment(id: string) {
+    return api.post(`/orders/${id}/confirm-payment`)
   },
   uploadTransferReceipt(id: string, file: File) {
     const formData = new FormData()

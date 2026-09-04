@@ -40,4 +40,16 @@ export class AuctionsController {
   async cancel(@Param('id') id: string, @Request() req: any) {
     return this.auctionsService.cancel(id, req.user.id)
   }
+
+  @UseGuards(JwtAuthGuard)
+  @Post(':id/end')
+  async endAuction(@Param('id') id: string, @Request() req: any) {
+    return this.auctionsService.endAuctionManual(id, req.user.id)
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post(':id/buy-now')
+  async buyNow(@Param('id') id: string, @Request() req: any) {
+    return this.auctionsService.buyNow(id, req.user.id)
+  }
 }

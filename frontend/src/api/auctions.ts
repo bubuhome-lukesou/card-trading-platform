@@ -22,6 +22,16 @@ export const auctionApi = {
     return api.post(`/auctions/${id}/cancel`)
   },
 
+  // End auction manually (seller only)
+  endAuction(id: string) {
+    return api.post(`/auctions/${id}/end`)
+  },
+
+  // Buy now (instant win at buyNowPrice)
+  buyNow(id: string) {
+    return api.post(`/auctions/${id}/buy-now`)
+  },
+
   // Place bid
   placeBid(auctionId: string, amount: number) {
     return api.post<Bid>(`/auctions/${auctionId}/bids`, { amount })

@@ -18,7 +18,7 @@ interface Order {
   sellerNickname: string
   amount: number
   quantity: number
-  status: 'pending' | 'paid' | 'shipped' | 'delivered' | 'cancelled' | 'refunded' | 'pending_paid' | 'confirmed'
+  status: 'pending' | 'shipped' | 'delivered' | 'cancelled' | 'refunded' | 'pending_paid' | 'confirmed'
   type: 'direct_purchase' | 'buy_now' | 'auction_win' | 'reservation'
   createdAt: string
   transferReceipt?: string
@@ -91,7 +91,6 @@ const getStatusBadge = (status: string, orderType?: string) => {
   const map: Record<string, { class: string; text: string }> = {
     pending: { class: 'pending', text: '待付款' },
     pending_paid: { class: 'pending-paid', text: '待確認' },
-    paid: { class: 'paid', text: '已付款' },
     confirmed: { class: 'confirmed', text: '已確認' },
     shipped: { class: 'shipped', text: '已發貨' },
     delivered: { class: 'delivered', text: '已完成' },
@@ -227,15 +226,34 @@ const confirmReserve = async () => {
   if (!pendingReserveOrderId.value) return
   submittingReserve.value = true
   try {
-    await ordersApi.updateStatus(pendingReserveOrderId.value, 'pending_paid')
-    await loadOrders()
-    showPickupModal.value = false
-    pendingReserveOrderId.value = null
-    showToast('預約拿貨成功！')
+    // S9: Upload transfer receipt to move order to pending_paid (not direct status update)
+    // Trigger file picker for the buyer to upload payment proof
+    const input = document.createElement('input')
+    input.type = 'file'
+    input.accept = 'image/*'
+    input.onchange = async (e: Event) => {
+      const target = e.target as HTMLInputElement
+      if (target.files?.[0]) {
+        try {
+          await ordersApi.uploadTransferReceipt(pendingReserveOrderId.value!, target.files[0])
+          await loadOrders()
+          showPickupModal.value = false
+          pendingReserveOrderId.value = null
+          showToast('預約拿貨成功！請等待商家確認')
+        } catch (error) {
+          console.error('Upload receipt failed:', error)
+          showToast('上傳憑證失敗，請重試', 'error')
+        } finally {
+          submittingReserve.value = false
+        }
+      } else {
+        submittingReserve.value = false
+      }
+    }
+    input.click()
   } catch (error) {
     console.error('Reserve failed:', error)
     showToast('操作失敗，請重試', 'error')
-  } finally {
     submittingReserve.value = false
   }
 }
@@ -341,13 +359,6 @@ onMounted(() => {
         @click="filterStatus = 'pending_paid'"
       >
         待確認 ({{ orders.filter(o => o.status === 'pending_paid').length }})
-      </button>
-      <button 
-        class="tab" 
-        :class="{ active: filterStatus === 'paid' }"
-        @click="filterStatus = 'paid'"
-      >
-        已付款 ({{ orders.filter(o => o.status === 'paid').length }})
       </button>
       <button 
         class="tab" 
