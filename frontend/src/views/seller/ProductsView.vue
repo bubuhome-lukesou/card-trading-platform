@@ -52,19 +52,35 @@ const filteredTags = computed(() => {
 
 // Task 4: Reload tags when category changes — clear selections that don't belong
 let _skipTagWatch = false
-watch(() => formData.value.category, (newCategory) => {
+watch(() => formData.value.category, (newCategory, oldCategory) => {
   if (_skipTagWatch) {
     _skipTagWatch = false
     return
   }
-  if (newCategory) {
+  if (newCategory && newCategory !== oldCategory) {
     // Clear selected tags and search when switching category
     _tagSelectedSnapshot = []
     selectedTags.value = []
     tagSearch.value = ''
+    showTagDropdown.value = false
     loadTags(newCategory)
   }
 })
+
+// Direct handler for category <select> change event (belt-and-suspenders with watch)
+const onCategoryChange = (event: Event) => {
+  const target = event.target as HTMLSelectElement
+  const newCategory = target.value
+  if (_skipTagWatch) {
+    _skipTagWatch = false
+    return
+  }
+  _tagSelectedSnapshot = []
+  selectedTags.value = []
+  tagSearch.value = ''
+  showTagDropdown.value = false
+  loadTags(newCategory)
+}
 
 const categories = [
   { value: 'pokemon', label: '寶可夢', emoji: '🎮' },
@@ -572,7 +588,7 @@ onUnmounted(() => {
             <!-- Category & Condition -->
             <div class="form-group">
               <label>商品類別 <span class="required-mark">*</span></label>
-              <select v-model="formData.category" required>
+              <select v-model="formData.category" @change="onCategoryChange" required>
                 <option v-for="cat in categories" :key="cat.value" :value="cat.value">
                   {{ cat.emoji }} {{ cat.label }}
                 </option>
