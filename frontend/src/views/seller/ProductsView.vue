@@ -640,6 +640,8 @@ onUnmounted(() => {
                   v-model.number="formData.reservationMax"
                   type="number"
                   min="1"
+                  max="2147483647"
+                  step="1"
                   placeholder="10"
                 />
               </div>
@@ -649,6 +651,8 @@ onUnmounted(() => {
                   v-model.number="formData.reservationDeposit"
                   type="number"
                   min="0"
+                  max="99999999.99"
+                  step="0.01"
                   placeholder="100"
                 />
               </div>
@@ -660,11 +664,13 @@ onUnmounted(() => {
                 />
               </div>
               <div class="form-group">
-                <label>每人預约上限</label>
+                <label>每人預約上限</label>
                 <input
                   v-model.number="formData.reservationLimitPerUser"
                   type="number"
                   min="1"
+                  max="2147483647"
+                  step="1"
                   placeholder="不限"
                 />
               </div>
@@ -704,8 +710,10 @@ onUnmounted(() => {
               <input 
                 v-model.number="formData.price" 
                 type="number" 
-                min="1"
-                placeholder="0"
+                min="0.01"
+                max="99999999.99"
+                step="0.01"
+                placeholder="0.00"
                 required
               />
             </div>
@@ -719,13 +727,15 @@ onUnmounted(() => {
               </select>
             </div>
 
-            <!-- 数量 -->
+            <!-- 數量 -->
             <div class="form-group">
-              <label>数量</label>
+              <label>數量</label>
               <input 
                 v-model.number="formData.quantity" 
                 type="number" 
                 min="1"
+                max="2147483647"
+                step="1"
                 placeholder="1"
               />
             </div>

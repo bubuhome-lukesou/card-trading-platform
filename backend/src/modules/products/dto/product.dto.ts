@@ -1,6 +1,10 @@
-import { IsEnum, IsOptional, IsString, IsNumber, IsArray, Min, Max, IsUUID } from 'class-validator'
+import { IsEnum, IsOptional, IsString, IsNumber, IsArray, Min, Max, IsUUID, IsDateString, MaxLength } from 'class-validator'
 import { Transform, Type } from 'class-transformer'
 import { ProductCategory, ProductCondition, ListingType, ProductStatus, ProductType } from '../../../entities/product.entity'
+
+// DB constraints: decimal(10,2) → max 99999999.99; int → max 2147483647
+const MAX_PRICE = 99999999.99
+const MAX_INT = 2147483647
 
 export class ProductFiltersDto {
   @IsOptional()
@@ -101,10 +105,12 @@ export class CreateProductDto {
 
   @IsOptional()
   @IsString()
+  @MaxLength(255)
   brand?: string
 
   @IsOptional()
   @IsString()
+  @MaxLength(255)
   series?: string
 
   @IsOptional()
@@ -112,9 +118,11 @@ export class CreateProductDto {
   condition?: ProductCondition
 
   @IsString()
+  @MaxLength(255)
   titleEn: string
 
   @IsString()
+  @MaxLength(255)
   titleZh: string
 
   @IsOptional()
@@ -127,7 +135,8 @@ export class CreateProductDto {
 
   @Type(() => Number)
   @IsNumber()
-  @Min(0)
+  @Min(0.01)
+  @Max(MAX_PRICE)
   price: number
 
   @IsOptional()
@@ -135,10 +144,8 @@ export class CreateProductDto {
 
   @IsOptional()
   @IsString()
+  @MaxLength(255)
   thumbnail?: string
-
-  @IsOptional()
-  @IsString()
 
   @IsOptional()
   @IsEnum(ListingType)
@@ -148,24 +155,28 @@ export class CreateProductDto {
   @Type(() => Number)
   @IsNumber()
   @Min(0)
+  @Max(MAX_PRICE)
   startingPrice?: number
 
   @IsOptional()
   @Type(() => Number)
   @IsNumber()
   @Min(1)
+  @Max(MAX_PRICE)
   bidIncrement?: number
 
   @IsOptional()
   @Type(() => Number)
   @IsNumber()
   @Min(0)
+  @Max(MAX_INT)
   stock?: number = 1
 
   @IsOptional()
   @Type(() => Number)
   @IsNumber()
-  @Min(0)
+  @Min(1)
+  @Max(MAX_INT)
   quantity?: number = 1
 
   @IsOptional()
@@ -190,17 +201,26 @@ export class CreateProductDto {
   @Type(() => Number)
   @IsNumber()
   @Min(1)
+  @Max(MAX_INT)
   reservationMax?: number
 
   @IsOptional()
   @Type(() => Number)
   @IsNumber()
   @Min(0)
+  @Max(MAX_PRICE)
   reservationDeposit?: number
 
   @IsOptional()
-  @IsString()
+  @IsDateString()
   reservationDeadline?: string
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(1)
+  @Max(MAX_INT)
+  reservationLimitPerUser?: number
 }
 
 export class UpdateProductDto {
@@ -210,10 +230,12 @@ export class UpdateProductDto {
 
   @IsOptional()
   @IsString()
+  @MaxLength(255)
   brand?: string
 
   @IsOptional()
   @IsString()
+  @MaxLength(255)
   series?: string
 
   @IsOptional()
@@ -222,10 +244,12 @@ export class UpdateProductDto {
 
   @IsOptional()
   @IsString()
+  @MaxLength(255)
   titleEn?: string
 
   @IsOptional()
   @IsString()
+  @MaxLength(255)
   titleZh?: string
 
   @IsOptional()
@@ -239,7 +263,8 @@ export class UpdateProductDto {
   @IsOptional()
   @Type(() => Number)
   @IsNumber()
-  @Min(0)
+  @Min(0.01)
+  @Max(MAX_PRICE)
   price?: number
 
   @IsOptional()
@@ -247,10 +272,8 @@ export class UpdateProductDto {
 
   @IsOptional()
   @IsString()
+  @MaxLength(255)
   thumbnail?: string
-
-  @IsOptional()
-  @IsString()
 
   @IsOptional()
   @IsEnum(ListingType)
@@ -260,12 +283,14 @@ export class UpdateProductDto {
   @Type(() => Number)
   @IsNumber()
   @Min(0)
+  @Max(MAX_PRICE)
   startingPrice?: number
 
   @IsOptional()
   @Type(() => Number)
   @IsNumber()
   @Min(1)
+  @Max(MAX_PRICE)
   bidIncrement?: number
 
   @IsOptional()
@@ -276,12 +301,14 @@ export class UpdateProductDto {
   @Type(() => Number)
   @IsNumber()
   @Min(0)
+  @Max(MAX_INT)
   stock?: number
 
   @IsOptional()
   @Type(() => Number)
   @IsNumber()
-  @Min(0)
+  @Min(1)
+  @Max(MAX_INT)
   quantity?: number
 
   @IsOptional()
@@ -306,15 +333,24 @@ export class UpdateProductDto {
   @Type(() => Number)
   @IsNumber()
   @Min(1)
+  @Max(MAX_INT)
   reservationMax?: number
 
   @IsOptional()
   @Type(() => Number)
   @IsNumber()
   @Min(0)
+  @Max(MAX_PRICE)
   reservationDeposit?: number
 
   @IsOptional()
-  @IsString()
+  @IsDateString()
   reservationDeadline?: string
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(1)
+  @Max(MAX_INT)
+  reservationLimitPerUser?: number
 }
