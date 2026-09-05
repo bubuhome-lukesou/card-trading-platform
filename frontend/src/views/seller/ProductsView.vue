@@ -107,8 +107,8 @@ const formData = ref({
   titleEn: '',
   descriptionZh: '',
   descriptionEn: '',
-  category: 'pokemon',
-  condition: 'S',
+  category: null as string | null,
+  condition: null as string | null,
   price: 0,
   quantity: 1,
   images: [] as string[],
@@ -131,8 +131,8 @@ const resetForm = () => {
     titleEn: '',
     descriptionZh: '',
     descriptionEn: '',
-    category: 'pokemon',
-    condition: 'S',
+    category: null,
+    condition: null,
     price: 0,
     quantity: 1,
     images: [],
@@ -156,13 +156,10 @@ const resetForm = () => {
 const openCreateModal = () => {
   editingProduct.value = null
   resetForm()
-  // 預設商品种類為裸卡
-  formData.value.productType = 'raw_card'
-  // Load tags for default category
+  // Load tags for default category (null = all)
   _tagSelectedSnapshot = []
   selectedTags.value = []
   tagSearch.value = ''
-  loadTags(formData.value.category)
   showModal.value = true
 }
 
@@ -589,6 +586,7 @@ onUnmounted(() => {
             <div class="form-group">
               <label>商品類別 <span class="required-mark">*</span></label>
               <select v-model="formData.category" @change="onCategoryChange" required>
+                <option :value="null" disabled>(請選擇)</option>
                 <option v-for="cat in categories" :key="cat.value" :value="cat.value">
                   {{ cat.emoji }} {{ cat.label }}
                 </option>
@@ -598,7 +596,7 @@ onUnmounted(() => {
             <div class="form-group">
               <label>商品品相</label>
               <select v-model="formData.condition">
-                <option :value="null">(請選擇)</option>
+                <option :value="null" disabled>(請選擇)</option>
                 <option v-for="cond in conditions" :key="cond.value" :value="cond.value">
                   {{ cond.label }}
                 </option>
@@ -663,7 +661,7 @@ onUnmounted(() => {
             <div class="form-group">
               <label>商品種類</label>
               <select v-model="formData.productType" class="form-select">
-                <option :value="null">(請選擇)</option>
+                <option :value="null" disabled>(請選擇)</option>
                 <option value="graded_card">評分卡</option>
                 <option value="original_box">原箱</option>
                 <option value="original_case">原盒</option>
@@ -677,7 +675,7 @@ onUnmounted(() => {
             <div class="form-group">
               <label>語言</label>
               <select v-model="formData.language" class="form-select">
-                <option :value="null">(請選擇)</option>
+                <option :value="null" disabled>(請選擇)</option>
                 <option value="japanese">日文</option>
                 <option value="english">英文</option>
                 <option value="traditional_chinese">繁體中文</option>
