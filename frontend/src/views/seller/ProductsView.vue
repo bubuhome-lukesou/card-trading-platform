@@ -221,10 +221,17 @@ const handleSubmit = async () => {
 
     // Prepare product data - merge existing URLs with newly uploaded URLs
     // 預設僅銷售模式
-    const productData = {
+    const raw = {
       ...formData.value,
       images: [...existingImageUrls.value, ...uploadedUrls],
       tags: selectedTags.value,
+    }
+    // Convert empty strings to null for optional fields (DB supports NULL)
+    const productData: Record<string, any> = {}
+    for (const [key, value] of Object.entries(raw)) {
+      productData[key] = (value === '' || (Array.isArray(value) && value.length === 0 && key !== 'images' && key !== 'tags'))
+        ? null
+        : value
     }
     
     // Create or update product
@@ -557,21 +564,22 @@ onUnmounted(() => {
           <div class="form-grid">
             <!-- Title -->
             <div class="form-group">
-              <label>商品名称（中文）</label>
+              <label>商品名稱（中文）<span class="required-mark">*</span></label>
               <input 
                 v-model="formData.titleZh" 
                 type="text" 
-                placeholder="例如：Pokemon 1st Edition Base Set"
+                placeholder="例如：寶可夢 1st Edition Base Set"
                 required
               />
             </div>
 
             <div class="form-group">
-              <label>商品名称（英文）</label>
+              <label>商品名稱（英文）<span class="required-mark">*</span></label>
               <input 
                 v-model="formData.titleEn" 
                 type="text" 
                 placeholder="Product name in English"
+                required
               />
             </div>
 
@@ -596,8 +604,8 @@ onUnmounted(() => {
 
             <!-- Category & Condition -->
             <div class="form-group">
-              <label>商品類别</label>
-              <select v-model="formData.category">
+              <label>商品類別 <span class="required-mark">*</span></label>
+              <select v-model="formData.category" required>
                 <option v-for="cat in categories" :key="cat.value" :value="cat.value">
                   {{ cat.emoji }} {{ cat.label }}
                 </option>
@@ -605,9 +613,9 @@ onUnmounted(() => {
             </div>
 
             <div class="form-group">
-              <label>商品品相</label>
-              <select v-model="formData.condition">
-                <option :value="null">(請選擇)</option>
+              <label>商品品相 <span class="required-mark">*</span></label>
+              <select v-model="formData.condition" required>
+                <option :value="null" disabled>(請選擇)</option>
                 <option v-for="cond in conditions" :key="cond.value" :value="cond.value">
                   {{ cond.label }}
                 </option>
@@ -692,12 +700,13 @@ onUnmounted(() => {
 
             <!-- 售價 -->
             <div class="form-group">
-              <label>售價 (MOP)</label>
+              <label>售價 (MOP) <span class="required-mark">*</span></label>
               <input 
                 v-model.number="formData.price" 
                 type="number" 
                 min="1"
                 placeholder="0"
+                required
               />
             </div>
 
@@ -844,6 +853,12 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
+.required-mark {
+  color: #ef4444;
+  margin-left: 2px;
+  font-weight: 700;
+}
+
 .products-management {
   display: flex;
   flex-direction: column;
