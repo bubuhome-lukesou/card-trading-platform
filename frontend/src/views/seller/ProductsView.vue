@@ -28,6 +28,7 @@ const editingProduct = ref<any>(null)
 const loading = ref(false)
 const products = ref<any[]>([])
 const filterStatus = ref('all')
+const filterListingType = ref('all')
 const imageInput = ref<HTMLInputElement | null>(null)
 const imagePreviews = ref<string[]>([])
 const pendingImageFiles = ref<File[]>([])
@@ -285,8 +286,14 @@ const handleDelete = async (productId: string) => {
 }
 
 const filteredProducts = computed(() => {
-  if (filterStatus.value === 'all') return products.value
-  return products.value.filter(p => p.status === filterStatus.value)
+  let result = products.value
+  if (filterStatus.value !== 'all') {
+    result = result.filter(p => p.status === filterStatus.value)
+  }
+  if (filterListingType.value !== 'all') {
+    result = result.filter(p => p.listingType === filterListingType.value)
+  }
+  return result
 })
 
 // Get image from product
@@ -478,6 +485,15 @@ onUnmounted(() => {
       <button @click="openCreateModal" class="btn-primary">
         + 發布新商品
       </button>
+    </div>
+
+    <!-- Listing type filter -->
+    <div class="filter-row">
+      <span class="filter-label">銷售模式：</span>
+      <button class="chip" :class="{ active: filterListingType === 'all' }" @click="filterListingType = 'all'">全部</button>
+      <button class="chip" :class="{ active: filterListingType === 'sale' }" @click="filterListingType = 'sale'">直銷</button>
+      <button class="chip" :class="{ active: filterListingType === 'auction' }" @click="filterListingType = 'auction'">拍賣</button>
+      <button class="chip" :class="{ active: filterListingType === 'reservation' }" @click="filterListingType = 'reservation'">預約</button>
     </div>
 
     <!-- Products Grid -->
@@ -834,6 +850,42 @@ onUnmounted(() => {
 .filter-tabs {
   display: flex;
   gap: var(--space-2);
+}
+
+.filter-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.filter-label {
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+  margin-right: var(--space-1);
+}
+
+.chip {
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-full);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  color: var(--text-secondary);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.chip:hover {
+  border-color: var(--primary);
+  color: var(--text-primary);
+}
+
+.chip.active {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: white;
 }
 
 .tab {
