@@ -29,6 +29,7 @@ export interface Tag {
   color?: string
   sortOrder: number
   type?: 'general' | 'product_type' | 'language'
+  category?: string
 }
 
 // Product types

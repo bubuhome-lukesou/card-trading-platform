@@ -26,8 +26,21 @@ const tagLoading = ref(false)
 const showTagForm = ref(false)
 const editingTag = ref<Tag | null>(null)
 const newTagName = ref('')
-const newTagType = ref<'general' | 'product_type' | 'language'>('product_type')
+const newTagType = ref<'general' | 'product_type' | 'language'>('general')
+const newTagCategory = ref('all')
 const tagError = ref('')
+
+const tagCategories = [
+  { value: 'all', label: '全部分類' },
+  { value: 'pokemon', label: '寶可夢' },
+  { value: 'yugioh', label: '遊戲王' },
+  { value: 'mtg', label: '萬智牌' },
+  { value: 'ultraman', label: '奧特曼' },
+  { value: 'onepiece', label: '海賊王' },
+  { value: 'doraemon', label: '哆啦A夢' },
+  { value: 'sports', label: '體育卡' },
+  { value: 'other', label: '其他' },
+]
 
 const loadTags = async () => {
   tagLoading.value = true
@@ -79,10 +92,12 @@ const openTagForm = (tag?: Tag) => {
     editingTag.value = tag
     newTagName.value = tag.name
     newTagType.value = tag.type || 'general'
+    newTagCategory.value = tag.category || 'all'
   } else {
     editingTag.value = null
     newTagName.value = ''
-    newTagType.value = 'product_type'
+    newTagType.value = 'general'
+    newTagCategory.value = 'all'
   }
   tagError.value = ''
   showTagForm.value = true
@@ -92,7 +107,8 @@ const closeTagForm = () => {
   showTagForm.value = false
   editingTag.value = null
   newTagName.value = ''
-  newTagType.value = 'product_type'
+  newTagType.value = 'general'
+  newTagCategory.value = 'all'
   tagError.value = ''
 }
 
@@ -107,11 +123,13 @@ const handleSaveTag = async () => {
       await tagApi.updateTag(editingTag.value.id, {
         name: newTagName.value.trim(),
         type: newTagType.value,
+        category: newTagCategory.value,
       })
     } else {
       await tagApi.createTag({
         name: newTagName.value.trim(),
         type: newTagType.value,
+        category: newTagCategory.value,
       })
     }
     await loadTags()
@@ -359,10 +377,19 @@ const generalTags = () => tags.value.filter(t => t.type === 'general' || !t.type
           <div class="form-group">
             <label>標籤類型</label>
             <select v-model="newTagType" class="form-select">
+              <option value="general">一般標籤</option>
               <option value="product_type">商品種類</option>
               <option value="language">語言標籤</option>
-              <option value="general">一般標籤</option>
             </select>
+          </div>
+          <div class="form-group">
+            <label>歸屬分類</label>
+            <select v-model="newTagCategory" class="form-select">
+              <option v-for="cat in tagCategories" :key="cat.value" :value="cat.value">
+                {{ cat.label }}
+              </option>
+            </select>
+            <p class="form-hint">選擇「全部分類」則所有商品類別均可使用此標籤</p>
           </div>
           <div v-if="tagError" class="error-text">{{ tagError }}</div>
         </div>
@@ -435,6 +462,7 @@ const generalTags = () => tags.value.filter(t => t.type === 'general' || !t.type
 .btn-confirm:hover { opacity: 0.9; }
 .error-text { color: var(--danger); font-size: var(--text-sm); }
 .success-text { color: #10b981; font-size: var(--text-sm); margin-top: var(--space-2); }
+.form-hint { font-size: var(--text-xs); color: var(--text-muted); margin-top: var(--space-1); }
 
 @media (max-width: 640px) { .form-grid { grid-template-columns: 1fr; } }
 </style>

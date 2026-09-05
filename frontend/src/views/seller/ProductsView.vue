@@ -390,6 +390,8 @@ const createNewTag = async () => {
     const response = await tagApi.createTag({
       name: newTagName.value.trim(),
       color: newTagColor.value,
+      type: 'general',
+      category: formData.value.category || 'all',
     })
     availableTags.value.push(response.data)
     _tagSelectedSnapshot.push(response.data.id)
