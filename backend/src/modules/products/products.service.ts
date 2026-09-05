@@ -57,9 +57,14 @@ export class ProductsService {
       }
     }
 
-    // Filter by productType (string match)
-    if ((filters as any).productType) {
-      queryBuilder.andWhere('product.productType = :productType', { productType: (filters as any).productType })
+    // Filter by productType (supports array or single value)
+    const ptFilter = (filters as any).productType
+    if (ptFilter) {
+      if (Array.isArray(ptFilter) && ptFilter.length > 0) {
+        queryBuilder.andWhere('product.productType IN (:...productTypes)', { productTypes: ptFilter })
+      } else if (typeof ptFilter === 'string') {
+        queryBuilder.andWhere('product.productType = :productType', { productType: ptFilter })
+      }
     }
 
     // Filter by language

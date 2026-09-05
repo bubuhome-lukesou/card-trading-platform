@@ -4,7 +4,6 @@ import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import { Search, SlidersHorizontal, X, ChevronDown, Loader2 } from 'lucide-vue-next'
 import { productApi } from '@/api/products'
-import { tagApi } from '@/api/tags'
 import type { Product, Tag } from '@/types'
 import ProductCard from '@/components/product/ProductCard.vue'
 import { useFavoritesStore } from '@/stores/favorites'
@@ -23,8 +22,8 @@ const hasMore = computed(() => products.value.length < meta.value.total)
 const sentinelRef = ref<HTMLElement | null>(null)
 const filtersExpanded = ref({
   category: true,
-  listingType: true,
   productTypes: true,
+  listingType: true,
   condition: true,
   language: true,
   price: true
@@ -76,7 +75,19 @@ const filterOptions = ref({
     { value: 'korean', label: '韓文', labelEn: 'Korean' },
     { value: 'other', label: '其他', labelEn: 'Other' }
   ],
-  productTypes: [] as Tag[]
+  productTypes: [
+    { value: 'graded_card', label: '評分卡' },
+    { value: 'original_box', label: '原箱' },
+    { value: 'original_case', label: '原盒' },
+    { value: 'original_bag', label: '原袋' },
+    { value: 'raw_card', label: '裸卡' },
+    { value: 'other', label: '其它' },
+  ],
+  listingTypes: [
+    { value: 'sale', label: '直銷' },
+    { value: 'auction', label: '拍賣' },
+    { value: 'reservation', label: '預約' },
+  ],
 })
 
 const sortOptions = [
@@ -121,15 +132,16 @@ const activeFiltersList = computed(() => {
   }
 
   if (filters.value.listingType !== 'all') {
+    const lt = filterOptions.value.listingTypes.find(x => x.value === filters.value.listingType)
     list.push({
       key: 'listingType',
-      value: filters.value.listingType === 'sale' ? '僅銷售' : '僅拍賣'
+      value: lt?.label || filters.value.listingType
     })
   }
 
-  filters.value.productTypes?.forEach((tagId: string) => {
-    const tag = filterOptions.value.productTypes.find(x => String(x.id) === tagId)
-    list.push({ key: 'productTypes', value: tag?.name || tagId, rawValue: tagId })
+  filters.value.productTypes?.forEach((pt: string) => {
+    const opt = filterOptions.value.productTypes.find(x => x.value === pt)
+    list.push({ key: 'productTypes', value: opt?.label || pt, rawValue: pt })
   })
 
   filters.value.language?.forEach((lang: string) => {
@@ -151,9 +163,11 @@ const fetchProducts = async (append = false) => {
     // Strip listingType if 'all' since backend only accepts 'sale'|'auction'|'both'
     const { listingType, ...params } = filters.value
     const cleanParams = listingType === 'all' ? params : { ...filters.value, listingType }
-    // Convert productTypes to productTypeTags for API call (backend expects productTypeTags)
-    if (cleanParams.productTypes && Array.isArray(cleanParams.productTypes)) {
-      (cleanParams as any).productTypeTags = cleanParams.productTypes
+    // Convert productTypes array to productType for API call (backend supports array)
+    if (cleanParams.productTypes && Array.isArray(cleanParams.productTypes) && cleanParams.productTypes.length > 0) {
+      (cleanParams as any).productType = cleanParams.productTypes
+      delete (cleanParams as any).productTypes
+    } else {
       delete (cleanParams as any).productTypes
     }
     console.log('[DEBUG] fetchProducts params:', JSON.stringify(cleanParams))
@@ -258,7 +272,7 @@ const updateUrl = () => {
   if (filters.value.listingType !== 'all') query.listing = filters.value.listingType
   if (filters.value.sortBy !== 'newest') query.sort = filters.value.sortBy
   if (filters.value.tags?.length) query.tags = filters.value.tags.join(',')
-  if (filters.value.productTypes?.length) query.productTypeTags = filters.value.productTypes.join(',')
+  if (filters.value.productTypes?.length) query.productType = filters.value.productTypes.join(',')
   if (filters.value.language?.length) query.language = filters.value.language.join(',')
   if (filters.value.page !== 1) query.page = String(filters.value.page)
 
@@ -273,12 +287,12 @@ const parseUrlFilters = () => {
   if (query.condition) filters.value.condition = (query.condition as string).split(',')
   if (query.priceMin) filters.value.priceMin = Number(query.priceMin)
   if (query.priceMax) filters.value.priceMax = Number(query.priceMax)
-  if (query.listing) filters.value.listingType = query.listing as 'all' | 'sale' | 'auction'
+  if (query.listing) filters.value.listingType = query.listing as 'all' | 'sale' | 'auction' | 'reservation'
   if (query.sort) filters.value.sortBy = query.sort as string
-  if (query.productTypes) filters.value.productTypes = (query.productTypes as string).split(',')
+  if (query.productType) filters.value.productTypes = (query.productType as string).split(',')
+  if (query.productTypeTags) filters.value.productTypes = (query.productTypeTags as string).split(',')
   if (query.language) filters.value.language = (query.language as string).split(',')
   if (query.page) filters.value.page = Number(query.page)
-  if (query.productTypeTags) filters.value.productTypes = (query.productTypeTags as string).split(',')
 }
 
 const loadMore = () => {
@@ -293,21 +307,10 @@ const handleSearch = () => {
   fetchProducts()
 }
 
-const loadProductTypes = async () => {
-  try {
-    const response = await tagApi.getTags()
-    // Filter only tags with type=product_type
-    filterOptions.value.productTypes = (response.data || []).filter((t: any) => t.type === 'product_type')
-  } catch (error) {
-    console.error('Failed to load product types:', error)
-  }
-}
-
 // Lifecycle
 onMounted(() => {
   parseUrlFilters()
   fetchProducts()
-  loadProductTypes()
   favoritesStore.loadFavorites()
 
   // Infinite scroll via scroll event
@@ -405,7 +408,7 @@ watch(() => route.query, () => {
             </div>
           </div>
 
-          <!-- Tags (商品種類) -->
+          <!-- 商品種類 -->
           <div class="filter-section">
             <h4 class="filter-title" @click="filtersExpanded.productTypes = !filtersExpanded.productTypes">
               {{ t('product.filters.productTypes') || '商品種類' }}
@@ -413,20 +416,57 @@ watch(() => route.query, () => {
             </h4>
             <div v-show="filtersExpanded.productTypes" class="filter-options">
               <label
-                v-for="tag in filterOptions.productTypes"
-                :key="tag.id"
+                v-for="pt in filterOptions.productTypes"
+                :key="pt.value"
                 class="filter-option"
-                :class="{ active: filters.productTypes.includes(String(tag.id)) }"
+                :class="{ active: filters.productTypes.includes(pt.value) }"
               >
                 <input
                   type="checkbox"
-                  :checked="filters.productTypes.includes(String(tag.id))"
-                  @change="toggleArrayFilter('productTypes', String(tag.id))"
+                  :checked="filters.productTypes.includes(pt.value)"
+                  @change="toggleArrayFilter('productTypes', pt.value)"
                 />
                 <span class="checkmark" />
                 <span class="filter-label">
-                  {{ tag.name }}
+                  {{ pt.label }}
                 </span>
+              </label>
+            </div>
+          </div>
+
+          <!-- 銷售模式 -->
+          <div class="filter-section">
+            <h4 class="filter-title" @click="filtersExpanded.listingType = !filtersExpanded.listingType">
+              {{ t('product.filters.listingType') || '銷售模式' }}
+              <ChevronDown class="filter-chevron" :class="{ collapsed: !filtersExpanded.listingType }" />
+            </h4>
+            <div v-show="filtersExpanded.listingType" class="filter-options">
+              <label
+                v-for="lt in filterOptions.listingTypes"
+                :key="lt.value"
+                class="filter-option"
+                :class="{ active: filters.listingType === lt.value }"
+              >
+                <input
+                  type="radio"
+                  name="listingType"
+                  :checked="filters.listingType === lt.value"
+                  @change="updateFilter('listingType', lt.value)"
+                />
+                <span class="checkmark" />
+                <span class="filter-label">
+                  {{ lt.label }}
+                </span>
+              </label>
+              <label class="filter-option" :class="{ active: filters.listingType === 'all' }">
+                <input
+                  type="radio"
+                  name="listingType"
+                  :checked="filters.listingType === 'all'"
+                  @change="updateFilter('listingType', 'all')"
+                />
+                <span class="checkmark" />
+                <span class="filter-label">全部</span>
               </label>
             </div>
           </div>
