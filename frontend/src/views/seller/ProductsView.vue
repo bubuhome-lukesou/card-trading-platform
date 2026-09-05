@@ -36,11 +36,7 @@ const existingImageUrls = ref<string[]>([])
 const availableTags = ref<any[]>([])
 const selectedTags = ref<number[]>([])
 const tagSearch = ref('')
-const showTagCreate = ref(false)
 const showTagDropdown = ref(false)
-const newTagName = ref('')
-const newTagColor = ref('#6366f1')
-const creatingTag = ref(false)
 
 const closeTagDropdown = () => {
   setTimeout(() => { showTagDropdown.value = false }, 200)
@@ -54,15 +50,13 @@ const filteredTags = computed(() => {
   )
 })
 
-watch(showTagCreate, (val) => {
-  if (val && tagSearch.value.trim()) {
-    newTagName.value = tagSearch.value.trim()
-  }
-})
-
-// Task 4: Reload tags when category changes (two-level tag selection)
+// Task 4: Reload tags when category changes — clear selections that don't belong
 watch(() => formData.value.category, (newCategory) => {
   if (newCategory) {
+    // Clear selected tags and search when switching category
+    _tagSelectedSnapshot = []
+    selectedTags.value = []
+    tagSearch.value = ''
     loadTags(newCategory)
   }
 })
@@ -85,9 +79,6 @@ const conditions = [
   { value: 'C', label: 'C級 - 磨損可見' },
   { value: 'D', label: 'D級 - 嚴重磨損' },
 ]
-
-// 商品種類（從 Tag type=product_type 加載，選擇後直接存名稱字串）
-const productTypes = ref<any[]>([])
 
 // 預設僅銷售模式，隐藏拍賣相關字段
 const formData = ref({
@@ -175,7 +166,6 @@ const openEditModal = async (product: any) => {
   selectedTags.value = [...ids]
   // productType is now a direct string value
   await loadTags()
-  await loadProductTypes()
 
   formData.value = {
     titleZh: product.titleZh,
@@ -383,50 +373,13 @@ const toggleTag = (tagId: number) => {
   selectedTags.value = [..._tagSelectedSnapshot]
 }
 
-const createNewTag = async () => {
-  if (!newTagName.value.trim()) return
-  creatingTag.value = true
-  try {
-    const response = await tagApi.createTag({
-      name: newTagName.value.trim(),
-      color: newTagColor.value,
-      type: 'general',
-      category: formData.value.category || 'all',
-    })
-    availableTags.value.push(response.data)
-    _tagSelectedSnapshot.push(response.data.id)
-    selectedTags.value = [..._tagSelectedSnapshot]
-    newTagName.value = ''
-    showTagCreate.value = false
-  } catch (error) {
-    console.error('Failed to create tag:', error)
-  } finally {
-    creatingTag.value = false
-  }
-}
-
 const loadTags = async (category?: string) => {
   try {
     const params = category ? { category } : undefined
     const response = await tagApi.getTags(params)
-    const allTags = response.data || []
-    // Filter out product_type and language tags - those have dedicated dropdowns
-    availableTags.value = allTags.filter((t: any) => t.type !== 'product_type' && t.type !== 'language')
-    // Product types filtered by category
-    productTypes.value = allTags.filter((t: any) => t.type === 'product_type')
+    availableTags.value = response.data || []
   } catch (error) {
     console.error('Failed to load tags:', error)
-  }
-}
-
-const loadProductTypes = async (category?: string) => {
-  try {
-    const params = category ? { category } : undefined
-    const response = await tagApi.getTags(params)
-    const allTags = response.data || []
-    productTypes.value = allTags.filter((t: any) => t.type === 'product_type')
-  } catch (error) {
-    console.error('Failed to load product types:', error)
   }
 }
 
@@ -455,7 +408,6 @@ const routeWatcher = watch(
 onMounted(() => {
   loadProducts()
   loadTags()
-  loadProductTypes()
 })
 
 onUnmounted(() => {
@@ -775,7 +727,7 @@ onUnmounted(() => {
 
             <!-- Tags -->
             <div class="form-group full-width">
-              <label>商品標簽</label>
+              <label>商品標籤</label>
               <!-- Selected tags display -->
               <div v-if="selectedTags.length" class="tags-selected">
                 <span
@@ -787,66 +739,36 @@ onUnmounted(() => {
                   <button type="button" @click="toggleTag(tagId)" class="tag-remove">×</button>
                 </span>
               </div>
-              <!-- Tag search dropdown -->
-              <!-- Tag search dropdown - positioned below the input -->
+              <!-- Searchable checkbox dropdown -->
               <div class="tag-search-wrapper">
                 <input
                   v-model="tagSearch"
                   type="text"
                   class="tag-search-input"
-                  placeholder="搜索標簽..."
+                  placeholder="🔍 搜尋標籤..."
                   @focus="showTagDropdown = true"
                   @blur="closeTagDropdown"
                 />
-                <!-- Show create form when creating new tag -->
-                <div v-if="showTagCreate" class="tag-create-form">
-                  <input
-                    v-model="newTagName"
-                    type="text"
-                    placeholder="新標簽名称"
-                    class="tag-create-input"
-                  />
-                  <input
-                    v-model="newTagColor"
-                    type="color"
-                    class="tag-create-color"
-                  />
-                  <button
-                    type="button"
-                    @click="createNewTag"
-                    :disabled="creatingTag || !newTagName.trim()"
-                    class="tag-create-btn"
-                  >
-                    {{ creatingTag ? '...' : '創建' }}
-                  </button>
-                  <button type="button" @click="showTagCreate = false; newTagName = ''" class="tag-create-cancel">×</button>
-                </div>
-                <!-- Show hint to create new tag when no match -->
-                <div v-else-if="tagSearch && !filteredTags.find(t => t.name.toLowerCase().includes(tagSearch.toLowerCase()))" class="tag-create-hint">
-                  <button type="button" @click="newTagName = tagSearch; showTagCreate = true" class="tag-create-link">
-                    + 創建新標簽「{{ tagSearch }}」
-                  </button>
-                </div>
-                <!-- Show dropdown only when user types in search box -->
-                <div v-if="tagSearch.trim() && filteredTags.length > 0" class="tag-list-dropdown">
-                  <button
+                <div v-if="showTagDropdown" class="tag-list-dropdown">
+                  <div v-if="filteredTags.length === 0" class="tag-empty">無符合的標籤</div>
+                  <label
                     v-for="tag in filteredTags"
                     :key="tag.id"
-                    type="button"
                     class="tag-option"
                     :class="{ selected: isTagSelected(tag.id) }"
-                    @click="toggleTag(tag.id)"
                   >
-                    <span
-                      class="tag-color-dot"
-                      :style="{ backgroundColor: tag.color || '#6366f1' }"
-                    ></span>
-                    {{ tag.name }}
-                    <span v-if="isTagSelected(tag.id)" class="tag-check">✓</span>
-                  </button>
+                    <input
+                      type="checkbox"
+                      :checked="isTagSelected(tag.id)"
+                      @change="toggleTag(tag.id)"
+                    />
+                    <span class="tag-color-dot" :style="{ backgroundColor: tag.color || '#6366f1' }"></span>
+                    <span class="tag-option-name">{{ tag.name }}</span>
+                    <span v-if="tag.category && tag.category !== 'all'" class="tag-option-cat">{{ tag.category }}</span>
+                  </label>
                 </div>
               </div>
-              <p class="form-hint">選择适合商品的標簽，可多選</p>
+              <p class="form-hint">選擇適合商品的標籤，可多選</p>
             </div>
           </div>
 
@@ -1485,83 +1407,12 @@ onUnmounted(() => {
   color: var(--text-primary);
 }
 
-.tag-create-form {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  margin-top: var(--space-2);
-  padding: var(--space-2);
-  background: var(--bg-elevated);
-  border: 1px dashed var(--primary);
-  border-radius: var(--radius);
-}
-
-.tag-create-input {
-  flex: 1;
-  padding: var(--space-1) var(--space-2);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  font-size: var(--text-sm);
-  background: var(--bg-primary);
-  color: var(--text-primary);
-}
-
-.tag-create-color {
-  width: 32px;
-  height: 32px;
-  padding: 0;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-}
-
-.tag-create-btn {
-  padding: var(--space-1) var(--space-3);
-  border-radius: var(--radius-sm);
-  font-size: var(--text-sm);
-  font-weight: 500;
-  background: var(--primary-gradient);
-  color: white;
-  border: none;
-  cursor: pointer;
-}
-
-.tag-create-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.tag-create-cancel {
-  background: none;
-  border: none;
-  color: var(--text-muted);
-  cursor: pointer;
-  font-size: 18px;
-}
-
-.tag-create-hint {
-  margin-top: var(--space-2);
-}
-
-.tag-create-link {
-  background: none;
-  border: none;
-  color: var(--primary);
-  font-size: var(--text-sm);
-  cursor: pointer;
-  padding: 0;
-}
-
-.tag-create-link:hover {
-  text-decoration: underline;
-}
-
 .tag-list-dropdown {
   position: absolute;
   top: 100%;
   left: 0;
   right: 0;
-  max-height: 200px;
+  max-height: 240px;
   overflow-y: auto;
   background: var(--bg-elevated);
   border: 1px solid var(--border);
@@ -1571,28 +1422,51 @@ onUnmounted(() => {
   margin-top: 4px;
 }
 
+.tag-empty {
+  padding: var(--space-4);
+  text-align: center;
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+
 .tag-option {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  width: 100%;
   padding: var(--space-2) var(--space-3);
-  border: none;
-  background: none;
-  text-align: left;
+  cursor: pointer;
   font-size: var(--text-sm);
   color: var(--text-primary);
-  cursor: pointer;
   transition: background var(--transition-fast);
 }
 
 .tag-option:hover {
-  background: var(--bg-primary);
+  background: rgba(99, 102, 241, 0.08);
 }
 
 .tag-option.selected {
-  background: var(--primary) + '15';
-  color: var(--primary);
+  background: rgba(99, 102, 241, 0.12);
+}
+
+.tag-option input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  accent-color: var(--primary);
+  flex-shrink: 0;
+}
+
+.tag-option-name {
+  flex: 1;
+}
+
+.tag-option-cat {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  padding: 1px 6px;
+  border-radius: var(--radius-full);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
 }
 
 .tag-color-dot {
@@ -1600,11 +1474,6 @@ onUnmounted(() => {
   height: 10px;
   border-radius: 50%;
   flex-shrink: 0;
-}
-
-.tag-check {
-  margin-left: auto;
-  font-weight: bold;
 }
 
 /* Old tag styles - kept for compatibility */
