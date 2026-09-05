@@ -51,7 +51,12 @@ const filteredTags = computed(() => {
 })
 
 // Task 4: Reload tags when category changes — clear selections that don't belong
+let _skipTagWatch = false
 watch(() => formData.value.category, (newCategory) => {
+  if (_skipTagWatch) {
+    _skipTagWatch = false
+    return
+  }
   if (newCategory) {
     // Clear selected tags and search when switching category
     _tagSelectedSnapshot = []
@@ -137,6 +142,11 @@ const openCreateModal = () => {
   resetForm()
   // 預設商品种類為裸卡
   formData.value.productType = 'raw_card'
+  // Load tags for default category
+  _tagSelectedSnapshot = []
+  selectedTags.value = []
+  tagSearch.value = ''
+  loadTags(formData.value.category)
   showModal.value = true
 }
 
@@ -162,11 +172,15 @@ const openEditModal = async (product: any) => {
   pendingImagePreviews.value = [] // No new file previews
   // Load existing tags - use nextTick to ensure DOM is ready after modal opens
   const ids = (product.tags || []).map((t: any) => typeof t === 'number' ? t : t.id)
+  // Load tags for this product's category first
+  await loadTags(product.category)
   _tagSelectedSnapshot = [...ids]
   selectedTags.value = [...ids]
+  tagSearch.value = ''
   // productType is now a direct string value
-  await loadTags()
 
+  // Skip the category watch so it doesn't clear our restored tags
+  _skipTagWatch = true
   formData.value = {
     titleZh: product.titleZh,
     titleEn: product.titleEn,
@@ -407,7 +421,6 @@ const routeWatcher = watch(
 
 onMounted(() => {
   loadProducts()
-  loadTags()
 })
 
 onUnmounted(() => {
