@@ -106,8 +106,8 @@ export class Product {
   @Column({ type: 'enum', enum: ProductLanguage, nullable: true })
   language: ProductLanguage | null
 
-  @Column({ type: 'enum', enum: ProductCondition })
-  condition: ProductCondition
+  @Column({ type: 'enum', enum: ProductCondition, nullable: true })
+  condition: ProductCondition | null
 
   @Column()
   titleEn: string

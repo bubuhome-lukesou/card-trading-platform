@@ -613,9 +613,9 @@ onUnmounted(() => {
             </div>
 
             <div class="form-group">
-              <label>商品品相 <span class="required-mark">*</span></label>
-              <select v-model="formData.condition" required>
-                <option :value="null" disabled>(請選擇)</option>
+              <label>商品品相</label>
+              <select v-model="formData.condition">
+                <option :value="null">(請選擇)</option>
                 <option v-for="cond in conditions" :key="cond.value" :value="cond.value">
                   {{ cond.label }}
                 </option>

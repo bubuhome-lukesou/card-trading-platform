@@ -107,8 +107,9 @@ export class CreateProductDto {
   @IsString()
   series?: string
 
+  @IsOptional()
   @IsEnum(ProductCondition)
-  condition: ProductCondition
+  condition?: ProductCondition
 
   @IsString()
   titleEn: string
