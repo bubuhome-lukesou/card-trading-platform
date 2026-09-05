@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { adminApi } from '@/api/admin'
 import { tagApi } from '@/api/tags'
 import type { Tag } from '@/types'
@@ -26,7 +26,6 @@ const tagLoading = ref(false)
 const showTagForm = ref(false)
 const editingTag = ref<Tag | null>(null)
 const newTagName = ref('')
-const newTagType = ref<'general' | 'product_type' | 'language'>('general')
 const newTagCategory = ref('all')
 const tagError = ref('')
 
@@ -91,12 +90,10 @@ const openTagForm = (tag?: Tag) => {
   if (tag) {
     editingTag.value = tag
     newTagName.value = tag.name
-    newTagType.value = tag.type || 'general'
     newTagCategory.value = tag.category || 'all'
   } else {
     editingTag.value = null
     newTagName.value = ''
-    newTagType.value = 'general'
     newTagCategory.value = 'all'
   }
   tagError.value = ''
@@ -107,7 +104,6 @@ const closeTagForm = () => {
   showTagForm.value = false
   editingTag.value = null
   newTagName.value = ''
-  newTagType.value = 'general'
   newTagCategory.value = 'all'
   tagError.value = ''
 }
@@ -122,13 +118,12 @@ const handleSaveTag = async () => {
     if (editingTag.value) {
       await tagApi.updateTag(editingTag.value.id, {
         name: newTagName.value.trim(),
-        type: newTagType.value,
         category: newTagCategory.value,
       })
     } else {
       await tagApi.createTag({
         name: newTagName.value.trim(),
-        type: newTagType.value,
+        type: 'general',
         category: newTagCategory.value,
       })
     }
@@ -185,9 +180,20 @@ const handlePasswordChange = async () => {
   }
 }
 
-const productTypeTags = () => tags.value.filter(t => t.type === 'product_type')
-const languageTags = () => tags.value.filter(t => t.type === 'language')
-const generalTags = () => tags.value.filter(t => t.type === 'general' || !t.type)
+// Group tags by category for display
+const tagsByCategory = computed(() => {
+  const groups: Record<string, Tag[]> = {}
+  for (const tag of tags.value) {
+    const cat = tag.category || 'all'
+    if (!groups[cat]) groups[cat] = []
+    groups[cat].push(tag)
+  }
+  return groups
+})
+
+const getCategoryLabel = (cat: string) => {
+  return tagCategories.find(c => c.value === cat)?.label || cat
+}
 </script>
 
 <template>
@@ -286,14 +292,14 @@ const generalTags = () => tags.value.filter(t => t.type === 'general' || !t.type
       </div>
     </div>
 
-    <!-- 商品種類管理 -->
+    <!-- 標籤管理 -->
     <div class="settings-card">
       <div class="section-header">
         <div>
-          <h3 class="section-title">商品種類管理</h3>
-          <p class="section-desc">管理商品種類標籤（評分卡、原箱、原盒、原袋、裸卡等）</p>
+          <h3 class="section-title">標籤管理</h3>
+          <p class="section-desc">管理商品標籤，按分類分組</p>
         </div>
-        <button class="btn-add" @click="openTagForm()">+ 新增種類</button>
+        <button class="btn-add" @click="openTagForm()">+ 新增標籤</button>
       </div>
 
       <!-- 載入中 -->
@@ -302,44 +308,15 @@ const generalTags = () => tags.value.filter(t => t.type === 'general' || !t.type
         <p>載入中...</p>
       </div>
 
-      <!-- 標籤列表 -->
+      <!-- 標籤列表（按 category 分組） -->
       <div v-else class="tags-section">
-        <!-- 商品種類 -->
-        <div class="tag-category">
-          <h4 class="tag-category-title">商品種類</h4>
-          <div v-if="productTypeTags().length === 0" class="empty-hint">暫無商品種類，點擊上方「新增種類」添加</div>
-          <div class="tag-list">
-            <div v-for="tag in productTypeTags()" :key="tag.id" class="tag-item">
-              <span class="tag-badge product-type">{{ tag.name }}</span>
-              <div class="tag-actions">
-                <button class="btn-icon" @click="openTagForm(tag)" title="編輯">✏️</button>
-                <button class="btn-icon btn-danger" @click="handleDeleteTag(tag)" title="刪除">🗑️</button>
-              </div>
-            </div>
-          </div>
+        <div v-if="Object.keys(tagsByCategory).length === 0" class="empty-hint">
+          暫無標籤，點擊上方「新增標籤」添加
         </div>
-
-        <!-- 語言標籤 -->
-        <div class="tag-category">
-          <h4 class="tag-category-title">語言標籤</h4>
-          <div v-if="languageTags().length === 0" class="empty-hint">暫無語言標籤</div>
+        <div v-for="(groupTags, cat) in tagsByCategory" :key="cat" class="tag-category">
+          <h4 class="tag-category-title">{{ getCategoryLabel(cat) }}</h4>
           <div class="tag-list">
-            <div v-for="tag in languageTags()" :key="tag.id" class="tag-item">
-              <span class="tag-badge language">{{ tag.name }}</span>
-              <div class="tag-actions">
-                <button class="btn-icon" @click="openTagForm(tag)" title="編輯">✏️</button>
-                <button class="btn-icon btn-danger" @click="handleDeleteTag(tag)" title="刪除">🗑️</button>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- 一般標籤 -->
-        <div class="tag-category">
-          <h4 class="tag-category-title">一般標籤</h4>
-          <div v-if="generalTags().length === 0" class="empty-hint">暫無一般標籤</div>
-          <div class="tag-list">
-            <div v-for="tag in generalTags()" :key="tag.id" class="tag-item">
+            <div v-for="tag in groupTags" :key="tag.id" class="tag-item">
               <span class="tag-badge general">{{ tag.name }}</span>
               <div class="tag-actions">
                 <button class="btn-icon" @click="openTagForm(tag)" title="編輯">✏️</button>
@@ -370,17 +347,9 @@ const generalTags = () => tags.value.filter(t => t.type === 'general' || !t.type
             <input
               v-model="newTagName"
               type="text"
-              placeholder="例如：評分卡、原箱、原盒..."
+              placeholder="例如：S10a、1st Edition..."
               @keyup.enter="handleSaveTag"
             />
-          </div>
-          <div class="form-group">
-            <label>標籤類型</label>
-            <select v-model="newTagType" class="form-select">
-              <option value="general">一般標籤</option>
-              <option value="product_type">商品種類</option>
-              <option value="language">語言標籤</option>
-            </select>
           </div>
           <div class="form-group">
             <label>歸屬分類</label>
@@ -438,10 +407,7 @@ const generalTags = () => tags.value.filter(t => t.type === 'general' || !t.type
 
 .tag-list { display: flex; flex-wrap: wrap; gap: var(--space-2); }
 .tag-item { display: flex; align-items: center; gap: var(--space-2); }
-.tag-badge { padding: var(--space-1) var(--space-3); border-radius: var(--radius-full); font-size: var(--text-sm); font-weight: 500; }
-.tag-badge.product-type { background: rgba(99, 102, 241, 0.1); color: var(--primary); border: 1px solid var(--primary); }
-.tag-badge.language { background: rgba(69, 183, 209, 0.1); color: #45B7D1; border: 1px solid #45B7D1; }
-.tag-badge.general { background: var(--bg-elevated); color: var(--text-secondary); border: 1px solid var(--border); }
+.tag-badge { padding: var(--space-1) var(--space-3); border-radius: var(--radius-full); font-size: var(--text-sm); font-weight: 500; background: var(--bg-elevated); color: var(--text-secondary); border: 1px solid var(--border); }
 
 .tag-actions { display: flex; gap: var(--space-1); }
 .btn-icon { padding: 2px 6px; background: transparent; border: none; cursor: pointer; font-size: 14px; opacity: 0.6; transition: opacity 0.2s; }
