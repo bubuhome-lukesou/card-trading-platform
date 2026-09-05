@@ -107,7 +107,7 @@ const formData = ref({
   titleEn: '',
   descriptionZh: '',
   descriptionEn: '',
-  category: null as string | null,
+  category: 'pokemon',
   condition: null as string | null,
   price: 0,
   quantity: 1,
@@ -131,7 +131,7 @@ const resetForm = () => {
     titleEn: '',
     descriptionZh: '',
     descriptionEn: '',
-    category: null,
+    category: 'pokemon',
     condition: null,
     price: 0,
     quantity: 1,
@@ -586,7 +586,6 @@ onUnmounted(() => {
             <div class="form-group">
               <label>商品類別 <span class="required-mark">*</span></label>
               <select v-model="formData.category" @change="onCategoryChange" required>
-                <option :value="null" disabled>(請選擇)</option>
                 <option v-for="cat in categories" :key="cat.value" :value="cat.value">
                   {{ cat.emoji }} {{ cat.label }}
                 </option>
