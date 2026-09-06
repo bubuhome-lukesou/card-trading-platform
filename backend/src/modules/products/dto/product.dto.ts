@@ -53,6 +53,9 @@ export class ProductFiltersDto {
   listingType?: ListingType
 
   @IsOptional()
+  listingTypes?: string[] | string
+
+  @IsOptional()
   @IsEnum(ProductStatus)
   status?: ProductStatus
 
