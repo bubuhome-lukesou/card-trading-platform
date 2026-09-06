@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { RouterLink, useRouter } from 'vue-router'
+import { RouterLink, useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { LogIn, Phone, KeyRound, Mail } from 'lucide-vue-next'
 import api from '@/api'
@@ -9,6 +9,21 @@ import api from '@/api'
 const { t, locale } = useI18n()
 const authStore = useAuthStore()
 const router = useRouter()
+const route = useRoute()
+
+// Redirect after login: use redirect query or default by role
+const redirectAfterLogin = () => {
+  const redirect = route.query.redirect as string
+  if (redirect) {
+    router.push(redirect)
+  } else if (authStore.isAdmin) {
+    router.push('/admin')
+  } else if (authStore.isSeller) {
+    router.push('/seller')
+  } else {
+    router.push('/user')
+  }
+}
 
 // Tab 切換：手機登入 / 電郵登入
 const activeTab = ref<'phone' | 'email'>('phone')
@@ -100,14 +115,7 @@ const handlePhoneLogin = async () => {
     const result = res.data
     if (result.accessToken) {
       authStore.setPhoneLogin(result)
-      // Redirect by role
-      if (authStore.isAdmin) {
-        router.push('/admin')
-      } else if (authStore.isSeller) {
-        router.push('/seller')
-      } else {
-        router.push('/user')
-      }
+      redirectAfterLogin()
     }
   } catch (err: any) {
     phoneError.value = err.response?.data?.message || (locale.value === 'zh' ? '登入失敗' : 'Login failed')
@@ -126,13 +134,7 @@ const handleSubmit = async () => {
   if (!success) {
     error.value = authStore.error || 'Login failed'
   } else {
-    if (authStore.isAdmin) {
-      router.push('/admin')
-    } else if (authStore.isSeller) {
-      router.push('/seller')
-    } else {
-      router.push('/user')
-    }
+    redirectAfterLogin()
   }
 
   loading.value = false

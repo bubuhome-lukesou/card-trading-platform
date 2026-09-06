@@ -325,9 +325,10 @@ export class AuctionsService {
         throw new ForbiddenException('Sellers cannot bid on their own auctions')
       }
 
-      // A9: Allow highest bidder to raise their bid (remove the block)
-      // Previously: if (auction.winnerId === userId) throw...
-      // Now: highest bidder can bid again to raise their price
+      // Highest bidder cannot bid again — must wait for others to outbid
+      if (auction.winnerId === userId) {
+        throw new BadRequestException('You are already the highest bidder')
+      }
 
       if (auction.status !== AuctionStatus.ACTIVE) {
         throw new BadRequestException('Auction is not active')

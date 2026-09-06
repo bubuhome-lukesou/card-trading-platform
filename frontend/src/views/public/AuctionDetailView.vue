@@ -110,6 +110,10 @@ const canBid = computed(() => {
   return authStore.isAuthenticated && !isSeller.value && !isEnded.value
 })
 
+const isHighestBidder = computed(() => {
+  return authStore.isAuthenticated && auction.value?.winnerId === authStore.user?.id
+})
+
 const formatPrice = (price: number) => {
   return new Intl.NumberFormat('zh-MO', {
     style: 'currency',
@@ -410,7 +414,7 @@ onUnmounted(() => {
           </div>
 
           <!-- 出價框 -->
-          <div v-if="canBid" class="bid-action-card">
+          <div v-if="canBid && !isHighestBidder" class="bid-action-card">
             <div class="bid-input-row">
               <span class="currency-prefix">MOP</span>
               <input
@@ -435,6 +439,11 @@ onUnmounted(() => {
             <p v-if="bidSuccess" class="bid-success">{{ bidSuccess }}</p>
           </div>
 
+          <!-- 最高出價者 -->
+          <div v-else-if="isHighestBidder && !isEnded" class="highest-bidder-notice">
+            <span>🏆 {{ locale === 'zh' ? '您目前是最高出價者，請等待其他人出價' : 'You are the highest bidder, wait for others to outbid' }}</span>
+          </div>
+
           <!-- 賣家觀看 -->
           <div v-else-if="isSeller" class="seller-notice">
             <span>{{ locale === 'zh' ? '這是您的拍賣商品' : 'This is your auction' }}</span>
@@ -448,7 +457,7 @@ onUnmounted(() => {
 
           <!-- 未登入 -->
           <div v-else class="login-notice">
-            <button @click="router.push('/login')" class="btn-login">{{ locale === 'zh' ? '登入後出價' : 'Login to Bid' }}</button>
+            <button @click="router.push({ path: '/login', query: { redirect: `/auction/${auctionId}` } })" class="btn-login">{{ locale === 'zh' ? '登入後出價' : 'Login to Bid' }}</button>
           </div>
 
         </div>
@@ -1071,7 +1080,8 @@ onUnmounted(() => {
 
 .seller-notice,
 .ended-notice,
-.login-notice {
+.login-notice,
+.highest-bidder-notice {
   background: var(--bg-card);
   border-radius: var(--radius-lg);
   border: 1px solid var(--border);

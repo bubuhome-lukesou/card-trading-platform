@@ -40,7 +40,7 @@ const loadFavorites = async () => {
 // Toggle favorite via store
 const handleToggleFavorite = async () => {
   if (!authStore.isAuthenticated) {
-    router.push('/login')
+    router.push({ path: '/login', query: { redirect: route.fullPath } })
     return
   }
   if (favoriteLoading.value) return
@@ -354,7 +354,7 @@ const increaseQuantity = () => {
 
 const handleBuyNow = async () => {
   if (!authStore.isAuthenticated) {
-    router.push('/login')
+    router.push({ path: '/login', query: { redirect: route.fullPath } })
     return
   }
   if (!product.value) return
@@ -395,7 +395,7 @@ const handleBuyNow = async () => {
 
 const handleAddToCart = async () => {
   if (!authStore.isAuthenticated) {
-    router.push('/login')
+    router.push({ path: '/login', query: { redirect: route.fullPath } })
     return
   }
   if (!product.value) return
@@ -431,7 +431,7 @@ const handleAddToCart = async () => {
 // Handle reservation (for reservation listing type)
 const handleReserve = async () => {
   if (!authStore.isAuthenticated) {
-    router.push('/login')
+    router.push({ path: '/login', query: { redirect: route.fullPath } })
     return
   }
   if (!product.value) return
@@ -721,7 +721,7 @@ const isProductSuspended = computed(() => {
                   @click="handleReserve"
                 >
                   <Loader2 v-if="processing" class="btn-spinner" />
-                  {{ processing ? (t('common.loading') || '處理中...') : (locale === 'zh' ? '立即預約' : 'Reserve Now') }}
+                  {{ processing ? (t('common.loading') || '處理中...') : (!authStore.isAuthenticated ? (locale === 'zh' ? '登入後預約' : 'Login to Reserve') : (locale === 'zh' ? '立即預約' : 'Reserve Now')) }}
                 </button>
                 <button
                   class="btn btn-fav"
@@ -743,14 +743,14 @@ const isProductSuspended = computed(() => {
                   @click="handleBuyNow"
                 >
                   <Loader2 v-if="processing" class="btn-spinner" />
-                  {{ processing ? (t('common.loading') || '處理中...') : (locale === 'zh' ? '立即購買' : 'Buy Now') }}
+                  {{ processing ? (t('common.loading') || '處理中...') : (!authStore.isAuthenticated ? (locale === 'zh' ? '登入後購買' : 'Login to Buy') : (locale === 'zh' ? '立即購買' : 'Buy Now')) }}
                 </button>
                 <button
                   class="btn btn-secondary"
                   :disabled="processing || isOutOfStock() || isProductSuspended"
                   @click="handleAddToCart"
                 >
-                  {{ locale === 'zh' ? '加到購物車' : 'Add to Cart' }}
+                  {{ !authStore.isAuthenticated ? (locale === 'zh' ? '登入後加購物車' : 'Login to Add') : (locale === 'zh' ? '加到購物車' : 'Add to Cart') }}
                 </button>
                 <button
                   class="btn btn-fav"
