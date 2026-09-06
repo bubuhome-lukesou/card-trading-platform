@@ -432,24 +432,27 @@ onUnmounted(() => {
         </div>
 
         <!-- RIGHT: 商品詳細資料 (與 ProductDetailView 統一) -->
-        <div class="detail-section">
-          <!-- 標題區 -->
-          <div class="detail-card">
+        <div class="info-wrap">
+          <div class="glass-card">
+            <!-- Category badge + Status -->
             <div class="detail-header">
               <span class="category-badge">{{ getCategoryInfo(auction.product?.category).emoji }} {{ getCategoryLabel(auction.product?.category || 'other') }}</span>
               <span class="status-badge" :class="auction.status">
                 {{ auction.status === 'active' ? (locale === 'zh' ? '🔥 進行中' : '🔥 Active') : auction.status === 'ended' ? (locale === 'zh' ? '已結束' : 'Ended') : (locale === 'zh' ? '⏳ 待開始' : '⏳ Pending') }}
               </span>
             </div>
-            <h1 class="product-title">{{ getTitle(auction.product) }}</h1>
-            <div v-if="getDescription(auction.product)" class="product-description">
-              {{ getDescription(auction.product) }}
-            </div>
-          </div>
 
-          <!-- 規格表 (與 ProductDetailView 統一) -->
-          <div class="detail-card">
-            <h3 class="card-title">{{ locale === 'zh' ? '商品規格' : 'Specifications' }}</h3>
+            <!-- Title -->
+            <h1 class="product-title">{{ getTitle(auction.product) }}</h1>
+
+            <!-- 賣家名稱 -->
+            <div v-if="auction.seller" class="seller-info-row">
+              <span class="seller-label">{{ locale === 'zh' ? '商鋪' : 'Seller' }}</span>
+              <div class="seller-avatar-sm">{{ (auction.seller?.nickname || '?').charAt(0) }}</div>
+              <span class="seller-name-text">{{ auction.seller?.nickname || (locale === 'zh' ? '未知商家' : 'Unknown Seller') }}</span>
+            </div>
+
+            <!-- Spec table -->
             <div class="spec-table">
               <div class="spec-row">
                 <div class="spec-cell">
@@ -501,17 +504,11 @@ onUnmounted(() => {
                 </div>
               </div>
             </div>
-          </div>
 
-          <!-- 賣家資訊 -->
-          <div class="detail-card">
-            <h3 class="card-title">{{ locale === 'zh' ? '賣家資訊' : 'Seller Info' }}</h3>
-            <div class="seller-row">
-              <div class="seller-avatar">{{ (auction.seller?.nickname || '?').charAt(0) }}</div>
-              <div class="seller-detail">
-                <span class="seller-name">{{ auction.seller?.nickname || '未知' }}</span>
-                <span class="seller-id">ID: {{ auction.seller?.id?.slice(0, 8) || '—' }}</span>
-              </div>
+            <!-- Description -->
+            <div v-if="getDescription(auction.product)" class="description-block">
+              <h3 class="desc-heading">{{ locale === 'zh' ? '商品描述' : 'Description' }}</h3>
+              <p class="desc-text">{{ getDescription(auction.product) }}</p>
             </div>
           </div>
         </div>
@@ -1039,38 +1036,62 @@ onUnmounted(() => {
   cursor: pointer;
 }
 
-/* ===== BOTTOM: 商品詳情 ===== */
-.detail-section {
+/* ===== RIGHT: 商品詳情 (與 ProductDetailView 統一) ===== */
+.info-wrap {
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: break-word;
 }
 
-.detail-card {
-  background: var(--bg-card);
-  border-radius: var(--radius-lg);
-  border: 1px solid var(--border);
-  padding: var(--space-4);
+.glass-card {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 36px 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  position: relative;
+  overflow: visible;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(129, 140, 248, 0.5), transparent);
+    border-radius: 16px 16px 0 0;
+    pointer-events: none;
+  }
 }
 
 .detail-header {
   display: flex;
-  gap: var(--space-2);
-  margin-bottom: var(--space-3);
+  gap: 8px;
+  align-items: center;
 }
 
 .category-badge {
-  padding: 2px 10px;
+  padding: 3px 12px;
   background: var(--bg-elevated);
-  border-radius: var(--radius-full);
-  font-size: var(--text-xs);
+  border-radius: 100px;
+  font-size: 0.75rem;
   color: var(--text-secondary);
+  font-weight: 500;
 }
 
 .status-badge {
-  padding: 2px 10px;
-  border-radius: var(--radius-full);
-  font-size: var(--text-xs);
+  padding: 3px 12px;
+  border-radius: 100px;
+  font-size: 0.75rem;
   font-weight: 600;
 }
 
@@ -1089,138 +1110,185 @@ onUnmounted(() => {
   color: #f59e0b;
 }
 
+/* Title */
 .product-title {
-  font-size: var(--text-xl);
-  font-weight: 700;
+  font-size: 1.9rem;
+  font-weight: 800;
   color: var(--text-primary);
-  margin-bottom: 4px;
+  line-height: 1.25;
+  margin: 0;
+  letter-spacing: -0.02em;
 }
 
-.product-subtitle {
-  font-size: var(--text-base);
-  color: var(--text-muted);
-  margin-bottom: var(--space-3);
-}
-
-.product-description {
-  color: var(--text-secondary);
-  line-height: 1.6;
-  font-size: var(--text-sm);
-  margin-bottom: var(--space-3);
-}
-
-.card-title {
-  font-size: var(--text-sm);
-  font-weight: 600;
-  color: var(--text-secondary);
-  margin-bottom: var(--space-3);
-}
-
-/* 規格表 — 與 ProductDetailView 統一 */
-.spec-table {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-}
-
-.spec-row {
-  display: flex;
-  gap: var(--space-3);
-}
-
-.spec-cell {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  padding: var(--space-2) 0;
-  border-bottom: 1px solid var(--border);
-}
-
-.spec-cell-full {
-  flex: 1 1 100%;
-}
-
-.spec-label {
-  font-size: var(--text-xs);
-  color: var(--text-muted);
-}
-
-.spec-value {
-  font-size: var(--text-sm);
-  color: var(--text-primary);
-  font-weight: 500;
+/* 賣家名稱行 */
+.seller-info-row {
   display: flex;
   align-items: center;
-  gap: 6px;
-  word-break: break-word;
+  gap: 8px;
+  margin-bottom: var(--space-2);
+  padding: 8px 12px;
+  background: var(--bg-elevated);
+  border-radius: var(--radius-md);
+  width: fit-content;
 }
 
-.condition-dot {
-  display: inline-block;
-  width: 8px;
-  height: 8px;
+.seller-label {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  font-weight: 400;
+}
+
+.seller-avatar-sm {
+  width: 28px;
+  height: 28px;
   border-radius: 50%;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 600;
   flex-shrink: 0;
 }
 
-.spec-tags {
+.seller-name-text {
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+/* Spec table — 與 ProductDetailView 統一 */
+.spec-table {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.02);
+  min-width: 0;
+  max-width: 100%;
+}
+
+.spec-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  min-width: 0;
+
+  & + .spec-row {
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+  }
+}
+
+.spec-cell {
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  overflow-wrap: break-word;
+  word-break: break-word;
+
+  & + .spec-cell {
+    border-left: 1px solid rgba(255, 255, 255, 0.08);
+  }
+}
+
+.spec-cell-full {
+  grid-column: 1 / -1;
+  border-left: none;
+}
+
+.spec-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.spec-value {
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 8px;
   flex-wrap: wrap;
-  gap: var(--space-2);
+}
+
+.condition-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  box-shadow: 0 0 8px currentColor;
+}
+
+.spec-tags {
+  gap: 8px;
 }
 
 .tag-chip {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  padding: 2px 10px;
-  border-radius: var(--radius-full);
+  gap: 6px;
+  padding: 4px 12px;
+  border-radius: 100px;
+  font-size: 0.75rem;
+  font-weight: 500;
   background: rgba(129, 140, 248, 0.1);
-  font-size: var(--text-xs);
-  color: var(--primary);
+  border: 1px solid rgba(129, 140, 248, 0.3);
+  color: #818cf8;
   cursor: default;
 }
 
 .tag-dot {
-  width: 6px;
-  height: 6px;
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
   flex-shrink: 0;
 }
 
-/* 賣家 */
-.seller-row {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
+/* Description */
+.description-block {
+  padding: 16px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-.seller-avatar {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  background: var(--primary);
-  color: white;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: var(--text-lg);
+.desc-heading {
+  font-size: 0.8rem;
   font-weight: 700;
-}
-
-.seller-detail {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.seller-name {
-  font-weight: 600;
-  color: var(--text-primary);
-}
-
-.seller-id {
-  font-size: var(--text-xs);
   color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin: 0 0 10px 0;
+}
+
+.desc-text {
+  font-size: 0.92rem;
+  line-height: 1.7;
+  color: var(--text-secondary);
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+/* Mobile: spec-table 保持兩列 */
+@media (max-width: 480px) {
+  .glass-card {
+    padding: 20px 16px;
+  }
+
+  .product-title {
+    font-size: 1.4rem;
+  }
+
+  .spec-row {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .spec-cell {
+    padding: 10px 12px;
+  }
 }
 </style>
