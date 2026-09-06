@@ -114,6 +114,81 @@ const formatDateTime = (dateStr: string) => {
   })
 }
 
+// === Product info helpers (synced with ProductDetailView) ===
+const categoryInfo = computed(() => ({
+  pokemon: { emoji: '🎮', zh: '寶可夢', en: 'Pokemon', color: '#e74c3c' },
+  yugioh: { emoji: '⚡', zh: '遊戲王', en: 'Yu-Gi-Oh!', color: '#f39c12' },
+  mtg: { emoji: '🧙', zh: '萬智牌', en: 'Magic: The Gathering', color: '#1abc9c' },
+  ultraman: { emoji: '👾', zh: '奧特曼', en: 'Ultraman', color: '#3498db' },
+  onepiece: { emoji: '🏴‍☠️', zh: '海賊王', en: 'One Piece', color: '#e74c3c' },
+  doraemon: { emoji: '🤖', zh: '哆啦A夢', en: 'Doraemon', color: '#2196f3' },
+  sports: { emoji: '⚽', zh: '體育卡', en: 'Sports Cards', color: '#27ae60' },
+  other: { emoji: '📦', zh: '其他', en: 'Other', color: '#9b59b6' }
+}))
+
+const getCategoryInfo = (category: string) => {
+  return categoryInfo.value[category as keyof typeof categoryInfo.value] || { emoji: '📦', zh: category, en: category }
+}
+
+const getCategoryLabel = (category: string) => {
+  const info = getCategoryInfo(category)
+  return locale.value === 'zh' ? info.zh : info.en
+}
+
+const getTitle = (product: any) => {
+  return locale.value === 'zh' ? (product?.titleZh || product?.titleEn) : (product?.titleEn || product?.titleZh)
+}
+
+const getDescription = (product: any) => {
+  if (locale.value === 'zh') return product?.descriptionZh || product?.descriptionEn || ''
+  return product?.descriptionEn || product?.descriptionZh || ''
+}
+
+const conditionColor = computed(() => ({
+  'S': '#22c55e',
+  'A': '#84cc16',
+  'B': '#eab308',
+  'C': '#f97316',
+  'D': '#ef4444'
+} as Record<string, string>)[auction.value?.product?.condition as string] || '#6366f1')
+
+const productTypeLabels: Record<string, { zh: string; en: string }> = {
+  graded_card: { zh: '評分卡', en: 'Graded Card' },
+  original_box: { zh: '原箱', en: 'Original Box' },
+  original_case: { zh: '原盒', en: 'Original Case' },
+  original_bag: { zh: '原袋', en: 'Original Bag' },
+  raw_card: { zh: '裸卡', en: 'Raw Card' },
+  other: { zh: '其它', en: 'Other' },
+}
+
+const getProductTypeLabel = (type: string | null | undefined) => {
+  if (!type) return '—'
+  const labels = productTypeLabels[type]
+  if (!labels) return type
+  return labels[locale.value as 'zh' | 'en'] || labels.zh
+}
+
+const languageLabels: Record<string, { zh: string; en: string }> = {
+  japanese: { zh: '日文', en: 'Japanese' },
+  english: { zh: '英文', en: 'English' },
+  traditional_chinese: { zh: '繁體中文', en: 'Traditional Chinese' },
+  simplified_chinese: { zh: '簡體中文', en: 'Simplified Chinese' },
+  korean: { zh: '韓文', en: 'Korean' },
+  other: { zh: '其他', en: 'Other' }
+}
+
+const getLanguageLabel = (lang: string | null | undefined) => {
+  if (!lang) return ''
+  const labels = languageLabels[lang]
+  if (!labels) return lang
+  return locale.value === 'zh' ? labels.zh : labels.en
+}
+
+const getGeneralTags = (product: any) => {
+  if (!product?.tags) return []
+  return product.tags.filter((tag: any) => tag.type !== 'product_type' && tag.type !== 'PRODUCT_TYPE')
+}
+
 const loadAuction = async () => {
   loading.value = true
   error.value = ''
@@ -356,32 +431,76 @@ onUnmounted(() => {
 
         </div>
 
-        <!-- RIGHT: 商品詳細資料 -->
+        <!-- RIGHT: 商品詳細資料 (與 ProductDetailView 統一) -->
         <div class="detail-section">
           <!-- 標題區 -->
           <div class="detail-card">
             <div class="detail-header">
-              <span class="category-badge">{{ auction.product?.category || '其他' }}</span>
+              <span class="category-badge">{{ getCategoryInfo(auction.product?.category).emoji }} {{ getCategoryLabel(auction.product?.category || 'other') }}</span>
               <span class="status-badge" :class="auction.status">
                 {{ auction.status === 'active' ? (locale === 'zh' ? '🔥 進行中' : '🔥 Active') : auction.status === 'ended' ? (locale === 'zh' ? '已結束' : 'Ended') : (locale === 'zh' ? '⏳ 待開始' : '⏳ Pending') }}
               </span>
             </div>
-            <h1 class="product-title">{{ auction.product?.titleEn || (locale === 'zh' ? '卡牌商品' : 'Card Product') }}</h1>
-            <p v-if="auction.product?.titleZh" class="product-subtitle">{{ auction.product?.titleZh }}</p>
-            <p v-if="auction.product?.descriptionEn || auction.product?.descriptionZh" class="product-description">
-              {{ auction.product?.descriptionEn || auction.product?.descriptionZh }}
-            </p>
+            <h1 class="product-title">{{ getTitle(auction.product) }}</h1>
+            <div v-if="getDescription(auction.product)" class="product-description">
+              {{ getDescription(auction.product) }}
+            </div>
           </div>
 
-          <!-- 規格表 -->
+          <!-- 規格表 (與 ProductDetailView 統一) -->
           <div class="detail-card">
             <h3 class="card-title">{{ locale === 'zh' ? '商品規格' : 'Specifications' }}</h3>
-            <table class="spec-table">
-              <tr><td>{{ locale === 'zh' ? '品相' : 'Condition' }}</td><td>{{ auction.product?.condition || '-' }}</td></tr>
-              <tr><td>{{ locale === 'zh' ? '品牌' : 'Brand' }}</td><td>{{ auction.product?.brand || '-' }}</td></tr>
-              <tr><td>{{ locale === 'zh' ? '系列' : 'Series' }}</td><td>{{ auction.product?.series || '-' }}</td></tr>
-              <tr><td>{{ locale === 'zh' ? '語言' : 'Language' }}</td><td>{{ auction.product?.language || '-' }}</td></tr>
-            </table>
+            <div class="spec-table">
+              <div class="spec-row">
+                <div class="spec-cell">
+                  <span class="spec-label">{{ locale === 'zh' ? '品牌' : 'Brand' }}</span>
+                  <span class="spec-value">{{ getCategoryInfo(auction.product?.category).emoji }} {{ getCategoryLabel(auction.product?.category || 'other') }}</span>
+                </div>
+                <div class="spec-cell">
+                  <span class="spec-label">{{ locale === 'zh' ? '語言' : 'Language' }}</span>
+                  <span class="spec-value">{{ getLanguageLabel(auction.product?.language) || '—' }}</span>
+                </div>
+              </div>
+              <div class="spec-row">
+                <div class="spec-cell">
+                  <span class="spec-label">{{ locale === 'zh' ? '品相' : 'Condition' }}</span>
+                  <span class="spec-value">
+                    <span class="condition-dot" :style="{ backgroundColor: conditionColor }"></span>
+                    {{ auction.product?.condition || '—' }}{{ locale === 'zh' ? '品, ' + ({ S: '完美品相', A: '輕微瑕疵', B: '正常使用痕跡', C: '較明顯磨損', D: '嚴重磨損' } as Record<string, string>)[auction.product?.condition] || '' : '' }}
+                  </span>
+                </div>
+                <div class="spec-cell">
+                  <span class="spec-label">{{ locale === 'zh' ? '商品種類' : 'Type' }}</span>
+                  <span class="spec-value">{{ getProductTypeLabel(auction.product?.productType) }}</span>
+                </div>
+              </div>
+              <div class="spec-row" v-if="auction.product?.series">
+                <div class="spec-cell">
+                  <span class="spec-label">{{ locale === 'zh' ? '系列' : 'Series' }}</span>
+                  <span class="spec-value">{{ auction.product?.series }}</span>
+                </div>
+                <div class="spec-cell">
+                  <span class="spec-label">{{ locale === 'zh' ? '品牌' : 'Brand' }}</span>
+                  <span class="spec-value">{{ auction.product?.brand || '—' }}</span>
+                </div>
+              </div>
+              <div class="spec-row" v-if="getGeneralTags(auction.product).length > 0">
+                <div class="spec-cell spec-cell-full">
+                  <span class="spec-label">{{ locale === 'zh' ? '其它標籤' : 'Tags' }}</span>
+                  <span class="spec-value spec-tags">
+                    <span
+                      v-for="tag in getGeneralTags(auction.product)"
+                      :key="tag.id"
+                      class="tag-chip"
+                      :style="tag.color ? { '--tag-color': tag.color } : {}"
+                    >
+                      <span class="tag-dot" :style="{ backgroundColor: tag.color || '#818cf8' }"></span>
+                      {{ tag.name }}
+                    </span>
+                  </span>
+                </div>
+              </div>
+            </div>
           </div>
 
           <!-- 賣家資訊 -->
@@ -987,6 +1106,7 @@ onUnmounted(() => {
   color: var(--text-secondary);
   line-height: 1.6;
   font-size: var(--text-sm);
+  margin-bottom: var(--space-3);
 }
 
 .card-title {
@@ -996,30 +1116,76 @@ onUnmounted(() => {
   margin-bottom: var(--space-3);
 }
 
-/* 規格表 */
+/* 規格表 — 與 ProductDetailView 統一 */
 .spec-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: var(--text-sm);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
 }
 
-.spec-table td {
+.spec-row {
+  display: flex;
+  gap: var(--space-3);
+}
+
+.spec-cell {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
   padding: var(--space-2) 0;
   border-bottom: 1px solid var(--border);
 }
 
-.spec-table td:first-child {
-  color: var(--text-muted);
-  width: 30%;
+.spec-cell-full {
+  flex: 1 1 100%;
 }
 
-.spec-table td:last-child {
+.spec-label {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+
+.spec-value {
+  font-size: var(--text-sm);
   color: var(--text-primary);
   font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  word-break: break-word;
 }
 
-.spec-table tr:last-child td {
-  border-bottom: none;
+.condition-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.spec-tags {
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.tag-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 10px;
+  border-radius: var(--radius-full);
+  background: rgba(129, 140, 248, 0.1);
+  font-size: var(--text-xs);
+  color: var(--primary);
+  cursor: default;
+}
+
+.tag-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
 }
 
 /* 賣家 */
