@@ -39,7 +39,7 @@ const filters = ref<any>({
   condition: [] as string[],
   priceMin: undefined as number | undefined,
   priceMax: undefined as number | undefined,
-  listingType: 'all',
+  listingType: [] as string[],
   sortBy: 'newest',
   tags: [] as string[],
   productTypes: [] as string[],
@@ -105,7 +105,7 @@ const activeFiltersCount = computed(() => {
   if (filters.value.rarity?.length) count += filters.value.rarity.length
   if (filters.value.condition?.length) count += filters.value.condition.length
   if (filters.value.priceMin || filters.value.priceMax) count++
-  if (filters.value.listingType !== 'all') count++
+  if (filters.value.listingType?.length) count += filters.value.listingType.length
   if (filters.value.productTypes?.length) count += filters.value.productTypes.length
   if (filters.value.language?.length) count += filters.value.language.length
   return count
@@ -131,13 +131,10 @@ const activeFiltersList = computed(() => {
     })
   }
 
-  if (filters.value.listingType !== 'all') {
-    const lt = filterOptions.value.listingTypes.find(x => x.value === filters.value.listingType)
-    list.push({
-      key: 'listingType',
-      value: lt?.label || filters.value.listingType
-    })
-  }
+  filters.value.listingType?.forEach((lt: string) => {
+    const opt = filterOptions.value.listingTypes.find(x => x.value === lt)
+    list.push({ key: 'listingType', value: opt?.label || lt, rawValue: lt })
+  })
 
   filters.value.productTypes?.forEach((pt: string) => {
     const opt = filterOptions.value.productTypes.find(x => x.value === pt)
@@ -160,9 +157,13 @@ const fetchProducts = async (append = false) => {
     loading.value = true
   }
   try {
-    // Strip listingType if 'all' since backend only accepts 'sale'|'auction'|'both'
+    // Convert listingType array to listingTypes for API call
     const { listingType, ...params } = filters.value
-    const cleanParams = listingType === 'all' ? params : { ...filters.value, listingType }
+    const cleanParams = { ...params }
+    if (listingType && listingType.length > 0) {
+      (cleanParams as any).listingTypes = listingType
+    }
+    delete (cleanParams as any).listingType
     // Convert productTypes array to productType for API call (backend supports array)
     if (cleanParams.productTypes && Array.isArray(cleanParams.productTypes) && cleanParams.productTypes.length > 0) {
       (cleanParams as any).productType = cleanParams.productTypes
@@ -193,7 +194,7 @@ const updateFilter = (key: string, value: any) => {
   fetchProducts()
 }
 
-const toggleArrayFilter = (key: 'category' | 'rarity' | 'condition' | 'tags' | 'productTypes' | 'language', value: string) => {
+const toggleArrayFilter = (key: 'category' | 'rarity' | 'condition' | 'tags' | 'productTypes' | 'language' | 'listingType', value: string) => {
   const arr = filters.value[key] || []
   const index = arr.indexOf(value)
   if (index === -1) {
@@ -209,7 +210,9 @@ const removeFilter = (key: string, value?: string) => {
     filters.value.priceMin = undefined
     filters.value.priceMax = undefined
   } else if (key === 'listingType') {
-    filters.value.listingType = 'all'
+    const arr = filters.value.listingType || []
+    const index = arr.indexOf(value)
+    if (index !== -1) arr.splice(index, 1)
   } else if (value) {
     const arr = filters.value[key] || []
     // Find the actual value to remove (might be stored as rawValue in activeFiltersList)
@@ -250,7 +253,7 @@ const clearAllFilters = () => {
     condition: [],
     priceMin: undefined,
     priceMax: undefined,
-    listingType: 'all',
+    listingType: [],
     sortBy: 'newest',
     page: 1,
     limit: 20,
@@ -269,7 +272,7 @@ const updateUrl = () => {
   if (filters.value.condition?.length) query.condition = filters.value.condition.join(',')
   if (filters.value.priceMin) query.priceMin = String(filters.value.priceMin)
   if (filters.value.priceMax) query.priceMax = String(filters.value.priceMax)
-  if (filters.value.listingType !== 'all') query.listing = filters.value.listingType
+  if (filters.value.listingType?.length) query.listing = filters.value.listingType.join(',')
   if (filters.value.sortBy !== 'newest') query.sort = filters.value.sortBy
   if (filters.value.tags?.length) query.tags = filters.value.tags.join(',')
   if (filters.value.productTypes?.length) query.productType = filters.value.productTypes.join(',')
@@ -287,7 +290,7 @@ const parseUrlFilters = () => {
   if (query.condition) filters.value.condition = (query.condition as string).split(',')
   if (query.priceMin) filters.value.priceMin = Number(query.priceMin)
   if (query.priceMax) filters.value.priceMax = Number(query.priceMax)
-  if (query.listing) filters.value.listingType = query.listing as 'all' | 'sale' | 'auction' | 'reservation'
+  if (query.listing) filters.value.listingType = (query.listing as string).split(',')
   if (query.sort) filters.value.sortBy = query.sort as string
   if (query.productType) filters.value.productTypes = (query.productType as string).split(',')
   if (query.productTypeTags) filters.value.productTypes = (query.productTypeTags as string).split(',')
@@ -445,28 +448,17 @@ watch(() => route.query, () => {
                 v-for="lt in filterOptions.listingTypes"
                 :key="lt.value"
                 class="filter-option"
-                :class="{ active: filters.listingType === lt.value }"
+                :class="{ active: filters.listingType.includes(lt.value) }"
               >
                 <input
-                  type="radio"
-                  name="listingType"
-                  :checked="filters.listingType === lt.value"
-                  @change="updateFilter('listingType', lt.value)"
+                  type="checkbox"
+                  :checked="filters.listingType.includes(lt.value)"
+                  @change="toggleArrayFilter('listingType', lt.value)"
                 />
                 <span class="checkmark" />
                 <span class="filter-label">
                   {{ lt.label }}
                 </span>
-              </label>
-              <label class="filter-option" :class="{ active: filters.listingType === 'all' }">
-                <input
-                  type="radio"
-                  name="listingType"
-                  :checked="filters.listingType === 'all'"
-                  @change="updateFilter('listingType', 'all')"
-                />
-                <span class="checkmark" />
-                <span class="filter-label">全部</span>
               </label>
             </div>
           </div>
