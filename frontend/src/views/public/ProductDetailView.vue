@@ -724,6 +724,7 @@ const isProductSuspended = computed(() => {
                   {{ processing ? (t('common.loading') || '處理中...') : (!authStore.isAuthenticated ? (locale === 'zh' ? '登入後預約' : 'Login to Reserve') : (locale === 'zh' ? '立即預約' : 'Reserve Now')) }}
                 </button>
                 <button
+                  v-if="authStore.isAuthenticated"
                   class="btn btn-fav"
                   :class="{ active: isFavorited }"
                   :disabled="favoriteLoading"
@@ -746,13 +747,15 @@ const isProductSuspended = computed(() => {
                   {{ processing ? (t('common.loading') || '處理中...') : (!authStore.isAuthenticated ? (locale === 'zh' ? '登入後購買' : 'Login to Buy') : (locale === 'zh' ? '立即購買' : 'Buy Now')) }}
                 </button>
                 <button
+                  v-if="authStore.isAuthenticated"
                   class="btn btn-secondary"
                   :disabled="processing || isOutOfStock() || isProductSuspended"
                   @click="handleAddToCart"
                 >
-                  {{ !authStore.isAuthenticated ? (locale === 'zh' ? '登入後加購物車' : 'Login to Add') : (locale === 'zh' ? '加到購物車' : 'Add to Cart') }}
+                  {{ locale === 'zh' ? '加到購物車' : 'Add to Cart' }}
                 </button>
                 <button
+                  v-if="authStore.isAuthenticated"
                   class="btn btn-fav"
                   :class="{ active: isFavorited }"
                   :disabled="favoriteLoading"

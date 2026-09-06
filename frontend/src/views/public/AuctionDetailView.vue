@@ -330,8 +330,9 @@ onUnmounted(() => {
           <!-- 圖片輪播 -->
           <div class="image-gallery">
             <div class="image-container">
-              <!-- Favorite button -->
+              <!-- Favorite button (login required) -->
               <button
+                v-if="authStore.isAuthenticated"
                 class="fav-btn-detail"
                 :class="{ active: isFavorited }"
                 @click="handleToggleFavorite"
