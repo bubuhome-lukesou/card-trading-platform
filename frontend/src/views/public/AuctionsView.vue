@@ -1,12 +1,17 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { RouterLink } from 'vue-router'
-import { Gavel, Clock, Trophy, Loader2 } from 'lucide-vue-next'
+import { useRouter } from 'vue-router'
+import { Gavel, Clock, Trophy, Loader2, Heart } from 'lucide-vue-next'
 import type { Auction } from '@/types'
 import { auctionApi } from '@/api/auctions'
+import { useAuthStore } from '@/stores/auth'
+import { useFavoritesStore } from '@/stores/favorites'
 
 const { t } = useI18n()
+const router = useRouter()
+const authStore = useAuthStore()
+const favoritesStore = useFavoritesStore()
 
 const auctions = ref<Auction[]>([])
 const loading = ref(false)
@@ -75,6 +80,22 @@ const getTimeClass = (date: string) => {
   return ''
 }
 
+const isFavorited = (auction: Auction) => {
+  return favoritesStore.isFavorited(auction.productId)
+}
+
+const handleToggleFavorite = (e: Event, auction: Auction) => {
+  e.preventDefault()
+  e.stopPropagation()
+  favoritesStore.toggleFavorite(auction.productId)
+}
+
+const handleQuickBid = (e: Event, auction: Auction) => {
+  e.preventDefault()
+  e.stopPropagation()
+  router.push(`/auction/${auction.id}`)
+}
+
 // Lifecycle
 fetchAuctions()
 </script>
@@ -127,17 +148,25 @@ fetchAuctions()
 
       <!-- Grid -->
       <div v-else class="auctions-grid">
-        <RouterLink
+        <div
           v-for="auction in auctions"
           :key="auction.id"
-          :to="`/auction/${auction.id}`"
           class="auction-card"
+          @click="router.push(`/auction/${auction.id}`)"
         >
           <div class="card-image">
             <img
-              :src="auction.product?.images[0] || '/placeholder-card.png'"
+              :src="auction.product?.images?.[0] || '/placeholder-card.png'"
               :alt="auction.product?.titleEn"
             />
+            <!-- Favorite button -->
+            <button
+              class="favorite-btn"
+              :class="{ active: isFavorited(auction) }"
+              @click="handleToggleFavorite($event, auction)"
+            >
+              <Heart class="fav-icon" :class="{ 'icon-filled': isFavorited(auction) }" />
+            </button>
             <span class="status-badge" :class="getTimeClass(auction.endTime)">
               <Clock class="badge-icon" />
               {{ formatTime(auction.endTime) }}
@@ -145,13 +174,21 @@ fetchAuctions()
           </div>
 
           <div class="card-info">
-            <h3>{{ auction.product?.titleEn || auction.product?.titleZh }}</h3>
+            <h3>{{ auction.product?.titleZh || auction.product?.titleEn }}</h3>
             <div class="auction-meta">
               <span class="current-price">{{ formatPrice(auction.currentPrice) }}</span>
               <span class="bid-count">{{ auction.bidCount }} {{ t('product.details.bids') }}</span>
             </div>
+            <!-- Quick Bid button -->
+            <button
+              v-if="auction.status === 'active'"
+              class="btn-quick-bid"
+              @click="handleQuickBid($event, auction)"
+            >
+              {{ t('auction.placeBid') || '立即出價' }}
+            </button>
           </div>
-        </RouterLink>
+        </div>
       </div>
     </div>
   </div>
@@ -318,11 +355,78 @@ fetchAuctions()
   overflow: hidden;
   text-decoration: none;
   transition: all var(--transition-base);
+  cursor: pointer;
 
   &:hover {
     border-color: var(--primary);
     transform: translateY(-4px);
     box-shadow: var(--shadow-xl);
+
+    .favorite-btn {
+      opacity: 1;
+    }
+  }
+}
+
+.favorite-btn {
+  position: absolute;
+  top: var(--space-2);
+  left: var(--space-2);
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  opacity: 0;
+  transition: all 0.2s ease;
+  z-index: 5;
+
+  @media (max-width: 768px) {
+    opacity: 1;
+  }
+
+  .fav-icon {
+    width: 16px;
+    height: 16px;
+    color: white;
+  }
+
+  &:hover {
+    background: rgba(0, 0, 0, 0.7);
+    transform: scale(1.1);
+  }
+
+  &.active .fav-icon {
+    color: #ef4444;
+    fill: #ef4444;
+  }
+}
+
+.btn-quick-bid {
+  width: 100%;
+  margin-top: var(--space-3);
+  padding: var(--space-2) var(--space-4);
+  background: linear-gradient(135deg, #10b981, #059669);
+  border: none;
+  border-radius: var(--radius-md);
+  color: white;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+
+  &:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+  }
+
+  &:active {
+    transform: translateY(0);
   }
 }
 

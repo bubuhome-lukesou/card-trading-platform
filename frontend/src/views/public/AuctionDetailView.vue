@@ -3,13 +3,16 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { auctionApi } from '@/api/auctions'
+import { useFavoritesStore } from '@/stores/favorites'
 import { useI18n } from 'vue-i18n'
+import { Heart } from 'lucide-vue-next'
 
 const { t, locale } = useI18n()
 
 const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
+const favoritesStore = useFavoritesStore()
 
 const auction = ref<any>(null)
 const bids = ref<any[]>([])
@@ -91,6 +94,17 @@ const isEnded = computed(() => {
 const isSeller = computed(() => {
   return authStore.user?.id === auction.value?.sellerId
 })
+
+const isFavorited = computed(() => {
+  if (!auction.value?.productId) return false
+  return favoritesStore.isFavorited(auction.value.productId)
+})
+
+const handleToggleFavorite = () => {
+  if (auction.value?.productId) {
+    favoritesStore.toggleFavorite(auction.value.productId)
+  }
+}
 
 const canBid = computed(() => {
   return authStore.isAuthenticated && !isSeller.value && !isEnded.value
@@ -312,6 +326,14 @@ onUnmounted(() => {
           <!-- 圖片輪播 -->
           <div class="image-gallery">
             <div class="image-container">
+              <!-- Favorite button -->
+              <button
+                class="fav-btn-detail"
+                :class="{ active: isFavorited }"
+                @click="handleToggleFavorite"
+              >
+                <Heart class="fav-icon-detail" :class="{ 'icon-filled': isFavorited }" />
+              </button>
               <img
                 v-if="parsedImages.length > 0"
                 :src="parsedImages[currentImageIndex]"
@@ -741,6 +763,40 @@ onUnmounted(() => {
   justify-content: center;
   font-size: 80px;
   background: var(--bg-elevated);
+}
+
+.fav-btn-detail {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 5;
+  transition: all 0.2s ease;
+
+  &:hover {
+    background: rgba(0, 0, 0, 0.7);
+    transform: scale(1.1);
+  }
+
+  &.active .fav-icon-detail {
+    color: #ef4444;
+    fill: #ef4444;
+  }
+}
+
+.fav-icon-detail {
+  width: 18px;
+  height: 18px;
+  color: white;
 }
 
 .image-dots {
