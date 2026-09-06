@@ -39,12 +39,22 @@ const handleCardClick = async (e: Event) => {
 
 const title = computed(() => locale.value === 'zh' ? (props.product.titleZh || props.product.titleEn) : (props.product.titleEn || props.product.titleZh))
 
-// Get product type tag name from productTypeTagId
+// Product type labels (enum value → display label)
+const productTypeLabels: Record<string, { zh: string; en: string }> = {
+  graded_card: { zh: '評分卡', en: 'Graded Card' },
+  original_box: { zh: '原箱', en: 'Original Box' },
+  original_case: { zh: '原盒', en: 'Original Case' },
+  original_bag: { zh: '原袋', en: 'Original Bag' },
+  raw_card: { zh: '裸卡', en: 'Raw Card' },
+  other: { zh: '其它', en: 'Other' },
+}
+
 const productTypeTagName = computed(() => {
-  const tagId = (props.product as any).productTypeTagId
-  if (!tagId) return ''
-  const tag = productTypeTags.value.find(t => t.id === tagId)
-  return tag?.name || ''
+  const pt = (props.product as any).productType
+  if (!pt) return ''
+  const labels = productTypeLabels[pt]
+  if (!labels) return pt
+  return locale.value === 'zh' ? labels.zh : labels.en
 })
 
 // Category translation map
