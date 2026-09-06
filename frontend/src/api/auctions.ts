@@ -12,6 +12,11 @@ export const auctionApi = {
     return api.get<Auction>(`/auctions/${id}`)
   },
 
+  // Get auction by productId
+  getAuctionByProductId(productId: string) {
+    return api.get<Auction>(`/auctions/by-product/${productId}`)
+  },
+
   // Create auction (seller only)
   createAuction(data: any) {
     return api.post<Auction>('/auctions', data)

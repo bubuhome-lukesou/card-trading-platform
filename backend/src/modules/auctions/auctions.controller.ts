@@ -18,6 +18,12 @@ export class AuctionsController {
     return this.auctionsService.findAll({ sellerId: req.user.id } as any)
   }
 
+  @Get('by-product/:productId')
+  async findByProductId(@Param('productId') productId: string) {
+    const auction = await this.auctionsService.findByProductId(productId)
+    return auction
+  }
+
   @Get(':id')
   async findOne(@Param('id') id: string) {
     return this.auctionsService.findOne(id)

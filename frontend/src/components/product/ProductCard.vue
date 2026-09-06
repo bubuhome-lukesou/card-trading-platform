@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { RouterLink } from 'vue-router'
+import { RouterLink, useRouter } from 'vue-router'
 import { Heart, ShoppingCart, Gavel, Calendar } from 'lucide-vue-next'
 import type { Product, Tag } from '@/types'
 import { useFavoritesStore } from '@/stores/favorites'
 import { tagApi } from '@/api/tags'
+import { auctionApi } from '@/api/auctions'
 import { useI18n } from 'vue-i18n'
 
 const props = defineProps<{
@@ -19,6 +20,22 @@ const productTypeTags = ref<Tag[]>([])
 tagApi.getTags().then(res => {
   productTypeTags.value = (res.data || []).filter((t: any) => t.type === 'product_type')
 }).catch(() => {})
+
+const router = useRouter()
+
+const handleCardClick = async (e: Event) => {
+  // For auction products, navigate to auction detail page
+  if (props.product.listingType === 'auction') {
+    e.preventDefault()
+    try {
+      const res = await auctionApi.getAuctionByProductId(props.product.id)
+      router.push(`/auction/${res.data.id}`)
+    } catch {
+      // Fallback to product detail if no auction found
+      router.push(`/product/${props.product.id}`)
+    }
+  }
+}
 
 const title = computed(() => locale.value === 'zh' ? (props.product.titleZh || props.product.titleEn) : (props.product.titleEn || props.product.titleZh))
 
@@ -87,7 +104,7 @@ const languageLabel = computed(() => {
 </script>
 
 <template>
-  <RouterLink :to="`/product/${product.id}`" class="listing-card">
+  <RouterLink :to="`/product/${product.id}`" class="listing-card" @click="handleCardClick">
     <!-- Image -->
     <div class="listing-image">
       <img

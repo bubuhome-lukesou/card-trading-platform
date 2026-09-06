@@ -5,6 +5,7 @@ import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
 import { uploadApi } from '@/api/upload'
 import { productApi } from '@/api/products'
+import { auctionApi } from '@/api/auctions'
 import { tagApi } from '@/api/tags'
 
 const { t } = useI18n()
@@ -119,6 +120,10 @@ const formData = ref({
   isActive: true,
   // Listing type
   listingType: 'sale' as 'sale' | 'auction' | 'reservation',
+  // Auction fields
+  startingPrice: 0,
+  bidIncrement: 10,
+  auctionEndTime: '',
   // Reservation fields
   reservationMax: 10,
   reservationDeposit: 0,
@@ -142,6 +147,9 @@ const resetForm = () => {
     language: null,
     isActive: true,
     listingType: 'sale',
+    startingPrice: 0,
+    bidIncrement: 10,
+    auctionEndTime: '',
     reservationMax: 10,
     reservationDeposit: 0,
     reservationDeadline: '',
@@ -210,6 +218,9 @@ const openEditModal = async (product: any) => {
     language: product.language || null,
     isActive: product.isActive !== false,
     listingType: product.listingType || 'sale',
+    startingPrice: product.startingPrice || 0,
+    bidIncrement: product.bidIncrement || 10,
+    auctionEndTime: product.auctionEndTime || '',
     reservationMax: product.reservationMax || 10,
     reservationDeposit: product.reservationDeposit || 0,
     reservationDeadline: product.reservationDeadline || '',
@@ -253,10 +264,26 @@ const handleSubmit = async () => {
     }
     
     // Create or update product
+    let productId: string
     if (editingProduct.value) {
-      await productApi.updateProduct(editingProduct.value.id, productData)
+      const res = await productApi.updateProduct(editingProduct.value.id, productData)
+      productId = editingProduct.value.id
     } else {
-      await productApi.createProduct(productData)
+      const res = await productApi.createProduct(productData)
+      productId = res.data.id
+    }
+
+    // If listingType is auction, create auction record
+    if (formData.value.listingType === 'auction' && formData.value.auctionEndTime) {
+      const endTime = new Date(formData.value.auctionEndTime)
+      const startTime = new Date() // start immediately
+      await auctionApi.createAuction({
+        productId,
+        startingPrice: formData.value.startingPrice || productData.price,
+        startTime: startTime.toISOString(),
+        endTime: endTime.toISOString(),
+        extensionMinutes: 5,
+      })
     }
 
     showModal.value = false
@@ -627,6 +654,39 @@ onUnmounted(() => {
                 <option value="reservation">預約</option>
               </select>
             </div>
+
+            <!-- Auction Fields (when auction is selected) -->
+            <template v-if="formData.listingType === 'auction'">
+              <div class="form-group">
+                <label>起拍價 (MOP)</label>
+                <input
+                  v-model.number="formData.startingPrice"
+                  type="number"
+                  min="0"
+                  max="99999999.99"
+                  step="0.01"
+                  placeholder="100"
+                />
+              </div>
+              <div class="form-group">
+                <label>每次加價幅度 (MOP)</label>
+                <input
+                  v-model.number="formData.bidIncrement"
+                  type="number"
+                  min="1"
+                  max="99999"
+                  step="1"
+                  placeholder="10"
+                />
+              </div>
+              <div class="form-group">
+                <label>拍賣結束時間</label>
+                <input
+                  v-model="formData.auctionEndTime"
+                  type="datetime-local"
+                />
+              </div>
+            </template>
 
             <!-- Reservation Fields (when reservation is selected) -->
             <template v-if="formData.listingType === 'reservation'">

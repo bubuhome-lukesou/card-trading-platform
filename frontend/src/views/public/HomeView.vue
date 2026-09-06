@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { RouterLink } from 'vue-router'
+import { RouterLink, useRouter } from 'vue-router'
 import { ArrowRight, Zap, Clock, Star, Heart, ShoppingCart, Gavel, Calendar } from 'lucide-vue-next'
 import { auctionApi } from '@/api/auctions'
 import { productApi } from '@/api/products'
@@ -148,6 +148,20 @@ const getListingBadgeText = (listingType: string) => {
   if (listingType === 'auction') return 'Bid'
   if (listingType === 'reservation') return 'Reserve'
   return 'Sale'
+}
+
+const router = useRouter()
+
+const handleCardClick = async (e: Event, item: any) => {
+  if (item.listingType === 'auction') {
+    e.preventDefault()
+    try {
+      const res = await auctionApi.getAuctionByProductId(item.id)
+      router.push(`/auction/${res.data.id}`)
+    } catch {
+      router.push(`/product/${item.id}`)
+    }
+  }
 }
 
 const fetchNewListings = async () => {
@@ -304,6 +318,7 @@ onMounted(() => {
             :key="item.id"
             :to="`/product/${item.id}`"
             class="listing-card"
+            @click="handleCardClick($event, item)"
           >
             <div class="listing-image">
               <img v-if="item.image" :src="item.image" :alt="item.title" />

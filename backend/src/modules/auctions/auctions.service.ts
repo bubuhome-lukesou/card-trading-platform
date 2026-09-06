@@ -212,6 +212,22 @@ export class AuctionsService {
     }
   }
 
+  // Find auction by productId (returns latest active/pending/ended auction)
+  async findByProductId(productId: string) {
+    const auction = await this.auctionRepo
+      .createQueryBuilder('auction')
+      .leftJoinAndSelect('auction.product', 'product')
+      .where('auction.productId = :productId', { productId })
+      .orderBy('auction.createdAt', 'DESC')
+      .getOne()
+
+    if (!auction) {
+      throw new NotFoundException('No auction found for this product')
+    }
+
+    return auction
+  }
+
   async findOne(id: string) {
     const auction = await this.auctionRepo
       .createQueryBuilder('auction')
