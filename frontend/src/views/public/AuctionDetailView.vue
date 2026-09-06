@@ -1,11 +1,13 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { auctionApi } from '@/api/auctions'
 import { useFavoritesStore } from '@/stores/favorites'
 import { useI18n } from 'vue-i18n'
-import { Heart } from 'lucide-vue-next'
+import { Heart, Loader2 } from 'lucide-vue-next'
+import { productApi } from '@/api/products'
+import ProductCard from '@/components/product/ProductCard.vue'
 
 const { t, locale } = useI18n()
 
@@ -23,8 +25,54 @@ const placingBid = ref(false)
 const bidError = ref('')
 const bidSuccess = ref('')
 const currentImageIndex = ref(0)
+const showLightbox = ref(false)
 // U1: Tick ref to force timeRemaining re-evaluation every second
 const tick = ref(0)
+
+// Touch/swipe state for mobile
+const touchStartX = ref(0)
+const touchEndX = ref(0)
+
+const onTouchStart = (e: TouchEvent) => {
+  touchStartX.value = e.changedTouches[0].screenX
+}
+
+const onTouchEnd = (e: TouchEvent) => {
+  touchEndX.value = e.changedTouches[0].screenX
+  handleSwipe()
+}
+
+const handleSwipe = () => {
+  const diff = touchStartX.value - touchEndX.value
+  if (Math.abs(diff) < 30) return
+  if (diff > 0) {
+    // Swipe left — next image
+    if (currentImageIndex.value < parsedImages.value.length - 1) {
+      currentImageIndex.value++
+    }
+  } else {
+    // Swipe right — prev image
+    if (currentImageIndex.value > 0) {
+      currentImageIndex.value--
+    }
+  }
+}
+
+const openLightbox = () => {
+  if (parsedImages.value.length > 0) showLightbox.value = true
+}
+
+const closeLightbox = () => {
+  showLightbox.value = false
+}
+
+const lightboxPrev = () => {
+  if (currentImageIndex.value > 0) currentImageIndex.value--
+}
+
+const lightboxNext = () => {
+  if (currentImageIndex.value < parsedImages.value.length - 1) currentImageIndex.value++
+}
 
 const auctionId = computed(() => route.params.id as string)
 
@@ -100,9 +148,20 @@ const isFavorited = computed(() => {
   return favoritesStore.isFavorited(auction.value.productId)
 })
 
-const handleToggleFavorite = () => {
-  if (auction.value?.productId) {
-    favoritesStore.toggleFavorite(auction.value.productId)
+const favoriteLoading = ref(false)
+
+const handleToggleFavorite = async () => {
+  if (!auction.value?.productId) return
+  if (favoriteLoading.value) return
+  if (!authStore.isAuthenticated) {
+    router.push({ path: '/login', query: { redirect: route.fullPath } })
+    return
+  }
+  favoriteLoading.value = true
+  try {
+    await favoritesStore.toggleFavorite(auction.value.productId)
+  } finally {
+    favoriteLoading.value = false
   }
 }
 
@@ -115,11 +174,7 @@ const isHighestBidder = computed(() => {
 })
 
 const formatPrice = (price: number) => {
-  return new Intl.NumberFormat('zh-MO', {
-    style: 'currency',
-    currency: 'MOP',
-    minimumFractionDigits: 0,
-  }).format(price)
+  return `MOP $${Number(price).toLocaleString()}`
 }
 
 const formatDateTime = (dateStr: string) => {
@@ -224,6 +279,7 @@ const loadAuction = async () => {
     }
     bids.value = response.data.bids || []
     bidAmount.value = Number(response.data.currentPrice || response.data.startingPrice) + 10
+    fetchRelatedProducts()
   } catch (err: any) {
     error.value = err?.response?.data?.message || (locale.value === 'zh' ? '無法加載拍賣詳情' : 'Failed to load auction')
   } finally {
@@ -233,7 +289,7 @@ const loadAuction = async () => {
 
 const handlePlaceBid = async () => {
   if (!authStore.isAuthenticated) {
-    router.push('/login')
+    router.push({ path: '/login', query: { redirect: route.fullPath } })
     return
   }
   
@@ -258,15 +314,59 @@ const handlePlaceBid = async () => {
   }
 }
 
+// Related products
+const relatedProducts = ref<any[]>([])
+const relatedLoading = ref(false)
+
+const fetchRelatedProducts = async () => {
+  if (!auction.value?.product) return
+  relatedLoading.value = true
+  try {
+    const res = await productApi.getProducts({
+      category: auction.value.product.category,
+      limit: 20,
+      sortBy: 'newest'
+    } as any)
+    const matches = (res.data.data || [])
+      .filter((p: any) => p.id !== auction.value.product.id && p.quantity > 0)
+      .map((p: any) => {
+        let score = 0
+        if (p.productType === auction.value.product.productType) score += 3
+        if (p.condition === auction.value.product.condition) score += 2
+        if (p.brand === auction.value.product.brand) score += 1
+        if (p.series === auction.value.product.series) score += 1
+        return { ...p, _score: score }
+      })
+      .sort((a: any, b: any) => b._score - a._score)
+      .slice(0, 6)
+    relatedProducts.value = matches
+  } catch (e) {
+    console.error('Failed to fetch related products:', e)
+  } finally {
+    relatedLoading.value = false
+  }
+}
+
 // Poll for updates
 let pollInterval: ReturnType<typeof setInterval>
 let tickInterval: ReturnType<typeof setInterval>
 
 onMounted(() => {
   loadAuction()
+  if (authStore.isAuthenticated) {
+    favoritesStore.loadFavorites()
+  }
   pollInterval = setInterval(loadAuction, 10000)
   // U1: Tick every second for countdown accuracy
   tickInterval = setInterval(() => { tick.value++ }, 1000)
+})
+
+// Reload on route param change (navigating between auctions)
+watch(auctionId, (newId) => {
+  if (newId) {
+    currentImageIndex.value = 0
+    loadAuction()
+  }
 })
 
 onUnmounted(() => {
@@ -329,7 +429,7 @@ onUnmounted(() => {
 
           <!-- 圖片輪播 -->
           <div class="image-gallery">
-            <div class="image-container">
+            <div class="image-container" @touchstart="onTouchStart" @touchend="onTouchEnd">
               <!-- Favorite button (login required) -->
               <button
                 v-if="authStore.isAuthenticated"
@@ -344,8 +444,13 @@ onUnmounted(() => {
                 :src="parsedImages[currentImageIndex]"
                 :alt="auction.product?.titleEn"
                 class="product-image"
+                @click="openLightbox"
               />
               <div v-else class="image-placeholder">🃏</div>
+              <!-- Zoom hint -->
+              <div v-if="parsedImages.length > 0" class="zoom-hint">
+                {{ locale === 'zh' ? '點擊放大' : 'Click to zoom' }}
+              </div>
             </div>
             <!-- 多圖指示器 -->
             <div v-if="parsedImages.length > 1" class="image-dots">
@@ -528,6 +633,7 @@ onUnmounted(() => {
                       :key="tag.id"
                       class="tag-chip"
                       :style="tag.color ? { '--tag-color': tag.color } : {}"
+                      @click="router.push({ path: '/marketplace', query: { search: tag.name } })"
                     >
                       <span class="tag-dot" :style="{ backgroundColor: tag.color || '#818cf8' }"></span>
                       {{ tag.name }}
@@ -547,7 +653,32 @@ onUnmounted(() => {
 
       </div><!-- /two-col-layout -->
 
+      <!-- Related Products -->
+      <section v-if="!loading && relatedProducts.length > 0" class="related-section">
+        <h2 class="related-title">{{ locale === 'zh' ? '你可能喜歡' : 'You May Also Like' }}</h2>
+        <div v-if="relatedLoading" class="related-loading">
+          <Loader2 class="spinner" />
+        </div>
+        <div v-else class="related-grid">
+          <ProductCard
+            v-for="p in relatedProducts"
+            :key="p.id"
+            :product="p"
+          />
+        </div>
+      </section>
+
     </div>
+
+    <!-- Lightbox -->
+    <div v-if="showLightbox" class="lightbox" @click="closeLightbox">
+      <button class="lightbox-close" @click="closeLightbox">✕</button>
+      <button v-if="currentImageIndex > 0" class="lightbox-nav lightbox-prev" @click.stop="lightboxPrev">‹</button>
+      <img :src="parsedImages[currentImageIndex]" class="lightbox-img" @click.stop />
+      <button v-if="currentImageIndex < parsedImages.length - 1" class="lightbox-nav lightbox-next" @click.stop="lightboxNext">›</button>
+      <span v-if="parsedImages.length > 1" class="lightbox-counter">{{ currentImageIndex + 1 }} / {{ parsedImages.length }}</span>
+    </div>
+
   </div>
 </template>
 
@@ -556,7 +687,7 @@ onUnmounted(() => {
   min-height: 100vh;
   background: transparent;
   padding: var(--space-3);
-  max-width: 1100px;
+  max-width: 1280px;
   margin: 0 auto;
 }
 
@@ -1304,10 +1435,17 @@ onUnmounted(() => {
   border-radius: 100px;
   font-size: 0.75rem;
   font-weight: 500;
-  background: rgba(129, 140, 248, 0.1);
-  border: 1px solid rgba(129, 140, 248, 0.3);
-  color: #818cf8;
-  cursor: default;
+  background: color-mix(in srgb, var(--tag-color, #818cf8) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--tag-color, #818cf8) 30%, transparent);
+  color: var(--tag-color, #818cf8);
+  cursor: pointer;
+  transition: all 0.2s ease;
+
+  &:hover {
+    transform: translateY(-1px);
+    background: color-mix(in srgb, var(--tag-color, #818cf8) 18%, transparent);
+    box-shadow: 0 4px 12px color-mix(in srgb, var(--tag-color, #818cf8) 20%, transparent);
+  }
 }
 
 .tag-dot {
@@ -1356,6 +1494,130 @@ onUnmounted(() => {
 
   .spec-cell {
     padding: 10px 12px;
+  }
+}
+
+/* Zoom hint */
+.zoom-hint {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  padding: 4px 10px;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  border-radius: 100px;
+  font-size: 0.7rem;
+  color: rgba(255, 255, 255, 0.8);
+  pointer-events: none;
+}
+
+/* Lightbox */
+.lightbox {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.9);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.lightbox-img {
+  max-width: 90vw;
+  max-height: 90vh;
+  object-fit: contain;
+  border-radius: 8px;
+  cursor: default;
+}
+
+.lightbox-close {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.1);
+  border: none;
+  color: white;
+  font-size: 18px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.2);
+  }
+}
+
+.lightbox-nav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.1);
+  border: none;
+  color: white;
+  font-size: 28px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.2);
+  }
+}
+
+.lightbox-prev { left: 20px; }
+.lightbox-next { right: 20px; }
+
+.lightbox-counter {
+  position: absolute;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.85rem;
+}
+
+/* Related Products */
+.related-section {
+  margin-top: 48px;
+}
+
+.related-title {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 20px;
+}
+
+.related-loading {
+  display: flex;
+  justify-content: center;
+  padding: 40px;
+}
+
+.related-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 20px;
+}
+
+@media (max-width: 768px) {
+  .related-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 480px) {
+  .related-grid {
+    grid-template-columns: repeat(2, 1fr);
   }
 }
 </style>

@@ -47,11 +47,7 @@ const fetchAuctions = async () => {
 }
 
 const formatPrice = (price: number) => {
-  return new Intl.NumberFormat('en-HK', {
-    style: 'currency',
-    currency: 'HKD',
-    minimumFractionDigits: 0
-  }).format(price)
+  return `MOP $${Number(price).toLocaleString()}`
 }
 
 const formatTime = (date: string) => {

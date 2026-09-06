@@ -619,6 +619,16 @@ const isProductSuspended = computed(() => {
                   <span class="spec-value">{{ getProductTypeLabel(product.productType) }}</span>
                 </div>
               </div>
+              <div class="spec-row" v-if="product.series || product.brand">
+                <div class="spec-cell">
+                  <span class="spec-label">{{ locale === 'zh' ? '系列' : 'Series' }}</span>
+                  <span class="spec-value">{{ product.series || '—' }}</span>
+                </div>
+                <div class="spec-cell">
+                  <span class="spec-label">{{ locale === 'zh' ? '品牌' : 'Brand' }}</span>
+                  <span class="spec-value">{{ product.brand || '—' }}</span>
+                </div>
+              </div>
               <div class="spec-row" v-if="getGeneralTags(product).length > 0">
                 <div class="spec-cell spec-cell-full">
                   <span class="spec-label">{{ locale === 'zh' ? '其它標籤' : 'Tags' }}</span>
