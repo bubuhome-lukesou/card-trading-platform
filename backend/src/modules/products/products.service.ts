@@ -31,13 +31,8 @@ export class ProductsService {
     if (filters.condition?.length) {
       queryBuilder.andWhere('product.condition IN (:...conditions)', { conditions: filters.condition })
     }
-    // listingType: support single value or array (listingTypes)
-    const ltFilter = (filters as any).listingTypes || (filters as any).listingType
-    if (ltFilter) {
-      const ltArray = Array.isArray(ltFilter) ? ltFilter : [ltFilter]
-      if (ltArray.length > 0) {
-        queryBuilder.andWhere('product.listingType IN (:...listingTypes)', { listingTypes: ltArray })
-      }
+    if (filters.listingType) {
+      queryBuilder.andWhere('product.listingType = :listingType', { listingType: filters.listingType })
     }
     if (filters.priceMin) {
       queryBuilder.andWhere('product.price >= :priceMin', { priceMin: filters.priceMin })
