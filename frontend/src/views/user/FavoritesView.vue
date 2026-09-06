@@ -6,6 +6,7 @@ import { favoritesApi, type FavoriteItem } from '@/api/favorites'
 import { useFavoritesStore } from '@/stores/favorites'
 import { cartApi } from '@/api/cart'
 import { reservationApi } from '@/api/reservations'
+import { auctionApi } from '@/api/auctions'
 
 const { t, locale } = useI18n()
 const router = useRouter()
@@ -81,6 +82,20 @@ const handleReserve = async (item: any) => {
   }
 }
 
+const handleCardClick = async (item: any) => {
+  // Auction products: redirect to auction detail page
+  if (item.product?.listingType === 'auction') {
+    try {
+      const res = await auctionApi.getAuctionByProductId(item.productId)
+      router.push(`/auction/${res.data.id}`)
+    } catch {
+      router.push(`/product/${item.productId}`)
+    }
+  } else {
+    router.push(`/product/${item.productId}`)
+  }
+}
+
 onMounted(() => {
   loadFavorites()
 })
@@ -103,7 +118,7 @@ onMounted(() => {
 
     <div v-else class="favorites-grid">
       <div v-for="item in favorites" :key="item.id" class="favorite-card" :class="{ 'is-suspended': isProductSuspended(item.product) }">
-        <div class="card-image" @click="router.push(`/product/${item.productId}`)">
+        <div class="card-image" @click="handleCardClick(item)">
           <img
             v-if="item.product?.images?.[0]"
             :src="item.product.images[0]"
@@ -123,8 +138,18 @@ onMounted(() => {
             <span class="price-value">{{ formatPrice(item.product?.price || 0) }}</span>
           </div>
         </div>
+        <!-- 拍賣商品：顯示立即出價按鈕 -->
+        <div v-if="item.product?.listingType === 'auction'" class="card-actions">
+          <button
+            class="btn-reserve"
+            :disabled="processing === item.productId || isProductSuspended(item.product)"
+            @click="handleCardClick(item)"
+          >
+            立即出價
+          </button>
+        </div>
         <!-- 預約商品：顯示立即預約按鈕 -->
-        <div v-if="item.product?.listingType === 'reservation'" class="card-actions">
+        <div v-else-if="item.product?.listingType === 'reservation'" class="card-actions">
           <button
             class="btn-reserve"
             :disabled="processing === item.productId || isProductSuspended(item.product)"
