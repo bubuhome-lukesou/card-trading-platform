@@ -1046,8 +1046,8 @@ onUnmounted(() => {
 }
 
 .glass-card {
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
   border-radius: 16px;
   padding: 36px 32px;
   display: flex;
@@ -1162,10 +1162,10 @@ onUnmounted(() => {
 .spec-table {
   display: flex;
   flex-direction: column;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--border);
   border-radius: 12px;
   overflow: hidden;
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--bg-elevated);
   min-width: 0;
   max-width: 100%;
 }
@@ -1176,7 +1176,7 @@ onUnmounted(() => {
   min-width: 0;
 
   & + .spec-row {
-    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    border-top: 1px solid var(--border);
   }
 }
 
@@ -1190,7 +1190,7 @@ onUnmounted(() => {
   word-break: break-word;
 
   & + .spec-cell {
-    border-left: 1px solid rgba(255, 255, 255, 0.08);
+    border-left: 1px solid var(--border);
   }
 }
 
@@ -1253,7 +1253,7 @@ onUnmounted(() => {
 /* Description */
 .description-block {
   padding: 16px 0;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  border-top: 1px solid var(--border);
 }
 
 .desc-heading {
