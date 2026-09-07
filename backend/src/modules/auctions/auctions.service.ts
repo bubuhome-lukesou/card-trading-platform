@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common'
 import { InjectRepository } from '@nestjs/typeorm'
-import { Repository, LessThanOrEqual, MoreThanOrEqual, Not, In } from 'typeorm'
+import { Repository, LessThanOrEqual, MoreThanOrEqual, Not, In, DataSource } from 'typeorm'
 import { Cron } from '@nestjs/schedule'
 import { Auction, AuctionStatus, Bid } from '../../entities/auction.entity'
 import { BidStatus } from '../../entities/bid.entity'
@@ -20,6 +20,7 @@ export class AuctionsService {
     private readonly productRepo: Repository<Product>,
     @InjectRepository(Order)
     private readonly orderRepo: Repository<Order>,
+    private readonly dataSource: DataSource,
     private readonly auctionGateway: AuctionGateway,
   ) {}
 
@@ -81,6 +82,9 @@ export class AuctionsService {
         }
         await this.auctionRepo.save(auction)
 
+        // A11: Mark bid statuses (WON for winner, OUTBID for others)
+        await this.markBidStatuses(auction)
+
         // If there's a winner, create AUCTION_WIN order and mark product SOLD
         if (auction.winnerId) {
           await this.createAuctionWinOrder(auction)
@@ -115,6 +119,38 @@ export class AuctionsService {
 
     if (expiredAuctions.length > 0) {
       console.log(`[Cron] Ended ${expiredAuctions.length} expired auctions`)
+    }
+  }
+
+  // A11: Mark bid statuses when an auction ends — winner's bid → WON, others → OUTBID
+  // (bids that were never the highest stay OUTBID; if no winner/reserve not met, all stay OUTBID)
+  private async markBidStatuses(auction: Auction) {
+    try {
+      if (auction.winnerId) {
+        // Mark the winning bid as WON
+        await this.bidRepo
+          .createQueryBuilder()
+          .update(Bid)
+          .set({ status: BidStatus.WON })
+          .where(
+            'auctionId = :auctionId AND bidderId = :bidderId AND amount = :amount',
+            { auctionId: auction.id, bidderId: auction.winnerId, amount: auction.currentPrice }
+          )
+          .execute()
+      }
+      // All remaining ACTIVE bids become OUTBID
+      await this.bidRepo
+        .createQueryBuilder()
+        .update(Bid)
+        .set({ status: BidStatus.OUTBID })
+        .where('auctionId = :auctionId AND status = :status', {
+          auctionId: auction.id,
+          status: BidStatus.ACTIVE,
+        })
+        .execute()
+    } catch (e) {
+      // Non-fatal: status marking is cosmetic — log and continue
+      console.error(`[Auction] markBidStatuses failed for ${auction.id}:`, e)
     }
   }
 
@@ -155,8 +191,8 @@ export class AuctionsService {
     if (filters.category?.length) {
       queryBuilder.andWhere('product.category IN (:...categories)', { categories: filters.category })
     }
-    if (filters.rarity?.length) {
-      queryBuilder.andWhere('product.rarity IN (:...rarities)', { rarities: filters.rarity })
+    if (filters.brand?.length) {
+      queryBuilder.andWhere('product.brand IN (:...brands)', { brands: filters.brand })
     }
     if (filters.status) {
       queryBuilder.andWhere('auction.status = :status', { status: filters.status })
@@ -347,94 +383,103 @@ export class AuctionsService {
         throw new BadRequestException(`Bid must be higher than current price: MOP $${auction.currentPrice}`)
       }
 
-      // --- Optimistic lock: only update if currentPrice hasn't changed ---
-      // This prevents two concurrent bids at the same price from both succeeding
-      const result = await this.auctionRepo
-        .createQueryBuilder()
-        .update(Auction)
-        .set({
-          currentPrice: amount,
-          bidCount: () => 'bidCount + 1',  // atomic increment
-          winnerId: userId,
-          endTime: (() => {
-            const timeLeft = auction.endTime.getTime() - now.getTime()
-            // U5: Use extensionMinutes for both threshold and extension duration
-            const extMs = (auction.extensionMinutes || 5) * 60 * 1000
-            if (timeLeft < extMs) {
-              return new Date(now.getTime() + extMs)
-            }
-            return auction.endTime
-          })()
-        })
-        .where('id = :id AND currentPrice = :expectedPrice', {
-          id: auctionId,
-          expectedPrice: auction.currentPrice
-        })
-        .execute()
+      // --- A5: Wrap auction update + bid record in a single DB transaction ---
+      // Optimistic lock (currentPrice unchanged) still guards the race; the
+      // transaction guarantees the bid record never diverges from the auction state.
+      const queryRunner = this.dataSource.createQueryRunner()
+      await queryRunner.connect()
+      await queryRunner.startTransaction()
 
-      // If no rows were updated, another bid beat us — retry with fresh state
-      if (result.affected === 0) {
-        if (attempt < maxRetries - 1) {
-          continue  // retry: re-read auction and re-validate
+      try {
+        const result = await queryRunner.manager
+          .createQueryBuilder()
+          .update(Auction)
+          .set({
+            currentPrice: amount,
+            bidCount: () => 'bidCount + 1',  // atomic increment
+            winnerId: userId,
+            endTime: (() => {
+              const timeLeft = auction.endTime.getTime() - now.getTime()
+              // U5: Use extensionMinutes for both threshold and extension duration
+              const extMs = (auction.extensionMinutes || 5) * 60 * 1000
+              if (timeLeft < extMs) {
+                return new Date(now.getTime() + extMs)
+              }
+              return auction.endTime
+            })()
+          })
+          .where('id = :id AND currentPrice = :expectedPrice', {
+            id: auctionId,
+            expectedPrice: auction.currentPrice
+          })
+          .execute()
+
+        // If no rows were updated, another bid beat us — retry with fresh state
+        if (result.affected === 0) {
+          await queryRunner.rollbackTransaction()
+          if (attempt < maxRetries - 1) {
+            continue  // retry: re-read auction and re-validate
+          }
+          // Final attempt failed — another bidder placed a higher bid concurrently
+          const refreshed = await this.auctionRepo.findOne({ where: { id: auctionId } })
+          throw new BadRequestException(
+            `Another bid was placed simultaneously. Current price is now MOP $${refreshed?.currentPrice}. Please try again with a higher bid.`
+          )
         }
-        // Final attempt failed — another bidder placed a higher bid concurrently
-        const refreshed = await this.auctionRepo.findOne({ where: { id: auctionId } })
-        throw new BadRequestException(
-          `Another bid was placed simultaneously. Current price is now MOP $${refreshed?.currentPrice}. Please try again with a higher bid.`
-        )
-      }
 
-      // Auction updated successfully — now save the bid record
-      const bid = this.bidRepo.create({
-        auctionId,
-        bidderId: userId,
-        amount
-      })
-      await this.bidRepo.save(bid)
+        // A11: Mark previous active bids from other bidders as OUTBID (inside txn)
+        await queryRunner.manager
+          .createQueryBuilder()
+          .update(Bid)
+          .set({ status: BidStatus.OUTBID })
+          .where('auctionId = :auctionId AND bidderId != :userId AND status = :status', {
+            auctionId,
+            userId,
+            status: BidStatus.ACTIVE,
+          })
+          .execute()
 
-      // A11: Mark previous bids from other bidders as OUTBID
-      await this.bidRepo
-        .createQueryBuilder()
-        .update(Bid)
-        .set({ status: BidStatus.OUTBID })
-        .where('auctionId = :auctionId AND bidderId != :userId AND status = :status', {
+        // Save the new bid record (inside txn)
+        const bid = queryRunner.manager.create(Bid, {
           auctionId,
-          userId,
+          bidderId: userId,
+          amount,
           status: BidStatus.ACTIVE,
         })
-        .execute()
-      // Ensure current bid is ACTIVE
-      await this.bidRepo
-        .createQueryBuilder()
-        .update(Bid)
-        .set({ status: BidStatus.ACTIVE })
-        .where('id = :bidId', { bidId: bid.id })
-        .execute()
+        const savedBid = await queryRunner.manager.save(bid)
 
-      // Reload to get final state
-      const updatedAuction = await this.auctionRepo.findOne({ where: { id: auctionId } })
+        await queryRunner.commitTransaction()
 
-      // A3: Broadcast new bid via WebSocket to all clients in the auction room
-      try {
-        this.auctionGateway.broadcastBid(auctionId, {
-          id: bid.id,
-          amount: Number(bid.amount),
-          bidderId: bid.bidderId,
-          bidderName: '', // name not needed on frontend, it fetches bidder details
-          timestamp: bid.createdAt,
-        })
-      } catch (e) {
-        // WebSocket broadcast failure should not block the bid
-        console.error('[Auction] WebSocket broadcastBid failed:', e)
-      }
+        // Reload to get final state
+        const updatedAuction = await this.auctionRepo.findOne({ where: { id: auctionId } })
 
-      return {
-        bid,
-        auction: {
-          currentPrice: updatedAuction.currentPrice,
-          endTime: updatedAuction.endTime,
-          bidCount: updatedAuction.bidCount
+        // A3: Broadcast new bid via WebSocket to all clients in the auction room
+        try {
+          this.auctionGateway.broadcastBid(auctionId, {
+            id: savedBid.id,
+            amount: Number(savedBid.amount),
+            bidderId: savedBid.bidderId,
+            bidderName: '', // name not needed on frontend, it fetches bidder details
+            timestamp: savedBid.createdAt,
+          })
+        } catch (e) {
+          // WebSocket broadcast failure should not block the bid
+          console.error('[Auction] WebSocket broadcastBid failed:', e)
         }
+
+        return {
+          bid: savedBid,
+          auction: {
+            currentPrice: updatedAuction?.currentPrice ?? amount,
+            endTime: updatedAuction?.endTime ?? auction.endTime,
+            bidCount: updatedAuction?.bidCount ?? (auction.bidCount + 1)
+          }
+        }
+      } catch (err) {
+        await queryRunner.rollbackTransaction()
+        throw err
+      } finally {
+        await queryRunner.release()
       }
     }
   }
@@ -491,6 +536,9 @@ export class AuctionsService {
     }
 
     await this.auctionRepo.save(auction)
+
+    // A11: Mark bid statuses (WON for winner, OUTBID for others)
+    await this.markBidStatuses(auction)
 
     // If there's a winner, create AUCTION_WIN order and update product status
     if (auction.winnerId) {
@@ -560,6 +608,9 @@ export class AuctionsService {
     auction.winnerId = userId
     auction.currentPrice = auction.buyNowPrice
     await this.auctionRepo.save(auction)
+
+    // A11: Mark bid statuses (WON for winner, OUTBID for others)
+    await this.markBidStatuses(auction)
 
     // Create AUCTION_WIN order at buyNowPrice
     await this.createAuctionWinOrder(auction)

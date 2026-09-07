@@ -18,10 +18,12 @@ const VALID_TRANSITIONS: Record<string, string[]> = {
 
 // Role-restricted transitions: who is allowed to trigger each transition
 // buyer-only: only the buyer can trigger; seller-only: only the seller; either: both
+// S8: CONFIRMED→CANCELLED is seller-only — buyers cannot cancel orders the
+// seller has already confirmed (goods may be prepared/shipped).
 const TRANSITION_PERMISSIONS: Record<string, Record<string, 'buyer' | 'seller' | 'either'>> = {
   [OrderStatus.PENDING]: { [OrderStatus.PENDING_PAID]: 'buyer', [OrderStatus.CANCELLED]: 'either' },
   [OrderStatus.PENDING_PAID]: { [OrderStatus.CONFIRMED]: 'seller', [OrderStatus.CANCELLED]: 'either' },
-  [OrderStatus.CONFIRMED]: { [OrderStatus.SHIPPED]: 'seller', [OrderStatus.CANCELLED]: 'either' },
+  [OrderStatus.CONFIRMED]: { [OrderStatus.SHIPPED]: 'seller', [OrderStatus.CANCELLED]: 'seller' },
   [OrderStatus.SHIPPED]: { [OrderStatus.DELIVERED]: 'buyer' },
 };
 

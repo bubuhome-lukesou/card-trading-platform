@@ -29,7 +29,13 @@ export class ReservationsService {
 
     try {
       // Check product exists and is reservation type
-      const product = await queryRunner.manager.findOne(Product, { where: { id: productId } })
+      // R3: Pessimistic-lock the product row — all concurrent reservations for
+      // the same product serialize here, preventing oversell races.
+      const product = await queryRunner.manager
+        .createQueryBuilder(Product, 'p')
+        .setLock('pessimistic_write')
+        .where('p.id = :id', { id: productId })
+        .getOne()
       if (!product) {
         throw new NotFoundException('Product not found')
       }
@@ -188,10 +194,13 @@ export class ReservationsService {
     await queryRunner.startTransaction()
 
     try {
-      const reservation = await queryRunner.manager.findOne(Reservation, {
-        where: { id: reservationId },
-        relations: ['product', 'buyer']
-      })
+      // R10: Pessimistic-lock the reservation row — concurrent seller confirms
+      // serialize here, preventing double status advance / duplicate balance orders.
+      const reservation = await queryRunner.manager
+        .createQueryBuilder(Reservation, 'r')
+        .setLock('pessimistic_write')
+        .where('r.id = :id', { id: reservationId })
+        .getOne()
       if (!reservation) {
         throw new NotFoundException('Reservation not found')
       }
@@ -264,36 +273,59 @@ export class ReservationsService {
 
   // R5: Seller confirms a deposit-paid reservation → CONFIRMED
   async confirmReservation(reservationId: string, userId: string): Promise<Reservation> {
-    const reservation = await this.findOne(reservationId)
-    
-    const product = await this.productRepo.findOne({ where: { id: reservation.productId } })
-    if (!product) {
-      throw new NotFoundException('Product not found')
-    }
-    if (product.sellerId !== userId) {
-      throw new ForbiddenException('Only the seller can confirm reservations')
-    }
+    // R10: Transaction + pessimistic lock — concurrent confirms serialize,
+    // preventing double status advance or racing balance-order checks.
+    const queryRunner = this.dataSource.createQueryRunner()
+    await queryRunner.connect()
+    await queryRunner.startTransaction()
 
-    if (reservation.status !== ReservationStatus.DEPOSIT_PAID) {
-      throw new BadRequestException('Reservation must be in deposit_paid status to confirm')
-    }
-
-    // R5: Verify the balance (tail payment) order has been paid
-    const balanceOrder = await this.orderRepo.findOne({
-      where: { reservationId: reservation.id, type: OrderType.RESERVATION_FULL }
-    })
-    if (balanceOrder) {
-      if (balanceOrder.status === OrderStatus.PENDING) {
-        throw new BadRequestException('Buyer has not paid the balance yet. Cannot confirm reservation.')
+    try {
+      const reservation = await queryRunner.manager
+        .createQueryBuilder(Reservation, 'r')
+        .setLock('pessimistic_write')
+        .where('r.id = :id', { id: reservationId })
+        .getOne()
+      if (!reservation) {
+        throw new NotFoundException('Reservation not found')
       }
-      if (balanceOrder.status === OrderStatus.CANCELLED) {
-        throw new BadRequestException('Balance order has been cancelled. Cannot confirm.')
-      }
-    }
-    // If no balance order exists (e.g. deposit = full price), allow confirmation
 
-    reservation.status = ReservationStatus.CONFIRMED
-    return this.reservationRepo.save(reservation)
+      const product = await queryRunner.manager.findOne(Product, { where: { id: reservation.productId } })
+      if (!product) {
+        throw new NotFoundException('Product not found')
+      }
+      if (product.sellerId !== userId) {
+        throw new ForbiddenException('Only the seller can confirm reservations')
+      }
+
+      if (reservation.status !== ReservationStatus.DEPOSIT_PAID) {
+        throw new BadRequestException('Reservation must be in deposit_paid status to confirm')
+      }
+
+      // R5: Verify the balance (tail payment) order has been paid
+      const balanceOrder = await queryRunner.manager.findOne(Order, {
+        where: { reservationId: reservation.id, type: OrderType.RESERVATION_FULL }
+      })
+      if (balanceOrder) {
+        if (balanceOrder.status === OrderStatus.PENDING) {
+          throw new BadRequestException('Buyer has not paid the balance yet. Cannot confirm reservation.')
+        }
+        if (balanceOrder.status === OrderStatus.CANCELLED) {
+          throw new BadRequestException('Balance order has been cancelled. Cannot confirm.')
+        }
+      }
+      // If no balance order exists (e.g. deposit = full price), allow confirmation
+
+      reservation.status = ReservationStatus.CONFIRMED
+      const saved = await queryRunner.manager.save(reservation)
+
+      await queryRunner.commitTransaction()
+      return saved
+    } catch (err) {
+      await queryRunner.rollbackTransaction()
+      throw err
+    } finally {
+      await queryRunner.release()
+    }
   }
 
   async findByProduct(productId: string) {

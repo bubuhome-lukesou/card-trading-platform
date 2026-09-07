@@ -14,8 +14,11 @@ export class ProductsController {
 
   @UseGuards(JwtAuthGuard)
   @Get('seller')
-  async findMyProducts(@Request() req: any) {
-    return this.productsService.findBySeller(req.user.id)
+  async findMyProducts(@Request() req: any, @Query('page') page?: string, @Query('limit') limit?: string) {
+    // S14: Pass pagination params through (previously ignored)
+    const pageNum = page ? Number(page) : undefined
+    const limitNum = limit ? Number(limit) : undefined
+    return this.productsService.findBySeller(req.user.id, pageNum, limitNum)
   }
 
   @Get(':id')

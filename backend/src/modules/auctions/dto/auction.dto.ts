@@ -1,7 +1,6 @@
 import { IsNumber, Min, IsOptional, IsDateString, IsUUID, IsArray, IsString, IsEnum } from 'class-validator'
 import { Type } from 'class-transformer'
 import { AuctionStatus } from '../../../entities/auction.entity'
-import { ProductRarity } from '../../../entities/product.entity'
 
 export class AuctionFiltersDto {
   @IsOptional()
@@ -13,10 +12,6 @@ export class AuctionFiltersDto {
   @IsArray()
   @IsString({ each: true })
   brand?: string[]
-
-  @IsOptional()
-  @IsArray()
-  rarity?: ProductRarity[]
 
   @IsOptional()
   @IsEnum(AuctionStatus)

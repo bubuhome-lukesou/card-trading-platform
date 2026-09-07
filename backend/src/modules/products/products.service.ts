@@ -262,24 +262,50 @@ export class ProductsService {
     await this.productRepo.save(product)
   }
 
-  async findBySeller(sellerId: string): Promise<Product[]> {
-    const products = await this.productRepo.find({
-      where: { sellerId },
-      relations: ['tags'],
-      order: { createdAt: 'DESC' }
-    })
-
-    // Parse images for each product
-    return products.map(p => {
-      if (p.images && typeof p.images === 'string') {
-        try {
-          (p as any).images = JSON.parse(p.images)
-        } catch {
-          (p as any).images = [p.images]
-        }
+  // Parse images JSON string into array (shared helper)
+  private parseProductImages(p: Product): Product {
+    if (p.images && typeof p.images === 'string') {
+      try {
+        (p as any).images = JSON.parse(p.images)
+      } catch {
+        (p as any).images = [p.images]
       }
-      return p
-    })
+    }
+    return p
+  }
+
+  async findBySeller(sellerId: string, page?: number, limit?: number): Promise<Product[] | { data: Product[]; total: number; page: number; limit: number }> {
+    const hasPagination = page !== undefined || limit !== undefined
+    const pageNum = page && page > 0 ? page : 1
+    const limitNum = limit && limit > 0 ? limit : 50
+
+    // S14: Support pagination — previously page/limit params were ignored
+    const qb = this.productRepo
+      .createQueryBuilder('product')
+      .leftJoinAndSelect('product.tags', 'tags')
+      .where('product.sellerId = :sellerId', { sellerId })
+      .orderBy('product.createdAt', 'DESC')
+
+    const total = await qb.getCount()
+
+    if (hasPagination) {
+      const products = await qb
+        .skip((pageNum - 1) * limitNum)
+        .take(limitNum)
+        .getMany()
+
+      // Parse images for each product
+      return {
+        data: products.map(p => this.parseProductImages(p)),
+        total,
+        page: pageNum,
+        limit: limitNum,
+      }
+    }
+
+    // Legacy: no pagination params → return all products as array (backwards compatible)
+    const products = await qb.getMany()
+    return products.map(p => this.parseProductImages(p))
   }
 
   async decreaseQuantity(productId: string, amount: number): Promise<void> {
