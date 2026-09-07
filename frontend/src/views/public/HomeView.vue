@@ -891,12 +891,12 @@ const scrollEl = (el: HTMLElement | null, dir: number) => {
   position: absolute;
   top: 40%;
   transform: translateY(-50%);
-  width: 36px;
-  height: 36px;
+  width: 38px;
+  height: 38px;
   border-radius: var(--radius-full);
-  background: rgba(0, 0, 0, 0.65);
-  backdrop-filter: blur(4px);
-  border: 1px solid var(--border);
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.9), rgba(118, 75, 162, 0.9));
+  border: 1.5px solid rgba(255, 255, 255, 0.35);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
   color: white;
   display: flex;
   align-items: center;
@@ -912,8 +912,8 @@ const scrollEl = (el: HTMLElement | null, dir: number) => {
   }
 
   &:hover {
-    background: var(--primary);
-    transform: translateY(-50%) scale(1.08);
+    transform: translateY(-50%) scale(1.1);
+    box-shadow: 0 6px 20px rgba(102, 126, 234, 0.55);
   }
 
   &.hidden {
