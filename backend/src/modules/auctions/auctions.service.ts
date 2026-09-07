@@ -315,6 +315,7 @@ export class AuctionsService {
       throw new BadRequestException('This product already has a pending auction')
     }
 
+    const startTime = dto.startTime ? new Date(dto.startTime) : new Date()
     const auction = this.auctionRepo.create({
       productId: dto.productId,
       sellerId: userId,
@@ -322,19 +323,14 @@ export class AuctionsService {
       currentPrice: dto.startingPrice,
       reservePrice: dto.reservePrice,
       buyNowPrice: dto.buyNowPrice,
-      startTime: dto.startTime ? new Date(dto.startTime) : new Date(),
+      startTime,
       endTime: dto.endTime ? new Date(dto.endTime) : new Date(Date.now() + (dto.durationHours || 24) * 60 * 60 * 1000),
       extensionMinutes: dto.extensionMinutes || 5,
-      status: AuctionStatus.PENDING
+      // Activate immediately when startTime is now or in the past (avoids up-to-60s PENDING gap)
+      status: startTime <= new Date() ? AuctionStatus.ACTIVE : AuctionStatus.PENDING
     })
 
     await this.auctionRepo.save(auction)
-
-    // Immediately activate if startTime has passed
-    if (new Date(dto.startTime) <= new Date()) {
-      auction.status = AuctionStatus.ACTIVE;
-      await this.auctionRepo.save(auction);
-    }
 
     // Update product status
     product.status = ProductStatus.ACTIVE
