@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, onBeforeUnmount } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { RouterLink, useRouter } from 'vue-router'
-import { ArrowRight, Zap, Clock, Star, Heart, ShoppingCart, Gavel, Calendar } from 'lucide-vue-next'
+import { ArrowRight, Zap, Clock, Star, Heart, ShoppingCart, Gavel, Calendar, ChevronLeft, ChevronRight } from 'lucide-vue-next'
 import { auctionApi } from '@/api/auctions'
 import { productApi } from '@/api/products'
 import { tagApi } from '@/api/tags'
@@ -265,7 +265,51 @@ onMounted(() => {
   fetchNewListings()
   fetchHotReservations()
   fetchProductTypeTags()
+  // 橫向滑動區塊：監聽 scroll 更新箭頭狀態
+  for (const el of [newListingsEl.value, hotAuctionsEl.value, hotReservationsEl.value]) {
+    el?.addEventListener('scroll', onAnyScroll, { passive: true })
+  }
+  updateAllScrollStates()
+  window.addEventListener('resize', updateAllScrollStates)
 })
+
+onBeforeUnmount(() => {
+  window.removeEventListener('resize', updateAllScrollStates)
+})
+
+// ===== 橫向滑動箭頭 =====
+const newListingsEl = ref<HTMLElement | null>(null)
+const hotAuctionsEl = ref<HTMLElement | null>(null)
+const hotReservationsEl = ref<HTMLElement | null>(null)
+
+interface ScrollState { canLeft: boolean; canRight: boolean }
+const newScrollState = ref<ScrollState>({ canLeft: false, canRight: false })
+const aucScrollState = ref<ScrollState>({ canLeft: false, canRight: false })
+const resScrollState = ref<ScrollState>({ canLeft: false, canRight: false })
+
+const computeState = (el: HTMLElement | null): ScrollState => {
+  if (!el) return { canLeft: false, canRight: false }
+  const overflow = el.scrollWidth > el.clientWidth + 4
+  return {
+    canLeft: overflow && el.scrollLeft > 4,
+    canRight: overflow && el.scrollLeft < el.scrollWidth - el.clientWidth - 4,
+  }
+}
+
+const updateAllScrollStates = () => {
+  newScrollState.value = computeState(newListingsEl.value)
+  aucScrollState.value = computeState(hotAuctionsEl.value)
+  resScrollState.value = computeState(hotReservationsEl.value)
+}
+
+const onAnyScroll = (e: Event) => updateAllScrollStates()
+
+const scrollEl = (el: HTMLElement | null, dir: number) => {
+  if (!el) return
+  const card = el.querySelector('.listing-card') as HTMLElement | null
+  const step = card ? (card.offsetWidth + 16) * 2 : el.clientWidth * 0.8
+  el.scrollBy({ left: dir * step, behavior: 'smooth' })
+}
 </script>
 
 <template>
@@ -346,7 +390,8 @@ onMounted(() => {
             <ArrowRight class="icon" />
           </RouterLink>
         </div>
-        <div class="listings-scroll">
+        <div class="scroll-wrapper">
+          <div class="listings-scroll" ref="newListingsEl">
           <RouterLink
             v-for="item in newListings"
             :key="item.id"
@@ -412,6 +457,13 @@ onMounted(() => {
               <div v-else class="listing-price">MOP ${{ Number(item.price).toLocaleString() }}</div>
             </div>
           </RouterLink>
+          </div>
+          <button class="scroll-arrow scroll-arrow-left" :class="{ hidden: !newScrollState.canLeft }" @click="scrollEl(newListingsEl, -1)" aria-label="scroll left">
+            <ChevronLeft class="arrow-icon" />
+          </button>
+          <button class="scroll-arrow scroll-arrow-right" :class="{ hidden: !newScrollState.canRight }" @click="scrollEl(newListingsEl, 1)" aria-label="scroll right">
+            <ChevronRight class="arrow-icon" />
+          </button>
         </div>
       </div>
     </section>
@@ -429,7 +481,8 @@ onMounted(() => {
             <ArrowRight class="icon" />
           </RouterLink>
         </div>
-        <div class="listings-scroll">
+        <div class="scroll-wrapper">
+          <div class="listings-scroll" ref="hotAuctionsEl">
           <RouterLink
             v-for="item in hotAuctions"
             :key="item.id"
@@ -487,6 +540,13 @@ onMounted(() => {
               <div v-else class="listing-price">MOP ${{ Number(item.price).toLocaleString() }}</div>
             </div>
           </RouterLink>
+          </div>
+          <button class="scroll-arrow scroll-arrow-left" :class="{ hidden: !aucScrollState.canLeft }" @click="scrollEl(hotAuctionsEl, -1)" aria-label="scroll left">
+            <ChevronLeft class="arrow-icon" />
+          </button>
+          <button class="scroll-arrow scroll-arrow-right" :class="{ hidden: !aucScrollState.canRight }" @click="scrollEl(hotAuctionsEl, 1)" aria-label="scroll right">
+            <ChevronRight class="arrow-icon" />
+          </button>
         </div>
       </div>
     </section>
@@ -504,7 +564,8 @@ onMounted(() => {
             <ArrowRight class="icon" />
           </RouterLink>
         </div>
-        <div class="listings-scroll">
+        <div class="scroll-wrapper">
+          <div class="listings-scroll" ref="hotReservationsEl">
           <RouterLink
             v-for="item in hotReservations"
             :key="item.id"
@@ -551,6 +612,13 @@ onMounted(() => {
               </div>
             </div>
           </RouterLink>
+          </div>
+          <button class="scroll-arrow scroll-arrow-left" :class="{ hidden: !resScrollState.canLeft }" @click="scrollEl(hotReservationsEl, -1)" aria-label="scroll left">
+            <ChevronLeft class="arrow-icon" />
+          </button>
+          <button class="scroll-arrow scroll-arrow-right" :class="{ hidden: !resScrollState.canRight }" @click="scrollEl(hotReservationsEl, 1)" aria-label="scroll right">
+            <ChevronRight class="arrow-icon" />
+          </button>
         </div>
       </div>
     </section>
@@ -782,6 +850,10 @@ onMounted(() => {
 }
 
 // Listings — 橫向滑動展示
+.scroll-wrapper {
+  position: relative;
+}
+
 .listings-scroll {
   display: flex;
   gap: var(--space-4);
@@ -811,6 +883,55 @@ onMounted(() => {
       width: calc((100% - var(--space-4)) / 2);
       min-width: 160px;
     }
+  }
+}
+
+// 左右滑動箭頭（懸浮在容器兩側，垂直置中）
+.scroll-arrow {
+  position: absolute;
+  top: 40%;
+  transform: translateY(-50%);
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-full);
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(4px);
+  border: 1px solid var(--border);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 20;
+  transition: all var(--transition-fast);
+  opacity: 1;
+
+  .arrow-icon {
+    width: 20px;
+    height: 20px;
+  }
+
+  &:hover {
+    background: var(--primary);
+    transform: translateY(-50%) scale(1.08);
+  }
+
+  &.hidden {
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  &.scroll-arrow-left {
+    left: -14px;
+  }
+
+  &.scroll-arrow-right {
+    right: -14px;
+  }
+
+  // 手機隱藏箭頭（直接滑動）
+  @media (max-width: 640px) {
+    display: none;
   }
 }
 
