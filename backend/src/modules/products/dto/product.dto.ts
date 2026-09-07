@@ -16,12 +16,6 @@ export class ProductFiltersDto {
   category?: string[]
 
   @IsOptional()
-  brand?: string[]
-
-  @IsOptional()
-  series?: string[]
-
-  @IsOptional()
   @Transform(({ value }) => {
     if (typeof value === 'string') return value.split(',').map(s => s.trim()).filter(Boolean)
     if (Array.isArray(value)) return value.flatMap(v => typeof v === 'string' ? v.split(',').map(s => s.trim()) : v).filter(Boolean)
@@ -105,16 +99,6 @@ export class ProductFiltersDto {
 export class CreateProductDto {
   @IsEnum(ProductCategory)
   category: ProductCategory
-
-  @IsOptional()
-  @IsString()
-  @MaxLength(255)
-  brand?: string
-
-  @IsOptional()
-  @IsString()
-  @MaxLength(255)
-  series?: string
 
   @IsOptional()
   @IsEnum(ProductCondition)
@@ -230,16 +214,6 @@ export class UpdateProductDto {
   @IsOptional()
   @IsEnum(ProductCategory)
   category?: ProductCategory
-
-  @IsOptional()
-  @IsString()
-  @MaxLength(255)
-  brand?: string
-
-  @IsOptional()
-  @IsString()
-  @MaxLength(255)
-  series?: string
 
   @IsOptional()
   @IsEnum(ProductCondition)

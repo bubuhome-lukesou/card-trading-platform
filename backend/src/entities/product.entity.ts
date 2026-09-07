@@ -92,12 +92,6 @@ export class Product {
   @Column({ type: 'enum', enum: ProductCategory })
   category: ProductCategory
 
-  @Column({ nullable: true })
-  brand: string
-
-  @Column({ nullable: true })
-  series: string
-
   // 商品種類（enum）
   @Column({ type: 'enum', enum: ProductType, nullable: true })
   productType: ProductType | null

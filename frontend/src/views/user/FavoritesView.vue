@@ -133,7 +133,7 @@ onMounted(() => {
         </div>
         <div class="card-info">
           <h3 class="card-title">{{ item.product?.titleZh || item.product?.titleEn }}</h3>
-          <div class="card-meta">{{ item.product?.brand }}</div>
+          <div class="card-meta">{{ item.product?.category ? (locale === 'zh' ? '商品' : 'Item') : '' }}</div>
           <div class="card-price">
             <span class="price-value">{{ formatPrice(item.product?.price || 0) }}</span>
           </div>

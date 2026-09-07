@@ -333,8 +333,6 @@ const fetchRelatedProducts = async () => {
         let score = 0
         if (p.productType === auction.value.product.productType) score += 3
         if (p.condition === auction.value.product.condition) score += 2
-        if (p.brand === auction.value.product.brand) score += 1
-        if (p.series === auction.value.product.series) score += 1
         return { ...p, _score: score }
       })
       .sort((a: any, b: any) => b._score - a._score)
@@ -612,16 +610,6 @@ onUnmounted(() => {
                 <div class="spec-cell">
                   <span class="spec-label">{{ locale === 'zh' ? '商品種類' : 'Type' }}</span>
                   <span class="spec-value">{{ getProductTypeLabel(auction.product?.productType) }}</span>
-                </div>
-              </div>
-              <div class="spec-row" v-if="auction.product?.series">
-                <div class="spec-cell">
-                  <span class="spec-label">{{ locale === 'zh' ? '系列' : 'Series' }}</span>
-                  <span class="spec-value">{{ auction.product?.series }}</span>
-                </div>
-                <div class="spec-cell">
-                  <span class="spec-label">{{ locale === 'zh' ? '品牌' : 'Brand' }}</span>
-                  <span class="spec-value">{{ auction.product?.brand || '—' }}</span>
                 </div>
               </div>
               <div class="spec-row" v-if="getGeneralTags(auction.product).length > 0">

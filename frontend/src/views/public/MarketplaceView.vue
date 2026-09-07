@@ -33,8 +33,6 @@ const filtersExpanded = ref({
 const filters = ref<any>({
   search: '',
   category: [] as string[],
-  brand: [] as string[],
-  series: [] as string[],
   rarity: [] as string[],
   condition: [] as string[],
   priceMin: undefined as number | undefined,
@@ -247,8 +245,6 @@ const clearAllFilters = () => {
   filters.value = {
     search: '',
     category: [],
-    brand: [],
-    series: [],
     rarity: [],
     condition: [],
     priceMin: undefined,

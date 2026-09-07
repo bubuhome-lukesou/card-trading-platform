@@ -171,10 +171,6 @@ const fetchRelatedProducts = async () => {
         if ((p as any).productType === (product.value as any).productType) score += 3
         // Same condition: +1
         if (p.condition === product.value.condition) score += 1
-        // Same brand: +1
-        if (p.brand && product.value.brand && p.brand === product.value.brand) score += 1
-        // Same series: +1
-        if (p.series && product.value.series && p.series === product.value.series) score += 1
         // Shared tags: +2 per shared tag
         if (product.value.tags && p.tags) {
           const productTagIds = new Set(product.value.tags.map((t: any) => t.id))
@@ -617,16 +613,6 @@ const isProductSuspended = computed(() => {
                 <div class="spec-cell">
                   <span class="spec-label">{{ locale === 'zh' ? '商品種類' : 'Type' }}</span>
                   <span class="spec-value">{{ getProductTypeLabel(product.productType) }}</span>
-                </div>
-              </div>
-              <div class="spec-row" v-if="product.series || product.brand">
-                <div class="spec-cell">
-                  <span class="spec-label">{{ locale === 'zh' ? '系列' : 'Series' }}</span>
-                  <span class="spec-value">{{ product.series || '—' }}</span>
-                </div>
-                <div class="spec-cell">
-                  <span class="spec-label">{{ locale === 'zh' ? '品牌' : 'Brand' }}</span>
-                  <span class="spec-value">{{ product.brand || '—' }}</span>
                 </div>
               </div>
               <div class="spec-row" v-if="getGeneralTags(product).length > 0">

@@ -60,8 +60,6 @@ export interface Product {
   descriptionEn?: string
   descriptionZh?: string
   category: ProductCategory
-  brand: string
-  series: string
   condition: ProductCondition
   price: number
   quantity?: number
@@ -154,8 +152,6 @@ export interface ShippingAddress {
 export interface ProductFilters {
   search?: string
   category?: ProductCategory[]
-  brand?: string[]
-  series?: string[]
   condition?: ProductCondition[]
   priceMin?: number
   priceMax?: number

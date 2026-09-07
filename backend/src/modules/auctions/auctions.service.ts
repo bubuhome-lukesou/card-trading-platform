@@ -191,9 +191,6 @@ export class AuctionsService {
     if (filters.category?.length) {
       queryBuilder.andWhere('product.category IN (:...categories)', { categories: filters.category })
     }
-    if (filters.brand?.length) {
-      queryBuilder.andWhere('product.brand IN (:...brands)', { brands: filters.brand })
-    }
     if (filters.status) {
       queryBuilder.andWhere('auction.status = :status', { status: filters.status })
     }
