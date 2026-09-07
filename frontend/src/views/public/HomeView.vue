@@ -100,6 +100,7 @@ const fetchHotAuctions = async () => {
           category: product.category,
           condition: product.condition,
           language: product.language,
+          productType: product.productType,
           listingType: 'auction' as const,
         }
       })
@@ -138,6 +139,20 @@ const languageLabels: Record<string, string> = {
 const getLanguageLabel = (lang: string | null | undefined) => {
   if (!lang) return ''
   return languageLabels[lang] || lang
+}
+
+// Product type labels (enum value → display label)
+const productTypeLabels: Record<string, string> = {
+  graded_card: '評分卡',
+  original_box: '原箱',
+  original_case: '原盒',
+  original_bag: '原袋',
+  raw_card: '裸卡',
+  other: '其它',
+}
+const getProductTypeLabel = (type: string | null | undefined) => {
+  if (!type) return ''
+  return productTypeLabels[type] || type
 }
 
 const isProductFavorited = (productId: number) => favoritesStore.isFavorited(String(productId))
@@ -192,10 +207,14 @@ const fetchNewListings = async () => {
         price: (product.listingType === 'auction' && a) ? (Number(a.currentPrice) || Number(a.startingPrice)) : product.price,
         condition: product.condition,
         category: product.category,
+        productType: product.productType,
         productTypeTagId: product.productTypeTagId,
         image: getProductImage(product),
         listingType: product.listingType || 'sale',
         tags: product.tags || [],
+        // Reservation extras (when listingType = 'reservation')
+        reservationDeadline: product.reservationDeadline,
+        reservationDeposit: product.reservationDeposit,
         // Auction extras (when listingType = 'auction')
         bids: a?.bidCount || 0,
         ends: a ? getTimeRemaining(a.endTime) : '',
@@ -333,14 +352,11 @@ onMounted(() => {
 
             <div class="listing-info">
               <h3 class="listing-title">{{ item.title }}</h3>
-              <div class="listing-meta">
-                <span class="listing-category">{{ getCategoryName(item.category) }}</span>
-                <span class="listing-sep">•</span>
-                <span class="listing-condition">{{ item.condition }}</span>
-                <template v-if="getLanguageLabel(item.language)">
-                  <span class="listing-sep">•</span>
-                  <span class="listing-language">{{ getLanguageLabel(item.language) }}</span>
-                </template>
+              <div class="listing-tags">
+                <span class="tag-chip tag-category">{{ getCategoryName(item.category) }}</span>
+                <span v-if="getProductTypeLabel(item.productType)" class="tag-chip tag-type">{{ getProductTypeLabel(item.productType) }}</span>
+                <span v-if="item.condition" class="tag-chip tag-condition">{{ item.condition }}</span>
+                <span v-if="getLanguageLabel(item.language)" class="tag-chip tag-language">{{ getLanguageLabel(item.language) }}</span>
               </div>
               <!-- Auction: current price + countdown -->
               <template v-if="item.listingType === 'auction'">
@@ -411,16 +427,11 @@ onMounted(() => {
 
             <div class="listing-info">
               <h3 class="listing-title">{{ item.titleEn || item.titleZh || item.title }}</h3>
-              <div class="listing-meta">
-                <span class="listing-category">{{ getCategoryName(item.category) }}</span>
-                <span class="listing-sep">•</span>
-                <span class="listing-tag-name">{{ getProductTypeTagName(item.productTypeTagId) }}</span>
-                <span class="listing-sep">•</span>
-                <span class="listing-condition">{{ item.condition }}</span>
-                <template v-if="getLanguageLabel(item.language)">
-                  <span class="listing-sep">•</span>
-                  <span class="listing-language">{{ getLanguageLabel(item.language) }}</span>
-                </template>
+              <div class="listing-tags">
+                <span class="tag-chip tag-category">{{ getCategoryName(item.category) }}</span>
+                <span v-if="getProductTypeLabel(item.productType)" class="tag-chip tag-type">{{ getProductTypeLabel(item.productType) }}</span>
+                <span v-if="item.condition" class="tag-chip tag-condition">{{ item.condition }}</span>
+                <span v-if="getLanguageLabel(item.language)" class="tag-chip tag-language">{{ getLanguageLabel(item.language) }}</span>
               </div>
               <!-- Auction: current price + countdown -->
               <template v-if="item.listingType === 'auction'">
@@ -430,7 +441,15 @@ onMounted(() => {
                   <span>{{ item.ends }}</span>
                 </div>
               </template>
-              <!-- Sale / Reservation: plain price -->
+              <!-- Reservation: price + deadline countdown -->
+              <template v-else-if="item.listingType === 'reservation'">
+                <div class="listing-price">MOP ${{ Number(item.price).toLocaleString() }}</div>
+                <div v-if="item.reservationDeadline" class="auction-timer reservation-timer">
+                  <Calendar class="icon" />
+                  <span>{{ getTimeRemaining(item.reservationDeadline) }}</span>
+                </div>
+              </template>
+              <!-- Sale: plain price -->
               <div v-else class="listing-price">MOP ${{ Number(item.price).toLocaleString() }}</div>
             </div>
           </RouterLink>
@@ -705,6 +724,11 @@ onMounted(() => {
     width: 14px;
     height: 14px;
   }
+
+  // Reservation deadline timer — amber tone
+  &.reservation-timer {
+    color: #fbbf24;
+  }
 }
 
 .listing-image {
@@ -833,34 +857,53 @@ onMounted(() => {
   font-size: var(--text-xs);
   color: var(--text-primary);
   margin-bottom: var(--space-1);
+  // 最多兩行，超出省略
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  white-space: normal;
+  min-height: 2.4em;
 }
 
-.listing-meta {
+// 色框標籤（分類/種類/品相/語言）
+.listing-tags {
   display: flex;
-  align-items: center;
+  flex-wrap: wrap;
   gap: 4px;
-  font-size: 10px;
-  color: var(--text-muted);
   margin-bottom: var(--space-1);
-  overflow: hidden;
-  text-overflow: ellipsis;
+}
+
+.tag-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 6px;
+  border-radius: var(--radius-sm);
+  font-size: 9px;
+  font-weight: 600;
+  line-height: 1.5;
   white-space: nowrap;
-}
 
-.listing-sep {
-  flex-shrink: 0;
-}
+  &.tag-category {
+    background: rgba(102, 126, 234, 0.18);
+    color: #8fa3f5;
+  }
 
-.listing-category {
-  color: var(--text-secondary);
-}
+  &.tag-type {
+    background: rgba(16, 185, 129, 0.15);
+    color: #34d399;
+  }
 
-.listing-tag-name {
-  color: var(--primary);
-  font-weight: 500;
+  &.tag-condition {
+    background: rgba(245, 158, 11, 0.15);
+    color: #fbbf24;
+  }
+
+  &.tag-language {
+    background: rgba(236, 72, 153, 0.15);
+    color: #f472b6;
+  }
 }
 
 .listing-price {
