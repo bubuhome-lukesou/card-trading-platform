@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common'
 import { InjectRepository } from '@nestjs/typeorm'
-import { Repository, FindOptionsWhere, ILike, Any } from 'typeorm'
+import { Repository, FindOptionsWhere, ILike, Any, DataSource } from 'typeorm'
 import { Product, ProductStatus } from '../../entities/product.entity'
 import { Tag } from '../../entities/tag.entity'
 import { Reservation, ReservationStatus } from '../../entities/reservation.entity'
@@ -15,6 +15,7 @@ export class ProductsService {
     private readonly tagRepo: Repository<Tag>,
     @InjectRepository(Reservation)
     private readonly reservationRepo: Repository<Reservation>,
+    private readonly dataSource: DataSource,
   ) {}
 
   async findAll(filters: ProductFiltersDto) {
@@ -111,6 +112,40 @@ export class ProductsService {
       }
       return product
     })
+
+    // Optionally attach auction summary (auctionId/currentPrice/bidCount/endTime)
+    // to auction-listing products — one batched query, no N+1.
+    if ((filters as any).withAuction) {
+      const auctionProductIds = parsedData
+        .filter(p => (p as any).listingType === 'auction')
+        .map(p => p.id)
+      if (auctionProductIds.length > 0) {
+        const auctions = await this.dataSource.query(
+          `SELECT a.id, a.productId, a.currentPrice, a.startingPrice, a.bidCount, a.endTime, a.status
+           FROM auctions a
+           WHERE a.productId IN (?) AND a.status IN ('active','pending')
+           ORDER BY a.createdAt DESC`,
+          [auctionProductIds]
+        )
+        const byProduct = new Map<string, any>()
+        for (const a of auctions) {
+          if (!byProduct.has(a.productId)) byProduct.set(a.productId, a)
+        }
+        for (const p of parsedData) {
+          const a = byProduct.get(p.id)
+          if (a) {
+            (p as any).auctionSummary = {
+              auctionId: a.id,
+              currentPrice: a.currentPrice,
+              startingPrice: a.startingPrice,
+              bidCount: a.bidCount,
+              endTime: a.endTime,
+              status: a.status,
+            }
+          }
+        }
+      }
+    }
 
     return {
       data: parsedData,

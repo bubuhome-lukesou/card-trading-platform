@@ -74,22 +74,34 @@ const getTitle = (product: any) => {
   return locale.value === 'zh' ? (product.titleZh || product.titleEn) : (product.titleEn || product.titleZh)
 }
 
+// 兩個區塊統一呼叫 /api/products，只係篩選唔同：
+// 熱門拍賣 = listingTypes[]=['auction'] + withAuction（附 auction 摘要：auctionId/價/出價數/結束時間）
+// 最新上架 = sortBy='newest'
 const fetchHotAuctions = async () => {
   loadingAuctions.value = true
   try {
-    const response = await auctionApi.getAuctions({ status: 'active', limit: 5 } as any)
-    hotAuctions.value = (response.data.data || []).map((auction: any) => ({
-      id: auction.productId,
-      auctionId: auction.id,
-      title: getTitle(auction.product),
-      price: auction.currentPrice || auction.startingPrice,
-      bids: auction.bidCount || 0,
-      ends: getTimeRemaining(auction.endTime),
-      image: getProductImage(auction.product),
-      category: auction.product?.category,
-      condition: auction.product?.condition,
-      language: auction.product?.language,
-    }))
+    const response = await productApi.getProducts({
+      listingTypes: ['auction'],
+      withAuction: true,
+      limit: 5,
+    } as any)
+    hotAuctions.value = (response.data.data || [])
+      .filter((p: any) => p.auctionSummary) // 只顯示有進行中拍賣嘅商品
+      .map((product: any) => {
+        const a = product.auctionSummary
+        return {
+          id: product.id,
+          auctionId: a.auctionId,
+          title: getTitle(product),
+          price: a.currentPrice || a.startingPrice,
+          bids: a.bidCount || 0,
+          ends: getTimeRemaining(a.endTime),
+          image: getProductImage(product),
+          category: product.category,
+          condition: product.condition,
+          language: product.language,
+        }
+      })
   } catch (e) {
     console.error('Failed to fetch auctions:', e)
   } finally {
@@ -170,7 +182,7 @@ const handleCardClick = async (e: Event, item: any) => {
 const fetchNewListings = async () => {
   loadingProducts.value = true
   try {
-    const response = await productApi.getProducts({ sortBy: 'newest', limit: 4 } as any)
+    const response = await productApi.getProducts({ sortBy: 'newest', limit: 4, withAuction: true } as any)
     newListings.value = (response.data.data || []).map((product: any) => ({
       id: product.id,
       title: getTitle(product),
