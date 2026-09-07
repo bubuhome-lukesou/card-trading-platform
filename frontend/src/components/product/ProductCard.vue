@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
-import { Heart, ShoppingCart, Gavel, Calendar } from 'lucide-vue-next'
+import { Heart, ShoppingCart, Gavel, Calendar, Clock } from 'lucide-vue-next'
 import type { Product, Tag } from '@/types'
 import { useFavoritesStore } from '@/stores/favorites'
 import { tagApi } from '@/api/tags'
@@ -111,6 +111,28 @@ const languageLabel = computed(() => {
   const labels = languageLabels[lang]
   return locale.value === 'zh' ? labels?.zh || lang : labels?.en || lang
 })
+
+// Auction summary attached by products API (withAuction=true)
+const auctionSummary = computed(() => (props.product as any).auctionSummary || null)
+
+const formatCountdown = (endTime: string) => {
+  const diff = new Date(endTime).getTime() - Date.now()
+  if (diff <= 0) return locale.value === 'zh' ? '已結束' : 'Ended'
+  const h = Math.floor(diff / 3600000)
+  const m = Math.floor((diff % 3600000) / 60000)
+  if (h >= 24) return `${Math.floor(h / 24)}d ${h % 24}h`
+  return `${h}h ${m}m`
+}
+
+const countdownText = computed(() => {
+  const end = auctionSummary.value?.endTime
+  return end ? formatCountdown(end) : ''
+})
+
+const reservationCountdown = computed(() => {
+  const dl = (props.product as any).reservationDeadline
+  return dl ? formatCountdown(dl) : ''
+})
 </script>
 
 <template>
@@ -152,18 +174,30 @@ const languageLabel = computed(() => {
     <!-- Info -->
     <div class="listing-info">
       <h3 class="listing-title">{{ title }}</h3>
-      <div class="listing-meta">
-        <span class="listing-category">{{ categoryName }}</span>
-        <span class="listing-sep">•</span>
-        <span class="listing-tag-name">{{ productTypeTagName }}</span>
-        <span class="listing-sep">•</span>
-        <span class="listing-condition">{{ product.condition }}</span>
-        <template v-if="languageLabel">
-          <span class="listing-sep">•</span>
-          <span class="listing-language">{{ languageLabel }}</span>
-        </template>
+      <div class="listing-tags">
+        <span class="tag-chip tag-category">{{ categoryName }}</span>
+        <span v-if="languageLabel" class="tag-chip tag-language">{{ languageLabel }}</span>
+        <span v-if="productTypeTagName" class="tag-chip tag-type">{{ productTypeTagName }}</span>
+        <span v-if="product.condition" class="tag-chip tag-condition">{{ product.condition }}</span>
       </div>
-      <div class="listing-price">MOP ${{ Number(product.price).toLocaleString() }}</div>
+      <!-- Auction: current price + countdown -->
+      <template v-if="product.listingType === 'auction' && auctionSummary">
+        <div class="listing-price">MOP ${{ Number(auctionSummary.currentPrice || auctionSummary.startingPrice).toLocaleString() }}</div>
+        <div class="auction-timer">
+          <Clock class="icon" />
+          <span>{{ countdownText }}</span>
+        </div>
+      </template>
+      <!-- Reservation: price + deadline countdown -->
+      <template v-else-if="product.listingType === 'reservation' && (product as any).reservationDeadline">
+        <div class="listing-price">MOP ${{ Number(product.price).toLocaleString() }}</div>
+        <div class="auction-timer reservation-timer">
+          <Calendar class="icon" />
+          <span>{{ reservationCountdown }}</span>
+        </div>
+      </template>
+      <!-- Sale: plain price -->
+      <div v-else class="listing-price">MOP ${{ Number(product.price).toLocaleString() }}</div>
     </div>
   </RouterLink>
 </template>
@@ -330,45 +364,73 @@ const languageLabel = computed(() => {
   font-size: var(--text-xs);
   color: var(--text-primary);
   margin-bottom: var(--space-1);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
   font-weight: 600;
+  // 最多兩行，超出省略
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  white-space: normal;
+  min-height: 2.4em;
 }
 
-.listing-meta {
+// 色框標籤（分類/語言/種類/品相）— 與首頁卡片統一
+.listing-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: var(--space-1);
+}
+
+.tag-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 6px;
+  border-radius: var(--radius-sm);
+  font-size: 9px;
+  font-weight: 600;
+  line-height: 1.5;
+  white-space: nowrap;
+
+  &.tag-category {
+    background: rgba(102, 126, 234, 0.18);
+    color: #8fa3f5;
+  }
+
+  &.tag-language {
+    background: rgba(236, 72, 153, 0.15);
+    color: #f472b6;
+  }
+
+  &.tag-type {
+    background: rgba(16, 185, 129, 0.15);
+    color: #34d399;
+  }
+
+  &.tag-condition {
+    background: rgba(245, 158, 11, 0.15);
+    color: #fbbf24;
+  }
+}
+
+// Auction countdown / reservation deadline (unified with home cards)
+.auction-timer {
   display: flex;
   align-items: center;
-  gap: 4px;
-  font-size: 10px;
-  color: var(--text-muted);
-  margin-bottom: var(--space-1);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
+  gap: var(--space-1);
+  font-size: var(--text-xs);
+  color: var(--accent);
+  margin-top: var(--space-1);
 
-.listing-sep {
-  flex-shrink: 0;
-}
+  .icon {
+    width: 14px;
+    height: 14px;
+  }
 
-.listing-category {
-  color: var(--text-secondary);
-}
-
-.listing-tag-name {
-  color: var(--primary);
-  font-weight: 500;
-}
-
-.listing-condition {
-  color: var(--text-muted);
-  font-size: 10px;
-}
-
-.listing-language {
-  color: var(--text-muted);
-  font-size: 10px;
+  &.reservation-timer {
+    color: #fbbf24;
+  }
 }
 
 .listing-price {

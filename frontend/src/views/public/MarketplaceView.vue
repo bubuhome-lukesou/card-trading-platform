@@ -170,7 +170,7 @@ const fetchProducts = async (append = false) => {
       delete (cleanParams as any).productTypes
     }
     console.log('[DEBUG] fetchProducts params:', JSON.stringify(cleanParams))
-    const response = await productApi.getProducts(cleanParams)
+    const response = await productApi.getProducts({ ...cleanParams, withAuction: true })
     if (append) {
       products.value = [...products.value, ...response.data.data]
     } else {
