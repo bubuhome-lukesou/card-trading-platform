@@ -64,6 +64,9 @@
     "newListings": {
       "title": "New Listings"
     },
+    "hotReservations": {
+      "title": "Hot Reservations"
+    },
     "seeAll": "See All",
     "cta": {
       "title": "Become a Seller & Start Trading",

@@ -23,8 +23,10 @@ const categories = [
 
 const hotAuctions = ref<any[]>([])
 const newListings = ref<any[]>([])
+const hotReservations = ref<any[]>([])
 const loadingAuctions = ref(false)
 const loadingProducts = ref(false)
+const loadingReservations = ref(false)
 const productTypeTags = ref<any[]>([])
 const favoritesStore = useFavoritesStore()
 
@@ -108,6 +110,37 @@ const fetchHotAuctions = async () => {
     console.error('Failed to fetch auctions:', e)
   } finally {
     loadingAuctions.value = false
+  }
+}
+
+// 熱門預約 — 同一 API，filter 不同：listingTypes=['reservation']，只顯示截止時間未過的商品
+const fetchHotReservations = async () => {
+  loadingReservations.value = true
+  try {
+    const response = await productApi.getProducts({
+      listingTypes: ['reservation'],
+      sortBy: 'newest',
+      limit: 5,
+    } as any)
+    const now = Date.now()
+    hotReservations.value = (response.data.data || [])
+      .filter((p: any) => !p.reservationDeadline || new Date(p.reservationDeadline).getTime() > now)
+      .map((product: any) => ({
+        id: product.id,
+        title: getTitle(product),
+        price: product.price,
+        image: getProductImage(product),
+        category: product.category,
+        condition: product.condition,
+        language: product.language,
+        productType: product.productType,
+        listingType: 'reservation' as const,
+        reservationDeadline: product.reservationDeadline,
+      }))
+  } catch (e) {
+    console.error('Failed to fetch reservations:', e)
+  } finally {
+    loadingReservations.value = false
   }
 }
 
@@ -230,6 +263,7 @@ const fetchNewListings = async () => {
 onMounted(() => {
   fetchHotAuctions()
   fetchNewListings()
+  fetchHotReservations()
   fetchProductTypeTags()
 })
 </script>
@@ -457,6 +491,70 @@ onMounted(() => {
       </div>
     </section>
 
+    <!-- Hot Reservations -->
+    <section class="section reservations-section">
+      <div class="container">
+        <div class="section-header">
+          <h2 class="section-title">
+            <span class="emoji resv">📅</span>
+            {{ t('home.hotReservations.title') }}
+          </h2>
+          <RouterLink to="/marketplace?listingTypes=reservation" class="see-all">
+            {{ t('home.seeAll') }}
+            <ArrowRight class="icon" />
+          </RouterLink>
+        </div>
+        <div class="listings-grid">
+          <RouterLink
+            v-for="item in hotReservations"
+            :key="item.id"
+            :to="`/product/${item.id}`"
+            class="listing-card"
+          >
+            <div class="listing-image">
+              <img v-if="item.image" :src="item.image" :alt="item.title" />
+              <div v-else class="placeholder-card">🃏</div>
+
+              <!-- Favorite & Cart buttons (left side, transparent) -->
+              <div class="listing-actions">
+                <button
+                  class="listing-action-btn"
+                  :class="{ active: isProductFavorited(item.id) }"
+                  @click="toggleProductFavorite($event, item.id)"
+                >
+                  <Heart class="action-icon" :class="{ 'icon-filled': isProductFavorited(item.id) }" />
+                </button>
+                <button class="listing-action-btn" @click.prevent>
+                  <ShoppingCart class="action-icon" />
+                </button>
+              </div>
+
+              <!-- Reservation badge (top right) -->
+              <span class="listing-badge is-reservation">
+                <Calendar class="badge-icon" />
+                Reserve
+              </span>
+            </div>
+
+            <div class="listing-info">
+              <h3 class="listing-title">{{ item.title }}</h3>
+              <div class="listing-tags">
+                <span class="tag-chip tag-category">{{ getCategoryName(item.category) }}</span>
+                <span v-if="getLanguageLabel(item.language)" class="tag-chip tag-language">{{ getLanguageLabel(item.language) }}</span>
+                <span v-if="getProductTypeLabel(item.productType)" class="tag-chip tag-type">{{ getProductTypeLabel(item.productType) }}</span>
+                <span v-if="item.condition" class="tag-chip tag-condition">{{ item.condition }}</span>
+              </div>
+              <div class="listing-price">MOP ${{ Number(item.price).toLocaleString() }}</div>
+              <div v-if="item.reservationDeadline" class="auction-timer reservation-timer">
+                <Calendar class="icon" />
+                <span>{{ getTimeRemaining(item.reservationDeadline) }}</span>
+              </div>
+            </div>
+          </RouterLink>
+        </div>
+      </div>
+    </section>
+
     <!-- CTA -->
     <section class="section cta-section">
       <div class="container">
@@ -612,6 +710,7 @@ onMounted(() => {
     font-size: 24px;
     &.hot { animation: pulse 1.5s infinite; }
     &.new { animation: sparkle 2s infinite; }
+    &.resv { animation: pulse 2s infinite; }
   }
 }
 

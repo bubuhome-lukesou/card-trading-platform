@@ -64,6 +64,9 @@
     "newListings": {
       "title": "最新上架"
     },
+    "hotReservations": {
+      "title": "熱門預約"
+    },
     "seeAll": "查看全部",
     "cta": {
       "title": "成為賣家，開始交易",
