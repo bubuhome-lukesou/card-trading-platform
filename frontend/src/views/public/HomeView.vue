@@ -929,9 +929,23 @@ const scrollEl = (el: HTMLElement | null, dir: number) => {
     right: -14px;
   }
 
-  // 手機隱藏箭頭（直接滑動）
+  // 手機保留箭頭但縮小、貼邊
   @media (max-width: 640px) {
-    display: none;
+    width: 30px;
+    height: 30px;
+
+    .arrow-icon {
+      width: 16px;
+      height: 16px;
+    }
+
+    &.scroll-arrow-left {
+      left: -6px;
+    }
+
+    &.scroll-arrow-right {
+      right: -6px;
+    }
   }
 }
 
