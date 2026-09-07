@@ -77,7 +77,7 @@ const getTitle = (product: any) => {
 const fetchHotAuctions = async () => {
   loadingAuctions.value = true
   try {
-    const response = await auctionApi.getAuctions({ status: 'active', limit: 3 } as any)
+    const response = await auctionApi.getAuctions({ status: 'active', limit: 5 } as any)
     hotAuctions.value = (response.data.data || []).map((auction: any) => ({
       id: auction.productId,
       auctionId: auction.id,
@@ -85,7 +85,10 @@ const fetchHotAuctions = async () => {
       price: auction.currentPrice || auction.startingPrice,
       bids: auction.bidCount || 0,
       ends: getTimeRemaining(auction.endTime),
-      image: getProductImage(auction.product)
+      image: getProductImage(auction.product),
+      category: auction.product?.category,
+      condition: auction.product?.condition,
+      language: auction.product?.language,
     }))
   } catch (e) {
     console.error('Failed to fetch auctions:', e)
@@ -271,24 +274,37 @@ onMounted(() => {
             <ArrowRight class="icon" />
           </RouterLink>
         </div>
-        <div class="auctions-grid">
+        <div class="listings-grid auctions-grid-listing">
           <RouterLink
             v-for="auction in hotAuctions"
             :key="auction.id"
             :to="`/auction/${auction.auctionId}`"
-            class="auction-card"
+            class="listing-card"
           >
-            <div class="auction-image">
+            <div class="listing-image">
               <img v-if="auction.image" :src="auction.image" :alt="auction.title" />
               <div v-else class="placeholder-card">🃏</div>
-              <div class="auction-badge hot">🔥 {{ t('home.auctionStatus.live') }}</div>
+
+              <!-- Sale/Bid badge (top right) -->
+              <span class="listing-badge is-auction">
+                <Gavel class="badge-icon" />
+                Bid
+              </span>
+              <span v-if="auction.bids > 0" class="auction-bids-inline">🔥 {{ auction.bids }}</span>
             </div>
-            <div class="auction-info">
-              <h3 class="auction-title">{{ auction.title }}</h3>
-              <div class="auction-meta">
-                <span class="auction-price">MOP ${{ Number(auction.price).toLocaleString() }}</span>
-                <span class="auction-bids">{{ auction.bids }} {{ t('home.auctionStatus.bids') }}</span>
+
+            <div class="listing-info">
+              <h3 class="listing-title">{{ auction.title }}</h3>
+              <div class="listing-meta">
+                <span class="listing-category">{{ getCategoryName(auction.category) }}</span>
+                <span class="listing-sep">•</span>
+                <span class="listing-condition">{{ auction.condition }}</span>
+                <template v-if="getLanguageLabel(auction.language)">
+                  <span class="listing-sep">•</span>
+                  <span class="listing-language">{{ getLanguageLabel(auction.language) }}</span>
+                </template>
               </div>
+              <div class="listing-price">MOP ${{ Number(auction.price).toLocaleString() }}</div>
               <div class="auction-timer">
                 <Clock class="icon" />
                 <span>{{ auction.ends }}</span>
@@ -592,118 +608,6 @@ onMounted(() => {
   text-align: center;
 }
 
-// Auctions Grid
-.auctions-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: var(--space-6);
-
-  @media (max-width: 768px) {
-    grid-template-columns: repeat(2, 1fr);
-  }
-
-  @media (max-width: 480px) {
-    grid-template-columns: 1fr;
-  }
-}
-
-.auction-card {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-xl);
-  overflow: hidden;
-  text-decoration: none;
-  transition: all var(--transition-fast);
-
-  &:hover {
-    border-color: var(--primary);
-    transform: translateY(-4px);
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
-  }
-}
-
-.auction-image {
-  position: relative;
-  aspect-ratio: 4/3;
-  background: linear-gradient(135deg, var(--bg-dark) 0%, var(--bg-elevated) 100%);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-
-  img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-  }
-}
-
-.placeholder-card {
-  font-size: 64px;
-  opacity: 0.5;
-}
-
-.auction-badge {
-  position: absolute;
-  top: var(--space-3);
-  left: var(--space-3);
-  padding: var(--space-1) var(--space-3);
-  border-radius: var(--radius-full);
-  font-size: var(--text-xs);
-  font-weight: 600;
-  background: rgba(0, 0, 0, 0.7);
-
-  &.hot {
-    background: var(--danger-gradient);
-  }
-}
-
-.auction-info {
-  padding: var(--space-4);
-}
-
-.auction-title {
-  font-size: var(--text-sm);
-  font-weight: 600;
-  color: var(--text-primary);
-  margin-bottom: var(--space-2);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.auction-meta {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: var(--space-2);
-}
-
-.auction-price {
-  font-family: var(--font-num);
-  font-size: var(--text-lg);
-  font-weight: 700;
-  color: var(--primary);
-}
-
-.auction-bids {
-  font-size: var(--text-xs);
-  color: var(--text-muted);
-}
-
-.auction-timer {
-  display: flex;
-  align-items: center;
-  gap: var(--space-1);
-  font-size: var(--text-xs);
-  color: var(--accent);
-
-  .icon {
-    width: 14px;
-    height: 14px;
-  }
-}
-
 // Listings Grid
 .listings-grid {
   display: grid;
@@ -730,6 +634,21 @@ onMounted(() => {
   &:hover {
     border-color: var(--primary);
     transform: translateY(-2px);
+  }
+}
+
+// Auction countdown inside listing-style cards
+.auction-timer {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--text-xs);
+  color: var(--accent);
+  margin-top: var(--space-1);
+
+  .icon {
+    width: 14px;
+    height: 14px;
   }
 }
 
@@ -894,6 +813,33 @@ onMounted(() => {
   font-size: var(--text-sm);
   font-weight: 700;
   color: var(--primary);
+}
+
+// Hot Auctions — 排版跟隨最新上架（listing-card 樣式復用）
+.auctions-grid-listing {
+  grid-template-columns: repeat(5, 1fr);
+
+  @media (max-width: 1024px) {
+    grid-template-columns: repeat(4, 1fr);
+  }
+
+  @media (max-width: 640px) {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.auction-bids-inline {
+  position: absolute;
+  bottom: var(--space-2);
+  left: var(--space-2);
+  padding: 2px 8px;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(4px);
+  border-radius: var(--radius-full);
+  font-size: 10px;
+  font-weight: 600;
+  color: white;
+  z-index: 10;
 }
 
 // CTA Section
