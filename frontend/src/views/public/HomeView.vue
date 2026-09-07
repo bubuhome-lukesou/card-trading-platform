@@ -100,6 +100,7 @@ const fetchHotAuctions = async () => {
           category: product.category,
           condition: product.condition,
           language: product.language,
+          listingType: 'auction' as const,
         }
       })
   } catch (e) {
@@ -183,17 +184,23 @@ const fetchNewListings = async () => {
   loadingProducts.value = true
   try {
     const response = await productApi.getProducts({ sortBy: 'newest', limit: 4, withAuction: true } as any)
-    newListings.value = (response.data.data || []).map((product: any) => ({
-      id: product.id,
-      title: getTitle(product),
-      price: product.price,
-      condition: product.condition,
-      category: product.category,
-      productTypeTagId: product.productTypeTagId,
-      image: getProductImage(product),
-      listingType: product.listingType || 'sale',
-      tags: product.tags || []
-    }))
+    newListings.value = (response.data.data || []).map((product: any) => {
+      const a = product.auctionSummary
+      return {
+        id: product.id,
+        title: getTitle(product),
+        price: (product.listingType === 'auction' && a) ? (Number(a.currentPrice) || Number(a.startingPrice)) : product.price,
+        condition: product.condition,
+        category: product.category,
+        productTypeTagId: product.productTypeTagId,
+        image: getProductImage(product),
+        listingType: product.listingType || 'sale',
+        tags: product.tags || [],
+        // Auction extras (when listingType = 'auction')
+        bids: a?.bidCount || 0,
+        ends: a ? getTimeRemaining(a.endTime) : '',
+      }
+    })
   } catch (e) {
     console.error('Failed to fetch products:', e)
   } finally {
@@ -286,41 +293,65 @@ onMounted(() => {
             <ArrowRight class="icon" />
           </RouterLink>
         </div>
-        <div class="listings-grid auctions-grid-listing">
+        <div class="listings-grid">
           <RouterLink
-            v-for="auction in hotAuctions"
-            :key="auction.id"
-            :to="`/auction/${auction.auctionId}`"
+            v-for="item in hotAuctions"
+            :key="item.id"
+            :to="`/auction/${item.auctionId}`"
             class="listing-card"
+            @click="handleCardClick($event, item)"
           >
             <div class="listing-image">
-              <img v-if="auction.image" :src="auction.image" :alt="auction.title" />
+              <img v-if="item.image" :src="item.image" :alt="item.title" />
               <div v-else class="placeholder-card">🃏</div>
 
-              <!-- Sale/Bid badge (top right) -->
-              <span class="listing-badge is-auction">
-                <Gavel class="badge-icon" />
-                Bid
+              <!-- Favorite & Cart buttons (left side, transparent) -->
+              <div class="listing-actions">
+                <button
+                  class="listing-action-btn"
+                  :class="{ active: isProductFavorited(item.id) }"
+                  @click="toggleProductFavorite($event, item.id)"
+                >
+                  <Heart class="action-icon" :class="{ 'icon-filled': isProductFavorited(item.id) }" />
+                </button>
+                <button class="listing-action-btn" @click.prevent>
+                  <ShoppingCart class="action-icon" />
+                </button>
+              </div>
+
+              <!-- Listing-type badge (top right) -->
+              <span class="listing-badge" :class="getListingBadgeClass(item.listingType)">
+                <Gavel v-if="item.listingType === 'auction'" class="badge-icon" />
+                <Calendar v-else-if="item.listingType === 'reservation'" class="badge-icon" />
+                <ShoppingCart v-else class="badge-icon" />
+                {{ getListingBadgeText(item.listingType) }}
               </span>
-              <span v-if="auction.bids > 0" class="auction-bids-inline">🔥 {{ auction.bids }}</span>
+
+              <!-- Auction live bids (bottom left) -->
+              <span v-if="item.listingType === 'auction' && item.bids > 0" class="auction-bids-inline">🔥 {{ item.bids }}</span>
             </div>
 
             <div class="listing-info">
-              <h3 class="listing-title">{{ auction.title }}</h3>
+              <h3 class="listing-title">{{ item.title }}</h3>
               <div class="listing-meta">
-                <span class="listing-category">{{ getCategoryName(auction.category) }}</span>
+                <span class="listing-category">{{ getCategoryName(item.category) }}</span>
                 <span class="listing-sep">•</span>
-                <span class="listing-condition">{{ auction.condition }}</span>
-                <template v-if="getLanguageLabel(auction.language)">
+                <span class="listing-condition">{{ item.condition }}</span>
+                <template v-if="getLanguageLabel(item.language)">
                   <span class="listing-sep">•</span>
-                  <span class="listing-language">{{ getLanguageLabel(auction.language) }}</span>
+                  <span class="listing-language">{{ getLanguageLabel(item.language) }}</span>
                 </template>
               </div>
-              <div class="listing-price">MOP ${{ Number(auction.price).toLocaleString() }}</div>
-              <div class="auction-timer">
-                <Clock class="icon" />
-                <span>{{ auction.ends }}</span>
-              </div>
+              <!-- Auction: current price + countdown -->
+              <template v-if="item.listingType === 'auction'">
+                <div class="listing-price">MOP ${{ Number(item.price).toLocaleString() }}</div>
+                <div class="auction-timer">
+                  <Clock class="icon" />
+                  <span>{{ item.ends }}</span>
+                </div>
+              </template>
+              <!-- Sale / Reservation: plain price -->
+              <div v-else class="listing-price">MOP ${{ Number(item.price).toLocaleString() }}</div>
             </div>
           </RouterLink>
         </div>
@@ -373,6 +404,9 @@ onMounted(() => {
                 <ShoppingCart v-else class="badge-icon" />
                 {{ getListingBadgeText(item.listingType) }}
               </span>
+
+              <!-- Auction live bids (bottom left) -->
+              <span v-if="item.listingType === 'auction' && item.bids > 0" class="auction-bids-inline">🔥 {{ item.bids }}</span>
             </div>
 
             <div class="listing-info">
@@ -388,7 +422,16 @@ onMounted(() => {
                   <span class="listing-language">{{ getLanguageLabel(item.language) }}</span>
                 </template>
               </div>
-              <div class="listing-price">MOP ${{ Number(item.price).toLocaleString() }}</div>
+              <!-- Auction: current price + countdown -->
+              <template v-if="item.listingType === 'auction'">
+                <div class="listing-price">MOP ${{ Number(item.price).toLocaleString() }}</div>
+                <div class="auction-timer">
+                  <Clock class="icon" />
+                  <span>{{ item.ends }}</span>
+                </div>
+              </template>
+              <!-- Sale / Reservation: plain price -->
+              <div v-else class="listing-price">MOP ${{ Number(item.price).toLocaleString() }}</div>
             </div>
           </RouterLink>
         </div>
