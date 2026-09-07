@@ -234,7 +234,8 @@ const validateField = (key: string) => {
 const missingRequired = () => {
   const missing: string[] = []
   const lt = formData.value.listingType
-  if (!formData.value.titleZh?.trim() && !formData.value.titleEn?.trim()) missing.push('商品名稱（至少填中文名或英文名）')
+  if (!formData.value.titleZh?.trim()) missing.push('商品名稱（中文）')
+  if (!formData.value.titleEn?.trim()) missing.push('商品名稱（英文）')
   if (!formData.value.condition) missing.push('商品品相')
   if (lt === 'sale' && (formData.value.price === null || formData.value.price === undefined || formData.value.price <= 0)) missing.push('售價（必須大於 0）')
   if (lt === 'auction') {
