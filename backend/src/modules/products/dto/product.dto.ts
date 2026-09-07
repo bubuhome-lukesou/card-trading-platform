@@ -50,6 +50,10 @@ export class ProductFiltersDto {
   listingTypes?: string[] | string
 
   @IsOptional()
+  @Type(() => Boolean)
+  withAuction?: boolean
+
+  @IsOptional()
   @IsEnum(ProductStatus)
   status?: ProductStatus
 
