@@ -354,9 +354,9 @@ onMounted(() => {
               <h3 class="listing-title">{{ item.title }}</h3>
               <div class="listing-tags">
                 <span class="tag-chip tag-category">{{ getCategoryName(item.category) }}</span>
+                <span v-if="getLanguageLabel(item.language)" class="tag-chip tag-language">{{ getLanguageLabel(item.language) }}</span>
                 <span v-if="getProductTypeLabel(item.productType)" class="tag-chip tag-type">{{ getProductTypeLabel(item.productType) }}</span>
                 <span v-if="item.condition" class="tag-chip tag-condition">{{ item.condition }}</span>
-                <span v-if="getLanguageLabel(item.language)" class="tag-chip tag-language">{{ getLanguageLabel(item.language) }}</span>
               </div>
               <!-- Auction: current price + countdown -->
               <template v-if="item.listingType === 'auction'">
@@ -429,9 +429,9 @@ onMounted(() => {
               <h3 class="listing-title">{{ item.titleEn || item.titleZh || item.title }}</h3>
               <div class="listing-tags">
                 <span class="tag-chip tag-category">{{ getCategoryName(item.category) }}</span>
+                <span v-if="getLanguageLabel(item.language)" class="tag-chip tag-language">{{ getLanguageLabel(item.language) }}</span>
                 <span v-if="getProductTypeLabel(item.productType)" class="tag-chip tag-type">{{ getProductTypeLabel(item.productType) }}</span>
                 <span v-if="item.condition" class="tag-chip tag-condition">{{ item.condition }}</span>
-                <span v-if="getLanguageLabel(item.language)" class="tag-chip tag-language">{{ getLanguageLabel(item.language) }}</span>
               </div>
               <!-- Auction: current price + countdown -->
               <template v-if="item.listingType === 'auction'">
