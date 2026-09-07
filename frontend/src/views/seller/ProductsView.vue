@@ -160,6 +160,91 @@ const resetForm = () => {
   pendingImagePreviews.value = []
   existingImageUrls.value = []
   selectedTags.value = []
+  fieldErrors.value = {}
+}
+
+// ===== 表單驗證 =====
+const fieldErrors = ref<Record<string, string>>({})
+
+// 數值/時間欄位即時驗證（輸入時觸發）——必填檢查留給 submit
+const validateField = (key: string) => {
+  const v = (formData.value as any)[key]
+  const lt = formData.value.listingType
+  delete fieldErrors.value[key]
+
+  switch (key) {
+    case 'price':
+      if (v === null || v === undefined || isNaN(Number(v))) fieldErrors.value[key] = '請輸入有效數字'
+      else if (Number(v) < 0) fieldErrors.value[key] = '售價不可為負數'
+      else if (Number(v) > 99999999.99) fieldErrors.value[key] = '售價超出上限'
+      break
+    case 'quantity':
+      if (v !== null && v !== undefined && v !== '') {
+        if (!Number.isInteger(Number(v)) || Number(v) < 1) fieldErrors.value[key] = '數量必須為 ≥1 的整數'
+      }
+      break
+    case 'startingPrice':
+      if (lt === 'auction') {
+        if (v === null || v === undefined || isNaN(Number(v))) fieldErrors.value[key] = '請輸入有效數字'
+        else if (Number(v) <= 0) fieldErrors.value[key] = '起拍價必須大於 0'
+        else if (Number(v) > 99999999.99) fieldErrors.value[key] = '超出上限'
+      }
+      break
+    case 'bidIncrement':
+      if (lt === 'auction' && v !== null && v !== undefined && v !== '') {
+        if (!Number.isInteger(Number(v)) || Number(v) < 1) fieldErrors.value[key] = '加價幅度必須為 ≥1 的整數'
+      }
+      break
+    case 'auctionEndTime':
+      if (lt === 'auction' && v) {
+        const t = new Date(v).getTime()
+        if (isNaN(t)) fieldErrors.value[key] = '時間格式無效'
+        else if (t <= Date.now() + 60 * 1000) fieldErrors.value[key] = '結束時間必須至少在 1 分鐘之後'
+      }
+      break
+    case 'reservationDeposit':
+      if (lt === 'reservation') {
+        if (v === null || v === undefined || isNaN(Number(v))) fieldErrors.value[key] = '請輸入有效數字'
+        else if (Number(v) < 0) fieldErrors.value[key] = '訂金不可為負數'
+        else if (Number(v) > 99999999.99) fieldErrors.value[key] = '超出上限'
+      }
+      break
+    case 'reservationMax':
+      if (lt === 'reservation' && v !== null && v !== undefined && v !== '') {
+        if (!Number.isInteger(Number(v)) || Number(v) < 1) fieldErrors.value[key] = '名額上限必須為 ≥1 的整數'
+      }
+      break
+    case 'reservationDeadline':
+      if (lt === 'reservation' && v) {
+        const t = new Date(v).getTime()
+        if (isNaN(t)) fieldErrors.value[key] = '時間格式無效'
+        else if (t <= Date.now()) fieldErrors.value[key] = '截止時間必須在當前時間之後'
+      }
+      break
+    case 'reservationLimitPerUser':
+      if (lt === 'reservation' && v !== null && v !== undefined && v !== '') {
+        if (!Number.isInteger(Number(v)) || Number(v) < 1) fieldErrors.value[key] = '每人上限必須為 ≥1 的整數'
+      }
+      break
+  }
+  return !fieldErrors.value[key]
+}
+
+// Submit：只驗必填，列出所有未填項
+const missingRequired = () => {
+  const missing: string[] = []
+  const lt = formData.value.listingType
+  if (!formData.value.titleZh?.trim() && !formData.value.titleEn?.trim()) missing.push('商品名稱（至少填中文名或英文名）')
+  if (!formData.value.condition) missing.push('商品品相')
+  if (lt === 'sale' && (formData.value.price === null || formData.value.price === undefined || formData.value.price <= 0)) missing.push('售價（必須大於 0）')
+  if (lt === 'auction') {
+    if (formData.value.startingPrice === null || formData.value.startingPrice === undefined || formData.value.startingPrice <= 0) missing.push('起拍價（必須大於 0）')
+    if (!formData.value.auctionEndTime) missing.push('拍賣結束時間')
+  }
+  if (lt === 'reservation') {
+    if (!formData.value.reservationDeadline) missing.push('預約截止時間')
+  }
+  return missing
 }
 
 const openCreateModal = () => {
@@ -230,6 +315,20 @@ const openEditModal = async (product: any) => {
 }
 
 const handleSubmit = async () => {
+  // 即時欄位錯誤（格式類）也要清先可以提交
+  const errorKeys = Object.keys(fieldErrors.value)
+  if (errorKeys.length > 0) {
+    alert('請先修正欄位錯誤：\n' + errorKeys.map(k => `• ${fieldErrors.value[k]}`).join('\n'))
+    return
+  }
+
+  // 必填檢查——彈出提示列出所有未填項
+  const missing = missingRequired()
+  if (missing.length > 0) {
+    alert('以下必填項未填寫：\n' + missing.map(m => `• ${m}`).join('\n'))
+    return
+  }
+
   loading.value = true
   try {
     // Upload images first if any
@@ -636,8 +735,8 @@ onUnmounted(() => {
             </div>
 
             <div class="form-group">
-              <label>商品品相</label>
-              <select v-model="formData.condition">
+              <label>商品品相 <span class="required-mark">*</span></label>
+              <select v-model="formData.condition" @blur="validateField('condition')" @change="validateField('condition')">
                 <option :value="null" disabled>(請選擇)</option>
                 <option v-for="cond in conditions" :key="cond.value" :value="cond.value">
                   {{ cond.label }}
@@ -658,7 +757,7 @@ onUnmounted(() => {
             <!-- Auction Fields (when auction is selected) -->
             <template v-if="formData.listingType === 'auction'">
               <div class="form-group">
-                <label>起拍價 (MOP)</label>
+                <label>起拍價 (MOP) <span class="required-mark">*</span></label>
                 <input
                   v-model.number="formData.startingPrice"
                   type="number"
@@ -666,10 +765,14 @@ onUnmounted(() => {
                   max="99999999.99"
                   step="0.01"
                   placeholder="100"
+                  :class="{ 'input-error': fieldErrors.startingPrice }"
+                  @blur="validateField('startingPrice')"
+                  @input="validateField('startingPrice')"
                 />
+                <span v-if="fieldErrors.startingPrice" class="field-error-msg">{{ fieldErrors.startingPrice }}</span>
               </div>
               <div class="form-group">
-                <label>每次加價幅度 (MOP)</label>
+                <label>每次加價幅度 (MOP) <span class="required-mark">*</span></label>
                 <input
                   v-model.number="formData.bidIncrement"
                   type="number"
@@ -677,21 +780,29 @@ onUnmounted(() => {
                   max="99999"
                   step="1"
                   placeholder="10"
+                  :class="{ 'input-error': fieldErrors.bidIncrement }"
+                  @blur="validateField('bidIncrement')"
+                  @input="validateField('bidIncrement')"
                 />
+                <span v-if="fieldErrors.bidIncrement" class="field-error-msg">{{ fieldErrors.bidIncrement }}</span>
               </div>
               <div class="form-group">
-                <label>拍賣結束時間</label>
+                <label>拍賣結束時間 <span class="required-mark">*</span></label>
                 <input
                   v-model="formData.auctionEndTime"
                   type="datetime-local"
+                  :class="{ 'input-error': fieldErrors.auctionEndTime }"
+                  @blur="validateField('auctionEndTime')"
+                  @input="validateField('auctionEndTime')"
                 />
+                <span v-if="fieldErrors.auctionEndTime" class="field-error-msg">{{ fieldErrors.auctionEndTime }}</span>
               </div>
             </template>
 
             <!-- Reservation Fields (when reservation is selected) -->
             <template v-if="formData.listingType === 'reservation'">
               <div class="form-group">
-                <label>預付名額上限</label>
+                <label>預付名額上限 <span class="required-mark">*</span></label>
                 <input
                   v-model.number="formData.reservationMax"
                   type="number"
@@ -699,10 +810,14 @@ onUnmounted(() => {
                   max="2147483647"
                   step="1"
                   placeholder="10"
+                  :class="{ 'input-error': fieldErrors.reservationMax }"
+                  @blur="validateField('reservationMax')"
+                  @input="validateField('reservationMax')"
                 />
+                <span v-if="fieldErrors.reservationMax" class="field-error-msg">{{ fieldErrors.reservationMax }}</span>
               </div>
               <div class="form-group">
-                <label>訂金金額 (MOP)</label>
+                <label>訂金金額 (MOP) <span class="required-mark">*</span></label>
                 <input
                   v-model.number="formData.reservationDeposit"
                   type="number"
@@ -710,14 +825,22 @@ onUnmounted(() => {
                   max="99999999.99"
                   step="0.01"
                   placeholder="100"
+                  :class="{ 'input-error': fieldErrors.reservationDeposit }"
+                  @blur="validateField('reservationDeposit')"
+                  @input="validateField('reservationDeposit')"
                 />
+                <span v-if="fieldErrors.reservationDeposit" class="field-error-msg">{{ fieldErrors.reservationDeposit }}</span>
               </div>
               <div class="form-group">
-                <label>截止預付日期</label>
+                <label>截止預付日期 <span class="required-mark">*</span></label>
                 <input
                   v-model="formData.reservationDeadline"
                   type="datetime-local"
+                  :class="{ 'input-error': fieldErrors.reservationDeadline }"
+                  @blur="validateField('reservationDeadline')"
+                  @input="validateField('reservationDeadline')"
                 />
+                <span v-if="fieldErrors.reservationDeadline" class="field-error-msg">{{ fieldErrors.reservationDeadline }}</span>
               </div>
               <div class="form-group">
                 <label>每人預約上限</label>
@@ -728,7 +851,10 @@ onUnmounted(() => {
                   max="2147483647"
                   step="1"
                   placeholder="不限"
+                  :class="{ 'input-error': fieldErrors.reservationLimitPerUser }"
+                  @blur="validateField('reservationLimitPerUser')"
                 />
+                <span v-if="fieldErrors.reservationLimitPerUser" class="field-error-msg">{{ fieldErrors.reservationLimitPerUser }}</span>
               </div>
             </template>
 
@@ -762,7 +888,7 @@ onUnmounted(() => {
 
             <!-- 售價 -->
             <div class="form-group">
-              <label>售價 (MOP) <span class="required-mark">*</span></label>
+              <label>售價 (MOP) <span class="required-mark" v-if="formData.listingType !== 'auction'">*</span></label>
               <input 
                 v-model.number="formData.price" 
                 type="number" 
@@ -770,8 +896,12 @@ onUnmounted(() => {
                 max="99999999.99"
                 step="0.01"
                 placeholder="0.00"
-                required
+                :class="{ 'input-error': fieldErrors.price }"
+                @blur="validateField('price')"
+                @input="validateField('price')"
+                :required="formData.listingType !== 'auction'"
               />
+              <span v-if="fieldErrors.price" class="field-error-msg">{{ fieldErrors.price }}</span>
             </div>
 
             <!-- 商品狀態 -->
@@ -785,7 +915,7 @@ onUnmounted(() => {
 
             <!-- 數量 -->
             <div class="form-group">
-              <label>數量</label>
+              <label>數量 <span class="required-mark" v-if="formData.listingType === 'sale'">*</span></label>
               <input 
                 v-model.number="formData.quantity" 
                 type="number" 
@@ -793,7 +923,11 @@ onUnmounted(() => {
                 max="2147483647"
                 step="1"
                 placeholder="1"
+                :class="{ 'input-error': fieldErrors.quantity }"
+                @blur="validateField('quantity')"
+                @input="validateField('quantity')"
               />
+              <span v-if="fieldErrors.quantity" class="field-error-msg">{{ fieldErrors.quantity }}</span>
             </div>
 
             <!-- Images -->
@@ -1318,6 +1452,23 @@ onUnmounted(() => {
 .form-group textarea:focus {
   outline: none;
   border-color: var(--primary);
+}
+
+/* 驗證錯誤樣式 */
+.form-group .input-error {
+  border-color: #ef4444 !important;
+  background: rgba(239, 68, 68, 0.06);
+}
+
+.form-group .input-error:focus {
+  border-color: #ef4444 !important;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.15);
+}
+
+.field-error-msg {
+  font-size: 11px;
+  color: #ef4444;
+  line-height: 1.3;
 }
 
 .form-group textarea {

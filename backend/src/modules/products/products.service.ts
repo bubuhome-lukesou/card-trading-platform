@@ -203,8 +203,48 @@ export class ProductsService {
       dto.images = JSON.stringify(images)
     }
 
-    // Default listingType to 'both' if not provided, always set to ACTIVE
+    // ===== 按銷售模式驗證必要欄位（拍賣/預約時間必填） =====
     const listingType = dto.listingType || 'both'
+    const now = Date.now()
+
+    if (listingType === 'auction') {
+      if (!dto.auctionEndTime) {
+        throw new BadRequestException('拍賣結束時間為必填項')
+      }
+      const endTime = new Date(dto.auctionEndTime).getTime()
+      if (isNaN(endTime)) {
+        throw new BadRequestException('拍賣結束時間格式無效')
+      }
+      if (endTime <= now + 60 * 1000) {
+        throw new BadRequestException('拍賣結束時間必須至少在 1 分鐘之後')
+      }
+      if (dto.startingPrice === undefined || dto.startingPrice === null || dto.startingPrice <= 0) {
+        throw new BadRequestException('起拍價必須大於 0')
+      }
+      if (dto.bidIncrement !== undefined && dto.bidIncrement <= 0) {
+        throw new BadRequestException('加價幅度必須大於 0')
+      }
+    }
+
+    if (listingType === 'reservation') {
+      if (!dto.reservationDeadline) {
+        throw new BadRequestException('預約截止時間為必填項')
+      }
+      const deadline = new Date(dto.reservationDeadline).getTime()
+      if (isNaN(deadline)) {
+        throw new BadRequestException('預約截止時間格式無效')
+      }
+      if (deadline <= now) {
+        throw new BadRequestException('預約截止時間必須在當前時間之後')
+      }
+      if (dto.reservationDeposit === undefined || dto.reservationDeposit < 0) {
+        throw new BadRequestException('訂金金額不可為負數')
+      }
+      if (dto.reservationMax !== undefined && dto.reservationMax < 1) {
+        throw new BadRequestException('預付名額上限必須至少為 1')
+      }
+    }
+
     const status = ProductStatus.ACTIVE
 
     // Handle tags - find or create tags by name
