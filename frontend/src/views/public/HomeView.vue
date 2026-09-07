@@ -476,7 +476,7 @@ const scrollEl = (el: HTMLElement | null, dir: number) => {
             <span class="emoji hot">🔥</span>
             {{ t('home.hotAuctions.title') }}
           </h2>
-          <RouterLink to="/auctions?status=active" class="see-all">
+          <RouterLink to="/marketplace?listing=auction" class="see-all">
             {{ t('home.seeAll') }}
             <ArrowRight class="icon" />
           </RouterLink>
@@ -559,7 +559,7 @@ const scrollEl = (el: HTMLElement | null, dir: number) => {
             <span class="emoji resv">📅</span>
             {{ t('home.hotReservations.title') }}
           </h2>
-          <RouterLink to="/marketplace?listingTypes=reservation" class="see-all">
+          <RouterLink to="/marketplace?listing=reservation" class="see-all">
             {{ t('home.seeAll') }}
             <ArrowRight class="icon" />
           </RouterLink>
