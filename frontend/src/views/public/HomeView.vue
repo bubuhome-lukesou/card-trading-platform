@@ -85,7 +85,7 @@ const fetchHotAuctions = async () => {
     const response = await productApi.getProducts({
       listingTypes: ['auction'],
       withAuction: true,
-      limit: 5,
+      limit: 10,
     } as any)
     hotAuctions.value = (response.data.data || [])
       .filter((p: any) => p.auctionSummary) // 只顯示有進行中拍賣嘅商品
@@ -120,7 +120,7 @@ const fetchHotReservations = async () => {
     const response = await productApi.getProducts({
       listingTypes: ['reservation'],
       sortBy: 'newest',
-      limit: 5,
+      limit: 10,
     } as any)
     const now = Date.now()
     hotReservations.value = (response.data.data || [])
@@ -231,7 +231,7 @@ const handleCardClick = async (e: Event, item: any) => {
 const fetchNewListings = async () => {
   loadingProducts.value = true
   try {
-    const response = await productApi.getProducts({ sortBy: 'newest', limit: 4, withAuction: true } as any)
+    const response = await productApi.getProducts({ sortBy: 'newest', limit: 10, withAuction: true } as any)
     newListings.value = (response.data.data || []).map((product: any) => {
       const a = product.auctionSummary
       return {
@@ -346,7 +346,7 @@ onMounted(() => {
             <ArrowRight class="icon" />
           </RouterLink>
         </div>
-        <div class="listings-grid">
+        <div class="listings-scroll">
           <RouterLink
             v-for="item in newListings"
             :key="item.id"
@@ -429,7 +429,7 @@ onMounted(() => {
             <ArrowRight class="icon" />
           </RouterLink>
         </div>
-        <div class="listings-grid">
+        <div class="listings-scroll">
           <RouterLink
             v-for="item in hotAuctions"
             :key="item.id"
@@ -504,7 +504,7 @@ onMounted(() => {
             <ArrowRight class="icon" />
           </RouterLink>
         </div>
-        <div class="listings-grid">
+        <div class="listings-scroll">
           <RouterLink
             v-for="item in hotReservations"
             :key="item.id"
@@ -781,18 +781,36 @@ onMounted(() => {
   text-align: center;
 }
 
-// Listings Grid
-.listings-grid {
-  display: grid;
-  grid-template-columns: repeat(5, 1fr);
+// Listings — 橫向滑動展示
+.listings-scroll {
+  display: flex;
   gap: var(--space-4);
+  overflow-x: auto;
+  padding-bottom: var(--space-2);
+  scroll-snap-type: x proximity;
+  -webkit-overflow-scrolling: touch;
 
-  @media (max-width: 1024px) {
-    grid-template-columns: repeat(4, 1fr);
+  // 隱藏捲軸但保留滑動
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  &::-webkit-scrollbar {
+    display: none;
   }
 
-  @media (max-width: 640px) {
-    grid-template-columns: repeat(2, 1fr);
+  .listing-card {
+    flex: 0 0 auto;
+    width: calc((100% - var(--space-4) * 4) / 5);
+    min-width: 200px;
+    scroll-snap-align: start;
+
+    @media (max-width: 1024px) {
+      width: calc((100% - var(--space-4) * 3) / 4);
+    }
+
+    @media (max-width: 640px) {
+      width: calc((100% - var(--space-4)) / 2);
+      min-width: 160px;
+    }
   }
 }
 
