@@ -212,6 +212,12 @@ const getTitle = (product: any) => {
   return locale.value === 'zh' ? (product?.titleZh || product?.titleEn) : (product?.titleEn || product?.titleZh)
 }
 
+// 點擊賣家框 → 跳轉 marketplace 並篩選該商家
+const goToSellerMarketplace = () => {
+  const sellerId = auction.value?.seller?.id || auction.value?.product?.sellerId
+  if (sellerId) router.push({ path: '/marketplace', query: { sellers: sellerId } })
+}
+
 const getDescription = (product: any) => {
   if (locale.value === 'zh') return product?.descriptionZh || product?.descriptionEn || ''
   return product?.descriptionEn || product?.descriptionZh || ''
@@ -580,11 +586,12 @@ onUnmounted(() => {
             <!-- Title -->
             <h1 class="product-title">{{ getTitle(auction.product) }}</h1>
 
-            <!-- 賣家名稱 -->
-            <div v-if="auction.seller" class="seller-info-row">
+            <!-- 賣家名稱（可點擊 → 跳轉該商家 marketplace 篩選頁） -->
+            <div v-if="auction.seller" class="seller-info-row seller-clickable" @click="goToSellerMarketplace" :title="locale === 'zh' ? '查看此商家全部商品' : 'View all products from this seller'">
               <span class="seller-label">{{ locale === 'zh' ? '商鋪' : 'Seller' }}</span>
               <div class="seller-avatar-sm">{{ (auction.seller?.nickname || '?').charAt(0) }}</div>
               <span class="seller-name-text">{{ auction.seller?.nickname || (locale === 'zh' ? '未知商家' : 'Unknown Seller') }}</span>
+              <span class="seller-arrow">→</span>
             </div>
 
             <!-- Spec table -->
@@ -1316,6 +1323,29 @@ onUnmounted(() => {
   background: var(--bg-elevated);
   border-radius: var(--radius-md);
   width: fit-content;
+}
+/* 可點擊賣家框 → 跳轉商家篩選 */
+.seller-info-row.seller-clickable {
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  border: 1px solid transparent;
+
+  &:hover {
+    background: rgba(102, 126, 234, 0.15);
+    border-color: rgba(102, 126, 234, 0.4);
+
+    .seller-arrow {
+      transform: translateX(3px);
+      opacity: 1;
+    }
+  }
+
+  .seller-arrow {
+    font-size: 14px;
+    color: #8fa3f5;
+    opacity: 0.5;
+    transition: all var(--transition-fast);
+  }
 }
 
 .seller-label {

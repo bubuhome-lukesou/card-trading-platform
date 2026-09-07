@@ -52,6 +52,10 @@ export class ProductsService {
         { search: `%${filters.search}%` }
       )
     }
+    // Filter by seller(s) — marketplace 商家篩選
+    if ((filters as any).sellerIds?.length) {
+      queryBuilder.andWhere('product.sellerId IN (:...sellerIds)', { sellerIds: (filters as any).sellerIds })
+    }
     // Filter by tags
     if (filters.tags?.length) {
       const tagIds = filters.tags.map(t => parseInt(t)).filter(t => !isNaN(t))

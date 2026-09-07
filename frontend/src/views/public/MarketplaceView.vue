@@ -26,6 +26,7 @@ const filtersExpanded = ref({
   listingType: true,
   condition: true,
   language: true,
+  seller: false,
   price: true
 })
 
@@ -42,10 +43,43 @@ const filters = ref<any>({
   tags: [] as string[],
   productTypes: [] as string[],
   language: [] as string[],
+  sellerIds: [] as string[],
   hideSold: true,
   page: 1,
   limit: 20
 })
+
+// ===== 商家篩選（下拉 + 搜尋） =====
+const sellerOptions = ref<any[]>([])
+const sellerSearch = ref('')
+const showSellerDropdown = ref(false)
+
+const filteredSellerOptions = computed(() => {
+  const q = sellerSearch.value.trim().toLowerCase()
+  if (!q) return sellerOptions.value
+  return sellerOptions.value.filter(s => (s.nickname || '').toLowerCase().includes(q))
+})
+
+const selectedSellers = computed(() =>
+  sellerOptions.value.filter(s => filters.value.sellerIds?.includes(s.id))
+)
+
+const toggleSeller = (id: string) => {
+  const arr = filters.value.sellerIds || []
+  const i = arr.indexOf(id)
+  if (i === -1) arr.push(id)
+  else arr.splice(i, 1)
+  updateFilter('sellerIds', arr)
+}
+
+const loadSellers = async () => {
+  try {
+    const res = await productApi.getSellers()
+    sellerOptions.value = res.data?.data || res.data || []
+  } catch (e) {
+    console.error('Failed to load sellers:', e)
+  }
+}
 
 const meta = ref({ total: 0, page: 1, limit: 20, totalPages: 0 })
 
@@ -106,6 +140,7 @@ const activeFiltersCount = computed(() => {
   if (filters.value.listingType?.length) count += filters.value.listingType.length
   if (filters.value.productTypes?.length) count += filters.value.productTypes.length
   if (filters.value.language?.length) count += filters.value.language.length
+  if (filters.value.sellerIds?.length) count += filters.value.sellerIds.length
   return count
 })
 
@@ -139,6 +174,11 @@ const activeFiltersList = computed(() => {
     list.push({ key: 'productTypes', value: opt?.label || pt, rawValue: pt })
   })
 
+  // 已選商家（顯示昵稱）
+  selectedSellers.value.forEach((s: any) => {
+    list.push({ key: 'seller', value: s.nickname, rawValue: s.id })
+  })
+
   filters.value.language?.forEach((lang: string) => {
     const langOpt = filterOptions.value.languages.find(x => x.value === lang)
     list.push({ key: 'language', value: langOpt?.label || lang, rawValue: lang })
@@ -169,6 +209,7 @@ const fetchProducts = async (append = false) => {
     } else {
       delete (cleanParams as any).productTypes
     }
+    // sellerIds 陣列以逗號傳遞（paramsSerializer 自動處理）
     console.log('[DEBUG] fetchProducts params:', JSON.stringify(cleanParams))
     const response = await productApi.getProducts({ ...cleanParams, withAuction: true })
     if (append) {
@@ -207,6 +248,11 @@ const removeFilter = (key: string, value?: string) => {
   if (key === 'price') {
     filters.value.priceMin = undefined
     filters.value.priceMax = undefined
+  } else if (key === 'seller') {
+    const arr = filters.value.sellerIds || []
+    const index = arr.indexOf(value)
+    if (index !== -1) arr.splice(index, 1)
+    updateFilter('sellerIds', arr)
   } else if (key === 'listingType') {
     const arr = filters.value.listingType || []
     const index = arr.indexOf(value)
@@ -251,11 +297,15 @@ const clearAllFilters = () => {
     priceMax: undefined,
     listingType: [],
     sortBy: 'newest',
-    page: 1,
-    limit: 20,
+    tags: [],
+    productTypes: [],
     language: [],
-    hideSold: true
+    sellerIds: [],
+    hideSold: true,
+    page: 1,
+    limit: 20
   }
+  sellerSearch.value = ''
   updateUrl()
   fetchProducts()
 }
@@ -273,6 +323,7 @@ const updateUrl = () => {
   if (filters.value.tags?.length) query.tags = filters.value.tags.join(',')
   if (filters.value.productTypes?.length) query.productType = filters.value.productTypes.join(',')
   if (filters.value.language?.length) query.language = filters.value.language.join(',')
+  if (filters.value.sellerIds?.length) query.sellers = filters.value.sellerIds.join(',')
   if (filters.value.page !== 1) query.page = String(filters.value.page)
 
   router.replace({ query })
@@ -289,6 +340,7 @@ const parseUrlFilters = () => {
   if (query.listing) filters.value.listingType = (query.listing as string).split(',')
   if (query.sort) filters.value.sortBy = query.sort as string
   if (query.productType) filters.value.productTypes = (query.productType as string).split(',')
+  if (query.sellers) filters.value.sellerIds = (query.sellers as string).split(',')
   if (query.productTypeTags) filters.value.productTypes = (query.productTypeTags as string).split(',')
   if (query.language) filters.value.language = (query.language as string).split(',')
   if (query.page) filters.value.page = Number(query.page)
@@ -310,6 +362,7 @@ const handleSearch = () => {
 onMounted(() => {
   parseUrlFilters()
   fetchProducts()
+  loadSellers()
   favoritesStore.loadFavorites()
 
   // Infinite scroll via scroll event
@@ -508,6 +561,45 @@ watch(() => route.query, () => {
                   {{ lang.label }}
                 </span>
               </label>
+            </div>
+          </div>
+
+          <!-- 商家 Seller（下拉 + 搜尋） -->
+          <div class="filter-section seller-filter">
+            <h4 class="filter-title" @click="filtersExpanded.seller = !filtersExpanded.seller">
+              {{ locale === 'zh' ? '商家' : 'Seller' }}
+              <ChevronDown class="filter-chevron" :class="{ collapsed: !filtersExpanded.seller }" />
+            </h4>
+            <div v-show="filtersExpanded.seller" class="seller-dropdown" @click.stop>
+              <input
+                v-model="sellerSearch"
+                type="text"
+                class="seller-search-input"
+                :placeholder="locale === 'zh' ? '搜尋商家…' : 'Search sellers…'"
+                @focus="showSellerDropdown = true"
+              />
+              <div v-if="selectedSellers.length" class="seller-selected-chips">
+                <span v-for="s in selectedSellers" :key="s.id" class="seller-chip" @click="toggleSeller(s.id)">
+                  {{ s.nickname }} ✕
+                </span>
+              </div>
+              <div v-show="showSellerDropdown || sellerSearch" class="seller-list">
+                <button
+                  v-for="s in filteredSellerOptions"
+                  :key="s.id"
+                  type="button"
+                  class="seller-option"
+                  :class="{ selected: filters.sellerIds.includes(s.id) }"
+                  @click="toggleSeller(s.id)"
+                >
+                  <span class="seller-avatar">{{ (s.nickname || '?').charAt(0) }}</span>
+                  <span class="seller-option-name">{{ s.nickname }}</span>
+                  <span class="seller-option-count">{{ s.productCount }}</span>
+                </button>
+                <div v-if="filteredSellerOptions.length === 0" class="seller-empty">
+                  {{ locale === 'zh' ? '沒有符合的商家' : 'No sellers found' }}
+                </div>
+              </div>
             </div>
           </div>
 
@@ -791,6 +883,119 @@ watch(() => route.query, () => {
   border-bottom: 1px solid var(--border);
 
   &:last-child { border-bottom: none; }
+}
+
+// 商家下拉選單
+.seller-filter {
+  .seller-dropdown {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    margin-top: var(--space-2);
+  }
+
+  .seller-search-input {
+    width: 100%;
+    padding: var(--space-2) var(--space-3);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    background: var(--bg-elevated);
+    color: var(--text-primary);
+    font-size: var(--text-sm);
+    outline: none;
+
+    &:focus {
+      border-color: var(--primary);
+    }
+  }
+
+  .seller-selected-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+
+  .seller-chip {
+    padding: 2px 8px;
+    border-radius: var(--radius-full);
+    background: rgba(102, 126, 234, 0.18);
+    color: #8fa3f5;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+
+  .seller-list {
+    max-height: 220px;
+    overflow-y: auto;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    background: var(--bg-elevated);
+  }
+
+  .seller-option {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    width: 100%;
+    padding: var(--space-2) var(--space-3);
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    color: var(--text-primary);
+    font-size: var(--text-sm);
+    text-align: left;
+    transition: background var(--transition-fast);
+
+    &:hover {
+      background: rgba(102, 126, 234, 0.12);
+    }
+
+    &.selected {
+      background: rgba(102, 126, 234, 0.2);
+
+      .seller-option-name {
+        color: #8fa3f5;
+        font-weight: 600;
+      }
+    }
+
+    .seller-avatar {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: var(--primary-gradient, linear-gradient(135deg, #667eea, #764ba2));
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+
+    .seller-option-name {
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .seller-option-count {
+      font-size: 11px;
+      color: var(--text-muted);
+      flex-shrink: 0;
+    }
+  }
+
+  .seller-empty {
+    padding: var(--space-3);
+    font-size: var(--text-sm);
+    color: var(--text-muted);
+    text-align: center;
+  }
 }
 
 .filter-title {

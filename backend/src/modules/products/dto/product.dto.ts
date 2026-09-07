@@ -101,6 +101,15 @@ export class ProductFiltersDto {
   language?: string[]
 
   @IsOptional()
+  @Transform(({ value }) => {
+    if (typeof value === 'string') return value.split(',').map(s => s.trim()).filter(Boolean)
+    if (Array.isArray(value)) return value.flatMap(v => typeof v === 'string' ? v.split(',').map(s => s.trim()) : v).filter(Boolean)
+    return undefined
+  })
+  @IsString({ each: true })
+  sellerIds?: string[]
+
+  @IsOptional()
   @Type(() => Boolean)
   hideSold?: boolean
 }

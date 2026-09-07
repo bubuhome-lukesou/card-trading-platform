@@ -32,6 +32,11 @@ export const productApi = {
     return api.get<Product[]>('/products/seller', { params })
   },
 
+  // Marketplace 商家篩選下拉選單
+  getSellers() {
+    return api.get('/products/sellers')
+  },
+
   // Get tags
   getTags(params?: { type?: string }) {
     return api.get('/tags', { params })

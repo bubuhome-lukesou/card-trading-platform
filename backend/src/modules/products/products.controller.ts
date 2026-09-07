@@ -12,6 +12,21 @@ export class ProductsController {
     return this.productsService.findAll(filters)
   }
 
+  // Marketplace 商家篩選下拉選單：列出有在售商品的商家（id/nickname/avatar/商品數）
+  @Get('sellers')
+  async listSellers() {
+    const rows = await this.productsService['dataSource'].query(
+      `SELECT u.id, u.nickname, u.avatar, COUNT(p.id) AS productCount
+       FROM users u
+       INNER JOIN products p ON p.sellerId = u.id AND p.status = 'active' AND p.isActive = 1
+       WHERE u.role IN ('user', 'seller', 'admin') OR u.role = 'seller'
+       GROUP BY u.id, u.nickname, u.avatar
+       ORDER BY productCount DESC, u.nickname ASC
+       LIMIT 500`
+    )
+    return { data: rows }
+  }
+
   @UseGuards(JwtAuthGuard)
   @Get('seller')
   async findMyProducts(@Request() req: any, @Query('page') page?: string, @Query('limit') limit?: string) {
