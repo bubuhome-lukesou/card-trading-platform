@@ -333,81 +333,6 @@ onMounted(() => {
       </div>
     </section>
 
-    <!-- Hot Auctions -->
-    <section class="section auctions-section">
-      <div class="container">
-        <div class="section-header">
-          <h2 class="section-title">
-            <span class="emoji hot">🔥</span>
-            {{ t('home.hotAuctions.title') }}
-          </h2>
-          <RouterLink to="/auctions?status=active" class="see-all">
-            {{ t('home.seeAll') }}
-            <ArrowRight class="icon" />
-          </RouterLink>
-        </div>
-        <div class="listings-grid">
-          <RouterLink
-            v-for="item in hotAuctions"
-            :key="item.id"
-            :to="`/auction/${item.auctionId}`"
-            class="listing-card"
-            @click="handleCardClick($event, item)"
-          >
-            <div class="listing-image">
-              <img v-if="item.image" :src="item.image" :alt="item.title" />
-              <div v-else class="placeholder-card">🃏</div>
-
-              <!-- Favorite & Cart buttons (left side, transparent) -->
-              <div class="listing-actions">
-                <button
-                  class="listing-action-btn"
-                  :class="{ active: isProductFavorited(item.id) }"
-                  @click="toggleProductFavorite($event, item.id)"
-                >
-                  <Heart class="action-icon" :class="{ 'icon-filled': isProductFavorited(item.id) }" />
-                </button>
-                <button class="listing-action-btn" @click.prevent>
-                  <ShoppingCart class="action-icon" />
-                </button>
-              </div>
-
-              <!-- Listing-type badge (top right) -->
-              <span class="listing-badge" :class="getListingBadgeClass(item.listingType)">
-                <Gavel v-if="item.listingType === 'auction'" class="badge-icon" />
-                <Calendar v-else-if="item.listingType === 'reservation'" class="badge-icon" />
-                <ShoppingCart v-else class="badge-icon" />
-                {{ getListingBadgeText(item.listingType) }}
-              </span>
-
-              <!-- Auction live bids (bottom left) -->
-              <span v-if="item.listingType === 'auction' && item.bids > 0" class="auction-bids-inline">🔥 {{ item.bids }}</span>
-            </div>
-
-            <div class="listing-info">
-              <h3 class="listing-title">{{ item.title }}</h3>
-              <div class="listing-tags">
-                <span class="tag-chip tag-category">{{ getCategoryName(item.category) }}</span>
-                <span v-if="getLanguageLabel(item.language)" class="tag-chip tag-language">{{ getLanguageLabel(item.language) }}</span>
-                <span v-if="getProductTypeLabel(item.productType)" class="tag-chip tag-type">{{ getProductTypeLabel(item.productType) }}</span>
-                <span v-if="item.condition" class="tag-chip tag-condition">{{ item.condition }}</span>
-              </div>
-              <!-- Auction: current price + countdown -->
-              <template v-if="item.listingType === 'auction'">
-                <div class="listing-price">MOP ${{ Number(item.price).toLocaleString() }}</div>
-                <div class="auction-timer">
-                  <Clock class="icon" />
-                  <span>{{ item.ends }}</span>
-                </div>
-              </template>
-              <!-- Sale / Reservation: plain price -->
-              <div v-else class="listing-price">MOP ${{ Number(item.price).toLocaleString() }}</div>
-            </div>
-          </RouterLink>
-        </div>
-      </div>
-    </section>
-
     <!-- New Listings -->
     <section class="section listings-section">
       <div class="container">
@@ -484,6 +409,81 @@ onMounted(() => {
                 </div>
               </template>
               <!-- Sale: plain price -->
+              <div v-else class="listing-price">MOP ${{ Number(item.price).toLocaleString() }}</div>
+            </div>
+          </RouterLink>
+        </div>
+      </div>
+    </section>
+
+    <!-- Hot Auctions -->
+    <section class="section auctions-section">
+      <div class="container">
+        <div class="section-header">
+          <h2 class="section-title">
+            <span class="emoji hot">🔥</span>
+            {{ t('home.hotAuctions.title') }}
+          </h2>
+          <RouterLink to="/auctions?status=active" class="see-all">
+            {{ t('home.seeAll') }}
+            <ArrowRight class="icon" />
+          </RouterLink>
+        </div>
+        <div class="listings-grid">
+          <RouterLink
+            v-for="item in hotAuctions"
+            :key="item.id"
+            :to="`/auction/${item.auctionId}`"
+            class="listing-card"
+            @click="handleCardClick($event, item)"
+          >
+            <div class="listing-image">
+              <img v-if="item.image" :src="item.image" :alt="item.title" />
+              <div v-else class="placeholder-card">🃏</div>
+
+              <!-- Favorite & Cart buttons (left side, transparent) -->
+              <div class="listing-actions">
+                <button
+                  class="listing-action-btn"
+                  :class="{ active: isProductFavorited(item.id) }"
+                  @click="toggleProductFavorite($event, item.id)"
+                >
+                  <Heart class="action-icon" :class="{ 'icon-filled': isProductFavorited(item.id) }" />
+                </button>
+                <button class="listing-action-btn" @click.prevent>
+                  <ShoppingCart class="action-icon" />
+                </button>
+              </div>
+
+              <!-- Listing-type badge (top right) -->
+              <span class="listing-badge" :class="getListingBadgeClass(item.listingType)">
+                <Gavel v-if="item.listingType === 'auction'" class="badge-icon" />
+                <Calendar v-else-if="item.listingType === 'reservation'" class="badge-icon" />
+                <ShoppingCart v-else class="badge-icon" />
+                {{ getListingBadgeText(item.listingType) }}
+              </span>
+
+              <!-- Auction live bids (bottom left) -->
+              <span v-if="item.listingType === 'auction' && item.bids > 0" class="auction-bids-inline">🔥 {{ item.bids }}</span>
+            </div>
+
+            <div class="listing-info">
+              <h3 class="listing-title">{{ item.title }}</h3>
+              <div class="listing-tags">
+                <span class="tag-chip tag-category">{{ getCategoryName(item.category) }}</span>
+                <span v-if="getLanguageLabel(item.language)" class="tag-chip tag-language">{{ getLanguageLabel(item.language) }}</span>
+                <span v-if="getProductTypeLabel(item.productType)" class="tag-chip tag-type">{{ getProductTypeLabel(item.productType) }}</span>
+                <span v-if="item.condition" class="tag-chip tag-condition">{{ item.condition }}</span>
+              </div>
+              <!-- Auction: current price + countdown -->
+              <template v-if="item.listingType === 'auction'">
+                <div class="listing-price">MOP ${{ Number(item.price).toLocaleString() }}</div>
+                <div class="auction-timer">
+                  <Clock class="icon" />
+                  <span>{{ item.ends }}</span>
+                </div>
+              </template>
+              <!-- Sale / Reservation: plain price -->
               <div v-else class="listing-price">MOP ${{ Number(item.price).toLocaleString() }}</div>
             </div>
           </RouterLink>
