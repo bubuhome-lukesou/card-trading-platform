@@ -269,7 +269,7 @@ export class AuctionsService {
       .createQueryBuilder('auction')
       .leftJoinAndSelect('auction.product', 'product')
       .leftJoinAndSelect('auction.seller', 'seller')
-      .leftJoinAndSelect('auction.bids', 'bid', 'bid.status = :status', { status: 'active' })
+      .leftJoinAndSelect('auction.bids', 'bid')
       .leftJoinAndSelect('bid.bidder', 'bidder')
       .where('auction.id = :id', { id })
       .orderBy('bid.amount', 'DESC')
@@ -315,7 +315,10 @@ export class AuctionsService {
       throw new BadRequestException('This product already has a pending auction')
     }
 
-    const startTime = dto.startTime ? new Date(dto.startTime) : new Date()
+    // Truncate to whole seconds — MySQL DATETIME rounds sub-second precision UP,
+    // which makes startTime 1s in the future and rejects immediate bids.
+    const nowSec = new Date(Math.floor(Date.now() / 1000) * 1000)
+    const startTime = dto.startTime ? new Date(dto.startTime) : nowSec
     const auction = this.auctionRepo.create({
       productId: dto.productId,
       sellerId: userId,
