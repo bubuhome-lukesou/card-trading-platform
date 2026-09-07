@@ -247,6 +247,19 @@ const missingRequired = () => {
   return missing
 }
 
+// 切換銷售模式時：清掉唔屬於新模式嘅欄位錯誤
+watch(() => formData.value.listingType, () => {
+  const lt = formData.value.listingType
+  const validKeys: Record<string, string[]> = {
+    sale: ['price', 'quantity', 'condition'],
+    auction: ['price', 'quantity', 'condition', 'startingPrice', 'bidIncrement', 'auctionEndTime'],
+    reservation: ['price', 'quantity', 'condition', 'reservationDeposit', 'reservationMax', 'reservationDeadline', 'reservationLimitPerUser'],
+  }
+  for (const key of Object.keys(fieldErrors.value)) {
+    if (!(validKeys[lt] || []).includes(key)) delete fieldErrors.value[key]
+  }
+})
+
 const openCreateModal = () => {
   editingProduct.value = null
   resetForm()
