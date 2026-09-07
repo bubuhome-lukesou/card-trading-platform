@@ -1,19 +1,14 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { useRouter } from 'vue-router'
-import { Gavel, Clock, Trophy, Loader2, Heart } from 'lucide-vue-next'
-import type { Auction } from '@/types'
+import { Gavel, Clock, Trophy, Loader2 } from 'lucide-vue-next'
 import { auctionApi } from '@/api/auctions'
-import { useAuthStore } from '@/stores/auth'
-import { useFavoritesStore } from '@/stores/favorites'
+import { productApi } from '@/api/products'
+import ProductCard from '@/components/product/ProductCard.vue'
 
 const { t } = useI18n()
-const router = useRouter()
-const authStore = useAuthStore()
-const favoritesStore = useFavoritesStore()
 
-const auctions = ref<Auction[]>([])
+const cards = ref<any[]>([]) // 統一 product-shape 卡片數據
 const loading = ref(false)
 const activeTab = ref<'live' | 'upcoming' | 'ended'>('live')
 const hideEnded = ref(true)
@@ -24,76 +19,66 @@ const tabs = computed(() => [
   { key: 'ended', label: t('auction.ended'), icon: Trophy }
 ])
 
-const fetchAuctions = async () => {
+// 把 auction 記錄映射成 product-shape（與 ProductCard 兼容）
+const mapAuctionToCard = (a: any) => {
+  const product = a.product || {}
+  if (typeof product.images === 'string') {
+    try { product.images = JSON.parse(product.images) } catch { product.images = [] }
+  }
+  return {
+    id: a.productId || product.id,
+    titleZh: product.titleZh,
+    titleEn: product.titleEn,
+    images: product.images || [],
+    category: product.category,
+    condition: product.condition,
+    language: product.language,
+    productType: product.productType,
+    listingType: 'auction',
+    quantity: product.quantity,
+    // 拍賣即時資訊透過 auctionSummary 附帶
+    price: a.currentPrice,
+    auctionSummary: {
+      auctionId: a.id,
+      currentPrice: a.currentPrice,
+      startingPrice: a.startingPrice,
+      bidCount: a.bidCount || 0,
+      endTime: a.endTime,
+      status: a.status,
+    },
+  }
+}
+
+const fetchCards = async () => {
   loading.value = true
   try {
-    const params: any = { status: activeTab.value === 'live' ? 'active' : activeTab.value }
-    if (hideEnded.value) {
-      params.hideEnded = true
+    if (activeTab.value === 'ended') {
+      // 已結束拍賣：商品可能已售或恢復 active，products API 無法可靠查詢，用 auctions API
+      const res = await auctionApi.getAuctions({ status: 'ended' } as any)
+      cards.value = (res.data.data || []).map(mapAuctionToCard)
+    } else {
+      // 進行中/即將開始：統一 /api/products，按 auctionSummary.status 過濾
+      const wanted = activeTab.value === 'live' ? 'active' : 'pending'
+      const res = await productApi.getProducts({
+        listingTypes: ['auction'],
+        withAuction: true,
+        sortBy: 'newest',
+        limit: 50,
+        hideSold: false,
+      } as any)
+      cards.value = (res.data.data || [])
+        .filter((p: any) => p.auctionSummary?.status === wanted)
+        .map((p: any) => ({
+          ...p,
+          price: p.auctionSummary.currentPrice || p.auctionSummary.startingPrice,
+        }))
     }
-    const response = await auctionApi.getAuctions(params as any)
-    // Parse product images from JSON string to array
-    auctions.value = (response.data.data || []).map((a: any) => {
-      if (a.product && typeof a.product.images === 'string') {
-        try { a.product.images = JSON.parse(a.product.images) } catch { a.product.images = [] }
-      }
-      return a
-    })
   } catch (error) {
     console.error('Failed to fetch auctions:', error)
   } finally {
     loading.value = false
   }
 }
-
-const formatPrice = (price: number) => {
-  return `MOP $${Number(price).toLocaleString()}`
-}
-
-const formatTime = (date: string) => {
-  const now = new Date()
-  const end = new Date(date)
-  const diff = end.getTime() - now.getTime()
-
-  if (diff <= 0) return 'Ended'
-
-  const days = Math.floor(diff / (1000 * 60 * 60 * 24))
-  const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
-  const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
-
-  if (days > 0) return `${days}d ${hours}h`
-  if (hours > 0) return `${hours}h ${minutes}m`
-  return `${minutes}m`
-}
-
-const getTimeClass = (date: string) => {
-  const now = new Date()
-  const end = new Date(date)
-  const diff = end.getTime() - now.getTime()
-  const hours = diff / (1000 * 60 * 60)
-  if (hours < 1) return 'ending-soon'
-  if (hours < 24) return 'ending-soon'
-  return ''
-}
-
-const isFavorited = (auction: Auction) => {
-  return favoritesStore.isFavorited(auction.productId)
-}
-
-const handleToggleFavorite = (e: Event, auction: Auction) => {
-  e.preventDefault()
-  e.stopPropagation()
-  favoritesStore.toggleFavorite(auction.productId)
-}
-
-const handleQuickBid = (e: Event, auction: Auction) => {
-  e.preventDefault()
-  e.stopPropagation()
-  router.push(`/auction/${auction.id}`)
-}
-
-// Lifecycle
-fetchAuctions()
 </script>
 
 <template>
@@ -109,7 +94,7 @@ fetchAuctions()
             :key="tab.key"
             class="tab"
             :class="{ active: activeTab === tab.key }"
-            @click="activeTab = tab.key as any; fetchAuctions()"
+            @click="activeTab = tab.key as any; fetchCards()"
           >
             <component :is="tab.icon" class="tab-icon" />
             {{ tab.label }}
@@ -121,7 +106,6 @@ fetchAuctions()
           <input
             type="checkbox"
             v-model="hideEnded"
-            @change="fetchAuctions()"
           />
           <span class="toggle-track" :class="{ active: hideEnded }">
             <span class="toggle-thumb" />
@@ -137,54 +121,18 @@ fetchAuctions()
       </div>
 
       <!-- Empty -->
-      <div v-else-if="auctions.length === 0" class="empty-state">
+      <div v-else-if="cards.length === 0" class="empty-state">
         <Gavel class="empty-icon" />
         <p>{{ t('common.noResults') }}</p>
       </div>
 
-      <!-- Grid -->
-      <div v-else class="auctions-grid">
-        <div
-          v-for="auction in auctions"
-          :key="auction.id"
-          class="auction-card"
-          @click="router.push(`/auction/${auction.id}`)"
-        >
-          <div class="card-image">
-            <img
-              :src="auction.product?.images?.[0] || '/placeholder-card.png'"
-              :alt="auction.product?.titleEn"
-            />
-            <!-- Favorite button -->
-            <button
-              class="favorite-btn"
-              :class="{ active: isFavorited(auction) }"
-              @click="handleToggleFavorite($event, auction)"
-            >
-              <Heart class="fav-icon" :class="{ 'icon-filled': isFavorited(auction) }" />
-            </button>
-            <span class="status-badge" :class="getTimeClass(auction.endTime)">
-              <Clock class="badge-icon" />
-              {{ formatTime(auction.endTime) }}
-            </span>
-          </div>
-
-          <div class="card-info">
-            <h3>{{ auction.product?.titleZh || auction.product?.titleEn }}</h3>
-            <div class="auction-meta">
-              <span class="current-price">{{ formatPrice(auction.currentPrice) }}</span>
-              <span class="bid-count">{{ auction.bidCount }} {{ t('product.details.bids') }}</span>
-            </div>
-            <!-- Quick Bid button -->
-            <button
-              v-if="auction.status === 'active'"
-              class="btn-quick-bid"
-              @click="handleQuickBid($event, auction)"
-            >
-              {{ t('auction.placeBid') || '立即出價' }}
-            </button>
-          </div>
-        </div>
+      <!-- Grid — 統一 ProductCard -->
+      <div v-else class="products-grid">
+        <ProductCard
+          v-for="card in cards"
+          :key="card.id + '-' + card.auctionSummary?.auctionId"
+          :product="card as any"
+        />
       </div>
     </div>
   </div>
@@ -326,179 +274,22 @@ fetchAuctions()
   to { transform: rotate(360deg); }
 }
 
-.auctions-grid {
+// 與 Marketplace 一致嘅 grid
+.products-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: var(--space-6);
+  gap: var(--space-5);
 
   @media (max-width: 1280px) {
     grid-template-columns: repeat(3, 1fr);
   }
 
   @media (max-width: 1024px) {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(3, 1fr);
   }
 
   @media (max-width: 768px) {
     grid-template-columns: repeat(2, 1fr);
   }
-}
-
-.auction-card {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-xl);
-  overflow: hidden;
-  text-decoration: none;
-  transition: all var(--transition-base);
-  cursor: pointer;
-
-  &:hover {
-    border-color: var(--primary);
-    transform: translateY(-4px);
-    box-shadow: var(--shadow-xl);
-
-    .favorite-btn {
-      opacity: 1;
-    }
-  }
-}
-
-.favorite-btn {
-  position: absolute;
-  top: var(--space-2);
-  left: var(--space-2);
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  background: rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(4px);
-  border: none;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  opacity: 0;
-  transition: all 0.2s ease;
-  z-index: 5;
-
-  @media (max-width: 768px) {
-    opacity: 1;
-  }
-
-  .fav-icon {
-    width: 16px;
-    height: 16px;
-    color: white;
-  }
-
-  &:hover {
-    background: rgba(0, 0, 0, 0.7);
-    transform: scale(1.1);
-  }
-
-  &.active .fav-icon {
-    color: #ef4444;
-    fill: #ef4444;
-  }
-}
-
-.btn-quick-bid {
-  width: 100%;
-  margin-top: var(--space-3);
-  padding: var(--space-2) var(--space-4);
-  background: linear-gradient(135deg, #10b981, #059669);
-  border: none;
-  border-radius: var(--radius-md);
-  color: white;
-  font-size: var(--text-sm);
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
-
-  &:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
-  }
-
-  &:active {
-    transform: translateY(0);
-  }
-}
-
-.card-image {
-  position: relative;
-  aspect-ratio: 3/4;
-  overflow: hidden;
-
-  img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-  }
-}
-
-.status-badge {
-  position: absolute;
-  bottom: var(--space-3);
-  right: var(--space-3);
-  display: flex;
-  align-items: center;
-  gap: var(--space-1);
-  padding: var(--space-1) var(--space-3);
-  background: rgba(0, 0, 0, 0.7);
-  backdrop-filter: blur(4px);
-  border-radius: var(--radius-md);
-  font-size: var(--text-sm);
-  font-weight: 600;
-  color: var(--success);
-
-  .badge-icon {
-    width: 14px;
-    height: 14px;
-  }
-
-  &.ending-soon {
-    background: var(--danger-gradient);
-    color: white;
-    animation: pulse 1s ease-in-out infinite;
-  }
-}
-
-.card-info {
-  padding: var(--space-4);
-
-  h3 {
-    font-size: var(--text-base);
-    font-weight: 600;
-    color: var(--text-primary);
-    margin-bottom: var(--space-2);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-}
-
-.auction-meta {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-}
-
-.current-price {
-  font-family: var(--font-num);
-  font-size: var(--text-lg);
-  font-weight: 700;
-  color: var(--success);
-}
-
-.bid-count {
-  font-size: var(--text-xs);
-  color: var(--text-muted);
-}
-
-@keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.7; }
 }
 </style>
