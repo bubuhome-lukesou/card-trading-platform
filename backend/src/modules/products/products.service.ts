@@ -289,6 +289,40 @@ export class ProductsService {
       throw new ForbiddenException('You can only delete your own products')
     }
 
+    // ===== 刪除限制（保護買家權益，符合主流平台慣例） =====
+    // 1. 活躍拍賣（有進行中/即將開始的拍賣）不可刪除——需先取消拍賣
+    const activeAuction = await this.dataSource.query(
+      `SELECT id, status FROM auctions WHERE productId = ? AND status IN ('active', 'pending') LIMIT 1`,
+      [id]
+    )
+    if (activeAuction.length > 0) {
+      throw new BadRequestException(
+        '此商品有進行中或即將開始的拍賣，不能刪除。請先取消拍賣。'
+      )
+    }
+
+    // 2. 進行中的預約（pending/confirmed/deposit_paid）不可刪除
+    const activeReservation = await this.dataSource.query(
+      `SELECT id, status FROM reservations WHERE productId = ? AND status IN ('pending', 'deposit_paid', 'confirmed') LIMIT 1`,
+      [id]
+    )
+    if (activeReservation.length > 0) {
+      throw new BadRequestException(
+        '此商品有進行中的預約（待付款/待確認），不能刪除。請先處理相關預約。'
+      )
+    }
+
+    // 3. 未完成訂單（pending/pending_paid/confirmed/processing）不可刪除
+    const activeOrder = await this.dataSource.query(
+      `SELECT id, status FROM orders WHERE productId = ? AND status IN ('pending', 'pending_paid', 'confirmed', 'processing') LIMIT 1`,
+      [id]
+    )
+    if (activeOrder.length > 0) {
+      throw new BadRequestException(
+        '此商品有未完成的訂單，不能刪除。請先完成或取消相關訂單。'
+      )
+    }
+
     // Soft delete: mark as removed instead of hard delete (preserves order history)
     product.status = ProductStatus.REMOVED
     // findOne() parses images from string to array; convert back to string for save
@@ -320,6 +354,7 @@ export class ProductsService {
       .createQueryBuilder('product')
       .leftJoinAndSelect('product.tags', 'tags')
       .where('product.sellerId = :sellerId', { sellerId })
+      .andWhere('product.status != :removed', { removed: 'removed' })
       .orderBy('product.createdAt', 'DESC')
 
     const total = await qb.getCount()
