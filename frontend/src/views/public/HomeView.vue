@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, computed, onBeforeUnmount } from 'vue'
+import { ref, onMounted, computed, onBeforeUnmount, nextTick, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { RouterLink, useRouter } from 'vue-router'
 import { ArrowRight, Zap, Clock, Star, Heart, ShoppingCart, Gavel, Calendar, ChevronLeft, ChevronRight } from 'lucide-vue-next'
@@ -271,10 +271,14 @@ onMounted(() => {
   }
   updateAllScrollStates()
   window.addEventListener('resize', updateAllScrollStates)
+  // 首屏圖片/字體載入後佈局可能變化 → 再重算一次
+  window.addEventListener('load', updateAllScrollStates, { once: true })
+  setTimeout(updateAllScrollStates, 800)
 })
 
 onBeforeUnmount(() => {
   window.removeEventListener('resize', updateAllScrollStates)
+  window.removeEventListener('load', updateAllScrollStates)
 })
 
 // ===== 橫向滑動箭頭 =====
@@ -310,6 +314,11 @@ const scrollEl = (el: HTMLElement | null, dir: number) => {
   const step = card ? (card.offsetWidth + 16) * 2 : el.clientWidth * 0.8
   el.scrollBy({ left: dir * step, behavior: 'smooth' })
 }
+
+// 數據載入/語言切換後 DOM 變化 → 重算箭頭狀態（否則箭頭永遠 hidden）
+watch([hotAuctions, newListings, hotReservations], () => {
+  nextTick(updateAllScrollStates)
+}, { deep: true })
 </script>
 
 <template>

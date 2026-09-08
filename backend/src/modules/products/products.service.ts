@@ -207,6 +207,10 @@ export class ProductsService {
     const listingType = dto.listingType || 'both'
     const now = Date.now()
 
+    if (!dto.condition) {
+      throw new BadRequestException('商品品相為必填項')
+    }
+
     if (listingType === 'auction') {
       if (!dto.auctionEndTime) {
         throw new BadRequestException('拍賣結束時間為必填項')
@@ -273,6 +277,11 @@ export class ProductsService {
 
     if (product.sellerId !== userId) {
       throw new ForbiddenException('You can only edit your own products')
+    }
+
+    // 已售商品不可編輯（訂單價格/內容已鎖定）
+    if ((product.status as string) === ProductStatus.SOLD) {
+      throw new ForbiddenException('已售出的商品不可編輯')
     }
 
     // Handle images - store as JSON string, skip if empty/undefined/empty array

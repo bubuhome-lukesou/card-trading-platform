@@ -1,13 +1,6 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
-import { useRouter, useRoute } from 'vue-router'
-import { useI18n } from 'vue-i18n'
+import { ref, computed, onMounted } from 'vue'
 import { auctionApi } from '@/api/auctions'
-import { productApi } from '@/api/products'
-
-const { t } = useI18n()
-const router = useRouter()
-const route = useRoute()
 
 interface Auction {
   id: string
@@ -24,21 +17,8 @@ interface Auction {
 }
 
 const auctions = ref<Auction[]>([])
-const sellerProducts = ref<any[]>([])
 const loading = ref(true)
-const submitting = ref(false)
 const filterStatus = ref('all')
-const showModal = ref(false)
-const error = ref('')
-
-const formData = ref({
-  productId: '',
-  startingPrice: 100,
-  bidIncrement: 10,
-  reservePrice: 0,
-  startTime: '',
-  endTime: '',
-})
 
 const categories = [
   { value: 'pokemon', label: '寶可夢', emoji: '🎮' },
@@ -107,7 +87,6 @@ const getTimeRemaining = (endTime: string) => {
 
 const loadAuctions = async () => {
   loading.value = true
-  error.value = ''
   try {
     const res = await auctionApi.getMyAuctions()
     auctions.value = res.data.data.map((a: any) => ({
@@ -125,67 +104,8 @@ const loadAuctions = async () => {
     }))
   } catch (err: any) {
     console.error('Failed to load auctions:', err)
-    error.value = err.response?.data?.message || '載入拍賣失敗'
   } finally {
     loading.value = false
-  }
-}
-
-const loadSellerProducts = async () => {
-  try {
-    const res = await productApi.getMyProducts({ limit: 100 })
-    sellerProducts.value = res.data || []
-  } catch (err) {
-    console.error('Failed to load seller products:', err)
-  }
-}
-
-const handleCreateAuction = () => {
-  error.value = ''
-  formData.value = {
-    productId: '',
-    startingPrice: 100,
-    bidIncrement: 10,
-    reservePrice: 0,
-    startTime: '',
-    endTime: '',
-  }
-  loadSellerProducts()
-  showModal.value = true
-}
-
-const handleSubmit = async () => {
-  if (!formData.value.productId) {
-    error.value = '請選擇商品'
-    return
-  }
-  submitting.value = true
-  error.value = ''
-  try {
-    // Set default start time to now if not provided
-    const startTime = formData.value.startTime
-      ? new Date(formData.value.startTime).toISOString()
-      : new Date().toISOString()
-    // Set default end time to 24 hours from now if not provided
-    const endTime = formData.value.endTime
-      ? new Date(formData.value.endTime).toISOString()
-      : new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
-
-    await auctionApi.createAuction({
-      productId: formData.value.productId,
-      startingPrice: formData.value.startingPrice,
-      reservePrice: formData.value.reservePrice || undefined,
-      startTime,
-      endTime,
-      durationHours: 24,
-    })
-    showModal.value = false
-    await loadAuctions()
-  } catch (err: any) {
-    console.error('Failed to create auction:', err)
-    error.value = err.response?.data?.message || '創建拍賣失敗'
-  } finally {
-    submitting.value = false
   }
 }
 
@@ -240,9 +160,6 @@ onMounted(() => {
           已結束 ({{ auctions.filter(a => a.status === 'ended').length }})
         </button>
       </div>
-      <button @click="handleCreateAuction" class="btn-primary">
-        + 創建拍賣
-      </button>
     </div>
 
     <!-- Auctions List -->
@@ -254,7 +171,7 @@ onMounted(() => {
     <div v-if="filteredAuctions.length === 0" class="empty-state">
       <div class="empty-icon">🔨</div>
       <h3>暫無拍賣</h3>
-      <p>點擊上方「+ 創建拍賣」按鈕來創建您的第一個拍賣吧！</p>
+      <p>在「商品管理」發布商品時選擇拍賣模式即可創建拍賣。</p>
     </div>
 
     <div v-else class="auctions-table">
@@ -314,88 +231,6 @@ onMounted(() => {
           </tr>
         </tbody>
       </table>
-    </div>
-
-    <!-- Create Modal -->
-    <div v-if="showModal" class="modal-overlay" @click.self="showModal = false">
-      <div class="modal">
-        <div class="modal-header">
-          <h2>創建拍賣</h2>
-          <button @click="showModal = false" class="modal-close">✕</button>
-        </div>
-
-        <form @submit.prevent="handleSubmit" class="modal-body">
-          <div class="form-group">
-            <label>選擇商品</label>
-            <select v-model="formData.productId" required>
-              <option value="">請選擇商品</option>
-              <option v-for="product in sellerProducts" :key="product.id" :value="product.id">
-                {{ product.titleZh || product.titleEn }} ({{ product.status }})
-              </option>
-            </select>
-          </div>
-
-          <div class="form-row">
-            <div class="form-group">
-              <label>起拍價 (MOP)</label>
-              <input 
-                v-model.number="formData.startingPrice" 
-                type="number" 
-                min="1"
-                required
-              />
-            </div>
-
-            <div class="form-group">
-              <label>最低加價 (MOP)</label>
-              <input 
-                v-model.number="formData.bidIncrement" 
-                type="number" 
-                min="1"
-                required
-              />
-            </div>
-          </div>
-
-          <div class="form-group">
-            <label>保留價 (MOP) - 可選</label>
-            <input 
-              v-model.number="formData.reservePrice" 
-              type="number" 
-              min="0"
-            />
-          </div>
-
-          <div class="form-row">
-            <div class="form-group">
-              <label>開始時間</label>
-              <input 
-                v-model="formData.startTime" 
-                type="datetime-local" 
-                required
-              />
-            </div>
-
-            <div class="form-group">
-              <label>截止時間</label>
-              <input 
-                v-model="formData.endTime" 
-                type="datetime-local" 
-                required
-              />
-            </div>
-          </div>
-
-          <div class="modal-footer">
-            <button type="button" @click="showModal = false" class="btn-cancel">
-              取消
-            </button>
-            <button type="submit" class="btn-submit" :disabled="submitting">
-              {{ submitting ? '創建中...' : '創建拍賣' }}
-            </button>
-          </div>
-        </form>
-      </div>
     </div>
   </div>
 </template>

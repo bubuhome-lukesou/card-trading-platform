@@ -177,6 +177,7 @@ const validateField = (key: string) => {
       if (v === null || v === undefined || isNaN(Number(v))) fieldErrors.value[key] = '請輸入有效數字'
       else if (Number(v) < 0) fieldErrors.value[key] = '售價不可為負數'
       else if (Number(v) > 99999999.99) fieldErrors.value[key] = '售價超出上限'
+      else if (lt === 'auction' && Number(v) > 0 && Number(v) <= Number(formData.value.startingPrice || 0)) fieldErrors.value[key] = '直購價必須高於起拍價'
       break
     case 'quantity':
       if (v !== null && v !== undefined && v !== '') {
@@ -241,6 +242,8 @@ const missingRequired = () => {
   if (lt === 'auction') {
     if (formData.value.startingPrice === null || formData.value.startingPrice === undefined || formData.value.startingPrice <= 0) missing.push('起拍價（必須大於 0）')
     if (!formData.value.auctionEndTime) missing.push('拍賣結束時間')
+    const p = Number(formData.value.price ?? 0)
+    if (p > 0 && p <= Number(formData.value.startingPrice || 0)) missing.push('直購價（必須為 0 或高於起拍價）')
   }
   if (lt === 'reservation') {
     if (!formData.value.reservationDeadline) missing.push('預約截止時間')
@@ -249,8 +252,7 @@ const missingRequired = () => {
 }
 
 // 切換銷售模式時：清掉唔屬於新模式嘅欄位錯誤
-watch(() => formData.value.listingType, () => {
-  const lt = formData.value.listingType
+watch(() => formData.value.listingType, (lt, oldLt) => {
   const validKeys: Record<string, string[]> = {
     sale: ['price', 'quantity', 'condition'],
     auction: ['price', 'quantity', 'condition', 'startingPrice', 'bidIncrement', 'auctionEndTime'],
@@ -258,6 +260,17 @@ watch(() => formData.value.listingType, () => {
   }
   for (const key of Object.keys(fieldErrors.value)) {
     if (!(validKeys[lt] || []).includes(key)) delete fieldErrors.value[key]
+  }
+  // 切入拍賣模式：自動填預設值（結束時間=60分鐘後、起拍價=1、直購價=0 不限）
+  if (lt === 'auction' && oldLt !== 'auction') {
+    if (!formData.value.auctionEndTime) {
+      const d = new Date(Date.now() + 60 * 60 * 1000)
+      // datetime-local 本地時間格式 YYYY-MM-DDTHH:mm
+      d.setSeconds(0, 0)
+      formData.value.auctionEndTime = new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16)
+    }
+    if (!formData.value.startingPrice || formData.value.startingPrice <= 0) formData.value.startingPrice = 1
+    if (formData.value.price === null || formData.value.price === undefined || formData.value.price <= 0) formData.value.price = 0
   }
 })
 
@@ -390,9 +403,11 @@ const handleSubmit = async () => {
     if (formData.value.listingType === 'auction' && formData.value.auctionEndTime) {
       const endTime = new Date(formData.value.auctionEndTime)
       const startTime = new Date() // start immediately
+      const buyNow = Number(formData.value.price ?? 0)
       await auctionApi.createAuction({
         productId,
         startingPrice: formData.value.startingPrice || productData.price,
+        buyNowPrice: buyNow > 0 ? buyNow : undefined, // 0 = 不設直購
         startTime: startTime.toISOString(),
         endTime: endTime.toISOString(),
         extensionMinutes: 5,
@@ -678,9 +693,10 @@ onUnmounted(() => {
         </div>
 
         <div class="product-actions">
-          <button @click="openEditModal(product)" class="btn-edit">
+          <button v-if="product.status !== 'sold'" @click="openEditModal(product)" class="btn-edit">
             ✏️ 编辑
           </button>
+          <span v-else class="sold-locked">🔒 已售不可編輯</span>
           <button @click="handleDelete(product.id)" class="btn-delete">
             🗑️ 删除
           </button>
@@ -750,7 +766,7 @@ onUnmounted(() => {
 
             <div class="form-group">
               <label>商品品相 <span class="required-mark">*</span></label>
-              <select v-model="formData.condition" @blur="validateField('condition')" @change="validateField('condition')">
+              <select v-model="formData.condition" @blur="validateField('condition')" @change="validateField('condition')" required>
                 <option :value="null" disabled>(請選擇)</option>
                 <option v-for="cond in conditions" :key="cond.value" :value="cond.value">
                   {{ cond.label }}
@@ -900,22 +916,24 @@ onUnmounted(() => {
               </select>
             </div>
 
-            <!-- 售價 -->
+            <!-- 售價 / 直購價 -->
             <div class="form-group">
-              <label>售價 (MOP) <span class="required-mark" v-if="formData.listingType !== 'auction'">*</span></label>
+              <label v-if="formData.listingType === 'auction'">直購價 (MOP) — 0 即不限</label>
+              <label v-else>售價 (MOP) <span class="required-mark">*</span></label>
               <input 
                 v-model.number="formData.price" 
                 type="number" 
-                min="0.01"
+                :min="formData.listingType === 'auction' ? 0 : 0.01"
                 max="99999999.99"
                 step="0.01"
-                placeholder="0.00"
+                :placeholder="formData.listingType === 'auction' ? '0（不限直購）' : '0.00'"
                 :class="{ 'input-error': fieldErrors.price }"
                 @blur="validateField('price')"
                 @input="validateField('price')"
                 :required="formData.listingType !== 'auction'"
               />
               <span v-if="fieldErrors.price" class="field-error-msg">{{ fieldErrors.price }}</span>
+              <span v-if="formData.listingType === 'auction'" class="field-hint">填 0 = 唔設直購價；有數值時必須高於起拍價</span>
             </div>
 
             <!-- 商品狀態 -->
@@ -1340,6 +1358,17 @@ onUnmounted(() => {
   color: var(--primary);
 }
 
+.sold-locked {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  padding: var(--space-3, 12px) 0;
+  font-size: 12px;
+  color: var(--text-secondary, #9ca3af);
+  border-right: 1px solid var(--border);
+}
+
 .product-actions .btn-edit:hover {
   background: var(--primary-gradient);
   color: white;
@@ -1482,6 +1511,12 @@ onUnmounted(() => {
 .field-error-msg {
   font-size: 11px;
   color: #ef4444;
+  line-height: 1.3;
+}
+
+.field-hint {
+  font-size: 11px;
+  color: var(--text-secondary, #9ca3af);
   line-height: 1.3;
 }
 

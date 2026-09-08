@@ -316,6 +316,14 @@ export class AuctionsService {
     // which makes startTime 1s in the future and rejects immediate bids.
     const nowSec = new Date(Math.floor(Date.now() / 1000) * 1000)
     const startTime = dto.startTime ? new Date(dto.startTime) : nowSec
+
+    // 直購價必須高於起拍價（有設先檢查）
+    if (dto.buyNowPrice !== undefined && dto.buyNowPrice !== null && Number(dto.buyNowPrice) > 0) {
+      if (Number(dto.buyNowPrice) <= Number(dto.startingPrice)) {
+        throw new BadRequestException('直購價必須高於起拍價')
+      }
+    }
+
     const auction = this.auctionRepo.create({
       productId: dto.productId,
       sellerId: userId,
@@ -597,6 +605,11 @@ export class AuctionsService {
     const now = new Date()
     if (now > auction.endTime) {
       throw new BadRequestException('Auction has ended')
+    }
+
+    // 直購價必須高於當前最高價 — 否則有出價者會被低價搶走
+    if (Number(auction.currentPrice) >= Number(auction.buyNowPrice)) {
+      throw new BadRequestException(`直購價必須高於當前最高價 (MOP $${auction.currentPrice})`)
     }
 
     // End auction with this buyer as winner at buyNowPrice

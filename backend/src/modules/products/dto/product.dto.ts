@@ -118,9 +118,8 @@ export class CreateProductDto {
   @IsEnum(ProductCategory)
   category: ProductCategory
 
-  @IsOptional()
   @IsEnum(ProductCondition)
-  condition?: ProductCondition
+  condition: ProductCondition
 
   @IsString()
   @MaxLength(255)

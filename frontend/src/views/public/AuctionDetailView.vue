@@ -169,6 +169,42 @@ const canBid = computed(() => {
   return authStore.isAuthenticated && !isSeller.value && !isEnded.value
 })
 
+// 直購：有 buyNowPrice 且拍賣進行中、非賣家、非最高出價者
+const hasBuyNow = computed(() => {
+  return !!auction.value && Number(auction.value.buyNowPrice) > 0
+})
+
+const canBuyNow = computed(() => {
+  return canBid.value && hasBuyNow.value && !isHighestBidder.value
+})
+
+const buyingNow = ref(false)
+
+const handleBuyNow = async () => {
+  if (!authStore.isAuthenticated) {
+    router.push({ path: '/login', query: { redirect: route.fullPath } })
+    return
+  }
+  if (!confirm(locale.value === 'zh'
+    ? `確定以 ${formatPrice(Number(auction.value.buyNowPrice))} 直購此商品？拍賣將立即結束，你會成為得標者。`
+    : `Buy now at ${formatPrice(Number(auction.value.buyNowPrice))}? The auction will end immediately.`)) {
+    return
+  }
+  buyingNow.value = true
+  bidError.value = ''
+  try {
+    await auctionApi.buyNow(auctionId.value)
+    bidSuccess.value = locale.value === 'zh' ? '直購成功！請到「我的訂單」完成付款。' : 'Buy now successful! Check "My Orders" to pay.'
+    await loadAuction()
+    setTimeout(() => bidSuccess.value = '', 5000)
+  } catch (err: any) {
+    bidError.value = err?.response?.data?.message || (locale.value === 'zh' ? '直購失敗，請重試' : 'Buy now failed, please retry')
+    await loadAuction()
+  } finally {
+    buyingNow.value = false
+  }
+}
+
 const isHighestBidder = computed(() => {
   return authStore.isAuthenticated && auction.value?.winnerId === authStore.user?.id
 })
@@ -547,6 +583,19 @@ onUnmounted(() => {
             <p class="bid-hint">{{ locale === 'zh' ? '最低出價' : 'Min bid' }}: {{ formatPrice(minimumBid) }}</p>
             <p v-if="bidError" class="bid-error">{{ bidError }}</p>
             <p v-if="bidSuccess" class="bid-success">{{ bidSuccess }}</p>
+            <!-- 直購按鈕 -->
+            <button
+              v-if="canBuyNow"
+              @click="handleBuyNow"
+              class="btn-buy-now"
+              :disabled="buyingNow || placingBid"
+            >
+              <span v-if="buyingNow" class="spinner-small"></span>
+              {{ buyingNow
+                ? (locale === 'zh' ? '直購中...' : 'Buying...')
+                : (locale === 'zh' ? `⚡ 直購 ${formatPrice(Number(auction.buyNowPrice))}` : `⚡ Buy Now ${formatPrice(Number(auction.buyNowPrice))}`) }}
+            </button>
+            <p v-if="canBuyNow" class="buy-now-hint">{{ locale === 'zh' ? '點擊直購立即得標，拍賣即時結束' : 'Buy now to win the auction instantly' }}</p>
           </div>
 
           <!-- 最高出價者 -->
@@ -1185,6 +1234,42 @@ onUnmounted(() => {
   margin-top: var(--space-2);
   font-size: var(--text-xs);
   color: var(--text-muted);
+}
+
+/* 直購按鈕 */
+.btn-buy-now {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  width: 100%;
+  margin-top: var(--space-3);
+  padding: var(--space-3) var(--space-5);
+  background: linear-gradient(135deg, #f59e0b 0%, #ef4444 100%);
+  border: none;
+  color: white;
+  font-size: var(--text-base);
+  font-weight: 700;
+  cursor: pointer;
+  border-radius: var(--radius-md, 10px);
+  transition: opacity 0.2s, transform 0.15s;
+}
+
+.btn-buy-now:hover:not(:disabled) {
+  opacity: 0.92;
+  transform: translateY(-1px);
+}
+
+.btn-buy-now:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.buy-now-hint {
+  margin-top: var(--space-2);
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  text-align: center;
 }
 
 .bid-error {
