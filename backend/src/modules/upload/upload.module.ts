@@ -9,7 +9,7 @@ import { UploadController } from './upload.controller'
   imports: [
     MulterModule.register({
       storage: diskStorage({
-        destination: '/var/www/card-auction-platform/backend/uploads',
+        destination: '/var/www/card-trading-platform/backend/uploads',
         filename: (req, file, callback) => {
           const uniqueName = `${uuidv4()}${extname(file.originalname)}`
           callback(null, uniqueName)
