@@ -10,7 +10,7 @@ const crypto = require('crypto')
 
 const PORT = 8999
 const WEBHOOK_SECRET = process.env.DEPLOY_SECRET || 'card-auction-webhook-secret-2026'
-const PROJECT_DIR = '/var/www/card-auction-platform'
+const PROJECT_DIR = '/var/www/card-trading-platform'
 
 // Verify webhook signature
 function verifySignature(req) {
@@ -94,7 +94,7 @@ const server = http.createServer((req, res) => {
       console.log('[WEBHOOK] ✓ Frontend build done')
 
       // Sync frontend dist to nginx
-      execSync('rsync -az --delete dist/ /var/www/card-auction-platform/frontend/dist/', {
+      execSync('rsync -az --delete dist/ /var/www/card-trading-platform/frontend/dist/', {
         cwd: `${PROJECT_DIR}/frontend`,
         stdio: 'inherit'
       })
