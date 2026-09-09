@@ -329,6 +329,12 @@ export class ProductsService {
     }
     // productType is now a direct string value, no conversion needed
 
+    // 品相為必填：阻止清空（condition: null / undefined 不覆蓋現值）
+    // 建立時已強制必填；編輯時只能改為有效值，不能移除
+    if ('condition' in dto && (dto.condition === null || dto.condition === undefined)) {
+      delete dto.condition
+    }
+
     Object.assign(product, dto)
     // Sync status with isActive flag — when seller toggles 上架/下架
     // status must match so marketplace query (status='active' AND isActive=true) works
