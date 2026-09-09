@@ -125,12 +125,13 @@ export class ProductsService {
         .map(p => p.id)
       if (auctionProductIds.length > 0) {
         const auctions = await this.dataSource.query(
-          `SELECT a.id, a.productId, a.currentPrice, a.startingPrice, a.bidCount, a.endTime, a.status
+          `SELECT a.id, a.productId, a.currentPrice, a.startingPrice, a.bidCount, a.endTime, a.startTime, a.status
            FROM auctions a
            WHERE a.productId IN (?) AND a.status IN ('active','pending')
            ORDER BY a.createdAt DESC`,
           [auctionProductIds]
         )
+        const now = new Date()
         const byProduct = new Map<string, any>()
         for (const a of auctions) {
           if (!byProduct.has(a.productId)) byProduct.set(a.productId, a)
@@ -138,13 +139,20 @@ export class ProductsService {
         for (const p of parsedData) {
           const a = byProduct.get(p.id)
           if (a) {
-            (p as any).auctionSummary = {
+            // Effective status at read time — don't wait for the minute cron:
+            // pending past startTime shows active; active past endTime shows ended.
+            const dbStatus = a.status
+            const effStatus =
+              dbStatus === 'pending' && new Date(a.startTime) <= now ? 'active'
+              : dbStatus === 'active' && new Date(a.endTime) <= now ? 'ended'
+              : dbStatus
+            ;(p as any).auctionSummary = {
               auctionId: a.id,
               currentPrice: a.currentPrice,
               startingPrice: a.startingPrice,
               bidCount: a.bidCount,
               endTime: a.endTime,
-              status: a.status,
+              status: effStatus,
             }
           }
         }
@@ -188,10 +196,21 @@ export class ProductsService {
     }
 
     // Get reservation count (only DEPOSIT_PAID status)
-    const reservationCount = await this.reservationRepo.count({
-      where: { productId: id, status: ReservationStatus.DEPOSIT_PAID }
-    });
-    (product as any).reservationCount = reservationCount;
+    // Expired PENDING rows are excluded so released spots show immediately,
+    // without waiting for the minute cron to flip their status.
+    const reservationCount = await this.reservationRepo
+      .createQueryBuilder('r')
+      .where('r.productId = :id', { id })
+      .andWhere('r.status IN (:...statuses)', {
+        statuses: [ReservationStatus.PENDING, ReservationStatus.DEPOSIT_PAID, ReservationStatus.CONFIRMED]
+      })
+      .andWhere('(r.status != :pendingStatus OR r.expireTime > :now)', {
+        pendingStatus: ReservationStatus.PENDING,
+        now: new Date(),
+      })
+      .select('COALESCE(SUM(r.quantity), 0)', 'total')
+      .getRawOne();
+    (product as any).reservationCount = parseInt(reservationCount?.total || '0', 10);
 
     return product
   }

@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException, BadRequestException, ForbiddenException, forwardRef, Inject } from '@nestjs/common'
 import { InjectRepository } from '@nestjs/typeorm'
-import { Repository, LessThanOrEqual, Not, In, DataSource } from 'typeorm'
+import { Repository, LessThanOrEqual, MoreThanOrEqual, Not, In, DataSource } from 'typeorm'
 import { Cron } from '@nestjs/schedule'
 import { Reservation, ReservationStatus } from '../../entities/reservation.entity'
 import { Product, ListingType } from '../../entities/product.entity'
@@ -48,6 +48,8 @@ export class ReservationsService {
         throw new BadRequestException('Quantity must be at least 1')
       }
 
+      const now = new Date()
+
       // R15: reservationMax fallback — use product.quantity, not 999
       const maxQty = product.reservationMax || product.quantity || 0
       if (maxQty <= 0) {
@@ -55,6 +57,8 @@ export class ReservationsService {
       }
 
       // Check per-user reservation limit (include CONFIRMED to prevent overbooking)
+      // Expired PENDING rows are excluded — their spots release immediately at
+      // read time, without waiting for the minute cron to flip status.
       if (product.reservationLimitPerUser) {
         const userExisting = await queryRunner.manager
           .createQueryBuilder(Reservation, 'r')
@@ -62,6 +66,10 @@ export class ReservationsService {
           .where('r.productId = :productId', { productId })
           .andWhere('r.buyerId = :buyerId', { buyerId })
           .andWhere('r.status IN (:...statuses)', { statuses: [ReservationStatus.PENDING, ReservationStatus.DEPOSIT_PAID, ReservationStatus.CONFIRMED] })
+          .andWhere('(r.status != :pendingStatus OR r.expireTime > :now)', {
+            pendingStatus: ReservationStatus.PENDING,
+            now,
+          })
           .getOne()
         const userReservedQty = userExisting ? (userExisting.quantity || 1) : 0
         if (userReservedQty + quantity > product.reservationLimitPerUser) {
@@ -70,11 +78,16 @@ export class ReservationsService {
       }
 
       // R3: Check total reservation limit with pessimistic lock
+      // Expired PENDING rows don't count — spots release immediately.
       const totalReserved = await queryRunner.manager
         .createQueryBuilder(Reservation, 'r')
         .setLock('pessimistic_write')
         .where('r.productId = :productId', { productId })
         .andWhere('r.status IN (:...statuses)', { statuses: [ReservationStatus.PENDING, ReservationStatus.DEPOSIT_PAID, ReservationStatus.CONFIRMED] })
+        .andWhere('(r.status != :pendingStatus OR r.expireTime > :now)', {
+          pendingStatus: ReservationStatus.PENDING,
+          now,
+        })
         .select('COALESCE(SUM(r.quantity), 0)', 'total')
         .getRawOne()
       const currentTotal = parseInt(totalReserved?.total || '0', 10)
@@ -92,8 +105,12 @@ export class ReservationsService {
       }
 
       // Also check PENDING reservation (update quantity instead of creating new)
+      // Expired PENDING rows are treated as non-existent — create a fresh one
+      // instead of reviving a reservation whose deadline already passed.
       const existingPending = await queryRunner.manager.findOne(Reservation, {
-        where: { productId, buyerId, status: ReservationStatus.PENDING }
+        where: [
+          { productId, buyerId, status: ReservationStatus.PENDING, expireTime: MoreThanOrEqual(now) },
+        ],
       })
       if (existingPending) {
         if (product.reservationLimitPerUser && quantity > product.reservationLimitPerUser) {
@@ -218,6 +235,12 @@ export class ReservationsService {
         throw new BadRequestException('Reservation must be in pending status to confirm deposit')
       }
 
+      // Expired PENDING reservations cannot be confirmed — the deadline has
+      // passed even if the minute cron hasn't flipped the status yet.
+      if (reservation.expireTime && reservation.expireTime <= new Date()) {
+        throw new BadRequestException('Reservation has expired')
+      }
+
       // R4: Verify the deposit order has been paid (PENDING_PAID or CONFIRMED)
       const depositOrder = await queryRunner.manager.findOne(Order, {
         where: { reservationId: reservation.id, type: OrderType.RESERVATION_DEPOSIT }
@@ -328,24 +351,47 @@ export class ReservationsService {
     }
   }
 
+  // Effective status at read time: a PENDING reservation past its deadline
+  // reports 'expired' without waiting for the minute cron to persist it.
+  private effectiveReservationStatus(r: Reservation, now = new Date()): ReservationStatus | 'expired' {
+    if (
+      r.status === ReservationStatus.PENDING &&
+      r.expireTime &&
+      r.expireTime <= now
+    ) {
+      return 'expired' as any
+    }
+    return r.status
+  }
+
   async findByProduct(productId: string) {
-    return this.reservationRepo.find({
+    const data = await this.reservationRepo.find({
       where: { productId },
       relations: ['buyer'],
       order: { createdAt: 'ASC' }
     })
+    const now = new Date()
+    return data.map(r => {
+      ;(r as any).status = this.effectiveReservationStatus(r, now)
+      return r
+    })
   }
 
   async findByBuyer(buyerId: string) {
-    return this.reservationRepo.find({
+    const data = await this.reservationRepo.find({
       where: { buyerId },
       relations: ['product'],
       order: { createdAt: 'DESC' }
     })
+    const now = new Date()
+    return data.map(r => {
+      ;(r as any).status = this.effectiveReservationStatus(r, now)
+      return r
+    })
   }
 
   async findBySeller(sellerId: string) {
-    return this.reservationRepo
+    const data = await this.reservationRepo
       .createQueryBuilder('r')
       .innerJoin('r.product', 'p')
       .where('p.sellerId = :sellerId', { sellerId })
@@ -353,6 +399,11 @@ export class ReservationsService {
       .leftJoinAndSelect('r.product', 'product')
       .orderBy('r.createdAt', 'DESC')
       .getMany()
+    const now = new Date()
+    return data.map(r => {
+      ;(r as any).status = this.effectiveReservationStatus(r, now)
+      return r
+    })
   }
 
   async findOne(id: string) {
@@ -363,6 +414,7 @@ export class ReservationsService {
     if (!reservation) {
       throw new NotFoundException('Reservation not found')
     }
+    ;(reservation as any).status = this.effectiveReservationStatus(reservation)
     return reservation
   }
 

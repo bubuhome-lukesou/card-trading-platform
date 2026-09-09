@@ -24,6 +24,17 @@ export class AuctionsService {
     private readonly auctionGateway: AuctionGateway,
   ) {}
 
+  // Effective status: time-based truth at read time — DB status is only the
+  // persisted result the cron finalizes. A PENDING auction whose startTime has
+  // passed reports ACTIVE; an ACTIVE auction past endTime reports ENDED
+  // (side effects: winner/orders/WS still handled by cron, ≤60s later).
+  private effectiveStatus(a: Auction, now = new Date()): AuctionStatus {
+    if (a.status === AuctionStatus.CANCELLED) return a.status
+    if (a.status === AuctionStatus.PENDING && a.startTime <= now) return AuctionStatus.ACTIVE
+    if (a.status === AuctionStatus.ACTIVE && a.endTime <= now) return AuctionStatus.ENDED
+    return a.status
+  }
+
   // Cron job to activate pending auctions every minute
   @Cron('* * * * *')
   async activatePendingAuctions() {
@@ -179,21 +190,22 @@ export class AuctionsService {
       .leftJoinAndSelect('auction.product', 'product')
       .leftJoinAndSelect('auction.seller', 'seller')
 
-    // Seller view: show all statuses; public view: only active/ended
+    // Seller view: show all statuses; public view: all non-cancelled
+    // (effective status is computed after fetch — a DB-active auction past
+    // endTime must be available for the 'ended' filter, and a DB-pending
+    // auction past startTime must show as active without waiting for cron)
     if (filters.sellerId) {
       queryBuilder.where('auction.sellerId = :sellerId', { sellerId: filters.sellerId })
     } else {
       queryBuilder.where('auction.status IN (:...statuses)', {
-        statuses: [AuctionStatus.ACTIVE, AuctionStatus.ENDED]
+        statuses: [AuctionStatus.ACTIVE, AuctionStatus.PENDING, AuctionStatus.ENDED]
       })
     }
 
     if (filters.category?.length) {
       queryBuilder.andWhere('product.category IN (:...categories)', { categories: filters.category })
     }
-    if (filters.status) {
-      queryBuilder.andWhere('auction.status = :status', { status: filters.status })
-    }
+    // filters.status is applied AFTER effective-status mapping below
     if (filters.priceMin) {
       queryBuilder.andWhere('auction.currentPrice >= :priceMin', { priceMin: filters.priceMin })
     }
@@ -207,12 +219,7 @@ export class AuctionsService {
       )
     }
 
-    // Filter out ended/cancelled auctions (only show active and pending)
-    if (filters.hideEnded) {
-      queryBuilder.andWhere('auction.status IN (:...visibleStatuses)', {
-        visibleStatuses: [AuctionStatus.ACTIVE, AuctionStatus.PENDING]
-      })
-    }
+    // hideEnded is applied AFTER effective-status mapping below
 
     // Sorting
     switch (filters.sortBy) {
@@ -239,9 +246,29 @@ export class AuctionsService {
 
     const [data, total] = await queryBuilder.getManyAndCount()
 
+    // Effective status mapping + post-filters (status / hideEnded) on the
+    // time-derived truth, so users never see stale cron-delayed statuses.
+    const now = new Date()
+    let mapped = data.map(auction => {
+      auction.status = this.effectiveStatus(auction, now)
+      return auction
+    })
+    if (filters.status) {
+      mapped = mapped.filter(a => a.status === filters.status)
+    }
+    if (filters.hideEnded) {
+      mapped = mapped.filter(
+        a => a.status === AuctionStatus.ACTIVE || a.status === AuctionStatus.PENDING
+      )
+    }
+    // Public view: hide anything still CANCELLED in DB (never mapped)
+    if (!filters.sellerId) {
+      mapped = mapped.filter(a => a.status !== AuctionStatus.CANCELLED)
+    }
+
     return {
-      data,
-      meta: { total, page, limit, totalPages: Math.ceil(total / limit) }
+      data: mapped,
+      meta: { total: mapped.length, page, limit, totalPages: Math.max(1, Math.ceil(mapped.length / limit)) }
     }
   }
 
@@ -258,6 +285,7 @@ export class AuctionsService {
       throw new NotFoundException('No auction found for this product')
     }
 
+    auction.status = this.effectiveStatus(auction)
     return auction
   }
 
@@ -277,6 +305,7 @@ export class AuctionsService {
       throw new NotFoundException('Auction not found')
     }
 
+    auction.status = this.effectiveStatus(auction)
     return auction
   }
 
