@@ -60,7 +60,7 @@ export interface Product {
   descriptionEn?: string
   descriptionZh?: string
   category: ProductCategory
-  condition: ProductCondition
+  condition: ProductCondition | null
   price: number
   quantity?: number
   currency: string

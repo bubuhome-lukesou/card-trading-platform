@@ -659,8 +659,11 @@ onUnmounted(() => {
                 <div class="spec-cell">
                   <span class="spec-label">{{ locale === 'zh' ? '品相' : 'Condition' }}</span>
                   <span class="spec-value">
-                    <span class="condition-dot" :style="{ backgroundColor: conditionColor }"></span>
-                    {{ auction.product?.condition || '—' }}{{ locale === 'zh' ? '品, ' + ({ S: '完美品相', A: '輕微瑕疵', B: '正常使用痕跡', C: '較明顯磨損', D: '嚴重磨損' } as Record<string, string>)[auction.product?.condition] || '' : '' }}
+                    <template v-if="auction.product?.condition">
+                      <span class="condition-dot" :style="{ backgroundColor: conditionColor }"></span>
+                      {{ auction.product?.condition || '—' }}{{ locale === 'zh' ? '品, ' + ({ S: '完美品相', A: '輕微瑕疵', B: '正常使用痕跡', C: '較明顯磨損', D: '嚴重磨損' } as Record<string, string>)[auction.product?.condition] || '' : '' }}
+                    </template>
+                    <template v-else>—</template>
                   </span>
                 </div>
                 <div class="spec-cell">

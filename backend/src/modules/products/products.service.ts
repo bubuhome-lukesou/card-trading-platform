@@ -226,9 +226,7 @@ export class ProductsService {
     const listingType = dto.listingType || 'both'
     const now = Date.now()
 
-    if (!dto.condition) {
-      throw new BadRequestException('商品品相為必填項')
-    }
+    // 品相已改為選填，不再擋 create
 
     if (listingType === 'auction') {
       if (!dto.auctionEndTime) {
@@ -329,9 +327,8 @@ export class ProductsService {
     }
     // productType is now a direct string value, no conversion needed
 
-    // 品相為必填：阻止清空（condition: null / undefined 不覆蓋現值）
-    // 建立時已強制必填；編輯時只能改為有效值，不能移除
-    if ('condition' in dto && (dto.condition === null || dto.condition === undefined)) {
+    // 品相已改為選填：condition 傳 null 時清空欄位
+    if (dto.condition === undefined) {
       delete dto.condition
     }
 

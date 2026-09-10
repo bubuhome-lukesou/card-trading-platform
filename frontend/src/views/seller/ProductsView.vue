@@ -237,7 +237,6 @@ const missingRequired = () => {
   const lt = formData.value.listingType
   if (!formData.value.titleZh?.trim()) missing.push('商品名稱（中文）')
   if (!formData.value.titleEn?.trim()) missing.push('商品名稱（英文）')
-  if (!formData.value.condition) missing.push('商品品相')
   if (lt === 'sale' && (formData.value.price === null || formData.value.price === undefined || formData.value.price <= 0)) missing.push('售價（必須大於 0）')
   if (lt === 'auction') {
     if (formData.value.startingPrice === null || formData.value.startingPrice === undefined || formData.value.startingPrice <= 0) missing.push('起拍價（必須大於 0）')
@@ -321,7 +320,7 @@ const openEditModal = async (product: any) => {
     descriptionZh: product.descriptionZh,
     descriptionEn: product.descriptionEn,
     category: product.category,
-    condition: product.condition || 'S',
+    condition: product.condition || null,
     price: product.price,
     quantity: product.quantity || 1,
     images: [...existingImages],
@@ -682,7 +681,7 @@ onUnmounted(() => {
             <span class="meta-item">
               {{ getCategoryLabel(product.category) }}
             </span>
-            <span class="meta-item">
+            <span v-if="product.condition" class="meta-item">
               {{ getConditionLabel(product.condition) }}
             </span>
           </div>
@@ -765,9 +764,9 @@ onUnmounted(() => {
             </div>
 
             <div class="form-group">
-              <label>商品品相 <span class="required-mark">*</span></label>
-              <select v-model="formData.condition" @blur="validateField('condition')" @change="validateField('condition')" required>
-                <option :value="null" disabled>(請選擇)</option>
+              <label>商品品相（選填）</label>
+              <select v-model="formData.condition">
+                <option :value="null">不指定</option>
                 <option v-for="cond in conditions" :key="cond.value" :value="cond.value">
                   {{ cond.label }}
                 </option>
