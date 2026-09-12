@@ -1,98 +1,43 @@
-import { Controller, Post, Body, Get, Query } from '@nestjs/common';
+import { Controller, Get, Post, Param, Body, Query, UseGuards, Req, NotFoundException, ForbiddenException } from '@nestjs/common'
+import { Request } from 'express'
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard'
+import { NotificationService } from './notification.service'
 
-export class NotificationDto {
-  userId: string;
-  type: 'email' | 'wechat' | 'in_app';
-  template: string;
-  data: Record<string, any>;
-}
-
-export class SendNotificationDto {
-  userId: string;
-  channel: 'email' | 'wechat' | 'in_app';
-  title: string;
-  message: string;
-  metadata?: Record<string, any>;
-}
-
+@UseGuards(JwtAuthGuard)
 @Controller('notifications')
 export class NotificationController {
-  // In-app notification storage (in production, use Redis or database)
-  private notifications: Map<string, any[]> = new Map();
+  constructor(private notificationService: NotificationService) {}
 
-  /**
-   * Send notification via specified channel
-   * 
-   * POST /notifications/send
-   * 
-   * Body:
-   * {
-   *   "userId": "user-123",
-   *   "channel": "email" | "wechat" | "in_app",
-   *   "title": "拍卖出价提醒",
-   *   "message": "您关注的拍卖有新出价 HK$500",
-   *   "metadata": { "auctionId": "auction-456", "amount": 500 }
-   * }
-   */
-  @Post('send')
-  async sendNotification(@Body() dto: SendNotificationDto) {
-    // TODO: Implement actual notification sending based on channel
-    // For now, just log and store in-memory
-
-    switch (dto.channel) {
-      case 'email':
-        // TODO: Integrate with Gmail SMTP
-        console.log(`[EMAIL] To: ${dto.userId}, Title: ${dto.title}, Message: ${dto.message}`);
-        break;
-      case 'wechat':
-        // TODO: Integrate with WeChat Work API
-        console.log(`[WECHAT] To: ${dto.userId}, Title: ${dto.title}, Message: ${dto.message}`);
-        break;
-      case 'in_app':
-        // Store in-memory for now
-        const userNotifications = this.notifications.get(dto.userId) || [];
-        userNotifications.unshift({
-          id: `notif-${Date.now()}`,
-          ...dto,
-          read: false,
-          createdAt: new Date(),
-        });
-        this.notifications.set(dto.userId, userNotifications);
-        break;
-    }
-
-    return {
-      success: true,
-      message: `Notification queued for ${dto.channel}`,
-      notificationId: `notif-${Date.now()}`,
-    };
-  }
-
-  /**
-   * Get user's in-app notifications
-   * 
-   * GET /notifications?userId=user-123
-   */
+  /** 用戶通知列表（分頁 + 未讀數） */
   @Get()
-  async getNotifications(@Query('userId') userId: string) {
-    return {
-      notifications: this.notifications.get(userId) || [],
-    };
+  async getNotifications(
+    @Req() req: Request,
+    @Query('page') page = '1',
+    @Query('limit') limit = '20',
+  ) {
+    const userId = (req.user as any).id
+    return this.notificationService.findByUser(userId, Number(page), Number(limit))
   }
 
-  /**
-   * Mark notification as read
-   * 
-   * POST /notifications/read
-   * { "userId": "user-123", "notificationId": "notif-123" }
-   */
-  @Post('read')
-  async markAsRead(@Body() body: { userId: string; notificationId: string }) {
-    const userNotifications = this.notifications.get(body.userId) || [];
-    const notification = userNotifications.find(n => n.id === body.notificationId);
-    if (notification) {
-      notification.read = true;
-    }
-    return { success: true };
+  /** 未讀數量（鈴鐺紅點輪詢） */
+  @Get('unread-count')
+  async getUnreadCount(@Req() req: Request) {
+    const userId = (req.user as any).id
+    const count = await this.notificationService.getUnreadCount(userId)
+    return { count }
+  }
+
+  /** 標記單一通知已讀 */
+  @Post(':id/read')
+  async markRead(@Req() req: Request, @Param('id') id: string) {
+    const userId = (req.user as any).id
+    return this.notificationService.markRead(userId, id)
+  }
+
+  /** 全部標記已讀 */
+  @Post('read-all')
+  async markAllRead(@Req() req: Request) {
+    const userId = (req.user as any).id
+    return this.notificationService.markAllRead(userId)
   }
 }

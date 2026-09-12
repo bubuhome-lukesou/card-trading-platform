@@ -6,6 +6,8 @@ import { Reservation, ReservationStatus } from '../../entities/reservation.entit
 import { Product, ListingType } from '../../entities/product.entity'
 import { Order, OrderType, OrderStatus } from '../../entities/order.entity'
 import { OrdersService } from '../orders/orders.service'
+import { NotificationService } from '../notification/notification.service'
+import { NotificationType } from '../../entities/notification.entity'
 
 @Injectable()
 export class ReservationsService {
@@ -18,6 +20,7 @@ export class ReservationsService {
     private orderRepo: Repository<Order>,
     @Inject(forwardRef(() => OrdersService))
     private ordersService: OrdersService,
+    private notificationService: NotificationService,
     private dataSource: DataSource,
   ) {}
 
@@ -195,6 +198,16 @@ export class ReservationsService {
       const savedOrder = await queryRunner.manager.save(order)
 
       await queryRunner.commitTransaction()
+
+      // 🔔 通知賣家：新預約（transaction 已提交後，non-fatal）
+      this.notificationService.notify({
+        userId: product.sellerId,
+        type: NotificationType.RESERVATION_UPDATE,
+        title: '收到新預約',
+        message: `「${product.titleZh || product.titleEn}」收到新預約（${quantity} 件），請留意訂金憑證`,
+        link: '/seller/orders',
+      }).catch(() => {})
+
       return { reservation: savedReservation, order: savedOrder }
     } catch (err) {
       await queryRunner.rollbackTransaction()
@@ -258,6 +271,15 @@ export class ReservationsService {
       reservation.status = ReservationStatus.DEPOSIT_PAID
       reservation.depositPaidAt = new Date()
       const saved = await queryRunner.manager.save(reservation)
+
+      // 🔔 通知買家：訂金已確認（transaction 提交後 non-fatal）
+      this.notificationService.notify({
+        userId: reservation.buyerId,
+        type: NotificationType.RESERVATION_UPDATE,
+        title: '訂金已確認',
+        message: `賣家已確認「${product.titleZh || product.titleEn}」的訂金，請按時到店支付尾款`,
+        link: '/user/orders',
+      }).catch(() => {})
 
       // R4: Create a RESERVATION_FULL (balance) order linked to this reservation
       const balanceAmount = Number(product.price) - Number(reservation.depositAmount)
@@ -342,6 +364,16 @@ export class ReservationsService {
       const saved = await queryRunner.manager.save(reservation)
 
       await queryRunner.commitTransaction()
+
+      // 🔔 通知買家：預約已確認（交易完成）
+      this.notificationService.notify({
+        userId: reservation.buyerId,
+        type: NotificationType.RESERVATION_UPDATE,
+        title: '預約已完成',
+        message: `「${product.titleZh || product.titleEn}」的預約已完成確認，感謝您的支持`,
+        link: '/user/orders',
+      }).catch(() => {})
+
       return saved
     } catch (err) {
       await queryRunner.rollbackTransaction()
@@ -500,6 +532,14 @@ export class ReservationsService {
           depositOrder.status = OrderStatus.CANCELLED
           await this.orderRepo.save(depositOrder)
         }
+        // 🔔 通知買家：預約過期
+        this.notificationService.notify({
+          userId: reservation.buyerId,
+          type: NotificationType.RESERVATION_UPDATE,
+          title: '預約已過期',
+          message: `您的預約因未在期限內支付訂金已過期，名額已釋放`,
+          link: '/user/orders',
+        }).catch(() => {})
       } catch (err) {
         console.error(`[Cron] Failed to expire reservation ${reservation.id}:`, err)
       }

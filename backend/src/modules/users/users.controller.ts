@@ -38,6 +38,11 @@ export class UsersController {
     bidUpdates?: boolean
     outbidAlerts?: boolean
     auctionEnding?: boolean
+    auctionResult?: boolean
+    newBidAlerts?: boolean
+    orderUpdates?: boolean
+    paymentReceivedAlerts?: boolean
+    reservationUpdates?: boolean
   }) {
     return this.usersService.updateNotifications(req.user.id, body);
   }

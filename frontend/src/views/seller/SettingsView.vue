@@ -21,11 +21,13 @@ const passwordData = ref({
 })
 
 const notificationSettings = ref({
-  emailNotifications: true,
-  wechatNotifications: true,
-  bidUpdates: true,
   outbidAlerts: true,
   auctionEnding: true,
+  auctionResult: true,
+  newBidAlerts: true,
+  orderUpdates: true,
+  paymentReceivedAlerts: true,
+  reservationUpdates: true,
 })
 
 // Pickup info
@@ -60,6 +62,22 @@ const loadProfile = async () => {
   // Load pickup info if available
   pickupData.value.pickupInfo = user?.pickupInfo || ''
   qrCodeUrl.value = user?.pickupQrCode || ''
+  // 讀取通知偏好真實值（/auth/profile 返回完整 user entity）
+  try {
+    const res = await api.get('/auth/profile')
+    const u = res.data
+    notificationSettings.value = {
+      outbidAlerts: u.outbidAlerts !== false,
+      auctionEnding: u.auctionEnding !== false,
+      auctionResult: u.auctionResult !== false,
+      newBidAlerts: u.newBidAlerts !== false,
+      orderUpdates: u.orderUpdates !== false,
+      paymentReceivedAlerts: u.paymentReceivedAlerts !== false,
+      reservationUpdates: u.reservationUpdates !== false,
+    }
+  } catch {
+    // 讀取失敗保持默認值
+  }
 }
 
 const handleAccountUpdate = async () => {
@@ -107,8 +125,7 @@ const handleNotificationUpdate = async () => {
   loading.value = true
   errorMessage.value = ''
   try {
-    // TODO: Connect to notification settings API when available
-    await new Promise(resolve => setTimeout(resolve, 500))
+    await api.patch('/users/notifications', { ...notificationSettings.value })
     showSuccess('通知設置已更新')
   } catch (error: any) {
     showError(error.response?.data?.message || '更新失敗')
@@ -219,63 +236,85 @@ onMounted(() => {
       </div>
     </div>
 
-    <!-- Notifications Section -->
+    <!-- Notifications Section — 事件分組 -->
     <div class="settings-section">
       <h3 class="section-title">🔔 通知設置</h3>
+      <p class="section-desc">選擇您想接收的站內通知類型，通知會顯示在側欄「通知中心」。</p>
       <div class="settings-card">
+        <div class="notif-group-title">拍賣通知</div>
         <div class="setting-item">
           <div class="setting-info">
-            <div class="setting-label">郵件通知</div>
-            <div class="setting-desc">接收郵件通知</div>
+            <div class="setting-label">出價被超越</div>
+            <div class="setting-desc">您參與的拍賣被其他人出更高價時通知您</div>
           </div>
           <label class="toggle">
-            <input type="checkbox" v-model="notificationSettings.emailNotifications" />
+            <input type="checkbox" v-model="notificationSettings.outbidAlerts" @change="handleNotificationUpdate" />
             <span class="toggle-slider"></span>
           </label>
         </div>
         <div class="setting-item">
           <div class="setting-info">
-            <div class="setting-label">微信通知</div>
-            <div class="setting-desc">通過微信接收通知</div>
+            <div class="setting-label">拍賣將結束提醒</div>
+            <div class="setting-desc">您參與的拍賣即將結束時提醒您</div>
           </div>
           <label class="toggle">
-            <input type="checkbox" v-model="notificationSettings.wechatNotifications" />
+            <input type="checkbox" v-model="notificationSettings.auctionEnding" @change="handleNotificationUpdate" />
             <span class="toggle-slider"></span>
           </label>
         </div>
         <div class="setting-item">
           <div class="setting-info">
-            <div class="setting-label">出價更新</div>
-            <div class="setting-desc">拍賣出價變化時通知</div>
+            <div class="setting-label">拍賣結果</div>
+            <div class="setting-desc">中標、成交或流標結果</div>
           </div>
           <label class="toggle">
-            <input type="checkbox" v-model="notificationSettings.bidUpdates" />
+            <input type="checkbox" v-model="notificationSettings.auctionResult" @change="handleNotificationUpdate" />
             <span class="toggle-slider"></span>
           </label>
         </div>
         <div class="setting-item">
           <div class="setting-info">
-            <div class="setting-label">出局提醒</div>
-            <div class="setting-desc">您的出價被超過時通知</div>
+            <div class="setting-label">我的拍賣收到新出價</div>
+            <div class="setting-desc">您刊登的拍賣收到新出價時</div>
           </div>
           <label class="toggle">
-            <input type="checkbox" v-model="notificationSettings.outbidAlerts" />
+            <input type="checkbox" v-model="notificationSettings.newBidAlerts" @change="handleNotificationUpdate" />
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+
+        <div class="notif-group-divider"></div>
+        <div class="notif-group-title">交易通知</div>
+        <div class="setting-item">
+          <div class="setting-info">
+            <div class="setting-label">訂單狀態更新</div>
+            <div class="setting-desc">訂單確認、發貨、完成等狀態變化</div>
+          </div>
+          <label class="toggle">
+            <input type="checkbox" v-model="notificationSettings.orderUpdates" @change="handleNotificationUpdate" />
             <span class="toggle-slider"></span>
           </label>
         </div>
         <div class="setting-item">
           <div class="setting-info">
-            <div class="setting-label">拍賣結束提醒</div>
-            <div class="setting-desc">您參與的拍賣即將結束時通知</div>
+            <div class="setting-label">收到付款憑證</div>
+            <div class="setting-desc">買家上傳付款憑證待您確認時</div>
           </div>
           <label class="toggle">
-            <input type="checkbox" v-model="notificationSettings.auctionEnding" />
+            <input type="checkbox" v-model="notificationSettings.paymentReceivedAlerts" @change="handleNotificationUpdate" />
             <span class="toggle-slider"></span>
           </label>
         </div>
-        <button @click="handleNotificationUpdate" class="btn-save" :disabled="loading">
-          {{ loading ? '儲存中...' : '儲存設置' }}
-        </button>
+        <div class="setting-item">
+          <div class="setting-info">
+            <div class="setting-label">預約更新</div>
+            <div class="setting-desc">新預約、訂金確認、預約過期等</div>
+          </div>
+          <label class="toggle">
+            <input type="checkbox" v-model="notificationSettings.reservationUpdates" @change="handleNotificationUpdate" />
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
       </div>
     </div>
 
@@ -374,6 +413,27 @@ onMounted(() => {
   font-size: var(--text-base);
   font-weight: 600;
   color: var(--text-primary);
+}
+
+.section-desc {
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+  margin-top: -8px;
+}
+
+.notif-group-title {
+  font-size: var(--text-xs);
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding-bottom: var(--space-2);
+}
+
+.notif-group-divider {
+  height: 1px;
+  background: var(--border);
+  margin: var(--space-4) 0;
 }
 
 .settings-card {

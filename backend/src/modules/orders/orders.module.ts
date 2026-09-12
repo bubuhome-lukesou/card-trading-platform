@@ -10,11 +10,13 @@ import { User } from '../../entities/user.entity';
 import { OrdersController } from './orders.controller';
 import { OrdersService } from './orders.service';
 import { ProductsModule } from '../products/products.module';
+import { NotificationModule } from '../notification/notification.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Order, User, Product]),
     ProductsModule,
+    NotificationModule,
     MulterModule.register({
       storage: diskStorage({
         destination: '/var/www/card-trading-platform/backend/uploads',

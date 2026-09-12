@@ -80,6 +80,11 @@ const userRoutes: RouteRecordRaw[] = [
         component: () => import('@/views/user/WalletView.vue')
       },
       {
+        path: 'notifications',
+        name: 'UserNotifications',
+        component: () => import('@/views/user/NotificationsView.vue')
+      },
+      {
         path: 'settings',
         name: 'UserSettings',
         component: () => import('@/views/user/SettingsView.vue')
@@ -130,6 +135,11 @@ const sellerRoutes: RouteRecordRaw[] = [
         path: 'earnings',
         name: 'SellerEarnings',
         component: () => import('@/views/seller/EarningsView.vue')
+      },
+      {
+        path: 'notifications',
+        name: 'SellerNotifications',
+        component: () => import('@/views/seller/NotificationsView.vue')
       },
       {
         path: 'settings',

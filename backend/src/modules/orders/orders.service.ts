@@ -4,6 +4,8 @@ import { Repository, DataSource } from 'typeorm';
 import { Order, OrderStatus, OrderType } from '../../entities/order.entity';
 import { Product, ProductStatus, ListingType } from '../../entities/product.entity';
 import { ProductsService } from '../products/products.service';
+import { NotificationService } from '../notification/notification.service';
+import { NotificationType } from '../../entities/notification.entity';
 
 // Valid order status transitions (state machine)
 const VALID_TRANSITIONS: Record<string, string[]> = {
@@ -36,6 +38,7 @@ export class OrdersService {
     private productRepo: Repository<Product>,
     @Inject(forwardRef(() => ProductsService))
     private productsService: ProductsService,
+    private notificationService: NotificationService,
     private dataSource: DataSource,
   ) {}
 
@@ -184,7 +187,18 @@ export class OrdersService {
     }
     order.status = OrderStatus.CONFIRMED;
     order.paymentTime = new Date();
-    return this.orderRepo.save(order);
+    const saved = await this.orderRepo.save(order);
+
+    // 🔔 通知買家：賣家已確認收款
+    this.notificationService.notify({
+      userId: order.buyerId,
+      type: NotificationType.ORDER_UPDATE,
+      title: '訂單已確認',
+      message: `賣家已確認收到您的付款（訂單 ${order.orderNumber}）`,
+      link: '/user/orders',
+    }).catch(() => {});
+
+    return saved;
   }
 
   async updateTransferReceipt(orderId: string, receiptUrl: string, userId: string): Promise<Order> {
@@ -200,7 +214,18 @@ export class OrdersService {
     order.transferReceipt = receiptUrl;
     order.transferTime = new Date();
     order.status = OrderStatus.PENDING_PAID;
-    return this.orderRepo.save(order);
+    const saved = await this.orderRepo.save(order);
+
+    // 🔔 通知賣家：買家上傳了付款憑證待確認
+    this.notificationService.notify({
+      userId: order.sellerId,
+      type: NotificationType.PAYMENT_RECEIVED,
+      title: '收到付款憑證',
+      message: `買家已上傳「${order.product?.titleZh || order.product?.titleEn || order.orderNumber}」的付款憑證，請確認收款`,
+      link: '/seller/orders',
+    }).catch(() => {});
+
+    return saved;
   }
 
   async updateBalanceReceipt(orderId: string, receiptUrl: string, userId: string): Promise<Order> {
@@ -216,7 +241,18 @@ export class OrdersService {
     order.balanceReceipt = receiptUrl;
     order.balanceTime = new Date();
     order.status = OrderStatus.PENDING_PAID;
-    return this.orderRepo.save(order);
+    const saved = await this.orderRepo.save(order);
+
+    // 🔔 通知賣家：買家上傳了尾款憑證待確認
+    this.notificationService.notify({
+      userId: order.sellerId,
+      type: NotificationType.PAYMENT_RECEIVED,
+      title: '收到尾款憑證',
+      message: `買家已上傳「${order.product?.titleZh || order.product?.titleEn || order.orderNumber}」的尾款憑證，請確認`,
+      link: '/seller/orders',
+    }).catch(() => {});
+
+    return saved;
   }
 
   async updateStatus(id: string, status: string, userId: string) {
@@ -261,7 +297,33 @@ export class OrdersService {
     } else if (status === OrderStatus.DELIVERED) {
       order.deliveryTime = new Date();
     }
-    
-    return this.orderRepo.save(order);
+
+    const saved = await this.orderRepo.save(order);
+
+    // 🔔 通知對方：狀態變更（買家賣家互通知）
+    try {
+      const productTitle = order.product?.titleZh || order.product?.titleEn || order.orderNumber;
+      const statusText: Record<string, string> = {
+        confirmed: '賣家已確認您的訂單',
+        shipped: '您的訂單已發貨',
+        delivered: '訂單已完成',
+        cancelled: '訂單已取消',
+        pending_paid: '訂單待確認',
+      };
+      const msg = statusText[status] || `訂單狀態更新為 ${status}`;
+      // 通知對方（操作者以外的另一方）
+      const targetUserId = isBuyer ? order.sellerId : order.buyerId;
+      this.notificationService.notify({
+        userId: targetUserId,
+        type: NotificationType.ORDER_UPDATE,
+        title: '訂單更新',
+        message: `${msg}（${productTitle}）`,
+        link: isBuyer ? '/seller/orders' : '/user/orders',
+      }).catch(() => {});
+    } catch (e) {
+      // non-fatal
+    }
+
+    return saved;
   }
 }

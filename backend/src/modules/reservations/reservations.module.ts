@@ -6,11 +6,13 @@ import { Reservation } from '../../entities/reservation.entity'
 import { Product } from '../../entities/product.entity'
 import { Order } from '../../entities/order.entity'
 import { OrdersModule } from '../orders/orders.module'
+import { NotificationModule } from '../notification/notification.module'
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Reservation, Product, Order]),
     OrdersModule,
+    NotificationModule,
   ],
   controllers: [ReservationsController],
   providers: [ReservationsService],

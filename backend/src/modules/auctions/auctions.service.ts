@@ -8,6 +8,8 @@ import { Product, ProductStatus } from '../../entities/product.entity'
 import { Order, OrderType, OrderStatus } from '../../entities/order.entity'
 import { CreateAuctionDto, AuctionFiltersDto } from './dto/auction.dto'
 import { AuctionGateway } from '../../websocket/websocket.gateway'
+import { NotificationService } from '../notification/notification.service'
+import { NotificationType } from '../../entities/notification.entity'
 
 @Injectable()
 export class AuctionsService {
@@ -22,6 +24,7 @@ export class AuctionsService {
     private readonly orderRepo: Repository<Order>,
     private readonly dataSource: DataSource,
     private readonly auctionGateway: AuctionGateway,
+    private readonly notificationService: NotificationService,
   ) {}
 
   // Effective status: time-based truth at read time — DB status is only the
@@ -486,6 +489,37 @@ export class AuctionsService {
         // Reload to get final state
         const updatedAuction = await this.auctionRepo.findOne({ where: { id: auctionId } })
 
+        // 🔔 站內通知：被出局者 + 賣家收到新出價（不阻塞出價主流程）
+        try {
+          const outbidBidders = await this.bidRepo
+            .createQueryBuilder('bid')
+            .select('DISTINCT bid.bidderId', 'bidderId')
+            .where('bid.auctionId = :auctionId AND bid.bidderId != :userId AND bid.status = :status', {
+              auctionId, userId, status: BidStatus.OUTBID,
+            })
+            .getRawMany()
+          const productTitle = auction.product?.titleZh || auction.product?.titleEn || '拍賣商品'
+          for (const row of outbidBidders) {
+            await this.notificationService.notify({
+              userId: row.bidderId,
+              type: NotificationType.OUTBID,
+              title: '出價被超越',
+              message: `您在「${productTitle}」的出價已被超越，目前最高價 MOP $${amount}`,
+              link: `/auction/${auctionId}`,
+            })
+          }
+          // 賣家通知：收到新出價
+          await this.notificationService.notify({
+            userId: auction.sellerId,
+            type: NotificationType.NEW_BID,
+            title: '拍賣收到新出價',
+            message: `「${productTitle}」收到新出價 MOP $${amount}`,
+            link: `/auction/${auctionId}`,
+          })
+        } catch (e) {
+          console.error('[Auction] Notification failed (non-fatal):', e)
+        }
+
         // A3: Broadcast new bid via WebSocket to all clients in the auction room
         try {
           this.auctionGateway.broadcastBid(auctionId, {
@@ -581,12 +615,54 @@ export class AuctionsService {
         product.status = ProductStatus.SOLD
         await this.productRepo.save(product)
       }
+      // 🔔 通知：中標（買家）+ 賣家成交
+      try {
+        const productTitle = product?.titleZh || product?.titleEn || '拍賣商品'
+        await this.notificationService.notify({
+          userId: auction.winnerId,
+          type: NotificationType.AUCTION_RESULT,
+          title: '🎉 恭喜中標',
+          message: `您以 MOP $${auction.currentPrice} 成功拍得「${productTitle}」，請盡快前往訂單完成付款`,
+          link: '/user/orders',
+        })
+        await this.notificationService.notify({
+          userId: auction.sellerId,
+          type: NotificationType.AUCTION_RESULT,
+          title: '拍賣成交',
+          message: `您的「${productTitle}」已以 MOP $${auction.currentPrice} 成交`,
+          link: '/seller/orders',
+        })
+      } catch (e) {
+        console.error('[Auction] Winner notification failed (non-fatal):', e)
+      }
     } else {
       // A1: No winner — restore product to ACTIVE for re-sale
       const product = await this.productRepo.findOne({ where: { id: auction.productId } })
       if (product && product.status !== ProductStatus.SOLD) {
         product.status = ProductStatus.ACTIVE
         await this.productRepo.save(product)
+      }
+      // 🔔 通知：有出價但流標 — 通知所有出價者拍賣已結束未成交
+      if (auction.bidCount > 0) {
+        try {
+          const productTitle = product?.titleZh || product?.titleEn || '拍賣商品'
+          const bidders = await this.bidRepo
+            .createQueryBuilder('bid')
+            .select('DISTINCT bid.bidderId', 'bidderId')
+            .where('bid.auctionId = :auctionId', { auctionId: auction.id })
+            .getRawMany()
+          for (const row of bidders) {
+            await this.notificationService.notify({
+              userId: row.bidderId,
+              type: NotificationType.AUCTION_RESULT,
+              title: '拍賣已結束',
+              message: `「${productTitle}」拍賣已結束，未達底價未能成交`,
+              link: `/auction/${auction.id}`,
+            })
+          }
+        } catch (e) {
+          console.error('[Auction] No-winner notification failed (non-fatal):', e)
+        }
       }
     }
 

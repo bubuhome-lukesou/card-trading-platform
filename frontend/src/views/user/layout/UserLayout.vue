@@ -1,14 +1,16 @@
 <script setup lang="ts">
-import { computed, ref, onMounted } from 'vue'
+import { computed, ref, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
+import { useNotificationStore } from '@/stores/notifications'
 import { cartApi } from '@/api/cart'
 
 const { t } = useI18n()
 const router = useRouter()
 const route = useRoute()
 const authStore = useAuthStore()
+const notifStore = useNotificationStore()
 const cartCount = ref(0)
 const sidebarOpen = ref(false)
 
@@ -18,6 +20,7 @@ const navItems = [
   { path: '/user/cart', name: 'cart', icon: '🛒', label: '購物車' },
   { path: '/user/favorites', name: 'favorites', icon: '❤️', label: 'user.myFavorites' },
   { path: '/user/wallet', name: 'wallet', icon: '💳', label: 'user.wallet' },
+  { path: '/user/notifications', name: 'notifications', icon: '🔔', label: '通知中心' },
   { path: '/user/settings', name: 'settings', icon: '⚙️', label: 'user.settings' },
 ]
 
@@ -25,6 +28,7 @@ const isActive = (path: string) => route.path === path
 
 const handleLogout = async () => {
   sidebarOpen.value = false
+  notifStore.stopPolling()
   await authStore.logout()
   router.push('/')
 }
@@ -38,7 +42,16 @@ const loadCartCount = async () => {
   }
 }
 
-onMounted(() => { loadCartCount() })
+// 通知輪詢（登入時啟動）
+onMounted(() => {
+  loadCartCount()
+  notifStore.startPolling()
+})
+
+// 離開 user 區域時停止輪詢
+watch(() => route.path, (p) => {
+  if (!p.startsWith('/user')) notifStore.stopPolling()
+})
 </script>
 
 <template>
@@ -57,6 +70,7 @@ onMounted(() => { loadCartCount() })
           <span class="nav-icon">{{ item.icon }}</span>
           <span class="nav-label">{{ t(item.label) }}</span>
           <span v-if="item.name === 'cart' && cartCount > 0" class="cart-badge">{{ cartCount > 99 ? '99+' : cartCount }}</span>
+          <span v-else-if="item.name === 'notifications' && notifStore.unreadCount > 0" class="cart-badge notif-badge">{{ notifStore.unreadCount > 99 ? '99+' : notifStore.unreadCount }}</span>
         </router-link>
       </nav>
       <div class="sidebar-footer">
@@ -81,6 +95,7 @@ onMounted(() => { loadCartCount() })
         <router-link v-for="item in navItems" :key="item.path" :to="item.path" class="mobile-nav-icon" :class="{ active: isActive(item.path) }">
           <span>{{ item.icon }}</span>
           <span v-if="item.name === 'cart' && cartCount > 0" class="mobile-cart-badge">{{ cartCount > 9 ? '9+' : cartCount }}</span>
+          <span v-else-if="item.name === 'notifications' && notifStore.unreadCount > 0" class="mobile-cart-badge">{{ notifStore.unreadCount > 9 ? '9+' : notifStore.unreadCount }}</span>
         </router-link>
       </div>
     </nav>
@@ -101,6 +116,7 @@ onMounted(() => { loadCartCount() })
               <span class="mobile-nav-item-icon">{{ item.icon }}</span>
               <span class="mobile-nav-item-label">{{ t(item.label) }}</span>
               <span v-if="item.name === 'cart' && cartCount > 0" class="mobile-cart-badge">{{ cartCount > 99 ? '99+' : cartCount }}</span>
+              <span v-else-if="item.name === 'notifications' && notifStore.unreadCount > 0" class="mobile-cart-badge">{{ notifStore.unreadCount > 99 ? '99+' : notifStore.unreadCount }}</span>
             </router-link>
           </div>
           <div class="mobile-panel-footer">
@@ -220,6 +236,8 @@ onMounted(() => { loadCartCount() })
   min-width: 18px;
   text-align: center;
 }
+
+.notif-badge { background: var(--primary); }
 
 .nav-item.logout:hover { background: var(--danger); color: white; }
 
@@ -369,7 +387,7 @@ onMounted(() => { loadCartCount() })
 
 .mobile-nav-grid {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: var(--space-2);
   margin-bottom: var(--space-4);
 }
@@ -401,7 +419,7 @@ onMounted(() => { loadCartCount() })
 
 .mobile-panel-footer {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: var(--space-2);
   padding-top: var(--space-4);
   border-top: 1px solid var(--border);

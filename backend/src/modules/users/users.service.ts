@@ -80,6 +80,11 @@ export class UsersService {
     bidUpdates?: boolean
     outbidAlerts?: boolean
     auctionEnding?: boolean
+    auctionResult?: boolean
+    newBidAlerts?: boolean
+    orderUpdates?: boolean
+    paymentReceivedAlerts?: boolean
+    reservationUpdates?: boolean
   }) {
     const user = await this.findById(id);
     if (data.emailNotifications !== undefined) user.emailNotifications = data.emailNotifications;
@@ -87,6 +92,11 @@ export class UsersService {
     if (data.bidUpdates !== undefined) user.bidUpdates = data.bidUpdates;
     if (data.outbidAlerts !== undefined) user.outbidAlerts = data.outbidAlerts;
     if (data.auctionEnding !== undefined) user.auctionEnding = data.auctionEnding;
+    if (data.auctionResult !== undefined) user.auctionResult = data.auctionResult;
+    if (data.newBidAlerts !== undefined) user.newBidAlerts = data.newBidAlerts;
+    if (data.orderUpdates !== undefined) user.orderUpdates = data.orderUpdates;
+    if (data.paymentReceivedAlerts !== undefined) user.paymentReceivedAlerts = data.paymentReceivedAlerts;
+    if (data.reservationUpdates !== undefined) user.reservationUpdates = data.reservationUpdates;
     return this.userRepo.save(user);
   }
 }

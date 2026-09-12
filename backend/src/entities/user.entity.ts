@@ -68,7 +68,7 @@ export class User {
   @Column({ nullable: true })
   lastLoginAt: Date
 
-  // 通知設置
+  // 通知設置（舊渠道欄位 — 保留相容，UI 已改為事件分組）
   @Column({ type: 'boolean', default: true })
   emailNotifications: boolean
 
@@ -83,6 +83,22 @@ export class User {
 
   @Column({ type: 'boolean', default: true })
   auctionEnding: boolean
+
+  // 通知設置（新 — 事件分組，純站內通知）
+  @Column({ type: 'boolean', default: true })
+  auctionResult: boolean
+
+  @Column({ type: 'boolean', default: true })
+  newBidAlerts: boolean
+
+  @Column({ type: 'boolean', default: true })
+  orderUpdates: boolean
+
+  @Column({ type: 'boolean', default: true })
+  paymentReceivedAlerts: boolean
+
+  @Column({ type: 'boolean', default: true })
+  reservationUpdates: boolean
 
   // 賣家取貨資訊
   @Column({ type: 'varchar', length: 2000, nullable: true })

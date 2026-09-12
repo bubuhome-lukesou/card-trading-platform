@@ -1,13 +1,15 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, onMounted, onUnmounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
+import { useNotificationStore } from '@/stores/notifications'
 
 const { t } = useI18n()
 const router = useRouter()
 const route = useRoute()
 const authStore = useAuthStore()
+const notifStore = useNotificationStore()
 const sidebarOpen = ref(false)
 
 const navItems = [
@@ -16,6 +18,7 @@ const navItems = [
   { path: '/seller/auctions', name: 'auctions', icon: '🔨', label: 'seller.auctions' },
   { path: '/seller/orders', name: 'orders', icon: '📋', label: 'seller.orders' },
   { path: '/seller/earnings', name: 'earnings', icon: '💰', label: 'seller.earnings' },
+  { path: '/seller/notifications', name: 'notifications', icon: '🔔', label: '通知中心' },
   { path: '/seller/settings', name: 'settings', icon: '⚙️', label: 'seller.settings' },
 ]
 
@@ -23,9 +26,18 @@ const isActive = (path: string) => route.path === path
 
 const handleLogout = async () => {
   sidebarOpen.value = false
+  notifStore.stopPolling()
   await authStore.logout()
   router.push('/')
 }
+
+onMounted(() => {
+  notifStore.startPolling()
+})
+
+onUnmounted(() => {
+  notifStore.stopPolling()
+})
 </script>
 
 <template>
@@ -40,6 +52,7 @@ const handleLogout = async () => {
         <router-link v-for="item in navItems" :key="item.path" :to="item.path" class="nav-item" :class="{ active: isActive(item.path) }">
           <span class="nav-icon">{{ item.icon }}</span>
           <span class="nav-label">{{ t(item.label) }}</span>
+          <span v-if="item.name === 'notifications' && notifStore.unreadCount > 0" class="notif-badge">{{ notifStore.unreadCount > 99 ? '99+' : notifStore.unreadCount }}</span>
         </router-link>
       </nav>
       <div class="sidebar-footer">
@@ -209,6 +222,18 @@ const handleLogout = async () => {
 
 .nav-label {
   font-weight: 500;
+}
+
+.notif-badge {
+  margin-left: auto;
+  background: var(--primary);
+  color: white;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 10px;
+  min-width: 18px;
+  text-align: center;
 }
 
 .nav-item.logout:hover {

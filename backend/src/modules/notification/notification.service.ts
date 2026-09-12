@@ -1,153 +1,124 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common'
+import { InjectRepository } from '@nestjs/typeorm'
+import { Repository } from 'typeorm'
+import { AppNotification, NotificationType } from '../../entities/notification.entity'
+import { User } from '../../entities/user.entity'
 
-export interface NotificationPayload {
-  userId: string;
-  channel: 'email' | 'wechat' | 'in_app';
-  template: 'auction_bid' | 'auction_outbid' | 'auction_won' | 'order_created' | 'order_shipped' | 'order_completed';
-  data: {
-    username?: string;
-    auctionTitle?: string;
-    bidAmount?: number;
-    orderId?: string;
-    [key: string]: any;
-  };
+export interface NotifyInput {
+  userId: string
+  type: NotificationType
+  title: string
+  message: string
+  link?: string
 }
 
 @Injectable()
 export class NotificationService {
-  private readonly logger = new Logger('NotificationService');
+  private readonly logger = new Logger('NotificationService')
+
+  constructor(
+    @InjectRepository(AppNotification)
+    private notificationRepo: Repository<AppNotification>,
+    @InjectRepository(User)
+    private userRepo: Repository<User>,
+  ) {}
 
   /**
-   * Send notification (placeholder - actual implementation pending)
-   * 
-   * TODO:
-   * - Email: Integrate with Gmail SMTP
-   * - WeChat: Integrate with WeChat Work API
+   * 建立站內通知（檢查用戶通知偏好）
+   * 失敗不會拋出 — 通知系統故障不應影響主業務流程
    */
-  async send(payload: NotificationPayload): Promise<boolean> {
-    this.logger.log(`Sending ${payload.channel} notification to user ${payload.userId}`);
-
+  async notify(input: NotifyInput): Promise<void> {
     try {
-      switch (payload.channel) {
-        case 'email':
-          return await this.sendEmail(payload);
-        case 'wechat':
-          return await this.sendWeChat(payload);
-        case 'in_app':
-          return await this.sendInApp(payload);
-        default:
-          return false;
-      }
-    } catch (error) {
-      this.logger.error(`Failed to send notification: ${error.message}`);
-      return false;
+      // 檢查用戶是否開啟了此類通知
+      const enabled = await this.isTypeEnabled(input.userId, input.type)
+      if (!enabled) return
+
+      const notification = this.notificationRepo.create({
+        userId: input.userId,
+        type: input.type,
+        title: input.title,
+        message: input.message,
+        link: input.link || null,
+        isRead: false,
+      })
+      await this.notificationRepo.save(notification)
+    } catch (err) {
+      this.logger.error(`[Notify] Failed to create notification for ${input.userId}: ${err?.message || err}`)
     }
   }
 
   /**
-   * 📧 Send email notification
-   * 
-   * TODO: Implement Gmail SMTP integration
-   * 
-   * Required env vars:
-   *   GMAIL_CLIENT_ID
-   *   GMAIL_CLIENT_SECRET  
-   *   GMAIL_REFRESH_TOKEN
+   * 檢查用戶是否啟用某類通知（從用戶偏好欄位映射）
    */
-  private async sendEmail(payload: NotificationPayload): Promise<boolean> {
-    // Placeholder implementation
-    this.logger.warn(`[EMAIL] Would send "${payload.template}" email to ${payload.userId}`);
-    
-    // Future implementation:
-    // const emailService = new GmailService({
-    //   clientId: process.env.GMAIL_CLIENT_ID,
-    //   clientSecret: process.env.GMAIL_CLIENT_SECRET,
-    //   refreshToken: process.env.GMAIL_REFRESH_TOKEN,
-    // });
-    // 
-    // const templates = {
-    //   auction_bid: { subject: '🔨 New bid on your auction', body: '...' },
-    //   auction_outbid: { subject: '⚠️ You\'ve been outbid!', body: '...' },
-    //   auction_won: { subject: '🎉 Congratulations! You won!', body: '...' },
-    //   order_created: { subject: '📦 Order confirmed', body: '...' },
-    // };
-    // 
-    // return await emailService.send({
-    //   to: payload.userId,
-    //   ...templates[payload.template],
-    // });
+  private async isTypeEnabled(userId: string, type: NotificationType): Promise<boolean> {
+    const user = await this.userRepo.findOne({ where: { id: userId } })
+    if (!user) return false
 
-    return true;
+    switch (type) {
+      // 拍賣事件
+      case NotificationType.OUTBID:
+        return user.outbidAlerts !== false // 默認開
+      case NotificationType.AUCTION_ENDING:
+        return user.auctionEnding !== false
+      case NotificationType.AUCTION_RESULT:
+        return user.auctionResult !== false
+      case NotificationType.NEW_BID:
+        return user.newBidAlerts !== false
+      // 交易事件
+      case NotificationType.ORDER_UPDATE:
+        return user.orderUpdates !== false
+      case NotificationType.PAYMENT_RECEIVED:
+        return user.paymentReceivedAlerts !== false
+      case NotificationType.RESERVATION_UPDATE:
+        return user.reservationUpdates !== false
+      default:
+        return true
+    }
   }
 
-  /**
-   * 💬 Send WeChat Work notification
-   * 
-   * TODO: Implement WeChat Work API integration
-   * 
-   * Required env vars:
-   *   WECHAT_AGENT_ID
-   *   WECHAT_CORP_ID
-   *   WECHAT_CORP_SECRET
-   */
-  private async sendWeChat(payload: NotificationPayload): Promise<boolean> {
-    // Placeholder implementation
-    this.logger.warn(`[WECHAT] Would send "${payload.template}" message to ${payload.userId}`);
-    
-    // Future implementation:
-    // const wechatService = new WeChatWorkService({
-    //   agentId: process.env.WECHAT_AGENT_ID,
-    //   corpId: process.env.WECHAT_CORP_ID,
-    //   corpSecret: process.env.WECHAT_CORP_SECRET,
-    // });
-    // 
-    // const message = this.buildWeChatMessage(payload);
-    // return await wechatService.sendMessage(payload.userId, message);
-
-    return true;
+  /** 用戶通知列表（分頁） */
+  async findByUser(userId: string, page = 1, limit = 20) {
+    const [data, total] = await this.notificationRepo.findAndCount({
+      where: { userId },
+      order: { createdAt: 'DESC' },
+      skip: (page - 1) * limit,
+      take: limit,
+    })
+    const unread = await this.notificationRepo.count({ where: { userId, isRead: false } })
+    return { data, total, unread, page, limit }
   }
 
-  /**
-   * 🔔 Send in-app notification
-   */
-  private async sendInApp(payload: NotificationPayload): Promise<boolean> {
-    // Store in Redis or database for real-time delivery via WebSocket
-    this.logger.log(`[IN-APP] Notification stored for ${payload.userId}: ${payload.template}`);
-    return true;
+  /** 未讀數量（鈴鐺紅點輪詢用） */
+  async getUnreadCount(userId: string): Promise<number> {
+    return this.notificationRepo.count({ where: { userId, isRead: false } })
   }
 
-  /**
-   * Build WeChat Work message from template
-   */
-  private buildWeChatMessage(payload: NotificationPayload): any {
-    const messageBuilders = {
-      auction_bid: () => ({
-        msgtype: 'text',
-        text: {
-          content: `🔨 您关注的拍卖有新出价！\n\n商品: ${payload.data.auctionTitle}\n金额: HK$ ${payload.data.bidAmount}\n时间: ${new Date().toLocaleString('zh-CN')}`,
-        },
-      }),
-      auction_outbid: () => ({
-        msgtype: 'text',
-        text: {
-          content: `⚠️ 您已被超越！\n\n商品: ${payload.data.auctionTitle}\n当前最高: HK$ ${payload.data.bidAmount}\n\n快去加价吧！`,
-        },
-      }),
-      auction_won: () => ({
-        msgtype: 'news',
-        news: {
-          articles: [
-            {
-              title: '🎉 恭喜中标！',
-              description: `您以 HK$ ${payload.data.bidAmount} 成功拍得「${payload.data.auctionTitle}」`,
-              url: `${process.env.FRONTEND_URL}/user/orders`,
-            },
-          ],
-        },
-      }),
-    };
+  /** 標記單一通知已讀 */
+  async markRead(userId: string, notificationId: string) {
+    await this.notificationRepo.update(
+      { id: notificationId, userId },
+      { isRead: true }
+    )
+    return { success: true }
+  }
 
-    const builder = messageBuilders[payload.template as keyof typeof messageBuilders];
-    return builder ? builder() : { msgtype: 'text', text: { content: payload.data.message || '' } };
+  /** 全部標記已讀 */
+  async markAllRead(userId: string) {
+    await this.notificationRepo.update(
+      { userId, isRead: false },
+      { isRead: true }
+    )
+    return { success: true }
+  }
+
+  /** 清理 30 天前已讀通知 */
+  async cleanupOld() {
+    const cutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+    const result = await this.notificationRepo
+      .createQueryBuilder()
+      .delete()
+      .where('isRead = :isRead AND createdAt < :cutoff', { isRead: true, cutoff })
+      .execute()
+    return result
   }
 }
