@@ -53,6 +53,10 @@ export class User {
   // 透過 DB 遷移加 unique index，entity 層加索引定義
   // （unique: true 會在 synchronize 模式自動建立；生產環境靠手動遷移）
 
+  // Google OAuth 登入標識（Google 帳號唯一 ID）
+  @Column({ nullable: true, unique: true })
+  googleId: string
+
   @Column({ nullable: true })
   @Exclude()
   emailVerificationToken: string

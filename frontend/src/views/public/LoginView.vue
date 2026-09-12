@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { RouterLink, useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
@@ -151,6 +151,69 @@ const handleSubmit = async () => {
 
   loading.value = false
 }
+
+// ===== Google 登入（GIS SDK）=====
+declare const google: any
+const GOOGLE_CLIENT_ID = 'REPLACE_WITH_GOOGLE_CLIENT_ID' // 部署時由 .env VITE_GOOGLE_CLIENT_ID 注入
+const clientId = (import.meta as any).env?.VITE_GOOGLE_CLIENT_ID || GOOGLE_CLIENT_ID
+const googleSdkReady = ref(false)
+const googleError = ref('')
+
+const handleGoogleCredential = async (response: any) => {
+  googleError.value = ''
+  try {
+    const res = await api.post('/auth/google', { credential: response.credential })
+    const result = res.data
+    if (result.accessToken) {
+      authStore.setPhoneLogin(result) // 同樣格式：{user, accessToken}，復用 setter
+      redirectAfterLogin()
+    }
+  } catch (err: any) {
+    googleError.value = err.response?.data?.message || 'Google 登入失敗，請重試'
+  }
+}
+
+const renderGoogleButton = () => {
+  try {
+    google.accounts.id.initialize({
+      client_id: clientId,
+      callback: handleGoogleCredential,
+      auto_select: false,
+      cancel_on_tap_outside: true,
+    })
+    google.accounts.id.renderButton(
+      document.getElementById('googleBtnContainer'),
+      { theme: 'filled_blue', size: 'large', width: 380, text: 'continue_with', locale: locale.value === 'zh' ? 'zh-HK' : 'en' }
+    )
+    googleSdkReady.value = true
+  } catch (e) {
+    console.error('Google button render failed:', e)
+  }
+}
+
+// 動態載入 GIS SDK，成功後渲染按鈕
+const loadGoogleSdk = () => {
+  if (document.getElementById('google-gis-script')) return
+  const s = document.createElement('script')
+  s.id = 'google-gis-script'
+  s.src = 'https://accounts.google.com/gsi/client'
+  s.async = true
+  s.defer = true
+  s.onload = renderGoogleButton
+  s.onerror = () => { googleError.value = 'Google 服務載入失敗' }
+  document.head.appendChild(s)
+}
+
+const initGoogleBtn = () => {
+  if (googleSdkReady) return
+  if ((window as any).google?.accounts?.id) renderGoogleButton()
+  else loadGoogleSdk()
+}
+
+onMounted(() => {
+  // 僅在配置了 Client ID 時載入（避免未配置時報錯）
+  if (clientId && !clientId.startsWith('REPLACE')) initGoogleBtn()
+})
 </script>
 
 <template>
@@ -250,6 +313,19 @@ const handleSubmit = async () => {
           {{ locale === 'zh' ? '未註冊的手機號將自動創建帳號' : 'New phone numbers will be auto-registered' }}
         </p>
       </form>
+
+      <!-- Google 登入分隔線 + 按鈕 -->
+      <div class="google-divider">
+        <span>{{ locale === 'zh' ? '或' : 'or' }}</span>
+      </div>
+      <div class="google-btn-wrap">
+        <div id="googleBtnContainer"></div>
+        <button v-if="!googleSdkReady" class="btn-google-fallback" @click="initGoogleBtn">
+          <svg width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M23.49 12.27c0-.79-.07-1.54-.19-2.27H12v4.51h6.47c-.29 1.48-1.14 2.73-2.4 3.58v3h3.86c2.26-2.09 3.56-5.17 3.56-8.82z"/><path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.86-3c-1.08.72-2.45 1.16-4.07 1.16-3.13 0-5.78-2.11-6.73-4.96H1.29v3.09C3.26 21.3 7.31 24 12 24z"/><path fill="#FBBC05" d="M5.27 14.29c-.25-.72-.38-1.49-.38-2.29s.14-1.57.38-2.29V6.62H1.29C.47 8.24 0 10.06 0 12s.47 3.78 1.29 5.38l3.98-3.09z"/><path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.31 0 3.26 2.7 1.29 6.62l3.98 3.09c.95-2.85 3.6-4.96 6.73-4.96z"/></svg>
+          {{ locale === 'zh' ? '以 Google 帳號繼續' : 'Continue with Google' }}
+        </button>
+        <p v-if="googleError" class="google-error">{{ googleError }}</p>
+      </div>
 
       <div class="login-footer">
         <p>
@@ -472,5 +548,68 @@ const handleSubmit = async () => {
       text-decoration: underline;
     }
   }
+}
+
+/* Google 登入 */
+.google-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: var(--space-6) 0;
+
+  &::before,
+  &::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  span {
+    color: var(--text-muted);
+    font-size: var(--text-xs);
+  }
+}
+
+.google-btn-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+
+  #googleBtnContainer {
+    min-height: 44px;
+    display: flex;
+    justify-content: center;
+    width: 100%;
+  }
+}
+
+.btn-google-fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  padding: 12px 16px;
+  background: #fff;
+  color: #1f1f1f;
+  border: 1px solid #dadce0;
+  border-radius: var(--radius-lg);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+
+  &:hover {
+    background: #f8f9fa;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+  }
+}
+
+.google-error {
+  color: var(--danger);
+  font-size: var(--text-xs);
+  text-align: center;
 }
 </style>

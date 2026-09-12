@@ -1,5 +1,11 @@
 import { IsEmail, IsString, MinLength, MaxLength, IsOptional, IsEnum, IsObject } from 'class-validator'
 
+export class GoogleLoginDto {
+  // Google Identity Services 返回嘅 ID token（credential）
+  @IsString()
+  credential: string
+}
+
 export class LoginDto {
   @IsEmail()
   email: string

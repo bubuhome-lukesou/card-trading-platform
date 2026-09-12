@@ -1,6 +1,6 @@
 import { Controller, Post, Body, Get, UseGuards, Request } from '@nestjs/common'
 import { AuthService } from './auth.service'
-import { LoginDto, RegisterDto, SendCodeDto, PhoneLoginDto } from './dto/auth.dto'
+import { LoginDto, RegisterDto, SendCodeDto, PhoneLoginDto, GoogleLoginDto } from './dto/auth.dto'
 import { JwtAuthGuard } from './guards/jwt-auth.guard'
 
 @Controller('auth')
@@ -27,6 +27,12 @@ export class AuthController {
   @Post('phone-login')
   async phoneLogin(@Body() dto: PhoneLoginDto) {
     return this.authService.phoneLogin(dto)
+  }
+
+  // Google OAuth 登入（GIS credential 換 JWT）
+  @Post('google')
+  async googleLogin(@Body() dto: GoogleLoginDto) {
+    return this.authService.googleLogin(dto)
   }
 
   @UseGuards(JwtAuthGuard)
