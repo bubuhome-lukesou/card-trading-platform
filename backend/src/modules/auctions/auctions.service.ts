@@ -59,6 +59,79 @@ export class AuctionsService {
     }
   }
 
+  // 🔔 Cron：拍賣將結束通知（剩 ≤10 分鐘、有出價、未通知過）— 每場拍賣只通知一次
+  @Cron('* * * * *')
+  async notifyAuctionEnding() {
+    const now = new Date()
+    const tenMinLater = new Date(now.getTime() + 10 * 60 * 1000)
+    const elevenMinLater = new Date(now.getTime() + 11 * 60 * 1000)
+
+    try {
+      // ACTIVE + endTime 落喺 (now, now+10min] 區間 + 尚未通知過
+      const endingAuctions = await this.auctionRepo.find({
+        where: {
+          status: AuctionStatus.ACTIVE,
+          endingNotified: false,
+          endTime: LessThanOrEqual(tenMinLater),
+        },
+        relations: ['product'],
+      })
+
+      for (const auction of endingAuctions) {
+        // endTime 必須未過（否則留俾 endExpiredAuctions 處理）
+        if (auction.endTime <= now) continue
+
+        // 只通知有出價者嘅拍賣；冇出價冇競爭，唔使催
+        if (auction.bidCount <= 0) {
+          continue
+        }
+
+        const productTitle = auction.product?.titleZh || auction.product?.titleEn || '拍賣商品'
+        const minutesLeft = Math.max(1, Math.ceil((auction.endTime.getTime() - now.getTime()) / 60000))
+
+        // 所有出價過嘅人（DISTINCT，避免同一人多次出價收到多條）
+        const bidders = await this.bidRepo
+          .createQueryBuilder('bid')
+          .select('DISTINCT bid.bidderId', 'bidderId')
+          .where('bid.auctionId = :auctionId', { auctionId: auction.id })
+          .getRawMany()
+
+        for (const row of bidders) {
+          await this.notificationService.notify({
+            userId: row.bidderId,
+            type: NotificationType.AUCTION_ENDING,
+            title: '拍賣即將結束',
+            message: `「${productTitle}」拍賣將於 ${minutesLeft} 分鐘後結束，目前最高價 MOP $${auction.currentPrice}，把握最後機會！`,
+            link: `/auction/${auction.id}`,
+          })
+        }
+
+        // 賣家：知自己拍賣就嚟結算
+        await this.notificationService.notify({
+          userId: auction.sellerId,
+          type: NotificationType.AUCTION_ENDING,
+          title: '您的拍賣即將結束',
+          message: `「${productTitle}」將於 ${minutesLeft} 分鐘後結束，目前最高價 MOP $${auction.currentPrice}`,
+          link: `/auction/${auction.id}`,
+        })
+
+        // 標記已通知（先 atomic 更新再繼續，防止 cron 重啟重複發送）
+        await this.auctionRepo
+          .createQueryBuilder()
+          .update(Auction)
+          .set({ endingNotified: true })
+          .where('id = :id AND endingNotified = :flag', { id: auction.id, flag: false })
+          .execute()
+      }
+
+      if (endingAuctions.length > 0) {
+        console.log(`[Cron] Sent ending-soon notifications for ${endingAuctions.length} auctions`)
+      }
+    } catch (err) {
+      console.error('[Cron] notifyAuctionEnding failed:', err)
+    }
+  }
+
   // Cron job to end expired auctions every minute
   @Cron('* * * * *')
   async endExpiredAuctions() {

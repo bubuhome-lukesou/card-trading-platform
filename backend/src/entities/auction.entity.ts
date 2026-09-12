@@ -63,6 +63,10 @@ export class Auction {
   @Column({ type: 'enum', enum: AuctionStatus, default: AuctionStatus.PENDING })
   status: AuctionStatus
 
+  // 🔔 拍賣將結束通知已發送（每場只通知一次，防重複轟炸）
+  @Column({ default: false })
+  endingNotified: boolean
+
   @Column({ default: 0 })
   bidCount: number
 
