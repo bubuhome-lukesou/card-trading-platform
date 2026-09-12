@@ -17,7 +17,6 @@ interface Transaction {
 
 // P3: Use real balance from auth store
 const balance = computed(() => Number(authStore.user?.balance) || 0)
-const pendingBalance = ref(0)
 const loading = ref(true)
 const transactions = ref<Transaction[]>([])
 const showWithdrawModal = ref(false)
@@ -160,12 +159,7 @@ onMounted(() => {
       <div class="balance-card primary">
         <div class="balance-label">總餘額</div>
         <div class="balance-value">{{ formatPrice(balance) }}</div>
-        <div class="balance-hint">可提現</div>
-      </div>
-      <div class="balance-card">
-        <div class="balance-label">待確認</div>
-        <div class="balance-value secondary">{{ formatPrice(pendingBalance) }}</div>
-        <div class="balance-hint">預計 7 天後到賬</div>
+        <div class="balance-hint">充值及提現功能即將推出</div>
       </div>
     </div>
 
@@ -307,7 +301,7 @@ onMounted(() => {
 
 .balance-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: 1fr;
   gap: var(--space-4);
 }
 

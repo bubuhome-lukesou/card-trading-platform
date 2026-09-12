@@ -12,11 +12,9 @@ const stats = computed(() => {
   const completed = orders.value.filter(o => ['paid', 'shipped', 'delivered'].includes(o.status))
   const pending = orders.value.filter(o => o.status === 'pending_paid')
   const totalEarned = completed.reduce((sum, o) => sum + (o.totalPrice || 0), 0)
-  const platformFee = Math.round(totalEarned * 0.05)
   return {
     totalEarnings: totalEarned,
     pendingBalance: pending.reduce((sum, o) => sum + (o.totalPrice || 0), 0),
-    availableBalance: totalEarned - platformFee,
     totalOrders: completed.length,
   }
 })
@@ -29,8 +27,6 @@ const transactions = computed(() => {
       orderNumber: o.orderNumber,
       productTitle: o.product?.title || '-',
       amount: o.totalPrice || 0,
-      fee: Math.round((o.totalPrice || 0) * 0.05),
-      netAmount: Math.round((o.totalPrice || 0) * 0.95),
       status: o.status === 'delivered' ? 'completed' : 'pending',
       createdAt: o.createdAt,
     }))
@@ -81,14 +77,6 @@ onMounted(() => loadData())
         <div class="stat-value">{{ formatPrice(stats.pendingBalance) }}</div>
         <div class="stat-meta">買家付款後到帳</div>
       </div>
-      <div class="stat-card success">
-        <div class="stat-header">
-          <span class="stat-label">可提現</span>
-          <span class="stat-icon">✅</span>
-        </div>
-        <div class="stat-value">{{ formatPrice(stats.availableBalance) }}</div>
-        <div class="stat-meta">提現功能即將推出</div>
-      </div>
     </div>
 
     <!-- Transaction History -->
@@ -103,8 +91,6 @@ onMounted(() => loadData())
               <th>訂單號</th>
               <th>商品</th>
               <th>銷售額</th>
-              <th>平台費 (5%)</th>
-              <th>實際收入</th>
               <th>狀態</th>
               <th>日期</th>
             </tr>
@@ -114,8 +100,6 @@ onMounted(() => loadData())
               <td class="order-number">{{ tx.orderNumber }}</td>
               <td class="product-title">{{ tx.productTitle }}</td>
               <td class="amount">{{ formatPrice(tx.amount) }}</td>
-              <td class="fee">-{{ formatPrice(tx.fee) }}</td>
-              <td class="net-amount">{{ formatPrice(tx.netAmount) }}</td>
               <td>
                 <span class="status-badge" :class="tx.status">
                   {{ tx.status === 'completed' ? '已完成' : '處理中' }}
@@ -158,9 +142,7 @@ td { font-size: var(--text-sm); color: var(--text-primary); }
 tr:last-child td { border-bottom: none; }
 .order-number { font-family: var(--font-num); font-size: var(--text-xs); color: var(--text-muted); }
 .product-title { max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.amount, .fee, .net-amount { font-family: var(--font-num); }
-.fee { color: var(--text-secondary); }
-.net-amount { font-weight: 700; color: #10b981; }
+.amount { font-family: var(--font-num); font-weight: 700; color: #10b981; }
 .status-badge { padding: 2px 8px; border-radius: var(--radius-full); font-size: var(--text-xs); font-weight: 500; }
 .status-badge.completed { background: #10b9814d; color: #10b981; }
 .status-badge.pending { background: #f59e0b4d; color: #f59e0b; }
