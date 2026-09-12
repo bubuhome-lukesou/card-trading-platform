@@ -118,17 +118,16 @@ export class AuthService {
         suffix++
       }
 
-      // 生成唯一 email（手機用戶不需要真實 email）
-      const fakeEmail = `phone_${fullPhone.replace('+', '')}@phone.card`
-
+      // 手機註冊用戶：email 留空（nullable），不造假佔位 email
+      // 日後可自行綁定真實郵箱
       user = this.userRepo.create({
-        email: fakeEmail,
+        email: null,
         nickname: uniqueNickname,
         phone: fullPhone,
         password: await bcrypt.hash(Math.random().toString(36), 10),
         role: UserRole.USER,
         status: UserStatus.ACTIVE,
-        emailVerified: true,  // 手機已驗證
+        emailVerified: false,  // 郵箱未綁定未驗證（手機驗證由驗證碼登入本身保證）
       })
       await this.userRepo.save(user)
     }
@@ -152,7 +151,7 @@ export class AuthService {
   }
 
   private generateToken(user: User): string {
-    const payload = { sub: user.id, email: user.email, role: user.role }
+    const payload = { sub: user.id, email: user.email || null, role: user.role }
     return this.jwtService.sign(payload)
   }
 

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
 import api from '@/api'
@@ -13,6 +13,21 @@ const formData = ref({
   nickname: '',
   email: '',
   phone: '',
+})
+
+// 郵箱顯示：空值顯示佔位；掩碼顯示保護隱私
+const emailDisplay = computed(() => {
+  const e = formData.value.email
+  if (!e) return zh() ? '未綁定' : 'Not linked'
+  return e
+})
+
+// 手機顯示：+8536xxxxx1315 掩碼格式
+const phoneDisplay = computed(() => {
+  const p = formData.value.phone
+  if (!p) return zh() ? '未綁定' : 'Not linked'
+  if (p.length > 6) return `${p.slice(0, 4)}****${p.slice(-3)}`
+  return p
 })
 
 const passwordData = ref({
@@ -150,16 +165,20 @@ onMounted(() => {
       <div class="settings-card">
         <div class="form-grid">
           <div class="form-group">
-            <label>{{ zh() ? '暱稱' : 'Nickname' }}</label>
-            <input v-model="formData.nickname" type="text" />
-          </div>
-          <div class="form-group">
             <label>{{ zh() ? '郵箱' : 'Email' }}</label>
-            <input :value="formData.email" type="email" disabled :placeholder="zh() ? '未設定' : 'Not set'" />
+            <input :value="emailDisplay" type="email" disabled />
+            <p v-if="!formData.email" class="field-hint">{{ zh() ? '未綁定郵箱（手機帳號）' : 'Not linked (phone account)' }}</p>
+            <p v-else class="field-hint">{{ zh() ? '電郵為登入帳號，如需更改請聯繫客服' : 'Email is your login account. Contact support to change it' }}</p>
           </div>
           <div class="form-group">
             <label>{{ zh() ? '電話' : 'Phone' }}</label>
-            <input v-model="formData.phone" type="tel" :placeholder="zh() ? '未設定' : 'Not set'" />
+            <input :value="phoneDisplay" type="tel" :disabled="!formData.phone" />
+            <p v-if="formData.phone" class="field-hint">{{ zh() ? '手機號可用於驗證碼登入，如需更改請聯繫客服' : 'Phone can be used for SMS login. Contact support to change it' }}</p>
+            <p v-else class="field-hint">{{ zh() ? '未綁定手機號碼' : 'No phone bound' }}</p>
+          </div>
+          <div class="form-group">
+            <label>{{ zh() ? '暱稱' : 'Nickname' }}</label>
+            <input v-model="formData.nickname" type="text" />
           </div>
         </div>
         <button @click="handleProfileUpdate" class="btn-save" :disabled="loading">
@@ -386,6 +405,12 @@ onMounted(() => {
 .form-group input:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+.field-hint {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  margin-top: 2px;
 }
 
 .btn-save {

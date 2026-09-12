@@ -26,7 +26,8 @@ export class User {
   @PrimaryGeneratedColumn('uuid')
   id: string
 
-  @Column({ unique: true })
+  // nullable：手機驗證碼註冊的用戶可能未綁定郵箱（對齊主流平台做法）
+  @Column({ unique: true, nullable: true })
   email: string
 
   @Column({ unique: true })
@@ -47,6 +48,10 @@ export class User {
 
   @Column({ nullable: true })
   phone: string
+
+  // 手機號唯一索引（phoneLogin 以此查找用戶，防止同一號碼多帳號）
+  // 透過 DB 遷移加 unique index，entity 層加索引定義
+  // （unique: true 會在 synchronize 模式自動建立；生產環境靠手動遷移）
 
   @Column({ nullable: true })
   @Exclude()

@@ -3,7 +3,7 @@ import { ref, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { RouterLink, useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
-import { LogIn, Phone, KeyRound, Mail } from 'lucide-vue-next'
+import { LogIn, KeyRound } from 'lucide-vue-next'
 import api from '@/api'
 
 const { t, locale } = useI18n()
@@ -25,11 +25,14 @@ const redirectAfterLogin = () => {
   }
 }
 
-// Tab 切換：手機登入 / 電郵登入
-const activeTab = ref<'phone' | 'email'>('phone')
+// ===== 淘寶式智能登入：一個帳號框自動識別郵箱 / 手機 =====
+// 帳號框輸入含 "@" → 電郵登入（顯示密碼欄）
+// 純數字/區號 → 手機登入（顯示區號選擇 + 驗證碼欄）
+const account = ref('')
+const isEmailMode = computed(() => account.value.includes('@'))
+const isPhoneMode = computed(() => !account.value.includes('@') && account.value.trim().length > 0)
 
 // 電郵登入
-const email = ref('')
 const password = ref('')
 const loading = ref(false)
 const error = ref('')
@@ -42,7 +45,10 @@ const regions = [
   { code: '+86',  label: locale.value === 'zh' ? '大陸 +86' : 'Mainland China +86' },
 ]
 const selectedRegion = ref('+853')
-const phone = ref('')
+const phone = computed({
+  get: () => account.value.replace(/^\+?\d{1,4}\s*/, ''),
+  set: (val: string) => { account.value = val },
+})
 const code = ref('')
 const codeSent = ref(false)
 const countdown = ref(0)
@@ -129,7 +135,7 @@ const handleSubmit = async () => {
   error.value = ''
   loading.value = true
 
-  const success = await authStore.login({ email: email.value, password: password.value })
+  const success = await authStore.login({ email: account.value.trim(), password: password.value })
 
   if (!success) {
     error.value = authStore.error || 'Login failed'
@@ -149,53 +155,42 @@ const handleSubmit = async () => {
         <p class="login-subtitle">{{ t('app.tagline') }}</p>
       </div>
 
-      <!-- Tab 切換 -->
-      <div class="login-tabs">
-        <button
-          class="login-tab"
-          :class="{ active: activeTab === 'phone' }"
-          @click="activeTab = 'phone'"
-        >
-          <Phone :size="16" />
-          {{ locale === 'zh' ? '手機登入' : 'Phone Login' }}
-        </button>
-        <button
-          class="login-tab"
-          :class="{ active: activeTab === 'email' }"
-          @click="activeTab = 'email'"
-        >
-          <Mail :size="16" />
-          {{ locale === 'zh' ? '電郵登入' : 'Email Login' }}
-        </button>
-      </div>
-
-      <!-- 手機登入 -->
-      <form v-if="activeTab === 'phone'" class="login-form" @submit.prevent="handlePhoneLogin">
+      <!-- ===== 淘寶式智能登入：一個帳號框自動識別 ===== -->
+      <form class="login-form" @submit.prevent="isEmailMode ? handleSubmit() : handlePhoneLogin()">
+        <div v-if="error" class="error-alert">{{ error }}</div>
         <div v-if="phoneError" class="error-alert">{{ phoneError }}</div>
         <div v-if="phoneSuccess" class="success-alert">{{ phoneSuccess }}</div>
 
-        <!-- 區號 + 手機號 -->
-        <div class="phone-row">
-          <div class="input-group region-group">
-            <label class="input-label">{{ locale === 'zh' ? '區號' : 'Region' }}</label>
-            <select v-model="selectedRegion" class="input region-select">
-              <option v-for="r in regions" :key="r.code" :value="r.code">{{ r.label }}</option>
+        <!-- 帳號輸入框（email 或手機號，自動識別） -->
+        <div class="input-group">
+          <label class="input-label">{{ locale === 'zh' ? '帳號' : 'Account' }}</label>
+          <div class="account-row">
+            <select
+              v-if="isPhoneMode"
+              v-model="selectedRegion"
+              class="input region-select"
+            >
+              <option v-for="r in regions" :key="r.code" :value="r.code">{{ r.code }}</option>
             </select>
-          </div>
-          <div class="input-group phone-group">
-            <label class="input-label">{{ locale === 'zh' ? '手機號碼' : 'Phone Number' }}</label>
             <input
-              v-model="phone"
-              type="tel"
-              class="input"
-              :placeholder="locale === 'zh' ? '請輸入手機號碼' : 'Enter phone number'"
+              v-model="account"
+              :type="isEmailMode ? 'email' : 'tel'"
+              class="input account-input"
+              :placeholder="locale === 'zh' ? '手機號或電郵' : 'Phone or email'"
+              autocomplete="username"
               required
             />
           </div>
+          <p v-if="isPhoneMode" class="mode-hint">
+            {{ locale === 'zh' ? '📱 手機登入：將發送短信驗證碼' : '📱 Phone login: SMS code will be sent' }}
+          </p>
+          <p v-else-if="isEmailMode" class="mode-hint">
+            {{ locale === 'zh' ? '📧 電郵登入' : '📧 Email login' }}
+          </p>
         </div>
 
-        <!-- 驗證碼 -->
-        <div class="input-group">
+        <!-- 手機模式：驗證碼 -->
+        <div v-if="isPhoneMode" class="input-group">
           <label class="input-label">{{ locale === 'zh' ? '驗證碼' : 'Verification Code' }}</label>
           <div class="code-row">
             <input
@@ -218,46 +213,36 @@ const handleSubmit = async () => {
           </div>
         </div>
 
-        <button type="submit" class="btn btn-primary btn-lg" :disabled="phoneLoading">
-          <LogIn v-if="!phoneLoading" class="icon" />
-          <span v-if="phoneLoading">Loading...</span>
-          <span v-else>{{ locale === 'zh' ? '登入 / 註冊' : 'Login / Register' }}</span>
-        </button>
-
-        <p class="phone-hint">{{ locale === 'zh' ? '未註冊的手機號將自動創建帳號' : 'New phone numbers will be auto-registered' }}</p>
-      </form>
-
-      <!-- 電郵登入 -->
-      <form v-else class="login-form" @submit.prevent="handleSubmit">
-        <div v-if="error" class="error-alert">{{ error }}</div>
-
-        <div class="input-group">
-          <label class="input-label">{{ t('auth.login.email') }}</label>
-          <input
-            v-model="email"
-            type="email"
-            class="input"
-            :placeholder="t('auth.login.email')"
-            required
-          />
-        </div>
-
-        <div class="input-group">
+        <!-- 電郵模式：密碼 -->
+        <div v-if="isEmailMode" class="input-group">
           <label class="input-label">{{ t('auth.login.password') }}</label>
           <input
             v-model="password"
             type="password"
             class="input"
             :placeholder="t('auth.login.password')"
+            autocomplete="current-password"
             required
           />
         </div>
 
-        <button type="submit" class="btn btn-primary btn-lg" :disabled="loading">
-          <LogIn v-if="!loading" class="icon" />
-          <span v-if="loading">Loading...</span>
-          <span v-else>{{ t('auth.login.submit') }}</span>
+        <button
+          type="submit"
+          class="btn btn-primary btn-lg"
+          :disabled="isEmailMode ? loading : phoneLoading"
+        >
+          <LogIn v-if="!(isEmailMode ? loading : phoneLoading)" class="icon" />
+          <span v-if="isEmailMode ? loading : phoneLoading">Loading...</span>
+          <span v-else-if="isEmailMode">{{ t('auth.login.submit') }}</span>
+          <span v-else>{{ locale === 'zh' ? '登入 / 註冊' : 'Login / Register' }}</span>
         </button>
+
+        <p v-if="!account" class="phone-hint">
+          {{ locale === 'zh' ? '輸入手機號或電郵，系統自動識別登入方式' : 'Enter phone number or email — we detect the login method automatically' }}
+        </p>
+        <p v-else-if="isPhoneMode" class="phone-hint">
+          {{ locale === 'zh' ? '未註冊的手機號將自動創建帳號' : 'New phone numbers will be auto-registered' }}
+        </p>
       </form>
 
       <div class="login-footer">
@@ -310,7 +295,7 @@ const handleSubmit = async () => {
   font-size: var(--text-sm);
 }
 
-/* Tabs */
+/* Tabs（已改為智能帳號框，樣式保留備用） */
 .login-tabs {
   display: flex;
   gap: 8px;
@@ -383,27 +368,27 @@ const handleSubmit = async () => {
   color: var(--text-secondary);
 }
 
-/* Phone row — 區號和手機號各占適當寬度 */
-.phone-row {
+/* Account row — 區號選單 + 帳號輸入框（淘寶式） */
+.account-row {
   display: flex;
   gap: 10px;
   width: 100%;
 }
 
-.region-group {
-  width: 110px;
+.account-row .region-select {
+  width: 92px;
   flex-shrink: 0;
 }
 
-.phone-group {
+.account-input {
   flex: 1;
-  min-width: 0; /* 允許收縮 */
+  min-width: 0;
 }
 
-.region-select {
-  cursor: pointer;
-  appearance: auto;
-  width: 100%;
+.mode-hint {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  margin-top: 6px;
 }
 
 /* Code row — 驗證碼輸入框占大部分，按鈕固定寬度 */
