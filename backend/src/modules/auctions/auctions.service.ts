@@ -316,6 +316,27 @@ export class AuctionsService {
         queryBuilder.orderBy(filters.sellerId ? 'auction.createdAt' : 'auction.endTime', 'DESC')
     }
 
+    // B: status/hideEnded 過濾必須在分頁之前（DB 層）— 否則小 limit 時
+    // 大量 ended 拍賣佔據分頁窗口，active 被擠出 → status=active 返回 0
+    // effectiveStatus 依賴時間（PENDING 過開始時間=ACTIVE、ACTIVE 過結束時間=ENDED），
+    // 無法完全下推 SQL，所以先在 DB 層粗濾 + 在應用層精濾：
+    const now0 = new Date()
+    if (!filters.sellerId && filters.status === AuctionStatus.ACTIVE) {
+      // public 活躍拍賣：DB 條件 = (status ACTIVE 且 endTime 未過) 或 (status PENDING 且 startTime 已過)
+      queryBuilder
+        .andWhere('(auction.endTime > :now OR auction.startTime > :now)', { now: now0 })
+        .andWhere('auction.status != :cancelled', { cancelled: AuctionStatus.CANCELLED })
+    } else if (!filters.sellerId && filters.status === AuctionStatus.ENDED) {
+      queryBuilder.andWhere('(auction.status = :ended OR auction.endTime <= :now)', {
+        ended: AuctionStatus.ENDED,
+        now: now0,
+      })
+    } else if (!filters.sellerId && filters.status === AuctionStatus.PENDING) {
+      queryBuilder
+        .andWhere('auction.status = :pending', { pending: AuctionStatus.PENDING })
+        .andWhere('auction.startTime > :now', { now: now0 })
+    }
+
     const page = filters.page || 1
     const limit = filters.limit || 20
     queryBuilder.skip((page - 1) * limit).take(limit)
