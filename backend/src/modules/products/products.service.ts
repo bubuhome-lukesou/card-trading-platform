@@ -228,6 +228,17 @@ export class ProductsService {
 
     // 品相已改為選填，不再擋 create
 
+    // 售價驗證：sale 必須 >0；auction/reservation 由各自欄位（startingPrice/deposit）定價，price 可為 0
+    if (listingType === 'sale') {
+      if (dto.price === undefined || dto.price === null || Number(dto.price) <= 0) {
+        throw new BadRequestException('售價必須大於 0')
+      }
+    } else if (listingType === 'auction') {
+      if (dto.price !== undefined && dto.price !== null && dto.price < 0) {
+        throw new BadRequestException('售價不可為負數')
+      }
+    }
+
     if (listingType === 'auction') {
       if (!dto.auctionEndTime) {
         throw new BadRequestException('拍賣結束時間為必填項')

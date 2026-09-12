@@ -140,7 +140,9 @@ export class CreateProductDto {
 
   @Type(() => Number)
   @IsNumber()
-  @Min(0.01)
+  // 售價（sale 模式必須 >0，於 service 按 listingType 驗證）
+  // auction 模式以 startingPrice 為準、reservation 以 depositAmount 為準，price 可為 0
+  @Min(0)
   @Max(MAX_PRICE)
   price: number
 
@@ -262,7 +264,8 @@ export class UpdateProductDto {
   @IsOptional()
   @Type(() => Number)
   @IsNumber()
-  @Min(0.01)
+  // 同 CreateProductDto：sale >0（service 驗證）；auction/reservation 可為 0
+  @Min(0)
   @Max(MAX_PRICE)
   price?: number
 

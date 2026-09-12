@@ -260,7 +260,7 @@ watch(() => formData.value.listingType, (lt, oldLt) => {
   for (const key of Object.keys(fieldErrors.value)) {
     if (!(validKeys[lt] || []).includes(key)) delete fieldErrors.value[key]
   }
-  // 切入拍賣模式：自動填預設值（結束時間=60分鐘後、起拍價=1、直購價=0 不限）
+  // 切入拍賣模式：自動填預設值（結束時間=60分鐘後、起拍價=1、直購價=0 不限、數量鎖定=1）
   if (lt === 'auction' && oldLt !== 'auction') {
     if (!formData.value.auctionEndTime) {
       const d = new Date(Date.now() + 60 * 60 * 1000)
@@ -270,6 +270,7 @@ watch(() => formData.value.listingType, (lt, oldLt) => {
     }
     if (!formData.value.startingPrice || formData.value.startingPrice <= 0) formData.value.startingPrice = 1
     if (formData.value.price === null || formData.value.price === undefined || formData.value.price <= 0) formData.value.price = 0
+    formData.value.quantity = 1 // 拍賣商品數量固定為 1
   }
 })
 
@@ -764,13 +765,14 @@ onUnmounted(() => {
             </div>
 
             <div class="form-group">
-              <label>商品品相（選填）</label>
-              <select v-model="formData.condition">
-                <option :value="null">不指定</option>
+              <label>商品品相</label>
+              <select v-model="formData.condition" class="form-select">
+                <option :value="null">(請選擇)</option>
                 <option v-for="cond in conditions" :key="cond.value" :value="cond.value">
                   {{ cond.label }}
                 </option>
               </select>
+              <p class="field-hint">選填 — 不選將顯示為「不指定」</p>
             </div>
 
             <!-- Listing Type -->
@@ -947,18 +949,20 @@ onUnmounted(() => {
             <!-- 數量 -->
             <div class="form-group">
               <label>數量 <span class="required-mark" v-if="formData.listingType === 'sale'">*</span></label>
-              <input 
-                v-model.number="formData.quantity" 
-                type="number" 
+              <input
+                v-model.number="formData.quantity"
+                type="number"
                 min="1"
                 max="2147483647"
                 step="1"
                 placeholder="1"
+                :disabled="formData.listingType === 'auction'"
                 :class="{ 'input-error': fieldErrors.quantity }"
                 @blur="validateField('quantity')"
                 @input="validateField('quantity')"
               />
               <span v-if="fieldErrors.quantity" class="field-error-msg">{{ fieldErrors.quantity }}</span>
+              <p v-if="formData.listingType === 'auction'" class="field-hint">拍賣商品數量固定為 1</p>
             </div>
 
             <!-- Images -->

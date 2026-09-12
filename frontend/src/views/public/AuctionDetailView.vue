@@ -467,9 +467,15 @@ onUnmounted(() => {
         <!-- LEFT: 圖片 + 價格 + 計時 + 規則 + 出價 -->
         <div class="middle-section">
 
-          <!-- 圖片輪播 -->
+          <!-- 圖片輪播（與 ProductDetailView 統一：深底漸變 + contain 圖 + 縮圖條） -->
           <div class="image-gallery">
-            <div class="image-container" @touchstart="onTouchStart" @touchend="onTouchEnd">
+            <div class="image-container main-image" @touchstart="onTouchStart" @touchend="onTouchEnd">
+              <!-- Category pill (floating top-left, 同 ProductDetail) -->
+              <div class="cat-pill">
+                <span class="cat-emoji">{{ getCategoryInfo(auction.product?.category).emoji }}</span>
+                <span class="cat-text">{{ getCategoryLabel(auction.product?.category || 'other') }}</span>
+              </div>
+
               <!-- Favorite button (login required) -->
               <button
                 v-if="authStore.isAuthenticated"
@@ -483,7 +489,7 @@ onUnmounted(() => {
                 v-if="parsedImages.length > 0"
                 :src="parsedImages[currentImageIndex]"
                 :alt="auction.product?.titleEn"
-                class="product-image"
+                class="product-image hero-img"
                 @click="openLightbox"
               />
               <div v-else class="image-placeholder">🃏</div>
@@ -509,6 +515,19 @@ onUnmounted(() => {
             </template>
             <!-- 圖片計數 -->
             <span v-if="parsedImages.length > 1" class="img-counter">{{ currentImageIndex + 1 }}/{{ parsedImages.length }}</span>
+
+            <!-- Thumbnails（同 ProductDetail thumb-strip） -->
+            <div v-if="parsedImages.length > 1" class="thumb-strip">
+              <img
+                v-for="(img, idx) in parsedImages"
+                :key="idx"
+                :src="img"
+                :alt="`${getTitle(auction.product)} ${idx + 1}`"
+                class="thumb"
+                :class="{ active: idx === currentImageIndex }"
+                @click="currentImageIndex = idx"
+              />
+            </div>
           </div>
 
           <!-- 當前價格 + 剩餘時間 -->
@@ -932,9 +951,89 @@ onUnmounted(() => {
   margin-bottom: var(--space-3);
 }
 
-.image-container {
-  aspect-ratio: 1;
+/* main-image — 與 ProductDetailView 統一：深底漸變 + 靠中 */
+.image-container.main-image {
+  position: relative;
+  aspect-ratio: auto;
   width: 100%;
+  min-height: 440px;
+  background: linear-gradient(145deg, #131318 0%, #0e0e14 100%);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+}
+
+.product-image.hero-img {
+  max-width: 100%;
+  max-height: 520px;
+  object-fit: contain;
+  display: block;
+  cursor: zoom-in;
+  transition: transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  z-index: 1;
+}
+
+.product-image.hero-img:hover {
+  transform: scale(1.03);
+}
+
+/* Category pill — 同 ProductDetail 浮動左上 */
+.cat-pill {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(10, 10, 15, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--border);
+  border-radius: 100px;
+  padding: 6px 14px 6px 10px;
+  z-index: 5;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
+}
+.cat-pill .cat-emoji { font-size: 1.1rem; line-height: 1; }
+.cat-pill .cat-text { font-size: 0.75rem; font-weight: 600; color: var(--text-primary, #fff); letter-spacing: 0.03em; }
+
+/* Thumbnails — 同 ProductDetail thumb-strip */
+.thumb-strip {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-x;
+  padding: 10px 14px 12px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(129, 140, 248, 0.3) transparent;
+  scroll-behavior: smooth;
+}
+.thumb-strip::-webkit-scrollbar { height: 4px; }
+.thumb-strip::-webkit-scrollbar-thumb {
+  background: rgba(129, 140, 248, 0.3);
+  border-radius: 2px;
+}
+
+.thumb {
+  width: 76px;
+  height: 76px;
+  object-fit: cover;
+  border-radius: 10px;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  flex-shrink: 0;
+  opacity: 0.5;
+  background: #131318;
+}
+.thumb:hover { opacity: 0.85; transform: translateY(-2px); }
+.thumb.active {
+  opacity: 1;
+  border-color: var(--primary, #6366f1);
 }
 
 .product-image {
