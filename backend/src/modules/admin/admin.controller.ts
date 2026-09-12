@@ -11,6 +11,16 @@ import { AdminService } from './admin.service';
 export class AdminController {
   constructor(private adminService: AdminService) {}
 
+  @Get('stats')
+  getStats() {
+    return this.adminService.getStats();
+  }
+
+  @Get('recent-users')
+  getRecentUsers(@Query('limit') limit = '5') {
+    return this.adminService.getRecentUsers(Number(limit));
+  }
+
   @Get('users')
   getUsers(
     @Query('page') page = '1',
@@ -28,11 +38,6 @@ export class AdminController {
   @Patch('users/:id')
   updateUser(@Param('id') id: string, @Body() body: { role?: string; status?: string; nickname?: string }) {
     return this.adminService.updateUser(id, body);
-  }
-
-  @Get('stats')
-  getStats() {
-    return this.adminService.getStats();
   }
 
   @Get('settings')

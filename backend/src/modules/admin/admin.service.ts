@@ -4,6 +4,9 @@ import { Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 import { User, UserRole } from '../../entities/user.entity';
 import { Settings } from '../../entities/settings.entity';
+import { Product, ProductStatus } from '../../entities/product.entity';
+import { Order, OrderStatus, OrderType } from '../../entities/order.entity';
+import { Auction, AuctionStatus } from '../../entities/auction.entity';
 
 @Injectable()
 export class AdminService {
@@ -12,6 +15,12 @@ export class AdminService {
     private userRepo: Repository<User>,
     @InjectRepository(Settings)
     private settingsRepo: Repository<Settings>,
+    @InjectRepository(Product)
+    private productRepo: Repository<Product>,
+    @InjectRepository(Order)
+    private orderRepo: Repository<Order>,
+    @InjectRepository(Auction)
+    private auctionRepo: Repository<Auction>,
   ) {}
 
   async getUsers(page = 1, limit = 20, role?: string) {
@@ -43,7 +52,46 @@ export class AdminService {
     const totalUsers = await this.userRepo.count();
     const totalSellers = await this.userRepo.count({ where: { role: UserRole.SELLER } });
     const totalAdmins = await this.userRepo.count({ where: { role: UserRole.ADMIN } });
-    return { totalUsers, totalSellers, totalAdmins };
+
+    // 商品統計（排除軟刪除）
+    const [totalProducts, activeProducts] = await Promise.all([
+      this.productRepo.count({ where: [{ status: ProductStatus.ACTIVE }, { status: ProductStatus.SOLD }, { status: ProductStatus.ENDED }] }),
+      this.productRepo.count({ where: { status: ProductStatus.ACTIVE } }),
+    ]);
+
+    // 訂單統計 + 平台收入（已完成訂單總額）
+    const [totalOrders, pendingOrders, revenueResult] = await Promise.all([
+      this.orderRepo.count(),
+      this.orderRepo.count({ where: { status: OrderStatus.PENDING_PAID } }),
+      this.orderRepo
+        .createQueryBuilder('order')
+        .select('COALESCE(SUM(order.totalPrice), 0)', 'revenue')
+        .where('order.status = :status', { status: OrderStatus.DELIVERED })
+        .getRawOne(),
+    ]);
+
+    // 拍賣統計
+    const [totalAuctions, activeAuctions] = await Promise.all([
+      this.auctionRepo.count(),
+      this.auctionRepo.count({ where: { status: AuctionStatus.ACTIVE } }),
+    ]);
+
+    const totalRevenue = parseFloat(revenueResult?.revenue || '0');
+
+    return {
+      totalUsers, totalSellers, totalAdmins,
+      totalProducts, activeProducts,
+      totalOrders, pendingOrders, totalRevenue,
+      totalAuctions, activeAuctions,
+    };
+  }
+
+  // 最新用戶（儀表板用）
+  async getRecentUsers(limit = 5) {
+    return this.userRepo.find({
+      order: { createdAt: 'DESC' },
+      take: limit,
+    });
   }
 
   async getSettings(): Promise<Settings> {

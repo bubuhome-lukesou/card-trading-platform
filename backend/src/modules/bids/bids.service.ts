@@ -16,6 +16,7 @@ export class BidsService {
   async findByUser(userId: string, page = 1, limit = 20) {
     const [data, total] = await this.bidRepo.findAndCount({
       where: { bidderId: userId },
+      relations: ['auction', 'auction.product'],
       order: { createdAt: 'DESC' },
       skip: (page - 1) * limit,
       take: limit,

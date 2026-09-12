@@ -2,6 +2,7 @@
 import { ref, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
+import api from '@/api'
 
 const { t } = useI18n()
 const authStore = useAuthStore()
@@ -13,6 +14,7 @@ interface Bid {
   currentBid: number
   status: 'outbid' | 'winning' | 'won' | 'ended'
   endTime: string
+  auctionId: string
 }
 
 interface Order {
@@ -25,14 +27,14 @@ interface Order {
 }
 
 const stats = ref({
-  totalBids: 12,
-  activeBids: 3,
-  wonAuctions: 2,
-  totalSpent: 45600,
+  totalBids: 0,
+  activeBids: 0,
+  totalSpent: 0,
 })
 
 const recentBids = ref<Bid[]>([])
 const recentOrders = ref<Order[]>([])
+const loading = ref(true)
 
 const formatPrice = (price: number) => {
   return new Intl.NumberFormat('zh-MO', {
@@ -43,16 +45,77 @@ const formatPrice = (price: number) => {
 }
 
 const loadData = async () => {
-  recentBids.value = [
-    { id: '1', auctionTitle: 'Pokemon 1st Edition Base Set', yourBid: 12000, currentBid: 12800, status: 'outbid', endTime: '2026-04-21 18:00' },
-    { id: '2', auctionTitle: 'Yu-Gi-Oh Blue-Eyes White Dragon', yourBid: 6800, currentBid: 6800, status: 'winning', endTime: '2026-04-21 22:00' },
-    { id: '3', auctionTitle: 'MTG Black Lotus', yourBid: 25000, currentBid: 25000, status: 'won', endTime: '2026-04-22 10:00' },
-  ]
+  loading.value = true
+  try {
+    // 並行拉取：我的出價 + 我的訂單
+    const [bidsRes, ordersRes] = await Promise.all([
+      api.get('/bids/my', { params: { limit: 5 } }),
+      api.get('/orders', { params: { limit: 5 } }),
+    ])
 
-  recentOrders.value = [
-    { id: '1', orderNumber: 'ORD-2026-001', productTitle: 'Pokemon 1st Edition Base Set', amount: 12800, status: 'delivered', date: '2026-04-21' },
-    { id: '2', orderNumber: 'ORD-2026-002', productTitle: 'MTG Black Lotus', amount: 25000, status: 'shipped', date: '2026-04-22' },
-  ]
+    const bids = bidsRes.data?.data || []
+    const orders = ordersRes.data?.data || ordersRes.data || []
+
+    // 我的出價（附 auction+product 資料）
+    recentBids.value = bids.map((b: any) => {
+      const auction = b.auction || {}
+      const product = auction.product || {}
+      const now = new Date()
+      const ended = auction.endTime ? new Date(auction.endTime) < now : false
+      const isWinner = auction.winnerId === authStore.user?.id
+      let bidStatus: Bid['status'] = 'winning'
+      if (b.status === 'won' || isWinner) bidStatus = 'won'
+      else if (b.status === 'outbid' || (auction.winnerId && !isWinner)) bidStatus = 'outbid'
+      else if (ended) bidStatus = 'ended'
+      return {
+        id: b.id,
+        auctionId: b.auctionId,
+        auctionTitle: product.titleZh || product.titleEn || '拍賣商品',
+        yourBid: Number(b.amount),
+        currentBid: Number(auction.currentPrice || b.amount),
+        status: bidStatus,
+        endTime: auction.endTime || '',
+      }
+    })
+
+    // 我的訂單（近 5 單）
+    recentOrders.value = orders.slice(0, 5).map((o: any) => {
+      const product = o.product || {}
+      let images: string[] = []
+      try {
+        images = typeof product.images === 'string' ? JSON.parse(product.images) : (Array.isArray(product.images) ? product.images : [])
+      } catch {}
+      return {
+        id: o.id,
+        orderNumber: o.orderNumber,
+        productTitle: product.titleZh || product.titleEn || o.orderNumber,
+        amount: Number(o.totalPrice) || 0,
+        status: o.status,
+        date: o.createdAt,
+      }
+    })
+
+    // 統計：總出價次數/進行中出價/總消費（delivered 訂單總額）
+    const allBids = bidsRes.data?.total || 0
+    const activeBids = bids.filter((b: any) => {
+      const auction = b.auction || {}
+      const ended = auction.endTime ? new Date(auction.endTime) < new Date() : false
+      return !ended && b.status === 'active'
+    }).length
+    const totalSpent = orders
+      .filter((o: any) => ['delivered'].includes(o.status))
+      .reduce((sum: number, o: any) => sum + (Number(o.totalPrice) || 0), 0)
+
+    stats.value = {
+      totalBids: allBids,
+      activeBids,
+      totalSpent,
+    }
+  } catch (e) {
+    console.error('Failed to load dashboard:', e)
+  } finally {
+    loading.value = false
+  }
 }
 
 const getBidStatusBadge = (status: string) => {
@@ -95,13 +158,6 @@ onMounted(() => {
         </div>
       </div>
       <div class="stat-card">
-        <div class="stat-icon">🏆</div>
-        <div class="stat-content">
-          <div class="stat-value">{{ stats.wonAuctions }}</div>
-          <div class="stat-label">贏得的拍賣</div>
-        </div>
-      </div>
-      <div class="stat-card">
         <div class="stat-icon">💰</div>
         <div class="stat-content">
           <div class="stat-value">{{ formatPrice(stats.totalSpent) }}</div>
@@ -116,10 +172,10 @@ onMounted(() => {
       <div class="card">
         <div class="card-header">
           <h3>🎯 我的出價</h3>
-          <router-link to="/user/orders" class="see-all">查看全部</router-link>
         </div>
         <div class="card-body">
-          <div v-for="bid in recentBids" :key="bid.id" class="bid-item">
+          <div v-if="!recentBids.length" class="empty-row">暫無出價記錄</div>
+          <div v-for="bid in recentBids" :key="bid.id" class="bid-item" @click="$router.push(`/auction/${bid.auctionId}`)" style="cursor:pointer">
             <div class="bid-info">
               <div class="bid-title">{{ bid.auctionTitle }}</div>
               <div class="bid-meta">
@@ -143,6 +199,7 @@ onMounted(() => {
           <router-link to="/user/orders" class="see-all">查看全部</router-link>
         </div>
         <div class="card-body">
+          <div v-if="!recentOrders.length" class="empty-row">暫無訂單記錄</div>
           <div v-for="order in recentOrders" :key="order.id" class="order-item">
             <div class="order-info">
               <div class="order-title">{{ order.productTitle }}</div>
@@ -285,6 +342,18 @@ onMounted(() => {
   padding: var(--space-3);
   background: var(--bg-elevated);
   border-radius: var(--radius-lg);
+}
+
+.bid-item:hover {
+  background: var(--bg-card);
+  outline: 1px solid var(--border);
+}
+
+.empty-row {
+  text-align: center;
+  padding: var(--space-4);
+  color: var(--text-muted);
+  font-size: var(--text-sm);
 }
 
 .bid-title,

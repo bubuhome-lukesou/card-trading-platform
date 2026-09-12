@@ -1,43 +1,53 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import api from '@/api'
 
 const stats = ref({
-  totalUsers: 5234,
-  totalSellers: 342,
-  totalProducts: 1523,
-  totalAuctions: 89,
-  activeAuctions: 23,
-  totalOrders: 3456,
-  totalRevenue: 2345678,
-  pendingProducts: 12,
+  totalUsers: 0,
+  totalSellers: 0,
+  totalProducts: 0,
+  activeAuctions: 0,
+  totalOrders: 0,
+  pendingOrders: 0,
+  totalRevenue: 0,
 })
 
-const recentUsers = ref([
-  { id: '1', nickname: 'CardCollector', email: 'collector@email.com', role: 'user', status: 'active', createdAt: '2026-04-21' },
-  { id: '2', nickname: 'DragonMaster', email: 'dragon@email.com', role: 'seller', status: 'active', createdAt: '2026-04-20' },
-  { id: '3', nickname: 'MagicPlayer', email: 'magic@email.com', role: 'user', status: 'pending', createdAt: '2026-04-19' },
-])
+const recentUsers = ref<any[]>([])
+const loading = ref(true)
 
 const formatPrice = (price: number) => {
-  return new Intl.NumberFormat('zh-HK', {
+  return new Intl.NumberFormat('zh-MO', {
     style: 'currency',
-    currency: 'HKD',
+    currency: 'MOP',
     minimumFractionDigits: 0,
   }).format(price)
 }
 
 const getStatusBadge = (status: string) => {
   const map: Record<string, { class: string; text: string }> = {
-    pending: { class: 'warning', text: '待審核' },
-    approved: { class: 'success', text: '已通過' },
-    rejected: { class: 'danger', text: '已拒絕' },
     active: { class: 'success', text: '正常' },
     suspended: { class: 'danger', text: '已封禁' },
   }
   return map[status] || { class: 'default', text: status }
 }
 
-onMounted(() => {})
+const loadData = async () => {
+  loading.value = true
+  try {
+    const [statsRes, usersRes] = await Promise.all([
+      api.get('/admin/stats'),
+      api.get('/admin/recent-users', { params: { limit: 5 } }),
+    ])
+    stats.value = statsRes.data
+    recentUsers.value = usersRes.data || []
+  } catch (e) {
+    console.error('Failed to load admin dashboard:', e)
+  } finally {
+    loading.value = false
+  }
+}
+
+onMounted(() => loadData())
 </script>
 
 <template>
@@ -76,14 +86,14 @@ onMounted(() => {})
         <div class="stat-icon revenue">💰</div>
         <div class="stat-content">
           <div class="stat-value">{{ formatPrice(stats.totalRevenue) }}</div>
-          <div class="stat-label">平台總收入</div>
+          <div class="stat-label">已完成訂單總額</div>
         </div>
       </div>
       <div class="stat-card">
         <div class="stat-icon pending">⏳</div>
         <div class="stat-content">
-          <div class="stat-value">{{ stats.pendingProducts }}</div>
-          <div class="stat-label">待審核商品</div>
+          <div class="stat-value">{{ stats.pendingOrders }}</div>
+          <div class="stat-label">待確認訂單</div>
         </div>
       </div>
     </div>

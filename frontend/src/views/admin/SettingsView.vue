@@ -7,6 +7,8 @@ import type { Tag } from '@/types'
 const activeTab = ref('general')
 
 // ---- General Settings ----
+// 註：platformName/platformUrl/supportEmail/supportPhone/platformFee 等欄位後端未支持保存（#8），
+// 隱藏假欄位直到後端實作；目前只保留取貨資訊 + QR + 密碼修改
 const settings = ref({
   platformName: 'Card Quest',
   platformUrl: 'https://card.aishoper.co',
@@ -216,52 +218,7 @@ onMounted(async () => {
     <template v-if="activeTab === 'general'">
       <div class="settings-card">
         <h3 class="section-title">平台資訊</h3>
-        <div class="form-grid">
-          <div class="form-group">
-            <label>平台名稱</label>
-            <input v-model="settings.platformName" type="text" />
-          </div>
-          <div class="form-group">
-            <label>平台網址</label>
-            <input v-model="settings.platformUrl" type="url" />
-          </div>
-          <div class="form-group">
-            <label>支援郵箱</label>
-            <input v-model="settings.supportEmail" type="email" />
-          </div>
-          <div class="form-group">
-            <label>支援電話</label>
-            <input v-model="settings.supportPhone" type="tel" />
-          </div>
-        </div>
-      </div>
-
-      <div class="settings-card">
-        <h3 class="section-title">費用設置</h3>
-        <div class="form-grid">
-          <div class="form-group">
-            <label>平台費率 (%)</label>
-            <input v-model.number="settings.platformFee" type="number" min="0" max="100" />
-          </div>
-          <div class="form-group">
-            <label>最低提現金額 (MOP)</label>
-            <input v-model.number="settings.minWithdraw" type="number" min="1" />
-          </div>
-        </div>
-      </div>
-
-      <div class="settings-card">
-        <h3 class="section-title">拍賣設置</h3>
-        <div class="form-grid">
-          <div class="form-group">
-            <label>最長拍賣時長 (小時)</label>
-            <input v-model.number="settings.maxAuctionDuration" type="number" min="1" />
-          </div>
-          <div class="form-group">
-            <label>預設最低加價 (MOP)</label>
-            <input v-model.number="settings.defaultBidIncrement" type="number" min="1" />
-          </div>
-        </div>
+        <p class="section-desc">平台名稱/網址/支援聯繫方式目前由代碼設定，網站設定欄位即將推出</p>
       </div>
 
       <div class="settings-card">
