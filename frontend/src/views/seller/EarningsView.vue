@@ -58,10 +58,6 @@ const formatDate = (dateStr: string) => {
   return dateStr ? new Date(dateStr).toLocaleDateString('zh-CN') : '-'
 }
 
-const handleWithdraw = () => {
-  alert('提現功能開發中...')
-}
-
 onMounted(() => loadData())
 </script>
 
@@ -91,7 +87,7 @@ onMounted(() => loadData())
           <span class="stat-icon">✅</span>
         </div>
         <div class="stat-value">{{ formatPrice(stats.availableBalance) }}</div>
-        <button @click="handleWithdraw" class="withdraw-btn">立即提現</button>
+        <div class="stat-meta">提現功能即將推出</div>
       </div>
     </div>
 
@@ -148,8 +144,6 @@ onMounted(() => loadData())
 .stat-icon { font-size: 20px; }
 .stat-value { font-family: var(--font-num); font-size: var(--text-2xl); font-weight: 700; color: var(--text-primary); margin-bottom: var(--space-2); }
 .stat-meta { font-size: var(--text-xs); color: var(--text-muted); }
-.withdraw-btn { margin-top: var(--space-3); padding: var(--space-2) var(--space-4); background: white; border: none; border-radius: var(--radius-md); color: #10b981; font-size: var(--text-sm); font-weight: 600; cursor: pointer; transition: opacity 0.2s; }
-.withdraw-btn:hover { opacity: 0.9; }
 .transactions-section, .withdrawal-info { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-xl); padding: var(--space-6); }
 .section-title { font-size: var(--text-base); font-weight: 600; color: var(--text-primary); margin-bottom: var(--space-4); }
 .loading-state { text-align: center; padding: var(--space-8); }

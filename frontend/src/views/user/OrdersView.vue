@@ -388,13 +388,6 @@ onMounted(() => {
       >
         已取消 ({{ orders.filter(o => o.status === 'cancelled').length }})
       </button>
-      <button 
-        class="tab" 
-        :class="{ active: filterStatus === 'refunded' }"
-        @click="filterStatus = 'refunded'"
-      >
-        已退款 ({{ orders.filter(o => o.status === 'refunded').length }})
-      </button>
     </div>
 
     <!-- Orders List -->

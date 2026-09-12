@@ -13,7 +13,6 @@ import { Auction } from './entities/auction.entity'
 import { Bid } from './entities/bid.entity'
 import { Order } from './entities/order.entity'
 import { WebsocketModule } from './websocket/websocket.module'
-import { AiModule } from './modules/ai/ai.module'
 import { UploadModule } from './modules/upload/upload.module'
 import { UsersModule } from './modules/users/users.module'
 import { OrdersModule } from './modules/orders/orders.module'
@@ -56,7 +55,6 @@ import { AppNotification } from './entities/notification.entity'
     AuctionsModule,
     NotificationModule,
     WebsocketModule,
-    AiModule,
     UploadModule,
     UsersModule,
     OrdersModule,
