@@ -18,12 +18,6 @@ const recentUsers = ref([
   { id: '3', nickname: 'MagicPlayer', email: 'magic@email.com', role: 'user', status: 'pending', createdAt: '2026-04-19' },
 ])
 
-const recentProducts = ref([
-  { id: '1', title: 'Pokemon 1st Edition Base Set', seller: 'CardMaster', status: 'pending', createdAt: '2026-04-21' },
-  { id: '2', title: 'Yu-Gi-Oh Blue-Eyes White Dragon', seller: 'DragonSeller', status: 'approved', createdAt: '2026-04-20' },
-  { id: '3', title: 'MTG Black Lotus', seller: 'MagicCards', status: 'pending', createdAt: '2026-04-19' },
-])
-
 const formatPrice = (price: number) => {
   return new Intl.NumberFormat('zh-HK', {
     style: 'currency',
@@ -96,29 +90,6 @@ onMounted(() => {})
 
     <!-- Activity Grid -->
     <div class="activity-grid">
-      <!-- Pending Products -->
-      <div class="card">
-        <div class="card-header">
-          <h3>📋 待審核商品</h3>
-          <router-link to="/admin/products" class="see-all">查看全部</router-link>
-        </div>
-        <div class="card-body">
-          <div v-for="product in recentProducts" :key="product.id" class="item-row">
-            <div class="item-info">
-              <div class="item-title">{{ product.title }}</div>
-              <div class="item-meta">賣家: {{ product.seller }}</div>
-            </div>
-            <div class="item-actions">
-              <span class="status-badge" :class="getStatusBadge(product.status).class">
-                {{ getStatusBadge(product.status).text }}
-              </span>
-              <button v-if="product.status === 'pending'" class="btn-approve">通過</button>
-              <button v-if="product.status === 'pending'" class="btn-reject">拒絕</button>
-            </div>
-          </div>
-        </div>
-      </div>
-
       <!-- Recent Users -->
       <div class="card">
         <div class="card-header">
@@ -151,14 +122,6 @@ onMounted(() => {})
       <router-link to="/admin/sellers" class="action-card">
         <span class="action-icon">🏪</span>
         <span class="action-text">商家審核</span>
-      </router-link>
-      <router-link to="/admin/products" class="action-card">
-        <span class="action-icon">📦</span>
-        <span class="action-text">商品審核</span>
-      </router-link>
-      <router-link to="/admin/auctions" class="action-card">
-        <span class="action-icon">🔨</span>
-        <span class="action-text">拍賣監控</span>
       </router-link>
     </div>
   </div>

@@ -15,8 +15,6 @@ const navItems = [
   { path: '/admin/users', name: 'users', icon: '👥', label: 'admin.users' },
   { path: '/admin/sellers', name: 'sellers', icon: '🏪', label: 'admin.sellers' },
   { path: '/admin/seller-applications', name: 'sellerApplications', icon: '📝', label: 'admin.sellerApplications' },
-  { path: '/admin/products', name: 'products', icon: '📦', label: 'admin.products' },
-  { path: '/admin/auctions', name: 'auctions', icon: '🔨', label: 'admin.auctions' },
   { path: '/admin/settings', name: 'settings', icon: '⚙️', label: 'admin.settings' },
   { path: '/admin/pages', name: 'pages', icon: '📄', label: 'admin.pages' },
 ]
