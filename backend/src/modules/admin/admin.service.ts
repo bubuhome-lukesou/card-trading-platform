@@ -88,9 +88,14 @@ export class AdminService {
 
   // 最新用戶（儀表板用）
   async getRecentUsers(limit = 5) {
-    return this.userRepo.find({
+    const users = await this.userRepo.find({
       order: { createdAt: 'DESC' },
       take: limit,
+    });
+    // 安全：移除敏感欄位
+    return users.map(u => {
+      const { password, emailVerificationToken, resetPasswordToken, ...safe } = u as any;
+      return safe;
     });
   }
 
