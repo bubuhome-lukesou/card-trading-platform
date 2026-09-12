@@ -169,14 +169,13 @@ onMounted(() => {
       </div>
     </div>
 
-    <!-- Actions -->
-    <div class="action-buttons">
-      <button class="btn-deposit" @click="handleDeposit">
-        💰 充值
-      </button>
-      <button class="btn-withdraw" @click="showWithdrawModal = true">
-        🏧 提現
-      </button>
+    <!-- Actions: 充值/提現暫時隱藏 — 等接入真實支付網關（MPay/銀聯）後重開 -->
+    <!-- 訂單交易目前走銀行轉帳+憑證上傳流程，不經過錢包 -->
+    <div class="action-buttons maintenance-notice">
+      <div class="notice-card">
+        <span class="notice-icon">🔒</span>
+        <span class="notice-text">{{ locale === 'zh' ? '充值及提現功能即將推出，目前訂單交易透過銀行轉帳進行，不影響買賣流程。' : 'Deposit & withdrawal coming soon. Orders are settled via bank transfer.' }}</span>
+      </div>
     </div>
 
     <!-- Transaction History -->
@@ -207,8 +206,8 @@ onMounted(() => {
       </div>
     </div>
 
-    <!-- Withdraw Modal -->
-    <div v-if="showWithdrawModal" class="modal-overlay" @click.self="showWithdrawModal = false">
+    <!-- Withdraw Modal（充值/提現功能暫時隱藏，modal 不會觸發） -->
+    <div v-if="false && showWithdrawModal" class="modal-overlay" @click.self="showWithdrawModal = false">
       <div class="modal">
         <div class="modal-header">
           <h2>提現</h2>
@@ -240,8 +239,8 @@ onMounted(() => {
       </div>
     </div>
 
-    <!-- Deposit Modal -->
-    <div v-if="showDepositModal" class="modal-overlay" @click.self="showDepositModal = false">
+    <!-- Deposit Modal（充值/提現功能暫時隱藏，modal 不會觸發） -->
+    <div v-if="false && showDepositModal" class="modal-overlay" @click.self="showDepositModal = false">
       <div class="modal">
         <div class="modal-header">
           <h2>{{ locale === 'zh' ? '充值' : 'Deposit' }}</h2>
@@ -359,6 +358,20 @@ onMounted(() => {
   display: flex;
   gap: var(--space-4);
 }
+
+/* 充值/提現暫停通知卡 */
+.action-buttons.maintenance-notice { display: block; }
+.notice-card {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-5);
+  background: var(--bg-elevated);
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-lg);
+}
+.notice-icon { font-size: 20px; flex-shrink: 0; }
+.notice-text { font-size: var(--text-sm); color: var(--text-secondary); line-height: 1.5; }
 
 .btn-deposit,
 .btn-withdraw {

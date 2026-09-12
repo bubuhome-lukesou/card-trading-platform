@@ -211,7 +211,7 @@ const handleReceive = async (orderId: string) => {
 const handleReserve = async (orderId: string, sellerId: string) => {
   // 根據 sellerId 獲取該商家的取貨資訊
   try {
-    const res = await api.get(`/api/users/seller/${sellerId}/pickup-info`)
+    const res = await api.get(`/users/seller/${sellerId}/pickup-info`)
     pickupInfo.value = res.data.pickupInfo || ''
     pickupQrCode.value = res.data.pickupQrCode || ''
   } catch (e) {
