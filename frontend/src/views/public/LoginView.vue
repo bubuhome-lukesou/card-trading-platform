@@ -45,8 +45,14 @@ const regions = [
   { code: '+86',  label: locale.value === 'zh' ? '大陸 +86' : 'Mainland China +86' },
 ]
 const selectedRegion = ref('+853')
+// 帳號框直出：手機模式時帳號框就是純手機號（區號由左邊選單控制，不剝離）
+// 用戶輸入純數字（如 66161315）時 getter 若把前綴當區號剝掉會剩 66161315-前綴 → 格式錯誤
 const phone = computed({
-  get: () => account.value.replace(/^\+?\d{1,4}\s*/, ''),
+  get: () => {
+    // 只在用戶明確輸入了「+區號」開頭時才剝離（如 +85366161315 → 66161315）
+    const m = account.value.match(/^\+\d{1,4}(.*)$/)
+    return m ? m[1] : account.value
+  },
   set: (val: string) => { account.value = val },
 })
 const code = ref('')
