@@ -2,12 +2,88 @@
 import { ref, computed, onMounted } from 'vue'
 import { adminApi } from '@/api/admin'
 import { tagApi } from '@/api/tags'
+import { pagesApi } from '@/api/pages'
 import api from '@/api'
 import { uploadApi } from '@/api/upload'
 import type { Tag } from '@/types'
 
 const activeTab = ref('general')
 const bannerFileInput = ref<HTMLInputElement | null>(null)
+
+// ===== 頁面管理（原 PagesEditorView 整合） =====
+interface PageItem {
+  type: string
+  titleZh: string
+  titleEn: string
+  contentZh: string
+  contentEn: string
+}
+
+const pages = ref<PageItem[]>([])
+const activePage = ref<string>('help')
+const pagesLoading = ref(false)
+const pagesSaving = ref(false)
+const pageFormData = ref({
+  titleZh: '',
+  titleEn: '',
+  contentZh: '',
+  contentEn: '',
+})
+
+const pageLabels: Record<string, string> = {
+  help: '幫助中心',
+  contact: '聯絡我們',
+  faq: '常見問題',
+}
+
+const loadPages = async () => {
+  pagesLoading.value = true
+  try {
+    const response = await pagesApi.getAllPages()
+    pages.value = response.data
+    if (pages.value.length > 0) {
+      await selectPage(pages.value[0].type)
+    } else {
+      await selectPage('help')
+    }
+  } catch (error) {
+    console.error('Failed to load pages:', error)
+  } finally {
+    pagesLoading.value = false
+  }
+}
+
+const selectPage = async (type: string) => {
+  activePage.value = type
+  try {
+    const response = await pagesApi.getPage(type, 'zh')
+    const data = response.data
+    pageFormData.value = {
+      titleZh: data.titleZh || '',
+      titleEn: data.titleEn || '',
+      contentZh: data.contentZh || '',
+      contentEn: data.contentEn || '',
+    }
+  } catch {
+    pageFormData.value = { titleZh: '', titleEn: '', contentZh: '', contentEn: '' }
+  }
+}
+
+const savePage = async () => {
+  pagesSaving.value = true
+  try {
+    await pagesApi.updatePage({
+      type: activePage.value,
+      ...pageFormData.value,
+    })
+    alert('儲存成功')
+  } catch (error) {
+    console.error('Failed to save:', error)
+    alert('儲存失敗')
+  } finally {
+    pagesSaving.value = false
+  }
+}
 
 // ---- General Settings ----
 // 註：platformName/platformUrl/supportEmail/supportPhone/platformFee 等欄位後端未支持保存（#8），
@@ -301,10 +377,54 @@ onMounted(async () => {
       <button class="tab-btn" :class="{ active: activeTab === 'banners' }" @click="activeTab === 'banners' || loadBanners(); activeTab = 'banners'">
         📢 廣告設置
       </button>
+      <button class="tab-btn" :class="{ active: activeTab === 'pages' }" @click="activeTab === 'pages' || loadPages(); activeTab = 'pages'">
+        📄 頁面管理
+      </button>
       <button class="tab-btn" :class="{ active: activeTab === 'tags' }" @click="activeTab = 'tags'">
         🏷️ 標籤管理
       </button>
     </div>
+
+    <!-- ===== Pages Tab（頁面管理） ===== -->
+    <template v-if="activeTab === 'pages'">
+      <div class="pages-editor-inline">
+        <div class="pages-sidebar">
+          <div
+            v-for="page in pages.length > 0 ? pages : [{ type: 'help' }, { type: 'contact' }, { type: 'faq' }]"
+            :key="page.type"
+            class="page-item"
+            :class="{ active: activePage === page.type }"
+            @click="selectPage(page.type)"
+          >
+            {{ pageLabels[page.type] || page.type }}
+          </div>
+        </div>
+        <div class="pages-main">
+          <div v-if="pagesLoading" class="pages-loading">加載中...</div>
+          <template v-else>
+            <div class="form-group">
+              <label>標題 (中文)</label>
+              <input v-model="pageFormData.titleZh" type="text" placeholder="中文標題" />
+            </div>
+            <div class="form-group">
+              <label>Title (English)</label>
+              <input v-model="pageFormData.titleEn" type="text" placeholder="English title" />
+            </div>
+            <div class="form-group">
+              <label>內容 (中文) - 支持 HTML</label>
+              <textarea v-model="pageFormData.contentZh" rows="10" placeholder="支持 HTML 格式"></textarea>
+            </div>
+            <div class="form-group">
+              <label>Content (English) - HTML supported</label>
+              <textarea v-model="pageFormData.contentEn" rows="10" placeholder="HTML format supported"></textarea>
+            </div>
+            <button class="btn-primary pages-save-btn" :disabled="pagesSaving" @click="savePage">
+              {{ pagesSaving ? '保存中...' : '保存更改' }}
+            </button>
+          </template>
+        </div>
+      </div>
+    </template>
 
     <!-- ===== Banners Tab ===== -->
     <template v-if="activeTab === 'banners'">
@@ -639,4 +759,19 @@ onMounted(async () => {
 .banner-btn-move { width: 30px; padding: 4px 0; }
 .banner-btn-move:disabled { opacity: 0.35; cursor: not-allowed; }
 .banner-btn-delete:hover { background: rgba(239, 68, 68, 0.15); border-color: var(--danger); }
+
+/* ===== 頁面管理（Pages tab） ===== */
+.pages-editor-inline { display: grid; grid-template-columns: 200px 1fr; gap: var(--space-5); }
+.pages-sidebar { background: var(--bg-elevated); border-radius: var(--radius-lg); padding: var(--space-2); align-self: start; }
+.page-item { padding: var(--space-3) var(--space-4); border-radius: var(--radius-md); cursor: pointer; color: var(--text-secondary); transition: all 0.2s; font-size: var(--text-sm); }
+.page-item:hover { background: rgba(255, 255, 255, 0.06); }
+.page-item.active { background: var(--primary-gradient); color: white; }
+.pages-main { background: var(--bg-card); border-radius: var(--radius-lg); padding: var(--space-5); }
+.pages-loading { text-align: center; padding: var(--space-12); color: var(--text-muted); }
+.pages-save-btn { padding: var(--space-2) var(--space-6); background: var(--primary-gradient); border: none; border-radius: var(--radius-lg); color: white; font-weight: 600; cursor: pointer; }
+.pages-save-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+@media (max-width: 768px) {
+  .pages-editor-inline { grid-template-columns: 1fr; }
+}
 </style>

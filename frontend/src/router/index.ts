@@ -168,7 +168,7 @@ const adminRoutes: RouteRecordRaw[] = [
       { path: 'sellers', name: 'AdminSellers', component: () => import('@/views/admin/SellersView.vue') },
       { path: 'seller-applications', name: 'AdminSellerApplications', component: () => import('@/views/admin/SellerApplicationsView.vue') },
       { path: 'settings', name: 'AdminSettings', component: () => import('@/views/admin/SettingsView.vue') },
-      { path: 'pages', name: 'AdminPages', component: () => import('@/views/admin/PagesEditorView.vue') }
+      { path: 'pages', redirect: '/admin/settings' }
     ]
   }
 ]
