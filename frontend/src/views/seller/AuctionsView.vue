@@ -39,8 +39,8 @@ const rows = ref<Row[]>([])
 const counts = ref<Record<TabKey, number>>({ auction: 0, reservation: 0, sale: 0 })
 
 const categories: Record<string, string> = {
-  pokemon: '🎮', yugioh: '🐉', mtg: '🧙', ultraman: '👾',
-  onepiece: '⚔️', doraemon: '🤖', sports: '⚽', other: '🎴',
+  pokemon: '🎯', yugioh: '🎯', onepiece: '🎯',
+  sports: '⚽', other: '🎴',
 }
 
 const formatPrice = (n: any) =>

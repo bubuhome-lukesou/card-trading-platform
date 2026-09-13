@@ -3,6 +3,7 @@ import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import { Heart, Loader2, Copy } from 'lucide-vue-next'
+import { CategoryLogo } from '@/components/brand/CategoryLogos'
 import { productApi } from '@/api/products'
 import { cartApi } from '@/api/cart'
 import { favoritesApi } from '@/api/favorites'
@@ -542,7 +543,7 @@ const isProductSuspended = computed(() => {
           >
             <!-- Category pill -->
             <div class="cat-pill">
-              <span class="cat-emoji">{{ getCategoryInfo(product.category).emoji }}</span>
+              <span class="cat-emoji"><CategoryLogo :category="product.category" :size="15" /></span>
               <span class="cat-text">{{ getCategoryLabel(product.category) }}</span>
             </div>
 
@@ -614,7 +615,7 @@ const isProductSuspended = computed(() => {
               <div class="spec-row">
                 <div class="spec-cell">
                   <span class="spec-label">{{ locale === 'zh' ? '品牌' : 'Brand' }}</span>
-                  <span class="spec-value">{{ getCategoryInfo(product.category).emoji }} {{ getCategoryLabel(product.category) }}</span>
+                  <span class="spec-value"><span class="spec-logo"><CategoryLogo :category="product.category" :size="16" /></span> {{ getCategoryLabel(product.category) }}</span>
                 </div>
                 <div class="spec-cell">
                   <span class="spec-label">{{ locale === 'zh' ? '語言' : 'Language' }}</span>
@@ -1361,6 +1362,11 @@ $radius: 16px;
 
 .copied-icon {
   color: var(--primary);
+}
+
+.spec-logo {
+  display: inline-flex;
+  align-items: center;
 }
 
 // Tag chips (inside spec table)

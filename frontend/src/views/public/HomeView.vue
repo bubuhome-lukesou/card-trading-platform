@@ -7,19 +7,11 @@ import { auctionApi } from '@/api/auctions'
 import { productApi } from '@/api/products'
 import { tagApi } from '@/api/tags'
 import { useFavoritesStore } from '@/stores/favorites'
+import { CategoryLogo, BRAND_CATEGORIES } from '@/components/brand/CategoryLogos'
 
 const { t, locale } = useI18n()
 
-const categories = [
-  { id: 'pokemon', emoji: '🎮', name: 'home.categories.pokemon' },
-  { id: 'yugioh', emoji: '🐉', name: 'home.categories.yugioh' },
-  { id: 'mtg', emoji: '🧙', name: 'home.categories.mtg' },
-  { id: 'ultraman', emoji: '👾', name: 'home.categories.ultraman' },
-  { id: 'onepiece', emoji: '⚔️', name: 'home.categories.onepiece' },
-  { id: 'doraemon', emoji: '🤖', name: 'home.categories.doraemon' },
-  { id: 'sports', emoji: '⚽', name: 'home.categories.sports' },
-  { id: 'other', emoji: '🎴', name: 'home.categories.other' }
-]
+const categories = BRAND_CATEGORIES
 
 const hotAuctions = ref<any[]>([])
 const newListings = ref<any[]>([])
@@ -379,7 +371,7 @@ watch([hotAuctions, newListings, hotReservations], () => {
             :to="`/marketplace?category=${cat.id}`"
             class="category-card"
           >
-            <span class="category-emoji">{{ cat.emoji }}</span>
+            <span class="category-emoji category-logo-wrap"><CategoryLogo :category="cat.id" :size="26" /></span>
             <span class="category-name">{{ t(cat.name) }}</span>
           </RouterLink>
         </div>
@@ -817,16 +809,22 @@ watch([hotAuctions, newListings, hotReservations], () => {
 
 .categories-grid {
   display: grid;
-  grid-template-columns: repeat(8, 1fr);
+  grid-template-columns: repeat(5, 1fr);
   gap: var(--space-3);
 
   @media (max-width: 1024px) {
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(5, 1fr);
   }
 
   @media (max-width: 640px) {
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(3, 1fr);
   }
+}
+
+.category-logo-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .category-card {

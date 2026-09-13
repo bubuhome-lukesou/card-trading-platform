@@ -7,6 +7,7 @@ import { uploadApi } from '@/api/upload'
 import { productApi } from '@/api/products'
 import { auctionApi } from '@/api/auctions'
 import { tagApi } from '@/api/tags'
+import { CategoryLogo, CATEGORY_OPTIONS } from '@/components/brand/CategoryLogos'
 
 const { t } = useI18n()
 const router = useRouter()
@@ -84,16 +85,7 @@ const onCategoryChange = (event: Event) => {
   loadTags(newCategory)
 }
 
-const categories = [
-  { value: 'pokemon', label: '寶可夢', emoji: '🎮' },
-  { value: 'yugioh', label: '遊戲王', emoji: '🐉' },
-  { value: 'mtg', label: '萬智牌', emoji: '🧙' },
-  { value: 'ultraman', label: '奧特曼', emoji: '👾' },
-  { value: 'onepiece', label: '海賊王', emoji: '⚔️' },
-  { value: 'doraemon', label: '哆啦A梦', emoji: '🤖' },
-  { value: 'sports', label: '體育卡', emoji: '⚽' },
-  { value: 'other', label: '其他', emoji: '🎴' },
-]
+const categories = CATEGORY_OPTIONS
 
 const conditions = [
   { value: 'S', label: 'S級 - 完美品相' },
@@ -467,10 +459,6 @@ const getProductImage = (product: any) => {
   return ''
 }
 
-const getCategoryEmoji = (category: string) => {
-  return categories.find(c => c.value === category)?.emoji || '🎴'
-}
-
 const getCategoryLabel = (category: string) => {
   return categories.find(c => c.value === category)?.label || category
 }
@@ -667,7 +655,7 @@ onUnmounted(() => {
       <div v-for="product in filteredProducts" :key="product.id" class="product-card">
         <div class="product-image">
           <img v-if="getProductImage(product)" :src="resolveImageUrl(getProductImage(product))" :alt="product.titleEn" class="product-img" />
-          <span v-else class="category-emoji">{{ getCategoryEmoji(product.category) }}</span>
+          <span v-else class="category-emoji"><CategoryLogo :category="product.category" :size="34" /></span>
           <span class="status-badge" :class="getStatusBadge(product.status).class">
             {{ getStatusBadge(product.status).text }}
           </span>
@@ -759,7 +747,7 @@ onUnmounted(() => {
               <label>商品類別 <span class="required-mark">*</span></label>
               <select v-model="formData.category" @change="onCategoryChange" required>
                 <option v-for="cat in categories" :key="cat.value" :value="cat.value">
-                  {{ cat.emoji }} {{ cat.label }}
+                  {{ cat.label }}
                 </option>
               </select>
             </div>

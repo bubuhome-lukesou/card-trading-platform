@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { CategoryLogo } from '@/components/brand/CategoryLogos'
 import { useAuthStore } from '@/stores/auth'
 import { auctionApi } from '@/api/auctions'
 import { useFavoritesStore } from '@/stores/favorites'
@@ -225,11 +226,11 @@ const formatDateTime = (dateStr: string) => {
 
 // === Product info helpers (synced with ProductDetailView) ===
 const categoryInfo = computed(() => ({
-  pokemon: { emoji: '🎮', zh: '寶可夢', en: 'Pokemon', color: '#e74c3c' },
-  yugioh: { emoji: '⚡', zh: '遊戲王', en: 'Yu-Gi-Oh!', color: '#f39c12' },
+  pokemon: { emoji: '🎯', zh: '寶可夢', en: 'Pokemon', color: '#e74c3c' },
+  yugioh: { emoji: '🎯', zh: '遊戲王', en: 'Yu-Gi-Oh!', color: '#f39c12' },
   mtg: { emoji: '🧙', zh: '萬智牌', en: 'Magic: The Gathering', color: '#1abc9c' },
   ultraman: { emoji: '👾', zh: '奧特曼', en: 'Ultraman', color: '#3498db' },
-  onepiece: { emoji: '🏴‍☠️', zh: '海賊王', en: 'One Piece', color: '#e74c3c' },
+  onepiece: { emoji: '🎯', zh: '海賊王', en: 'One Piece', color: '#e74c3c' },
   doraemon: { emoji: '🤖', zh: '哆啦A夢', en: 'Doraemon', color: '#2196f3' },
   sports: { emoji: '⚽', zh: '體育卡', en: 'Sports Cards', color: '#27ae60' },
   other: { emoji: '📦', zh: '其他', en: 'Other', color: '#9b59b6' }
@@ -472,7 +473,7 @@ onUnmounted(() => {
             <div class="image-container main-image" @touchstart="onTouchStart" @touchend="onTouchEnd">
               <!-- Category pill (floating top-left, 同 ProductDetail) -->
               <div class="cat-pill">
-                <span class="cat-emoji">{{ getCategoryInfo(auction.product?.category).emoji }}</span>
+                <span class="cat-emoji"><CategoryLogo :category="auction.product?.category || 'other'" :size="15" /></span>
                 <span class="cat-text">{{ getCategoryLabel(auction.product?.category || 'other') }}</span>
               </div>
 
@@ -645,7 +646,7 @@ onUnmounted(() => {
           <div class="glass-card">
             <!-- Category badge + Status -->
             <div class="detail-header">
-              <span class="category-badge">{{ getCategoryInfo(auction.product?.category).emoji }} {{ getCategoryLabel(auction.product?.category || 'other') }}</span>
+              <span class="category-badge"><span class="badge-logo"><CategoryLogo :category="auction.product?.category || 'other'" :size="14" /></span> {{ getCategoryLabel(auction.product?.category || 'other') }}</span>
               <span class="status-badge" :class="auction.status">
                 {{ auction.status === 'active' ? (locale === 'zh' ? '🔥 進行中' : '🔥 Active') : auction.status === 'ended' ? (locale === 'zh' ? '已結束' : 'Ended') : (locale === 'zh' ? '⏳ 待開始' : '⏳ Pending') }}
               </span>
@@ -667,7 +668,7 @@ onUnmounted(() => {
               <div class="spec-row">
                 <div class="spec-cell">
                   <span class="spec-label">{{ locale === 'zh' ? '品牌' : 'Brand' }}</span>
-                  <span class="spec-value">{{ getCategoryInfo(auction.product?.category).emoji }} {{ getCategoryLabel(auction.product?.category || 'other') }}</span>
+                  <span class="spec-value"><span class="badge-logo"><CategoryLogo :category="auction.product?.category || 'other'" :size="16" /></span> {{ getCategoryLabel(auction.product?.category || 'other') }}</span>
                 </div>
                 <div class="spec-cell">
                   <span class="spec-label">{{ locale === 'zh' ? '語言' : 'Language' }}</span>
@@ -1466,6 +1467,14 @@ onUnmounted(() => {
   font-size: 0.75rem;
   color: var(--text-secondary);
   font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.badge-logo {
+  display: inline-flex;
+  align-items: center;
 }
 
 .status-badge {

@@ -87,9 +87,8 @@ const filterOptions = ref({
   categories: [
     { value: 'pokemon', label: '寶可夢', labelEn: 'Pokemon' },
     { value: 'yugioh', label: '遊戲王', labelEn: 'Yu-Gi-Oh!' },
-    { value: 'mtg', label: '萬智牌', labelEn: 'Magic: The Gathering' },
-    { value: 'ultraman', label: '超人迪卡', labelEn: 'Ultraman' },
     { value: 'onepiece', label: '海賊王', labelEn: 'One Piece' },
+    { value: 'sports', label: '體育卡', labelEn: 'Sports Cards' },
     { value: 'other', label: '其他', labelEn: 'Other' }
   ],
   conditions: [
