@@ -2,7 +2,7 @@
 import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
-import { Heart, Loader2 } from 'lucide-vue-next'
+import { Heart, Loader2, Copy } from 'lucide-vue-next'
 import { productApi } from '@/api/products'
 import { cartApi } from '@/api/cart'
 import { favoritesApi } from '@/api/favorites'
@@ -103,6 +103,18 @@ const getDescription = (product: any) => {
 // Get category info
 const getCategoryInfo = (category: string) => {
   return categoryInfo.value[category as keyof typeof categoryInfo.value] || { emoji: '📦', zh: category, en: category }
+}
+
+// 商品編號複製
+const copied = ref(false)
+let copyTimer: ReturnType<typeof setTimeout> | null = null
+const copyProductNumber = async (num: number) => {
+  try {
+    await navigator.clipboard.writeText(String(num))
+    copied.value = true
+    if (copyTimer) clearTimeout(copyTimer)
+    copyTimer = setTimeout(() => { copied.value = false }, 1500)
+  } catch { /* clipboard 不可用時靜默 */ }
 }
 
 // Get category label only
@@ -639,6 +651,15 @@ const isProductSuspended = computed(() => {
                       <span class="tag-dot" :style="{ backgroundColor: tag.color || '#818cf8' }"></span>
                       {{ tag.name }}
                     </span>
+                  </span>
+                </div>
+              </div>
+              <div class="spec-row" v-if="(product as any).productNumber">
+                <div class="spec-cell spec-cell-full">
+                  <span class="spec-label">{{ locale === 'zh' ? '商品編號' : 'Item No.' }}</span>
+                  <span class="spec-value product-number" @click="copyProductNumber((product as any).productNumber)" :title="locale === 'zh' ? '點擊複製' : 'Click to copy'">
+                    {{ (product as any).productNumber }}
+                    <Copy v-if="copied" :size="12" class="copied-icon" />
                   </span>
                 </div>
               </div>
@@ -1324,6 +1345,22 @@ $radius: 16px;
 
 .spec-tags {
   gap: 8px;
+}
+
+.product-number {
+  cursor: pointer;
+  font-family: var(--font-num, monospace);
+  letter-spacing: 0.04em;
+  user-select: all;
+  transition: color 0.15s;
+
+  &:hover {
+    color: var(--primary);
+  }
+}
+
+.copied-icon {
+  color: var(--primary);
 }
 
 // Tag chips (inside spec table)
