@@ -663,7 +663,8 @@ watch([hotAuctions, newListings, hotReservations], () => {
   align-items: center;
   justify-content: center;
   overflow: hidden;
-  background: linear-gradient(180deg, rgba(26, 26, 46, 0.5) 0%, rgba(15, 15, 26, 0.3) 100%);
+  // 實色：唔透明，蓋住 body 花紋背景
+  background: linear-gradient(180deg, #1a1a2e 0%, #14142a 100%);
 }
 
 .banner-content {
