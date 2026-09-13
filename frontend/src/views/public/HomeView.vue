@@ -729,9 +729,11 @@ watch([hotAuctions, newListings, hotReservations], () => {
   }
 }
 
-// Banner Ads（走馬燈）
+// Banner Ads（走馬燈）— 實色背景，唔透出 body 花紋
 .banner-section {
   padding: var(--space-6) 0 0;
+  background: #14142a;
+  padding-bottom: var(--space-6);
 }
 
 // Stats Bar
