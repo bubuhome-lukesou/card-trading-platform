@@ -47,10 +47,16 @@ export class ProductsService {
       queryBuilder.andWhere('product.price <= :priceMax', { priceMax: filters.priceMax })
     }
     if (filters.search) {
-      queryBuilder.andWhere(
-        '(product.titleEn LIKE :search OR product.titleZh LIKE :search OR EXISTS (SELECT 1 FROM tags t WHERE t.id IN (SELECT pt.tagId FROM product_tags pt WHERE pt.productId = product.id) AND t.name LIKE :search))',
-        { search: `%${filters.search}%` }
-      )
+      // 純數字搜尋優先精確匹配商品編號（如輸入 10 位編號直達該商品），否則照舊標題/標籤
+      const s = (filters.search as string).trim()
+      if (/^\d{8,12}$/.test(s)) {
+        queryBuilder.andWhere('product.productNumber = :num', { num: s })
+      } else {
+        queryBuilder.andWhere(
+          '(product.titleEn LIKE :search OR product.titleZh LIKE :search OR product.productNumber LIKE :search OR EXISTS (SELECT 1 FROM tags t WHERE t.id IN (SELECT pt.tagId FROM product_tags pt WHERE pt.productId = product.id) AND t.name LIKE :search))',
+          { search: `%${s}%` }
+        )
+      }
     }
     // Filter by seller(s) — marketplace 商家篩選
     if ((filters as any).sellerIds?.length) {
@@ -287,8 +293,13 @@ export class ProductsService {
 
     // productType is now a direct string value, no conversion needed
 
+    // 對外商品編號：純數字、系統自動生成、不可修改
+    // 格式：10位數字 = 時間戳秒數(去首位) + 4位隨機 — 唯一性由 unique index + 衝突重試保證
+    const productNumber = await this.generateProductNumber()
+
     const product = this.productRepo.create({
       ...dto,
+      productNumber,
       quantity: dto.quantity ?? 1,
       listingType: listingType as any,
       sellerId: userId,
@@ -298,6 +309,23 @@ export class ProductsService {
     } as any)
 
     return this.productRepo.save(product) as any
+  }
+
+  /**
+   * 生成唯一商品編號（純數字，10 位）
+   * 時間戳秒數去首位(9位) + 隨機 1-2 位 → 併合至 10 位
+   * 衝突時重試（unique index 兜底）
+   */
+  private async generateProductNumber(): Promise<number> {
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const ts = Math.floor(Date.now() / 1000) % 1_000_000_000 // 9位
+      const rand = Math.floor(Math.random() * 10)              // 1位
+      const candidate = ts * 10 + rand                          // 10位純數字
+      const exists = await this.productRepo.findOne({ where: { productNumber: candidate } })
+      if (!exists) return candidate
+    }
+    // 極小概率 5 次都衝突 → 拋錯讓前端重試
+    throw new BadRequestException('商品編號生成失敗，請重試')
   }
 
   async update(id: string, dto: UpdateProductDto, userId: string): Promise<Product> {

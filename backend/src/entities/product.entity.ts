@@ -82,6 +82,10 @@ export class Product {
   @PrimaryGeneratedColumn('uuid')
   id: string
 
+  // 對外商品編號：純數字、系統自動生成、不可修改（unique）
+  @Column({ type: 'bigint', unique: true, nullable: true })
+  productNumber: number | null
+
   @Column({ type: 'varchar', length: 36 })
   sellerId: string
 
