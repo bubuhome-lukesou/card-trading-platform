@@ -70,22 +70,11 @@ export const CategoryLogo = defineComponent({
             h('circle', { cx: 12, cy: 15.2, r: 1.3, fill: '#fff8dd', stroke: '#8a6d1d', 'stroke-width': 0.8 }),
             h('path', { d: 'M12 13.9 L12 16.5 M10.7 15.2 L13.3 15.2', stroke: '#8a6d1d', 'stroke-width': 0.7 }),
           ])
-        // ===== 體育卡：⚽（保持原樣）=====
+        // ===== 體育卡 / 其他：還原原本 emoji（⚽ / 🎴）=====
         case 'sports':
-          return svg([
-            h('circle', { cx: 12, cy: 12, r: 9.5, fill: '#fff', stroke: '#2a2a2a', 'stroke-width': 1.4 }),
-            h('path', { d: 'M12 6.5 L15.5 9 L14.2 13 L9.8 9 Z', fill: '#2a2a2a' }),
-            h('path', { d: 'M12 6.5 L12 3 M15.3 9.2 L18.6 7.3 M14 9.6 L17.4 12.2 M12 12.5 L12 15.7 M8.7 12.2 L10.6 9.2 M5.4 7.3 L8.7 9.2 M6.6 12.2 L10 12.2 M9.4 15.5 L8 18.9 M14.6 15.5 L16 18.5', stroke: '#2a2a2a', 'stroke-width': 1.1 }),
-            h('path', { d: 'M8 15.5 L9.4 15.5 M16 15.5 L14.6 15.5', stroke: '#2a2a2a', 'stroke-width': 1.1 }),
-          ])
-        // ===== 其他：🎴（保持原樣：花牌）=====
+          return h('span', { style: { fontSize: `${size}px`, lineHeight: '1' } }, '⚽')
         case 'other':
-          return svg([
-            h('rect', { x: 5, y: 3, width: 14, height: 18, rx: 2, fill: '#fff', stroke: '#2a2a2a', 'stroke-width': 1.4 }),
-            h('circle', { cx: 12, cy: 10.5, r: 3.2, fill: '#e74c6f' }),
-            h('path', { d: 'M12 7.3 Q14.5 5.5 15.5 7.5 Q13.5 8.5 12 10.5 M12 10.5 Q9.5 8.5 8.5 10.5 Q10 12 12 10.5 Z', fill: '#f2c94c' }),
-            h('path', { d: 'M9 15.5 Q12 14 15 15.5 M9.5 17.5 Q12 16.3 14.5 17.5', stroke: '#2a2a2a', 'stroke-width': 1, fill: 'none', 'stroke-linecap': 'round' }),
-          ])
+          return h('span', { style: { fontSize: `${size}px`, lineHeight: '1' } }, '🎴')
         default:
           // fallback：通用卡牌 icon
           return svg([
