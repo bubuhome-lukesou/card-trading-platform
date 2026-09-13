@@ -2,9 +2,12 @@
 import { ref, computed, onMounted } from 'vue'
 import { adminApi } from '@/api/admin'
 import { tagApi } from '@/api/tags'
+import api from '@/api'
+import { uploadApi } from '@/api/upload'
 import type { Tag } from '@/types'
 
 const activeTab = ref('general')
+const bannerFileInput = ref<HTMLInputElement | null>(null)
 
 // ---- General Settings ----
 // 註：platformName/platformUrl/supportEmail/supportPhone/platformFee 等欄位後端未支持保存（#8），
@@ -185,6 +188,92 @@ const handleDeleteTag = async (tag: Tag) => {
   }
 }
 
+// ===== 廣告走馬燈管理 =====
+
+interface BannerItem {
+  id: number
+  title: string | null
+  imageUrl: string
+  linkUrl: string | null
+  sortOrder: number
+  isActive: boolean
+}
+
+const apiBase = import.meta.env.VITE_API_URL || ''
+const banners = ref<BannerItem[]>([])
+const newBanner = ref({ title: '', linkUrl: '', sortOrder: 0, imageUrl: '' })
+const uploadingBanner = ref(false)
+
+const loadBanners = async () => {
+  try {
+    const res = await api.get('/banners')
+    banners.value = res.data || []
+  } catch (e) {
+    console.error('Failed to load banners', e)
+  }
+}
+
+const handleBannerFileChange = async (e: Event) => {
+  const file = (e.target as HTMLInputElement).files?.[0]
+  if (!file) return
+  uploadingBanner.value = true
+  try {
+    const res = await uploadApi.uploadImage(file)
+    newBanner.value.imageUrl = res.data.url
+  } catch (err: any) {
+    alert(err?.response?.data?.message || '圖片上傳失敗')
+  } finally {
+    uploadingBanner.value = false
+  }
+}
+
+const handleAddBanner = async () => {
+  if (!newBanner.value.imageUrl) return
+  try {
+    await api.post('/banners', {
+      title: newBanner.value.title || undefined,
+      imageUrl: newBanner.value.imageUrl,
+      linkUrl: newBanner.value.linkUrl || undefined,
+      sortOrder: newBanner.value.sortOrder || 0,
+      isActive: true,
+    })
+    newBanner.value = { title: '', linkUrl: '', sortOrder: 0, imageUrl: '' }
+    const input = bannerFileInput.value as HTMLInputElement | null
+    if (input) input.value = ''
+    await loadBanners()
+  } catch (e: any) {
+    alert(e?.response?.data?.message || '添加失敗')
+  }
+}
+
+const handleToggleBanner = async (banner: BannerItem) => {
+  try {
+    await api.put(`/banners/${banner.id}`, { isActive: !banner.isActive })
+    await loadBanners()
+  } catch (e: any) {
+    alert(e?.response?.data?.message || '操作失敗')
+  }
+}
+
+const handleMoveBanner = async (banner: BannerItem, dir: number) => {
+  try {
+    await api.put(`/banners/${banner.id}`, { sortOrder: Math.max(0, banner.sortOrder + dir) })
+    await loadBanners()
+  } catch (e: any) {
+    alert(e?.response?.data?.message || '操作失敗')
+  }
+}
+
+const handleDeleteBanner = async (banner: BannerItem) => {
+  if (!confirm('確定要刪除這個廣告嗎？')) return
+  try {
+    await api.delete(`/banners/${banner.id}`)
+    await loadBanners()
+  } catch (e: any) {
+    alert(e?.response?.data?.message || '刪除失敗')
+  }
+}
+
 onMounted(async () => {
   loading.value = true
   try {
@@ -209,10 +298,71 @@ onMounted(async () => {
       <button class="tab-btn" :class="{ active: activeTab === 'general' }" @click="activeTab = 'general'">
         ⚙️ 平台設定
       </button>
+      <button class="tab-btn" :class="{ active: activeTab === 'banners' }" @click="activeTab === 'banners' || loadBanners(); activeTab = 'banners'">
+        📢 廣告設置
+      </button>
       <button class="tab-btn" :class="{ active: activeTab === 'tags' }" @click="activeTab = 'tags'">
         🏷️ 標籤管理
       </button>
     </div>
+
+    <!-- ===== Banners Tab ===== -->
+    <template v-if="activeTab === 'banners'">
+      <div class="settings-card">
+        <h3 class="section-title">首頁廣告走馬燈</h3>
+        <p class="section-desc">圖片建議 1200×300 橫幅（手機自動調整比例）。排序越小越前，停用嘅不顯示。點擊可跳轉連結（留空 = 純展示）。</p>
+
+        <div class="banner-form">
+          <div class="form-grid">
+            <div class="form-group">
+              <label>備註（選填，不對外顯示）</label>
+              <input v-model="newBanner.title" type="text" placeholder="例如：聖誕促銷" />
+            </div>
+            <div class="form-group">
+              <label>點擊跳轉連結（選填）</label>
+              <input v-model="newBanner.linkUrl" type="text" placeholder="https://example.com/promo" />
+            </div>
+            <div class="form-group">
+              <label>排序（0 最前）</label>
+              <input v-model.number="newBanner.sortOrder" type="number" min="0" />
+            </div>
+            <div class="form-group">
+              <label>廣告圖片 <span class="required-mark">*</span></label>
+              <input ref="bannerFileInput" type="file" accept="image/*" @change="handleBannerFileChange" />
+              <div v-if="newBanner.imageUrl" class="banner-preview">
+                <img :src="newBanner.imageUrl.startsWith('http') || newBanner.imageUrl.startsWith('data:') ? newBanner.imageUrl : apiBase + newBanner.imageUrl" alt="預覽" />
+              </div>
+            </div>
+          </div>
+          <button class="btn-primary add-banner-btn" :disabled="uploadingBanner || !newBanner.imageUrl" @click="handleAddBanner">
+            {{ uploadingBanner ? '上傳中...' : '+ 添加廣告' }}
+          </button>
+        </div>
+      </div>
+
+      <div class="settings-card">
+        <h3 class="section-title">現有廣告（{{ banners.length }}）</h3>
+        <p v-if="banners.length === 0" class="section-desc">未有廣告。添加後首頁會顯示走馬燈。</p>
+        <div v-else class="banner-list">
+          <div v-for="banner in banners" :key="banner.id" class="banner-item" :class="{ inactive: !banner.isActive }">
+            <img :src="banner.imageUrl.startsWith('http') || banner.imageUrl.startsWith('data:') ? banner.imageUrl : apiBase + banner.imageUrl" class="banner-thumb" :alt="banner.title || '廣告'" />
+            <div class="banner-meta">
+              <div class="banner-title-text">{{ banner.title || '（無備註）' }}</div>
+              <div class="banner-link-text">{{ banner.linkUrl || '純展示，不可點擊' }}</div>
+              <div class="banner-order-text">排序：{{ banner.sortOrder }}</div>
+            </div>
+            <div class="banner-actions">
+              <button class="banner-btn" @click="handleToggleBanner(banner)">
+                {{ banner.isActive ? '⏸ 停用' : '▶️ 啟用' }}
+              </button>
+              <button class="banner-btn-move" @click="handleMoveBanner(banner, -1)" :disabled="banner.sortOrder <= 0">↑</button>
+              <button class="banner-btn-move" @click="handleMoveBanner(banner, 1)">↓</button>
+              <button class="banner-btn-delete" @click="handleDeleteBanner(banner)">🗑️</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </template>
 
     <!-- ===== General Settings Tab ===== -->
     <template v-if="activeTab === 'general'">
@@ -468,4 +618,25 @@ onMounted(async () => {
   .tag-filters { flex-direction: column; align-items: stretch; }
   .tag-search, .tag-filter-select { width: 100%; }
 }
+
+/* ===== 廣告走馬燈管理 ===== */
+.banner-form { margin-top: var(--space-4); display: flex; flex-direction: column; gap: var(--space-4); }
+.banner-preview { margin-top: var(--space-2); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; max-width: 400px; }
+.banner-preview img { width: 100%; display: block; }
+.add-banner-btn { align-self: flex-start; padding: var(--space-2) var(--space-6); border: none; border-radius: var(--radius-lg); cursor: pointer; font-weight: 600; }
+.add-banner-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.banner-list { display: flex; flex-direction: column; gap: var(--space-3); margin-top: var(--space-4); }
+.banner-item { display: flex; align-items: center; gap: var(--space-4); padding: var(--space-3); border: 1px solid var(--border); border-radius: var(--radius-lg); }
+.banner-item.inactive { opacity: 0.5; }
+.banner-thumb { width: 160px; height: 48px; object-fit: cover; border-radius: var(--radius-md); flex-shrink: 0; background: var(--bg-elevated); }
+.banner-meta { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.banner-title-text { font-weight: 600; font-size: var(--text-sm); color: var(--text-primary); }
+.banner-link-text { font-size: var(--text-xs); color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.banner-order-text { font-size: var(--text-xs); color: var(--text-muted); }
+.banner-actions { display: flex; gap: 6px; flex-shrink: 0; }
+.banner-btn, .banner-btn-move, .banner-btn-delete { padding: 4px 10px; border-radius: var(--radius-md); border: 1px solid var(--border); background: var(--bg-elevated); color: var(--text-primary); cursor: pointer; font-size: var(--text-xs); }
+.banner-btn:hover { border-color: var(--primary); }
+.banner-btn-move { width: 30px; padding: 4px 0; }
+.banner-btn-move:disabled { opacity: 0.35; cursor: not-allowed; }
+.banner-btn-delete:hover { background: rgba(239, 68, 68, 0.15); border-color: var(--danger); }
 </style>

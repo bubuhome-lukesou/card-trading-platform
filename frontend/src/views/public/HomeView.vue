@@ -8,6 +8,7 @@ import { productApi } from '@/api/products'
 import { tagApi } from '@/api/tags'
 import { useFavoritesStore } from '@/stores/favorites'
 import { CategoryLogo, BRAND_CATEGORIES } from '@/components/brand/CategoryLogos'
+import BannerCarousel from '@/components/home/BannerCarousel.vue'
 
 const { t, locale } = useI18n()
 
@@ -336,6 +337,13 @@ watch([hotAuctions, newListings, hotReservations], () => {
       <div class="banner-bg">
         <div class="gradient-orb orb-1"></div>
         <div class="gradient-orb orb-2"></div>
+      </div>
+    </section>
+
+    <!-- Banner Ads（走馬燈） -->
+    <section class="banner-section">
+      <div class="container">
+        <BannerCarousel />
       </div>
     </section>
 
@@ -718,6 +726,11 @@ watch([hotAuctions, newListings, hotReservations], () => {
     bottom: -50px;
     right: -50px;
   }
+}
+
+// Banner Ads（走馬燈）
+.banner-section {
+  padding: var(--space-6) 0 0;
 }
 
 // Stats Bar

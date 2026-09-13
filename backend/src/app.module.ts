@@ -33,7 +33,9 @@ import { SellerApplication } from './entities/seller-application.entity'
 import { SellerApplicationsModule } from './modules/seller-applications/seller-applications.module'
 import { Reservation } from './entities/reservation.entity'
 import { ReservationsModule } from './modules/reservations/reservations.module'
+import { BannersModule } from './modules/banners/banners.module'
 import { AppNotification } from './entities/notification.entity'
+import { Banner } from './entities/banner.entity'
 
 @Module({
   imports: [
@@ -44,7 +46,7 @@ import { AppNotification } from './entities/notification.entity'
       username: process.env.DB_USERNAME || 'card_admin',
       password: process.env.DB_PASSWORD || 'CardAuction2026!',
       database: process.env.DB_DATABASE || 'card_auction',
-      entities: [User, Product, Auction, Bid, Order, Favorite, WalletTransaction, Page, Tag, CartItem, Settings, SellerApplication, Reservation, AppNotification],
+      entities: [User, Product, Auction, Bid, Order, Favorite, WalletTransaction, Page, Tag, CartItem, Settings, SellerApplication, Reservation, AppNotification, Banner],
       synchronize: process.env.NODE_ENV === 'development',
       logging: process.env.NODE_ENV === 'development'
     }),
@@ -66,7 +68,8 @@ import { AppNotification } from './entities/notification.entity'
     TagsModule,
     CartModule,
     SellerApplicationsModule,
-    ReservationsModule
+    ReservationsModule,
+    BannersModule
   ],
   controllers: [AppController],
   providers: [AppService]
