@@ -1,232 +1,272 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
+import { productApi } from '@/api/products'
 import { auctionApi } from '@/api/auctions'
+import { reservationApi } from '@/api/reservations'
 
-interface Auction {
-  id: string
-  productId: string
-  productTitle: string
-  category: string
-  startingPrice: number
-  currentPrice: number
-  bidCount: number
-  startTime: string
-  endTime: string
-  status: 'pending' | 'active' | 'ended' | 'cancelled'
-  winner?: string
-}
+const router = useRouter()
 
-const auctions = ref<Auction[]>([])
-const loading = ref(true)
-const filterStatus = ref('all')
+// ===== 三個分頁：拍賣 / 預訂 / 銷售 =====
+type TabKey = 'auction' | 'reservation' | 'sale'
+const activeTab = ref<TabKey>('auction')
 
-const categories = [
-  { value: 'pokemon', label: '寶可夢', emoji: '🎮' },
-  { value: 'yugioh', label: '遊戲王', emoji: '🐉' },
-  { value: 'mtg', label: '萬智牌', emoji: '🧙' },
-  { value: 'ultraman', label: '奧特曼', emoji: '👾' },
-  { value: 'onepiece', label: '海賊王', emoji: '⚔️' },
-  { value: 'doraemon', label: '哆啦A夢', emoji: '🤖' },
-  { value: 'sports', label: '體育卡', emoji: '⚽' },
-  { value: 'other', label: '其他', emoji: '🎴' },
+const tabs: { key: TabKey; label: string; icon: string }[] = [
+  { key: 'auction', label: '拍賣', icon: '🔨' },
+  { key: 'reservation', label: '預訂', icon: '📅' },
+  { key: 'sale', label: '銷售', icon: '🏷️' },
 ]
 
-const filteredAuctions = computed(() => {
-  if (filterStatus.value === 'all') return auctions.value
-  return auctions.value.filter(a => a.status === filterStatus.value)
-})
+const loading = ref(true)
+const error = ref('')
 
-const formatPrice = (price: number) => {
-  return new Intl.NumberFormat('zh-MO', {
-    style: 'currency',
-    currency: 'MOP',
-    minimumFractionDigits: 0,
-  }).format(price)
+interface Row {
+  id: string
+  productId: string
+  title: string
+  image: string
+  category: string
+  price: string          // 主價（拍賣=當前價 / 預訂=訂金 / 銷售=售價）
+  priceLabel: string
+  extra: string          // 輔助資訊（出價數/已訂名額/庫存）
+  status: string         // 狀態 badge
+  statusKey: string
+  timeText: string       // 截止時間 / 到期時間
+  viewLink: string       // 查看連結
 }
 
-const formatDateTime = (dateStr: string) => {
-  const date = new Date(dateStr)
-  return date.toLocaleString('zh-CN', {
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
+const rows = ref<Row[]>([])
+const counts = ref<Record<TabKey, number>>({ auction: 0, reservation: 0, sale: 0 })
+
+const categories: Record<string, string> = {
+  pokemon: '🎮', yugioh: '🐉', mtg: '🧙', ultraman: '👾',
+  onepiece: '⚔️', doraemon: '🤖', sports: '⚽', other: '🎴',
+}
+
+const formatPrice = (n: any) =>
+  'MOP ' + Number(n || 0).toLocaleString('zh-MO', { maximumFractionDigits: 0 })
+
+const parseImages = (images: any): string[] => {
+  if (Array.isArray(images)) return images
+  try { const arr = JSON.parse(images); return Array.isArray(arr) ? arr : [] } catch { return [] }
+}
+
+const resolveImage = (url: string) => {
+  if (!url) return ''
+  if (url.startsWith('data:') || url.startsWith('http')) return url
+  return (import.meta.env.VITE_API_URL || '') + url
+}
+
+// ===== 拍賣分頁：GET /auctions/seller/my =====
+const loadAuctionRows = async () => {
+  const res = await auctionApi.getMyAuctions({ limit: 200 })
+  const list = res.data?.data || []
+  return list.map((a: any): Row => {
+    const p = a.product || {}
+    const imgs = parseImages(p.images)
+    const st = (a.status || 'active').toLowerCase()
+    return {
+      id: a.id,
+      productId: a.productId,
+      title: p.titleZh || p.titleEn || '未知商品',
+      image: resolveImage(imgs[0] || ''),
+      category: p.category || 'other',
+      price: formatPrice(a.currentPrice),
+      priceLabel: '當前價',
+      extra: `出價 ${a.bidCount || 0} 次`,
+      statusKey: st,
+      status: st === 'active' ? '進行中' : st === 'pending' ? '待開始' : st === 'ended' ? '已結束' : '已取消',
+      timeText: a.endTime ? new Date(a.endTime).toLocaleString('zh-HK', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '',
+      viewLink: `/auction/${a.id}`,
+    }
   })
 }
 
-const getStatusBadge = (status: string) => {
-  const map: Record<string, { class: string; text: string }> = {
-    pending: { class: 'pending', text: '待開始' },
-    active: { class: 'active', text: '進行中' },
-    ended: { class: 'ended', text: '已結束' },
-    cancelled: { class: 'cancelled', text: '已取消' },
+// ===== 預訂分頁：GET /reservations/seller =====
+const loadReservationRows = async () => {
+  const res = await reservationApi.getSellerReservations()
+  const list = res.data?.data || res.data || []
+  // 按 productId 合併（同一商品多名買家 → 顯示訂單數）
+  const byProduct = new Map<string, { product: any; count: number; qty: number; latest: any }>()
+  for (const r of list) {
+    const p = r.product || {}
+    const key = r.productId
+    const entry = byProduct.get(key) || { product: p, count: 0, qty: 0, latest: r }
+    entry.count++
+    entry.qty += r.quantity || 1
+    byProduct.set(key, entry)
   }
-  return map[status] || { class: 'default', text: status }
+  return Array.from(byProduct.entries()).map(([pid, e]): Row => {
+    const imgs = parseImages(e.product.images)
+    const st = e.latest.status?.toLowerCase() || 'pending'
+    return {
+      id: e.latest.id,
+      productId: e.product.id || '',
+      title: e.product.titleZh || e.product.titleEn || '未知商品',
+      image: resolveImage(imgs[0] || ''),
+      category: e.product.category || 'other',
+      price: formatPrice(e.latest.depositAmount),
+      priceLabel: '訂金',
+      extra: `已訂 ${e.count} 單 / ${e.qty} 件`,
+      statusKey: st === 'deposit_paid' ? 'confirmed' : st,
+      status: st === 'deposit_paid' ? '已付訂金' : st === 'pending' ? '待付訂金' : st === 'confirmed' ? '已確認' : st === 'completed' ? '已完成' : st === 'cancelled' ? '已取消' : st === 'expired' ? '已過期' : st,
+      timeText: e.product.reservationDeadline ? `截止 ${new Date(e.product.reservationDeadline).toLocaleDateString('zh-HK')}` : '',
+      viewLink: `/product/${e.product.id}`,
+    }
+  })
 }
 
-const getCategoryEmoji = (category: string) => {
-  return categories.find(c => c.value === category)?.emoji || '🎴'
+// ===== 銷售分頁：GET /products/seller（listingType=sale）=====
+const loadSaleRows = async () => {
+  const res = await productApi.getMyProducts({ limit: 200 })
+  const list = (Array.isArray(res.data) ? res.data : (res.data as any)?.data) || []
+  return list
+    .filter((p: any) => (p.listingType || 'sale') === 'sale')
+    .map((p: any): Row => {
+      const imgs = parseImages(p.images)
+      const st = p.status || 'active'
+      return {
+        id: p.id,
+        productId: p.id,
+        title: p.titleZh || p.titleEn || '未知商品',
+        image: resolveImage(imgs[0] || ''),
+        category: p.category || 'other',
+        price: formatPrice(p.price),
+        priceLabel: '售價',
+        extra: `庫存 ${p.quantity ?? p.stock ?? 0}`,
+        statusKey: st,
+        status: st === 'active' ? '在售' : st === 'draft' ? '草稿' : st === 'sold' ? '已售' : st === 'removed' ? '已下架' : st,
+        timeText: p.soldAt ? `售出 ${new Date(p.soldAt).toLocaleDateString('zh-HK')}` : '',
+        viewLink: `/product/${p.id}`,
+      }
+    })
 }
 
-const getTimeRemaining = (endTime: string) => {
-  const now = new Date().getTime()
-  const end = new Date(endTime).getTime()
-  const diff = end - now
-  
-  if (diff <= 0) return '已結束'
-  
-  const hours = Math.floor(diff / (1000 * 60 * 60))
-  const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
-  
-  if (hours > 24) {
-    const days = Math.floor(hours / 24)
-    return `${days}天 ${hours % 24}小時`
-  }
-  return `${hours}小時 ${minutes}分鐘`
-}
-
-const loadAuctions = async () => {
+const loadTab = async () => {
   loading.value = true
+  error.value = ''
   try {
-    const res = await auctionApi.getMyAuctions()
-    auctions.value = res.data.data.map((a: any) => ({
-      id: a.id,
-      productId: a.productId,
-      productTitle: a.product?.titleZh || a.product?.titleEn || '未知商品',
-      category: a.product?.category || 'other',
-      startingPrice: a.startingPrice,
-      currentPrice: a.currentPrice,
-      bidCount: a.bidCount || 0,
-      startTime: a.startTime,
-      endTime: a.endTime,
-      status: a.status?.toLowerCase() || 'active',
-      winner: a.winnerId,
-    }))
-  } catch (err: any) {
-    console.error('Failed to load auctions:', err)
+    if (activeTab.value === 'auction') rows.value = await loadAuctionRows()
+    else if (activeTab.value === 'reservation') rows.value = await loadReservationRows()
+    else rows.value = await loadSaleRows()
+  } catch (e: any) {
+    console.error('Failed to load list:', e)
+    error.value = e.response?.data?.message || '載入失敗，請重試'
+    rows.value = []
   } finally {
     loading.value = false
   }
 }
 
-const handleCancel = async (auctionId: string) => {
-  if (!confirm('確定要取消此拍賣嗎？')) return
-
-  try {
-    await auctionApi.cancelAuction(auctionId)
-    await loadAuctions()
-  } catch (err: any) {
-    console.error('Failed to cancel auction:', err)
-    alert(err.response?.data?.message || '取消失敗')
-  }
+const switchTab = (key: TabKey) => {
+  if (activeTab.value === key) return
+  activeTab.value = key
+  loadTab()
 }
 
+// 初始載入三個 tab 數量（拍賣即時載，其餘兩個並行統計）
+const loadCounts = async () => {
+  try {
+    const [a, r, p] = await Promise.all([
+      auctionApi.getMyAuctions({ limit: 200 }),
+      reservationApi.getSellerReservations().catch(() => ({ data: { data: [] } })),
+      productApi.getMyProducts({ limit: 200 }),
+    ])
+    const pl = (Array.isArray(p.data) ? p.data : (p.data as any)?.data) || []
+    counts.value = {
+      auction: (a.data?.data || []).length,
+      reservation: new Set((r.data?.data || []).map((x: any) => x.productId)).size,
+      sale: pl.filter((x: any) => (x.listingType || 'sale') === 'sale').length,
+    }
+  } catch { /* counts 非關鍵 */ }
+}
+
+const getStatusClass = (key: string) => {
+  const map: Record<string, string> = {
+    active: 'active', confirmed: 'active',
+    pending: 'pending', deposit_paid: 'pending',
+    ended: 'ended', completed: 'ended', sold: 'ended',
+    cancelled: 'cancelled', removed: 'cancelled', expired: 'cancelled',
+    draft: 'pending',
+  }
+  return map[key] || 'ended'
+}
+
+const goCreate = () => router.push('/seller/products?action=create')
+
 onMounted(() => {
-  loadAuctions()
+  loadTab()
+  loadCounts()
 })
 </script>
 
 <template>
-  <div class="auctions-management">
-    <!-- Header -->
-    <div class="section-header">
-      <div class="filter-tabs">
-        <button 
-          class="tab" 
-          :class="{ active: filterStatus === 'all' }"
-          @click="filterStatus = 'all'"
-        >
-          全部 ({{ auctions.length }})
-        </button>
-        <button 
-          class="tab" 
-          :class="{ active: filterStatus === 'active' }"
-          @click="filterStatus = 'active'"
-        >
-          進行中 ({{ auctions.filter(a => a.status === 'active').length }})
-        </button>
-        <button 
-          class="tab" 
-          :class="{ active: filterStatus === 'pending' }"
-          @click="filterStatus = 'pending'"
-        >
-          待開始 ({{ auctions.filter(a => a.status === 'pending').length }})
-        </button>
-        <button 
-          class="tab" 
-          :class="{ active: filterStatus === 'ended' }"
-          @click="filterStatus = 'ended'"
-        >
-          已結束 ({{ auctions.filter(a => a.status === 'ended').length }})
-        </button>
-      </div>
+  <div class="product-list-management">
+    <!-- Tab 分頁 -->
+    <div class="list-tabs">
+      <button
+        v-for="tab in tabs"
+        :key="tab.key"
+        class="list-tab"
+        :class="{ active: activeTab === tab.key }"
+        @click="switchTab(tab.key)"
+      >
+        <span class="tab-icon">{{ tab.icon }}</span>
+        {{ tab.label }}
+        <span class="tab-count">{{ counts[tab.key] }}</span>
+      </button>
+      <button class="btn-new" @click="goCreate">+ 發布新商品</button>
     </div>
 
-    <!-- Auctions List -->
+    <!-- Loading -->
     <div v-if="loading" class="loading-state">
       <div class="spinner"></div>
       <p>加載中...</p>
     </div>
 
-    <div v-if="filteredAuctions.length === 0" class="empty-state">
-      <div class="empty-icon">🔨</div>
-      <h3>暫無拍賣</h3>
-      <p>在「商品管理」發布商品時選擇拍賣模式即可創建拍賣。</p>
+    <!-- Error -->
+    <div v-else-if="error" class="error-state">
+      <p>{{ error }}</p>
+      <button class="btn-retry" @click="loadTab">重試</button>
     </div>
 
-    <div v-else class="auctions-table">
+    <!-- Empty -->
+    <div v-else-if="rows.length === 0" class="empty-state">
+      <div class="empty-icon">{{ activeTab === 'auction' ? '🔨' : activeTab === 'reservation' ? '📅' : '🏷️' }}</div>
+      <h3>暫無{{ tabs.find(t => t.key === activeTab)?.label }}商品</h3>
+      <p>點击「+ 發布新商品」並選擇對應銷售模式即可創建。</p>
+    </div>
+
+    <!-- List (table) -->
+    <div v-else class="list-table">
       <table>
         <thead>
           <tr>
             <th>商品</th>
-            <th>起拍價</th>
-            <th>當前價格</th>
-            <th>出價次數</th>
-            <th>截止時間</th>
+            <th>{{ activeTab === 'auction' ? '當前價' : activeTab === 'reservation' ? '訂金' : '售價' }}</th>
+            <th>{{ activeTab === 'auction' ? '出價' : activeTab === 'reservation' ? '已訂' : '庫存' }}</th>
             <th>狀態</th>
+            <th>{{ activeTab === 'auction' ? '截止時間' : activeTab === 'reservation' ? '預約截止' : '備註' }}</th>
             <th>操作</th>
           </tr>
         </thead>
         <tbody>
-          <tr v-for="auction in filteredAuctions" :key="auction.id">
+          <tr v-for="row in rows" :key="activeTab + row.id">
             <td>
               <div class="product-cell">
-                <span class="category-emoji">{{ getCategoryEmoji(auction.category) }}</span>
-                <span class="product-title">{{ auction.productTitle }}</span>
+                <img v-if="row.image" :src="row.image" class="row-thumb" :alt="row.title" />
+                <span v-else class="category-emoji">{{ categories[row.category] || '🎴' }}</span>
+                <span class="product-title">{{ row.title }}</span>
               </div>
             </td>
-            <td class="price-cell">{{ formatPrice(auction.startingPrice) }}</td>
-            <td class="price-cell highlight">{{ formatPrice(auction.currentPrice) }}</td>
-            <td>{{ auction.bidCount }} 次</td>
+            <td class="price-cell highlight">{{ row.price }}</td>
+            <td>{{ row.extra }}</td>
             <td>
-              <div class="time-cell">
-                <span>{{ formatDateTime(auction.endTime) }}</span>
-                <span v-if="auction.status === 'active'" class="time-remaining">
-                  {{ getTimeRemaining(auction.endTime) }}
-                </span>
-              </div>
+              <span class="status-badge" :class="getStatusClass(row.statusKey)">{{ row.status }}</span>
             </td>
+            <td>{{ row.timeText || '—' }}</td>
             <td>
-              <span class="status-badge" :class="getStatusBadge(auction.status).class">
-                {{ getStatusBadge(auction.status).text }}
-              </span>
-            </td>
-            <td>
-              <div class="action-buttons">
-                <button v-if="auction.status === 'active'" class="btn-action view" @click="$router.push(`/auction/${auction.id}`)">
-                  查看
-                </button>
-                <button 
-                  v-if="auction.status === 'pending' || auction.status === 'active'" 
-                  class="btn-action cancel"
-                  @click="handleCancel(auction.id)"
-                >
-                  取消
-                </button>
-                <span v-if="auction.status === 'ended' && auction.winner" class="winner-info">
-                  贏家: {{ auction.winner }}
-                </span>
-              </div>
+              <button class="btn-action view" @click="router.push(row.viewLink)">查看</button>
             </td>
           </tr>
         </tbody>
@@ -236,25 +276,23 @@ onMounted(() => {
 </template>
 
 <style scoped>
-.auctions-management {
+.product-list-management {
   display: flex;
   flex-direction: column;
   gap: var(--space-6);
 }
 
-.section-header {
+.list-tabs {
   display: flex;
-  justify-content: space-between;
+  gap: var(--space-2);
   align-items: center;
 }
 
-.filter-tabs {
+.list-tab {
   display: flex;
-  gap: var(--space-2);
-}
-
-.tab {
-  padding: var(--space-2) var(--space-4);
+  align-items: center;
+  gap: 6px;
+  padding: var(--space-2) var(--space-5);
   border-radius: var(--radius-lg);
   font-size: var(--text-sm);
   font-weight: 500;
@@ -265,30 +303,49 @@ onMounted(() => {
   transition: all var(--transition-fast);
 }
 
-.tab:hover {
+.list-tab:hover {
   border-color: var(--primary);
 }
 
-.tab.active {
+.list-tab.active {
   background: var(--primary-gradient);
   border: none;
   color: white;
 }
 
-.btn-primary {
-  padding: var(--space-3) var(--space-6);
+.tab-count {
+  padding: 1px 8px;
+  border-radius: var(--radius-full);
+  background: rgba(0, 0, 0, 0.15);
+  font-size: var(--text-xs);
+  font-weight: 600;
+}
+
+.list-tab:not(.active) .tab-count {
+  background: var(--bg-elevated);
+  color: var(--text-secondary);
+}
+
+.tab-icon {
+  font-size: 14px;
+}
+
+.btn-new {
+  margin-left: auto;
+  padding: var(--space-2) var(--space-5);
   background: var(--primary-gradient);
   border-radius: var(--radius-lg);
   color: white;
   font-weight: 600;
   border: none;
   cursor: pointer;
+  font-size: var(--text-sm);
   transition: all var(--transition-fast);
 }
 
-.btn-primary:hover {
+.btn-new:hover {
   opacity: 0.9;
-  transform: translateY(-2px);
+  transform: translateY(-1px);
 }
 
 .loading-state {
@@ -309,6 +366,25 @@ onMounted(() => {
 
 @keyframes spin {
   to { transform: rotate(360deg); }
+}
+
+.error-state {
+  text-align: center;
+  padding: var(--space-10);
+  background: var(--bg-card);
+  border: 1px solid var(--danger);
+  border-radius: var(--radius-xl);
+  color: var(--danger);
+}
+
+.btn-retry {
+  margin-top: var(--space-4);
+  padding: var(--space-2) var(--space-5);
+  background: var(--primary-gradient);
+  border: none;
+  border-radius: var(--radius-lg);
+  color: white;
+  cursor: pointer;
 }
 
 .empty-state {
@@ -332,10 +408,9 @@ onMounted(() => {
 
 .empty-state p {
   color: var(--text-secondary);
-  margin-bottom: var(--space-6);
 }
 
-.auctions-table {
+.list-table {
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: var(--radius-xl);
@@ -375,13 +450,28 @@ tr:last-child td {
   gap: var(--space-3);
 }
 
+.row-thumb {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-md);
+  object-fit: cover;
+  background: var(--bg-elevated);
+}
+
 .category-emoji {
   font-size: 24px;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-elevated);
+  border-radius: var(--radius-md);
 }
 
 .product-title {
   font-weight: 500;
-  max-width: 200px;
+  max-width: 260px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -396,22 +486,12 @@ tr:last-child td {
   font-weight: 700;
 }
 
-.time-cell {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.time-remaining {
-  font-size: var(--text-xs);
-  color: var(--accent);
-}
-
 .status-badge {
   padding: 2px 10px;
   border-radius: var(--radius-full);
   font-size: var(--text-xs);
   font-weight: 600;
+  white-space: nowrap;
 }
 
 .status-badge.active {
@@ -434,11 +514,6 @@ tr:last-child td {
   color: #ef4444;
 }
 
-.action-buttons {
-  display: flex;
-  gap: var(--space-2);
-}
-
 .btn-action {
   padding: var(--space-1) var(--space-3);
   border-radius: var(--radius-md);
@@ -458,146 +533,26 @@ tr:last-child td {
   color: white;
 }
 
-.btn-action.cancel {
-  background: #ef44444d;
-  color: #ef4444;
+/* 桌面寬屏適配 */
+@media (min-width: 820px) {
+  .product-list-management {
+    max-width: 100%;
+  }
 }
 
-.btn-action.cancel:hover {
-  background: #ef4444;
-  color: white;
-}
-
-.winner-info {
-  font-size: var(--text-xs);
-  color: var(--text-secondary);
-}
-
-/* Modal */
-.modal-overlay {
-  position: fixed;
-  inset: 0;
-  background: #000000b3;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  padding: var(--space-6);
-}
-
-.modal {
-  background: var(--bg-card);
-  border-radius: var(--radius-2xl);
-  width: 100%;
-  max-width: 500px;
-  overflow: hidden;
-}
-
-.modal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: var(--space-6);
-  border-bottom: 1px solid var(--border);
-}
-
-.modal-header h2 {
-  font-size: var(--text-lg);
-  font-weight: 700;
-  color: var(--text-primary);
-}
-
-.modal-close {
-  width: 32px;
-  height: 32px;
-  border-radius: var(--radius-lg);
-  border: none;
-  background: var(--bg-elevated);
-  color: var(--text-secondary);
-  cursor: pointer;
-}
-
-.modal-close:hover {
-  background: var(--danger);
-  color: white;
-}
-
-.modal-body {
-  padding: var(--space-6);
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
-}
-
-.form-row {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: var(--space-4);
-}
-
-.form-group {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-}
-
-.form-group label {
-  font-size: var(--text-sm);
-  font-weight: 500;
-  color: var(--text-secondary);
-}
-
-.form-group input,
-.form-group select {
-  padding: var(--space-3) var(--space-4);
-  background: var(--bg-elevated);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  color: var(--text-primary);
-  font-size: var(--text-sm);
-}
-
-.form-group input:focus,
-.form-group select:focus {
-  outline: none;
-  border-color: var(--primary);
-}
-
-.modal-footer {
-  display: flex;
-  justify-content: flex-end;
-  gap: var(--space-3);
-  padding: var(--space-6);
-  border-top: 1px solid var(--border);
-  background: var(--bg-elevated);
-}
-
-.btn-cancel {
-  padding: var(--space-3) var(--space-6);
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  color: var(--text-primary);
-  font-weight: 500;
-  cursor: pointer;
-}
-
-.btn-submit {
-  padding: var(--space-3) var(--space-6);
-  background: var(--primary-gradient);
-  border: none;
-  border-radius: var(--radius-lg);
-  color: white;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.btn-submit:hover:not(:disabled) {
-  opacity: 0.9;
-}
-
-.btn-submit:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
+@media (max-width: 640px) {
+  .list-tabs {
+    flex-wrap: wrap;
+  }
+  .btn-new {
+    margin-left: 0;
+    width: 100%;
+  }
+  .list-table {
+    overflow-x: auto;
+  }
+  table {
+    min-width: 640px;
+  }
 }
 </style>
