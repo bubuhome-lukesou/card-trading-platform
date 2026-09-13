@@ -32,11 +32,22 @@ export class AdminService {
       skip: (page - 1) * limit,
       take: limit,
     });
-    return { data, total, page, limit };
+    // 安全：移除敏感欄位（password hash / 驗證 token）— 同 getRecentUsers 一致
+    return {
+      data: data.map(u => {
+        const { password, emailVerificationToken, resetPasswordToken, ...safe } = u as any;
+        return safe;
+      }),
+      total, page, limit,
+    };
   }
 
   async getUser(id: string) {
-    return this.userRepo.findOne({ where: { id } });
+    const user = await this.userRepo.findOne({ where: { id } });
+    if (!user) return null;
+    // 安全：移除敏感欄位
+    const { password, emailVerificationToken, resetPasswordToken, ...safe } = user as any;
+    return safe;
   }
 
   async updateUser(id: string, data: { role?: string; status?: string; nickname?: string }) {
