@@ -1,12 +1,13 @@
 import { Controller, Get, Post, Delete, Body, Param, UseGuards, Request, BadRequestException } from '@nestjs/common'
 import { ReservationsService } from './reservations.service'
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard'
+import { BuyerGuard } from '../auth/guards/roles.guard'
 
 @Controller('reservations')
 export class ReservationsController {
   constructor(private readonly reservationsService: ReservationsService) {}
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, BuyerGuard)
   @Post()
   async create(@Body() body: { productId: string; quantity?: number }, @Request() req) {
     const product = await this.reservationsService.getProduct(body.productId)

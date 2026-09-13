@@ -2,6 +2,7 @@ import { Controller, Get, Post, Body, Param, Query, UseGuards, Request } from '@
 import { AuctionsService } from './auctions.service'
 import { CreateAuctionDto, PlaceBidDto, AuctionFiltersDto } from './dto/auction.dto'
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard'
+import { BuyerGuard } from '../auth/guards/roles.guard'
 
 @Controller('auctions')
 export class AuctionsController {
@@ -35,7 +36,7 @@ export class AuctionsController {
     return this.auctionsService.create(dto, req.user.id)
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, BuyerGuard)
   @Post(':id/bids')
   async placeBid(@Param('id') id: string, @Body() dto: PlaceBidDto, @Request() req: any) {
     return this.auctionsService.placeBid(id, dto.amount, req.user.id)
@@ -53,7 +54,7 @@ export class AuctionsController {
     return this.auctionsService.endAuctionManual(id, req.user.id)
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, BuyerGuard)
   @Post(':id/buy-now')
   async buyNow(@Param('id') id: string, @Request() req: any) {
     return this.auctionsService.buyNow(id, req.user.id)

@@ -2,6 +2,7 @@ import { Controller, Get, Post, Put, Delete, Body, Param, Query, UseGuards, Requ
 import { ProductsService } from './products.service'
 import { CreateProductDto, UpdateProductDto, ProductFiltersDto } from './dto/product.dto'
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard'
+import { SellerGuard } from '../auth/guards/roles.guard'
 
 @Controller('products')
 export class ProductsController {
@@ -41,20 +42,20 @@ export class ProductsController {
     return this.productsService.findOne(id)
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, SellerGuard)
   @Post()
   async create(@Body() dto: CreateProductDto, @Request() req: any) {
     return this.productsService.create(dto, req.user.id)
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, SellerGuard)
   @Put(':id')
   async update(@Param('id') id: string, @Body() dto: UpdateProductDto, @Request() req: any) {
     console.log('[DEBUG] Controller received update dto:', JSON.stringify(dto, null, 2))
     return this.productsService.update(id, dto, req.user.id)
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, SellerGuard)
   @Delete(':id')
   async remove(@Param('id') id: string, @Request() req: any) {
     return this.productsService.remove(id, req.user.id)
