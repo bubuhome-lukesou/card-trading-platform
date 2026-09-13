@@ -109,11 +109,8 @@ const userMenuItems = computed(() => {
 
           <!-- Auth -->
           <template v-if="!authStore.isAuthenticated">
-            <RouterLink to="/login" class="btn btn-outline btn-sm">
+            <RouterLink to="/login" class="btn btn-primary btn-sm">
               {{ t('nav.login') }}
-            </RouterLink>
-            <RouterLink to="/register" class="btn btn-primary btn-sm">
-              {{ t('nav.register') }}
             </RouterLink>
           </template>
 
@@ -186,9 +183,6 @@ const userMenuItems = computed(() => {
           <template v-if="!authStore.isAuthenticated">
             <RouterLink to="/login" class="mobile-link" @click="mobileMenuOpen = false">
               {{ t('nav.login') }}
-            </RouterLink>
-            <RouterLink to="/register" class="mobile-link" @click="mobileMenuOpen = false">
-              {{ t('nav.register') }}
             </RouterLink>
           </template>
           <template v-else>

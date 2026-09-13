@@ -181,9 +181,13 @@ const renderGoogleButton = () => {
       auto_select: false,
       cancel_on_tap_outside: true,
     })
+    // filled_black：官方深色主題，配合網站深色浮世繪風格
+    // width 依容器實測（上限 400），避免窄螢幕溢出
+    const el = document.getElementById('googleBtnContainer')
+    const btnWidth = Math.min(el?.clientWidth || 380, 400)
     google.accounts.id.renderButton(
-      document.getElementById('googleBtnContainer'),
-      { theme: 'filled_blue', size: 'large', width: 380, text: 'continue_with', locale: locale.value === 'zh' ? 'zh-HK' : 'en' }
+      el,
+      { theme: 'filled_black', size: 'large', width: btnWidth, text: 'continue_with', locale: locale.value === 'zh' ? 'zh-HK' : 'en' }
     )
     googleSdkReady.value = true
   } catch (e) {
@@ -592,9 +596,9 @@ onMounted(() => {
   gap: 10px;
   width: 100%;
   padding: 12px 16px;
-  background: #fff;
-  color: #1f1f1f;
-  border: 1px solid #dadce0;
+  background: var(--bg-elevated, #16181d);
+  color: var(--text-primary, #e5e7eb);
+  border: 1px solid var(--border, rgba(255, 255, 255, 0.12));
   border-radius: var(--radius-lg);
   font-size: var(--text-sm);
   font-weight: 500;
@@ -602,8 +606,8 @@ onMounted(() => {
   transition: all 0.2s;
 
   &:hover {
-    background: #f8f9fa;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.25);
   }
 }
 
