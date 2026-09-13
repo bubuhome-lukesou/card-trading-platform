@@ -205,7 +205,7 @@ const loadGoogleSdk = () => {
 }
 
 const initGoogleBtn = () => {
-  if (googleSdkReady) return
+  if (googleSdkReady.value) return
   if ((window as any).google?.accounts?.id) renderGoogleButton()
   else loadGoogleSdk()
 }
