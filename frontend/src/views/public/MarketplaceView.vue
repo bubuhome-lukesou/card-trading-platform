@@ -25,8 +25,6 @@ const loadingMore = ref(false)
 const showFilters = ref(false)
 const hasMore = computed(() => products.value.length < meta.value.total)
 const sentinelRef = ref<HTMLElement | null>(null)
-// 拍賣模式狀態 tabs（/auctions）：進行中/即將開始/已結束
-const auctionStatus = ref<'active' | 'upcoming' | 'ended'>('active')
 const filtersExpanded = ref({
   category: true,
   productTypes: true,
@@ -221,46 +219,10 @@ const fetchProducts = async (append = false) => {
     // sellerIds 陣列以逗號傳遞（paramsSerializer 自動處理）
     console.log('[DEBUG] fetchProducts params:', JSON.stringify(cleanParams))
     const response = await productApi.getProducts({ ...cleanParams, withAuction: true })
-    let data: any[] = response.data.data || []
-    // 拍賣模式：按 auctionSummary.status 過濾 tabs（進行中/即將開始/已結束）
-    // 已結束拍賣：auctionSummary 只附 active/pending，ended 嘅要靠 hideSold=false 拎返商品（status=sold/removed 過唔到 ACTIVE 過濾），
-    // 所以 ended tab 用 auctions API 查詢已結束拍賣再映射成 product-shape
-    if (props.lockedListing === 'auction') {
-      if (auctionStatus.value === 'ended') {
-        const { auctionApi } = await import('@/api/auctions')
-        const res = await auctionApi.getAuctions({ status: 'ended' } as any)
-        data = (res.data.data || []).map((a: any) => {
-          const product = a.product || {}
-          if (typeof product.images === 'string') {
-            try { product.images = JSON.parse(product.images) } catch { product.images = [] }
-          }
-          return {
-            ...product,
-            id: a.productId || product.id,
-            listingType: 'auction',
-            price: a.currentPrice,
-            auctionSummary: {
-              auctionId: a.id,
-              currentPrice: a.currentPrice,
-              startingPrice: a.startingPrice,
-              bidCount: a.bidCount || 0,
-              endTime: a.endTime,
-              status: 'ended',
-            },
-          }
-        })
-        // 已結束拍賣唔做無限滾動（meta 以 mapped 結果為準）
-        meta.value = { total: data.length, page: 1, limit: data.length || 1, totalPages: 1 }
-        if (!append) products.value = data
-        return
-      }
-      const wanted = auctionStatus.value === 'active' ? 'active' : 'pending'
-      data = data.filter((p: any) => p.auctionSummary?.status === wanted)
-    }
     if (append) {
-      products.value = [...products.value, ...data]
+      products.value = [...products.value, ...response.data.data]
     } else {
-      products.value = data
+      products.value = response.data.data
     }
     meta.value = response.data.meta
   } catch (error) {
@@ -269,13 +231,6 @@ const fetchProducts = async (append = false) => {
     loading.value = false
     loadingMore.value = false
   }
-}
-
-// 切換拍賣狀態 tab
-const setAuctionStatus = (status: 'active' | 'upcoming' | 'ended') => {
-  auctionStatus.value = status
-  filters.value.page = 1
-  fetchProducts()
 }
 
 const updateFilter = (key: string, value: any) => {
@@ -446,31 +401,6 @@ watch(() => route.query, () => {
       <!-- Header -->
       <div class="page-header">
         <h1 class="page-title">{{ props.lockedListing === 'auction' ? t('auction.list') : t('product.marketplace') }}</h1>
-
-        <!-- 拍賣狀態 tabs（/auctions）：進行中/即將開始/已結束 -->
-        <div v-if="props.lockedListing === 'auction'" class="auction-status-tabs">
-          <button
-            class="status-tab"
-            :class="{ active: auctionStatus === 'active' }"
-            @click="setAuctionStatus('active')"
-          >
-            {{ t('auction.live') }}
-          </button>
-          <button
-            class="status-tab"
-            :class="{ active: auctionStatus === 'upcoming' }"
-            @click="setAuctionStatus('upcoming')"
-          >
-            {{ t('auction.upcoming') }}
-          </button>
-          <button
-            class="status-tab"
-            :class="{ active: auctionStatus === 'ended' }"
-            @click="setAuctionStatus('ended')"
-          >
-            {{ t('auction.ended') }}
-          </button>
-        </div>
 
         <!-- Search Bar -->
         <div class="search-bar">
@@ -831,40 +761,6 @@ watch(() => route.query, () => {
   font-size: var(--text-3xl);
   font-weight: 700;
   margin-bottom: var(--space-6);
-}
-
-// 拍賣狀態 tabs（/auctions）
-.auction-status-tabs {
-  display: flex;
-  gap: var(--space-2);
-  margin-bottom: var(--space-6);
-  background: var(--bg-card);
-  padding: var(--space-1);
-  border-radius: var(--radius-lg);
-  width: fit-content;
-
-  .status-tab {
-    display: flex;
-    align-items: center;
-    padding: var(--space-2) var(--space-5);
-    background: transparent;
-    border: none;
-    border-radius: var(--radius-md);
-    color: var(--text-muted);
-    font-weight: 500;
-    font-size: var(--text-sm);
-    cursor: pointer;
-    transition: all var(--transition-fast);
-
-    &:hover {
-      color: var(--text-secondary);
-    }
-
-    &.active {
-      background: var(--primary-gradient);
-      color: white;
-    }
-  }
 }
 
 .search-bar {
