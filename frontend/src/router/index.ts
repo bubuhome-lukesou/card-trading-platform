@@ -84,7 +84,12 @@ const userRoutes: RouteRecordRaw[] = [
       {
         path: 'notifications',
         name: 'UserNotifications',
-        component: () => import('@/views/user/NotificationsView.vue')
+        // 共用通知中心（與 seller 版合併），空狀態文案按角色區分
+        component: () => import('@/components/notifications/NotificationsCenter.vue'),
+        props: {
+          emptyHintZh: '拍賣、訂單、預約嘅最新動態會喺呢度顯示',
+          emptyHintEn: 'Auction, order and reservation updates will appear here',
+        }
       },
       {
         path: 'settings',
@@ -141,7 +146,12 @@ const sellerRoutes: RouteRecordRaw[] = [
       {
         path: 'notifications',
         name: 'SellerNotifications',
-        component: () => import('@/views/seller/NotificationsView.vue')
+        // 共用通知中心（與 user 版合併），空狀態文案按角色區分
+        component: () => import('@/components/notifications/NotificationsCenter.vue'),
+        props: {
+          emptyHintZh: '新訂單、新預約、付款憑證嘅動態會喺呢度顯示',
+          emptyHintEn: 'Order, reservation and payment updates will appear here',
+        }
       },
       {
         path: 'settings',

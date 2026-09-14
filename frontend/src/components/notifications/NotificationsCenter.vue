@@ -4,6 +4,16 @@ import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { useNotificationStore } from '@/stores/notifications'
 
+// 共用通知中心 — user 與 seller 共用（原兩個 view 99% 相同）
+// emptyHintZh / emptyHintEn：空狀態提示文案，由路由 props 傳入
+const props = withDefaults(defineProps<{
+  emptyHintZh?: string
+  emptyHintEn?: string
+}>(), {
+  emptyHintZh: '拍賣、訂單、預約嘅最新動態會喺呢度顯示',
+  emptyHintEn: 'Auction, order and reservation updates will appear here',
+})
+
 const { t, locale } = useI18n()
 const router = useRouter()
 const store = useNotificationStore()
@@ -79,7 +89,7 @@ onMounted(() => {
     <div v-else-if="store.notifications.length === 0" class="empty-state">
       <div class="empty-icon">🔕</div>
       <p>{{ zh() ? '暫無通知' : 'No notifications yet' }}</p>
-      <p class="empty-hint">{{ zh() ? '拍賣、訂單、預約嘅最新動態會喺呢度顯示' : 'Auction, order and reservation updates will appear here' }}</p>
+      <p class="empty-hint">{{ zh() ? props.emptyHintZh : props.emptyHintEn }}</p>
     </div>
 
     <div v-else class="notifications-list">
