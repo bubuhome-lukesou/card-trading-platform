@@ -169,6 +169,11 @@ const reservationCountdown = computed(() => {
         <ShoppingCart v-else class="badge-icon" />
         {{ listingBadgeText }}
       </span>
+      <!-- Auction live bids (bottom left, 與首頁卡片統一) -->
+      <span
+        v-if="product.listingType === 'auction' && (auctionSummary?.bidCount || 0) > 0"
+        class="auction-bids-inline"
+      >🔥 {{ auctionSummary.bidCount }}</span>
     </div>
 
     <!-- Info -->
@@ -241,6 +246,21 @@ const reservationCountdown = computed(() => {
     object-fit: cover;
     transition: transform var(--transition-slow);
   }
+}
+
+// 拍賣出價數（同首頁卡片統一）
+.auction-bids-inline {
+  position: absolute;
+  bottom: var(--space-2);
+  left: var(--space-2);
+  padding: 2px 8px;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(4px);
+  border-radius: var(--radius-full);
+  font-size: 10px;
+  font-weight: 600;
+  color: white;
+  z-index: 10;
 }
 
 .placeholder-card {
