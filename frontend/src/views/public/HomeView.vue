@@ -736,11 +736,9 @@ watch([hotAuctions, newListings, hotReservations], () => {
   padding-bottom: var(--space-6);
 }
 
-// Stats Bar
+// Stats Bar — 實色背景，唔透出 body 花紋
 .stats-bar {
-  background: rgba(26, 26, 46, 0.3);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  background: #14142a;
   padding: var(--space-6) 0;
   border-bottom: 1px solid var(--border);
 }
