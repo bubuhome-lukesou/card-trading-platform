@@ -13,6 +13,11 @@ const route = useRoute()
 const router = useRouter()
 const favoritesStore = useFavoritesStore()
 
+// lockedListing: 由路由傳入（/auctions → 'auction'），鎖定銷售模式篩選，與銷售/預訂頁共用同一套佈局
+const props = defineProps<{
+  lockedListing?: string
+}>()
+
 // State
 const products = ref<Product[]>([])
 const loading = ref(false)
@@ -197,7 +202,10 @@ const fetchProducts = async (append = false) => {
     // Convert listingType array to listingTypes for API call
     const { listingType, ...params } = filters.value
     const cleanParams = { ...params }
-    if (listingType && listingType.length > 0) {
+    // lockedListing 模式（/auctions）：強制 listingType=auction，忽略 URL/手動選擇
+    if (props.lockedListing) {
+      ;(cleanParams as any).listingTypes = [props.lockedListing]
+    } else if (listingType && listingType.length > 0) {
       (cleanParams as any).listingTypes = listingType
     }
     delete (cleanParams as any).listingType
@@ -317,7 +325,7 @@ const updateUrl = () => {
   if (filters.value.condition?.length) query.condition = filters.value.condition.join(',')
   if (filters.value.priceMin) query.priceMin = String(filters.value.priceMin)
   if (filters.value.priceMax) query.priceMax = String(filters.value.priceMax)
-  if (filters.value.listingType?.length) query.listing = filters.value.listingType.join(',')
+  if (!props.lockedListing && filters.value.listingType?.length) query.listing = filters.value.listingType.join(',')
   if (filters.value.sortBy !== 'newest') query.sort = filters.value.sortBy
   if (filters.value.tags?.length) query.tags = filters.value.tags.join(',')
   if (filters.value.productTypes?.length) query.productType = filters.value.productTypes.join(',')
@@ -336,7 +344,7 @@ const parseUrlFilters = () => {
   if (query.condition) filters.value.condition = (query.condition as string).split(',')
   if (query.priceMin) filters.value.priceMin = Number(query.priceMin)
   if (query.priceMax) filters.value.priceMax = Number(query.priceMax)
-  if (query.listing) filters.value.listingType = (query.listing as string).split(',')
+  if (!props.lockedListing && query.listing) filters.value.listingType = (query.listing as string).split(',')
   if (query.sort) filters.value.sortBy = query.sort as string
   if (query.productType) filters.value.productTypes = (query.productType as string).split(',')
   if (query.sellers) filters.value.sellerIds = (query.sellers as string).split(',')
@@ -392,7 +400,7 @@ watch(() => route.query, () => {
     <div class="container">
       <!-- Header -->
       <div class="page-header">
-        <h1 class="page-title">{{ t('product.marketplace') }}</h1>
+        <h1 class="page-title">{{ props.lockedListing === 'auction' ? t('auction.list') : t('product.marketplace') }}</h1>
 
         <!-- Search Bar -->
         <div class="search-bar">
@@ -485,8 +493,8 @@ watch(() => route.query, () => {
             </div>
           </div>
 
-          <!-- 銷售模式 -->
-          <div class="filter-section">
+          <!-- 銷售模式（/auctions 鎖定模式下隱藏） -->
+          <div v-if="!props.lockedListing" class="filter-section">
             <h4 class="filter-title" @click="filtersExpanded.listingType = !filtersExpanded.listingType">
               {{ t('product.filters.listingType') || '銷售模式' }}
               <ChevronDown class="filter-chevron" :class="{ collapsed: !filtersExpanded.listingType }" />

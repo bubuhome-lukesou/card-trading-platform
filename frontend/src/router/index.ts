@@ -21,7 +21,9 @@ const publicRoutes: RouteRecordRaw[] = [
   {
     path: '/auctions',
     name: 'Auctions',
-    component: () => import('@/views/public/AuctionsView.vue')
+    // 統一佈局：拍賣頁直接用 MarketplaceView（與銷售/預訂頁同一套篩選欄佈局），鎖定 listing=auction
+    component: () => import('@/views/public/MarketplaceView.vue'),
+    props: { lockedListing: 'auction' }
   },
   {
     path: '/auction/:id',
