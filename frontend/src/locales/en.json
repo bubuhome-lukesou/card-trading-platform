@@ -177,6 +177,7 @@
     "myBids": "My Bids",
     "myFavorites": "My Favorites",
     "wallet": "Wallet",
+    "notifications": "Notifications",
     "settings": "Settings"
   },
   "seller": {
@@ -186,6 +187,7 @@
     "orders": "Orders",
     "earnings": "Earnings",
     "reviews": "Reviews",
+    "notifications": "Notifications",
     "settings": "Settings",
     "apply": "Become a Seller"
   },

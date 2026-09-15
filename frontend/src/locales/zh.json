@@ -171,6 +171,7 @@
     "myBids": "我的出價",
     "myFavorites": "我的收藏",
     "wallet": "錢包",
+    "notifications": "通知中心",
     "settings": "設定"
   },
   "seller": {
@@ -180,6 +181,7 @@
     "orders": "訂單管理",
     "earnings": "收益管理",
     "reviews": "評價管理",
+    "notifications": "通知中心",
     "settings": "店鋪設定",
     "apply": "申請成為賣家",
     "createProduct": "發布新商品",
