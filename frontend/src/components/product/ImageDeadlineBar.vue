@@ -1,9 +1,11 @@
 <script setup lang="ts">
 /**
  * 圖片底部時間條（參考魂SHOP 風格）
- * - 全幅覆蓋圖片底邊，粉色漸變底 + 白字
- * - 拍賣：⏰ 截止: 2026-09-21 (剩5天 10小時)
- * - 預約：⏰ 截單: 2026-09-21 (剩5天 10小時)
+ * - 全幅覆蓋圖片底邊，顏色跟隨右上角銷售模式 badge
+ *   - 拍賣 auction：綠（同 BID badge）
+ *   - 預約 reservation：琥珀（同 RESERVE badge）
+ * - 兩行佈局：第一行「截止/截單: YYYY-MM-DD」、第二行「剩X天 X小時」
+ *   手機窄卡都顯示得完整
  */
 import { computed } from 'vue'
 import { Clock } from 'lucide-vue-next'
@@ -26,7 +28,7 @@ const dateText = computed(() => {
   return `${y}-${m}-${day}`
 })
 
-// 括號內倒數：剩X天 X小時 / 剩X小時 X分鐘
+// 第二行：剩X天 X小時 / 剩X小時 X分鐘
 const countdownText = computed(() => {
   const end = new Date(props.endTime).getTime()
   const diff = end - Date.now()
@@ -52,7 +54,10 @@ const label = computed(() =>
 <template>
   <div class="img-deadline-bar" :class="variant">
     <Clock class="bar-icon" />
-    <span class="bar-text">{{ label }}: {{ dateText }} ({{ countdownText }})</span>
+    <div class="bar-lines">
+      <span class="bar-date">{{ label }}: {{ dateText }}</span>
+      <span class="bar-countdown">{{ countdownText }}</span>
+    </div>
   </div>
 </template>
 
@@ -64,26 +69,46 @@ const label = computed(() =>
   bottom: 0;
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 7px 12px;
-  background: linear-gradient(90deg, #f43f5e, #ec4899);
+  gap: 7px;
+  padding: 5px 10px;
   color: #fff;
   z-index: 5;
 
+  // 顏色跟隨右上角銷售模式 badge（ProductCard/HomeView listing-badge 同款）
+  &.auction {
+    background: linear-gradient(135deg, #10b981, #059669);
+  }
+
   &.reservation {
-    background: linear-gradient(90deg, #f59e0b, #f97316);
+    background: linear-gradient(135deg, #f59e0b, #d97706);
   }
 
   .bar-icon {
-    width: 15px;
-    height: 15px;
+    width: 13px;
+    height: 13px;
     flex-shrink: 0;
   }
 
-  .bar-text {
-    font-size: 0.8rem;
+  .bar-lines {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    min-width: 0;
+  }
+
+  .bar-date {
+    font-size: 0.68rem;
     font-weight: 700;
     letter-spacing: 0.02em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .bar-countdown {
+    font-size: 0.66rem;
+    font-weight: 600;
+    opacity: 0.92;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
