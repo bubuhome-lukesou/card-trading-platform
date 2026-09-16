@@ -312,20 +312,75 @@ export class ProductsService {
   }
 
   /**
-   * 生成唯一商品編號（純數字，10 位）
-   * 時間戳秒數去首位(9位) + 隨機 1-2 位 → 併合至 10 位
-   * 衝突時重試（unique index 兜底）
+   * 生成唯一商品編號（純數字，10 位）— 順序生成、永不重用、不依賴時鐘準確性
+   *
+   * 格式：YYMMDD + 4位序號（淘寶式日期+每日順序號）
+   *   - 2609160001 = 2026-09-16 當日第 1 件
+   *   - 同日內序號嚴格遞增；跨日自然換前綴
+   *
+   * 單調保護（時鐘回跳免疫）：
+   *   counters 表記錄 last_date + seq，生成時比較：
+   *   - current > last_date（正常過日）→ 前綴=新日期，seq 重置 1
+   *   - current == last_date（同日）  → 前綴不變，seq+1
+   *   - current < last_date（NTP 回跳）→ 前綴凍結在 last_date，seq 續加
+   *   → 已發出的號碼永遠不會再發（前綴=見過的最大日期，序號只加不減）
+   *
+   * 併發安全：UPDATE ... SET seq=seq+1 單行原子操作（InnoDB 行鎖），
+   *   以 SELECT ... FOR UPDATE 讀取後在同一事務內寫回。
+   * 號碼不重用：軟刪/硬刪商品號碼作廢不回收；unique index 兜底。
    */
   private async generateProductNumber(): Promise<number> {
-    for (let attempt = 0; attempt < 5; attempt++) {
-      const ts = Math.floor(Date.now() / 1000) % 1_000_000_000 // 9位
-      const rand = Math.floor(Math.random() * 10)              // 1位
-      const candidate = ts * 10 + rand                          // 10位純數字
-      const exists = await this.productRepo.findOne({ where: { productNumber: candidate } })
-      if (!exists) return candidate
+    const queryRunner = this.dataSource.createQueryRunner()
+    await queryRunner.connect()
+    await queryRunner.startTransaction()
+    try {
+      // 取日期前綴（本機時間；即使不準，單調保護也保證不重複）
+      const now = new Date()
+      const yy = String(now.getFullYear()).slice(-2)
+      const mm = String(now.getMonth() + 1).padStart(2, '0')
+      const dd = String(now.getDate()).padStart(2, '0')
+      const currentDate = `${yy}${mm}${dd}` // 6位
+
+      // 鎖定計數器行（FOR UPDATE：其他生成請求排隊，保證併發下不重複）
+      const counterRows: any[] = await queryRunner.query(
+        `SELECT last_date, seq FROM counters WHERE name = 'productNumber' FOR UPDATE`
+      )
+      if (!counterRows.length) throw new BadRequestException('計數器缺失，請聯繫管理員')
+      const lastDate: string = counterRows[0].last_date
+      const lastSeq: number = Number(counterRows[0].seq)
+
+      let prefix: string
+      let nextSeq: number
+      if (currentDate > lastDate) {
+        // 正常過日（或首次）→ 新日期段，序號從 1 開始
+        prefix = currentDate
+        nextSeq = 1
+      } else {
+        // 同日續號；時鐘回跳（current < last_date）→ 凍結在 last_date 續加
+        prefix = lastDate
+        nextSeq = lastSeq + 1
+      }
+
+      if (nextSeq > 9999) {
+        // 單日理論上限（4位序號）；按目前商品量不可能觸及
+        // 保底：溢出時延續序號進位會破壞10位長度 → 直接拋錯人工介入
+        throw new BadRequestException('商品編號單日額度已滿，請聯繫管理員')
+      }
+
+      await queryRunner.query(
+        `UPDATE counters SET last_date = ?, seq = ? WHERE name = 'productNumber'`,
+        [prefix, nextSeq]
+      )
+      await queryRunner.commitTransaction()
+
+      const productNumber = Number(`${prefix}${String(nextSeq).padStart(4, '0')}`)
+      return productNumber
+    } catch (err) {
+      await queryRunner.rollbackTransaction()
+      throw err
+    } finally {
+      await queryRunner.release()
     }
-    // 極小概率 5 次都衝突 → 拋錯讓前端重試
-    throw new BadRequestException('商品編號生成失敗，請重試')
   }
 
   async update(id: string, dto: UpdateProductDto, userId: string): Promise<Product> {
