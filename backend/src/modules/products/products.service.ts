@@ -133,7 +133,7 @@ export class ProductsService {
         const auctions = await this.dataSource.query(
           `SELECT a.id, a.productId, a.currentPrice, a.startingPrice, a.bidCount, a.endTime, a.startTime, a.status
            FROM auctions a
-           WHERE a.productId IN (?) AND a.status IN ('active','pending')
+           WHERE a.productId IN (?) AND a.status IN ('active','pending','ended','cancelled')
            ORDER BY a.createdAt DESC`,
           [auctionProductIds]
         )
