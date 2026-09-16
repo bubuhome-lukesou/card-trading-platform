@@ -1106,13 +1106,14 @@ watch([hotAuctions, newListings, hotReservations], () => {
     height: 10px;
   }
 
+  // Luke 9/16 色制：銷售=綠、拍賣=粉紅、預訂=琥珀
   &.is-auction {
-    background: var(--success-gradient, linear-gradient(135deg, #10b981, #059669));
+    background: linear-gradient(135deg, #ec4899, #db2777);
     color: white;
   }
 
   &.is-sale {
-    background: var(--accent-gradient, linear-gradient(135deg, #8b5cf6, #6d28d9));
+    background: linear-gradient(135deg, #10b981, #059669);
     color: white;
   }
 

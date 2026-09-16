@@ -74,10 +74,9 @@ const label = computed(() =>
   color: #fff;
   z-index: 5;
 
-  // 顏色跟隨右上角銷售模式 badge（ProductCard/HomeView listing-badge 同款）
-  // Luke 9/16 指示：銷售同拍賣顏色互調 — 拍賣用紫（原 SALE 色）、預約用琥珀不變
+  // Luke 9/16 色制（badge 同步）：拍賣=粉紅、預約=琥珀
   &.auction {
-    background: linear-gradient(135deg, #8b5cf6, #6d28d9);
+    background: linear-gradient(135deg, #ec4899, #db2777);
   }
 
   &.reservation {
