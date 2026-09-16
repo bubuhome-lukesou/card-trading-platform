@@ -31,6 +31,11 @@ const getStatusBadge = (status: string) => {
   return map[status] || { class: 'default', text: status }
 }
 
+const formatRole = (role: string) => {
+  const map: Record<string, string> = { user: '普通用戶', seller: '商家', admin: '管理員' }
+  return map[role] || role
+}
+
 const loadData = async () => {
   loading.value = true
   try {
@@ -113,7 +118,7 @@ onMounted(() => loadData())
               <div class="item-meta">{{ user.email }}</div>
             </div>
             <div class="item-actions">
-              <span class="role-badge" :class="user.role">{{ user.role }}</span>
+              <span class="role-badge" :class="user.role">{{ formatRole(user.role) }}</span>
               <span class="status-badge" :class="getStatusBadge(user.status).class">
                 {{ getStatusBadge(user.status).text }}
               </span>

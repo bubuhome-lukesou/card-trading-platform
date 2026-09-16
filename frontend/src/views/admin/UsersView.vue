@@ -65,6 +65,11 @@ const formatDate = (date: string) => {
   return date ? new Date(date).toLocaleDateString('zh-MO') : '-'
 }
 
+const formatRole = (role: string) => {
+  const map: Record<string, string> = { user: '普通用戶', seller: '商家', admin: '管理員' }
+  return map[role] || role
+}
+
 onMounted(() => fetchUsers())
 </script>
 
@@ -104,7 +109,7 @@ onMounted(() => fetchUsers())
           <tr v-for="user in filteredUsers" :key="user.id">
             <td class="nickname">{{ user.nickname || '-' }}</td>
             <td>{{ user.email }}</td>
-            <td><span class="role-badge" :class="user.role">{{ user.role }}</span></td>
+            <td><span class="role-badge" :class="user.role">{{ formatRole(user.role) }}</span></td>
             <td><span class="status-badge" :class="user.status">{{ user.status === 'active' ? '正常' : '已封禁' }}</span></td>
             <td>{{ formatDate(user.createdAt) }}</td>
             <td>{{ formatPrice(user.totalSpend) }}</td>
