@@ -6,7 +6,7 @@ import { useAuthStore } from '@/stores/auth'
 import { auctionApi } from '@/api/auctions'
 import { useFavoritesStore } from '@/stores/favorites'
 import { useI18n } from 'vue-i18n'
-import { Heart, Loader2 } from 'lucide-vue-next'
+import { Heart, Loader2, Copy } from 'lucide-vue-next'
 import { productApi } from '@/api/products'
 import ProductCard from '@/components/product/ProductCard.vue'
 
@@ -44,27 +44,40 @@ const onTouchEnd = (e: TouchEvent) => {
 }
 
 const handleSwipe = () => {
+  if (parsedImages.value.length <= 1) return
   const diff = touchStartX.value - touchEndX.value
   if (Math.abs(diff) < 30) return
   if (diff > 0) {
-    // Swipe left — next image
-    if (currentImageIndex.value < parsedImages.value.length - 1) {
-      currentImageIndex.value++
-    }
+    nextImage()
   } else {
-    // Swipe right — prev image
-    if (currentImageIndex.value > 0) {
-      currentImageIndex.value--
-    }
+    prevImage()
   }
 }
 
 const openLightbox = () => {
-  if (parsedImages.value.length > 0) showLightbox.value = true
+  if (parsedImages.value.length > 0) {
+    showLightbox.value = true
+    document.body.style.overflow = 'hidden'
+  }
 }
 
 const closeLightbox = () => {
   showLightbox.value = false
+  document.body.style.overflow = ''
+}
+
+const prevImage = () => {
+  if (parsedImages.value.length <= 1) return
+  currentImageIndex.value = currentImageIndex.value > 0
+    ? currentImageIndex.value - 1
+    : parsedImages.value.length - 1
+}
+
+const nextImage = () => {
+  if (parsedImages.value.length <= 1) return
+  currentImageIndex.value = currentImageIndex.value < parsedImages.value.length - 1
+    ? currentImageIndex.value + 1
+    : 0
 }
 
 const lightboxPrev = () => {
@@ -212,6 +225,18 @@ const isHighestBidder = computed(() => {
 
 const formatPrice = (price: number) => {
   return `MOP $${Number(price).toLocaleString()}`
+}
+
+// 商品編號複製
+const copied = ref(false)
+let copyTimer: ReturnType<typeof setTimeout> | null = null
+const copyProductNumber = async (num: number) => {
+  try {
+    await navigator.clipboard.writeText(String(num))
+    copied.value = true
+    if (copyTimer) clearTimeout(copyTimer)
+    copyTimer = setTimeout(() => { copied.value = false }, 1500)
+  } catch { /* clipboard 不可用時靜默 */ }
 }
 
 const formatDateTime = (dateStr: string) => {
@@ -431,7 +456,7 @@ onUnmounted(() => {
       <button @click="loadAuction" class="btn-retry">{{ locale === 'zh' ? '重試' : 'Retry' }}</button>
     </div>
 
-    <!-- Auction Detail — 閒魚風格，桌面端雙列 -->
+    <!-- Auction Detail — 頂部出價記錄 + PDV 雙列佈局 -->
     <div v-else-if="auction" class="auction-container">
 
       <!-- ===== TOP: 出價記錄 — 圓形頭像 + 底下價格 ===== -->
@@ -462,198 +487,80 @@ onUnmounted(() => {
         <span>{{ locale === 'zh' ? '暫無出價記錄，成為第一個出價者！' : 'No bids yet. Be the first!' }}</span>
       </div>
 
-      <!-- ===== 雙列區：左=中間核心區  右=商品詳情 ===== -->
-      <div class="two-col-layout">
+      <!-- ===== 雙列區：PDV 佈局 — 左=圖片庫  右=資訊卡（價格/規則/出價） ===== -->
+      <div class="product-layout">
 
-        <!-- LEFT: 圖片 + 價格 + 計時 + 規則 + 出價 -->
-        <div class="middle-section">
+        <!-- LEFT: Image Gallery（與 ProductDetailView 佈局統一） -->
+        <div class="gallery-wrap">
+          <div
+            class="main-image"
+            @touchstart="onTouchStart"
+            @touchend="onTouchEnd"
+          >
+            <!-- Category pill -->
+            <div class="cat-pill">
+              <span class="cat-emoji"><CategoryLogo :category="auction.product?.category || 'other'" :size="15" /></span>
+              <span class="cat-text">{{ getCategoryLabel(auction.product?.category || 'other') }}</span>
+            </div>
 
-          <!-- 圖片輪播（與 ProductDetailView 統一：深底漸變 + contain 圖 + 縮圖條） -->
-          <div class="image-gallery">
-            <div class="image-container main-image" @touchstart="onTouchStart" @touchend="onTouchEnd">
-              <!-- Category pill (floating top-left, 同 ProductDetail) -->
-              <div class="cat-pill">
-                <span class="cat-emoji"><CategoryLogo :category="auction.product?.category || 'other'" :size="15" /></span>
-                <span class="cat-text">{{ getCategoryLabel(auction.product?.category || 'other') }}</span>
-              </div>
-
-              <!-- Favorite button (login required) -->
-              <button
-                v-if="authStore.isAuthenticated"
-                class="fav-btn-detail"
-                :class="{ active: isFavorited }"
-                @click="handleToggleFavorite"
-              >
-                <Heart class="fav-icon-detail" :class="{ 'icon-filled': isFavorited }" />
-              </button>
-              <img
-                v-if="parsedImages.length > 0"
-                :src="parsedImages[currentImageIndex]"
-                :alt="auction.product?.titleEn"
-                class="product-image hero-img"
-                @click="openLightbox"
-              />
-              <div v-else class="image-placeholder">🃏</div>
-              <!-- Zoom hint -->
-              <div v-if="parsedImages.length > 0" class="zoom-hint">
-                {{ locale === 'zh' ? '點擊放大' : 'Click to zoom' }}
-              </div>
-            </div>
-            <!-- 多圖指示器 -->
-            <div v-if="parsedImages.length > 1" class="image-dots">
-              <span
-                v-for="(_, idx) in parsedImages"
-                :key="idx"
-                class="image-dot"
-                :class="{ active: idx === currentImageIndex }"
-                @click="currentImageIndex = idx"
-              ></span>
-            </div>
-            <!-- 多圖左右切換 -->
-            <template v-if="parsedImages.length > 1">
-              <button v-if="currentImageIndex > 0" class="img-nav img-prev" @click="currentImageIndex--">‹</button>
-              <button v-if="currentImageIndex < parsedImages.length - 1" class="img-nav img-next" @click="currentImageIndex++">›</button>
-            </template>
-            <!-- 圖片計數 -->
-            <span v-if="parsedImages.length > 1" class="img-counter">{{ currentImageIndex + 1 }}/{{ parsedImages.length }}</span>
-
-            <!-- Thumbnails（同 ProductDetail thumb-strip） -->
-            <div v-if="parsedImages.length > 1" class="thumb-strip">
-              <img
-                v-for="(img, idx) in parsedImages"
-                :key="idx"
-                :src="img"
-                :alt="`${getTitle(auction.product)} ${idx + 1}`"
-                class="thumb"
-                :class="{ active: idx === currentImageIndex }"
-                @click="currentImageIndex = idx"
-              />
-            </div>
-          </div>
-
-          <!-- 當前價格 + 剩餘時間 -->
-          <div class="price-time-card">
-            <div class="price-block">
-              <span class="price-label">{{ locale === 'zh' ? '當前最高價' : 'Current Price' }}</span>
-              <span class="current-price">{{ formatPrice(currentPrice) }}</span>
-              <span class="bid-count">{{ auction.bidCount || 0 }} {{ locale === 'zh' ? '次出價' : 'bids' }} · {{ locale === 'zh' ? '起拍價' : 'Start' }} {{ formatPrice(Number(auction.startingPrice)) }}</span>
-            </div>
-            <div class="time-block" :class="{ 'ending-soon': isEndingSoon }">
-              <span class="time-label">{{ isEnded ? (locale === 'zh' ? '已結束' : 'Ended') : (locale === 'zh' ? '剩餘時間' : 'Time Left') }}</span>
-              <span class="time-value">{{ timeRemaining }}</span>
-            </div>
-          </div>
-
-          <!-- 拍賣規則 -->
-          <div class="rules-card">
-            <div class="rules-title">{{ locale === 'zh' ? '拍賣規則' : 'Auction Rules' }}</div>
-            <div class="rules-list">
-              <div class="rule-item">
-                <span class="rule-key">{{ locale === 'zh' ? '起拍價' : 'Starting Price' }}</span>
-                <span class="rule-val">{{ formatPrice(Number(auction.startingPrice)) }}</span>
-              </div>
-              <div v-if="auction.reservePrice" class="rule-item">
-                <span class="rule-key">{{ locale === 'zh' ? '底價' : 'Reserve' }}</span>
-                <span class="rule-val">{{ formatPrice(Number(auction.reservePrice)) }}</span>
-              </div>
-              <div v-if="auction.buyNowPrice" class="rule-item">
-                <span class="rule-key">{{ locale === 'zh' ? '一口價' : 'Buy Now' }}</span>
-                <span class="rule-val">{{ formatPrice(Number(auction.buyNowPrice)) }}</span>
-              </div>
-              <div class="rule-item">
-                <span class="rule-key">{{ locale === 'zh' ? '最低加價' : 'Min Increment' }}</span>
-                <span class="rule-val">{{ formatPrice(Number(auction.bidIncrement || 10)) }}</span>
-              </div>
-              <div class="rule-item">
-                <span class="rule-key">{{ locale === 'zh' ? '結束延長' : 'Extension' }}</span>
-                <span class="rule-val">{{ locale === 'zh' ? `最後${auction.extensionMinutes || 5}分鐘出價延長${auction.extensionMinutes || 5}分鐘` : `Last ${auction.extensionMinutes || 5} min → +${auction.extensionMinutes || 5} min` }}</span>
-              </div>
-              <div class="rule-item">
-                <span class="rule-key">{{ locale === 'zh' ? '開始時間' : 'Start' }}</span>
-                <span class="rule-val">{{ formatDateTime(auction.startTime) }}</span>
-              </div>
-              <div class="rule-item">
-                <span class="rule-key">{{ locale === 'zh' ? '結束時間' : 'End' }}</span>
-                <span class="rule-val">{{ formatDateTime(auction.endTime) }}</span>
-              </div>
-            </div>
-          </div>
-
-          <!-- 出價框 -->
-          <div v-if="canBid && !isHighestBidder" class="bid-action-card">
-            <div class="bid-input-row">
-              <span class="currency-prefix">MOP</span>
-              <input
-                v-model.number="bidAmount"
-                type="number"
-                :min="minimumBid"
-                step="10"
-                class="bid-input"
-                :placeholder="locale === 'zh' ? '輸入出價金額' : 'Enter bid amount'"
-              />
-              <button
-                @click="handlePlaceBid"
-                class="btn-bid"
-                :disabled="placingBid"
-              >
-                <span v-if="placingBid" class="spinner-small"></span>
-                {{ placingBid ? (locale === 'zh' ? '出價中' : 'Bidding...') : (locale === 'zh' ? '立即出價' : 'Place Bid') }}
-              </button>
-            </div>
-            <p class="bid-hint">{{ locale === 'zh' ? '最低出價' : 'Min bid' }}: {{ formatPrice(minimumBid) }}</p>
-            <p v-if="bidError" class="bid-error">{{ bidError }}</p>
-            <p v-if="bidSuccess" class="bid-success">{{ bidSuccess }}</p>
-            <!-- 直購按鈕 -->
-            <button
-              v-if="canBuyNow"
-              @click="handleBuyNow"
-              class="btn-buy-now"
-              :disabled="buyingNow || placingBid"
-            >
-              <span v-if="buyingNow" class="spinner-small"></span>
-              {{ buyingNow
-                ? (locale === 'zh' ? '直購中...' : 'Buying...')
-                : (locale === 'zh' ? `⚡ 直購 ${formatPrice(Number(auction.buyNowPrice))}` : `⚡ Buy Now ${formatPrice(Number(auction.buyNowPrice))}`) }}
+            <!-- Nav arrows -->
+            <button v-if="parsedImages.length > 1" class="nav-btn nav-prev" @click.stop="prevImage">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
             </button>
-            <p v-if="canBuyNow" class="buy-now-hint">{{ locale === 'zh' ? '點擊直購立即得標，拍賣即時結束' : 'Buy now to win the auction instantly' }}</p>
+
+            <img
+              v-if="parsedImages.length > 0"
+              :src="parsedImages[currentImageIndex]"
+              :alt="auction.product?.titleEn"
+              class="hero-img"
+              @click="openLightbox"
+            />
+            <div v-else class="image-placeholder">🃏</div>
+
+            <button v-if="parsedImages.length > 1" class="nav-btn nav-next" @click.stop="nextImage">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+            </button>
+
+            <!-- Zoom hint -->
+            <div v-if="parsedImages.length > 0" class="zoom-hint">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="11" cy="11" r="8"/>
+                <path d="m21 21-4.35-4.35"/>
+                <path d="M11 8v6M8 11h6"/>
+              </svg>
+              <span>{{ locale === 'zh' ? '點擊放大' : 'Click to zoom' }}</span>
+            </div>
+
+            <!-- Counter -->
+            <div v-if="parsedImages.length > 1" class="img-counter">
+              {{ currentImageIndex + 1 }} / {{ parsedImages.length }}
+            </div>
           </div>
 
-          <!-- 最高出價者 -->
-          <div v-else-if="isHighestBidder && !isEnded" class="highest-bidder-notice">
-            <span>🏆 {{ locale === 'zh' ? '您目前是最高出價者，請等待其他人出價' : 'You are the highest bidder, wait for others to outbid' }}</span>
+          <!-- Thumbnails -->
+          <div v-if="parsedImages.length > 1" class="thumb-strip">
+            <img
+              v-for="(img, idx) in parsedImages"
+              :key="idx"
+              :src="img"
+              :alt="`${getTitle(auction.product)} ${idx + 1}`"
+              class="thumb"
+              :class="{ active: idx === currentImageIndex }"
+              @click="currentImageIndex = idx"
+            />
           </div>
-
-          <!-- 賣家觀看 -->
-          <div v-else-if="isSeller" class="seller-notice">
-            <span>{{ locale === 'zh' ? '這是您的拍賣商品' : 'This is your auction' }}</span>
-          </div>
-
-          <!-- 已結束 -->
-          <div v-else-if="isEnded" class="ended-notice">
-            <span v-if="auction.winner">🏆 {{ locale === 'zh' ? '成交價' : 'Final Price' }}: {{ formatPrice(currentPrice) }}</span>
-            <span v-else>{{ locale === 'zh' ? '拍賣已結束 — 無人出價' : 'Auction ended — no bids' }}</span>
-          </div>
-
-          <!-- 未登入 -->
-          <div v-else class="login-notice">
-            <button @click="router.push({ path: '/login', query: { redirect: `/auction/${auctionId}` } })" class="btn-login">{{ locale === 'zh' ? '登入後出價' : 'Login to Bid' }}</button>
-          </div>
-
         </div>
 
-        <!-- RIGHT: 商品詳細資料 (與 ProductDetailView 統一) -->
+        <!-- RIGHT: Info（PDV glass-card 佈局） -->
         <div class="info-wrap">
           <div class="glass-card">
-            <!-- Category badge + Status -->
-            <div class="detail-header">
-              <span class="category-badge"><span class="badge-logo"><CategoryLogo :category="auction.product?.category || 'other'" :size="14" /></span> {{ getCategoryLabel(auction.product?.category || 'other') }}</span>
+            <!-- Title + 拍賣狀態 -->
+            <h1 class="product-title">
+              {{ getTitle(auction.product) }}
               <span class="status-badge" :class="auction.status">
                 {{ auction.status === 'active' ? (locale === 'zh' ? '🔥 進行中' : '🔥 Active') : auction.status === 'ended' ? (locale === 'zh' ? '已結束' : 'Ended') : (locale === 'zh' ? '⏳ 待開始' : '⏳ Pending') }}
               </span>
-            </div>
-
-            <!-- Title -->
-            <h1 class="product-title">{{ getTitle(auction.product) }}</h1>
+            </h1>
 
             <!-- 賣家名稱（可點擊 → 跳轉該商家 marketplace 篩選頁） -->
             <div v-if="auction.seller" class="seller-info-row seller-clickable" @click="goToSellerMarketplace" :title="locale === 'zh' ? '查看此商家全部商品' : 'View all products from this seller'">
@@ -708,6 +615,15 @@ onUnmounted(() => {
                   </span>
                 </div>
               </div>
+              <div class="spec-row" v-if="auction.product?.productNumber">
+                <div class="spec-cell spec-cell-full">
+                  <span class="spec-label">{{ locale === 'zh' ? '商品編號' : 'Item No.' }}</span>
+                  <span class="spec-value product-number" @click="copyProductNumber(auction.product.productNumber)" :title="locale === 'zh' ? '點擊複製' : 'Click to copy'">
+                    {{ auction.product.productNumber }}
+                    <Copy v-if="copied" :size="12" class="copied-icon" />
+                  </span>
+                </div>
+              </div>
             </div>
 
             <!-- Description -->
@@ -715,10 +631,140 @@ onUnmounted(() => {
               <h3 class="desc-heading">{{ locale === 'zh' ? '商品描述' : 'Description' }}</h3>
               <p class="desc-text">{{ getDescription(auction.product) }}</p>
             </div>
+
+            <!-- Price（PDV 風格：漸變大字 + 當前最高價 + 剩餘時間） -->
+            <div class="price-block">
+              <span class="price-label">{{ locale === 'zh' ? '當前最高價' : 'Current Price' }}</span>
+              <div class="price-line">
+                <span class="price-currency">MOP</span>
+                <span class="price-amount">${{ currentPrice.toLocaleString() }}</span>
+              </div>
+              <div class="price-meta">
+                <span>{{ auction.bidCount || 0 }} {{ locale === 'zh' ? '次出價' : 'bids' }}</span>
+                <span class="meta-dot">·</span>
+                <span>{{ locale === 'zh' ? '起拍價' : 'Start' }} {{ formatPrice(Number(auction.startingPrice)) }}</span>
+              </div>
+              <div v-if="!isEnded" class="time-row" :class="{ 'ending-soon': isEndingSoon }">
+                <span class="time-label">{{ locale === 'zh' ? '剩餘時間' : 'Time Left' }}</span>
+                <span class="time-value">⏱ {{ timeRemaining }}</span>
+              </div>
+              <div v-else class="time-row ended">
+                <span class="time-label">{{ locale === 'zh' ? '拍賣已結束' : 'Auction Ended' }}</span>
+              </div>
+            </div>
+
+            <!-- 拍賣規則（PDV reservation-box 風格） -->
+            <div class="rules-box">
+              <div class="rules-header">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+                </svg>
+                <span>{{ locale === 'zh' ? '拍賣規則' : 'Auction Rules' }}</span>
+              </div>
+              <div class="rules-grid">
+                <div class="rule-item">
+                  <span class="rule-key">{{ locale === 'zh' ? '起拍價' : 'Starting Price' }}</span>
+                  <span class="rule-val">{{ formatPrice(Number(auction.startingPrice)) }}</span>
+                </div>
+                <div v-if="auction.reservePrice" class="rule-item">
+                  <span class="rule-key">{{ locale === 'zh' ? '底價' : 'Reserve' }}</span>
+                  <span class="rule-val">{{ formatPrice(Number(auction.reservePrice)) }}</span>
+                </div>
+                <div v-if="auction.buyNowPrice" class="rule-item">
+                  <span class="rule-key">{{ locale === 'zh' ? '一口價' : 'Buy Now' }}</span>
+                  <span class="rule-val">{{ formatPrice(Number(auction.buyNowPrice)) }}</span>
+                </div>
+                <div class="rule-item">
+                  <span class="rule-key">{{ locale === 'zh' ? '最低加價' : 'Min Increment' }}</span>
+                  <span class="rule-val">{{ formatPrice(Number(auction.bidIncrement || 10)) }}</span>
+                </div>
+                <div class="rule-item">
+                  <span class="rule-key">{{ locale === 'zh' ? '結束延長' : 'Extension' }}</span>
+                  <span class="rule-val">{{ locale === 'zh' ? `最後${auction.extensionMinutes || 5}分鐘出價延長${auction.extensionMinutes || 5}分鐘` : `Last ${auction.extensionMinutes || 5} min → +${auction.extensionMinutes || 5} min` }}</span>
+                </div>
+                <div class="rule-item">
+                  <span class="rule-key">{{ locale === 'zh' ? '開始時間' : 'Start' }}</span>
+                  <span class="rule-val">{{ formatDateTime(auction.startTime) }}</span>
+                </div>
+                <div class="rule-item">
+                  <span class="rule-key">{{ locale === 'zh' ? '結束時間' : 'End' }}</span>
+                  <span class="rule-val">{{ formatDateTime(auction.endTime) }}</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- 出價區 -->
+            <template v-if="canBid && !isHighestBidder">
+              <div class="bid-box">
+                <div class="bid-input-row">
+                  <span class="currency-prefix">MOP</span>
+                  <input
+                    v-model.number="bidAmount"
+                    type="number"
+                    :min="minimumBid"
+                    step="10"
+                    class="bid-input"
+                    :placeholder="locale === 'zh' ? '輸入出價金額' : 'Enter bid amount'"
+                  />
+                </div>
+                <p class="bid-hint">{{ locale === 'zh' ? '最低出價' : 'Min bid' }}: {{ formatPrice(minimumBid) }}</p>
+                <div class="action-row">
+                  <button class="btn btn-primary" :disabled="placingBid" @click="handlePlaceBid">
+                    <Loader2 v-if="placingBid" class="btn-spinner" />
+                    {{ placingBid ? (locale === 'zh' ? '出價中' : 'Bidding...') : (locale === 'zh' ? '立即出價' : 'Place Bid') }}
+                  </button>
+                  <button
+                    class="btn btn-fav"
+                    :class="{ active: isFavorited }"
+                    :disabled="favoriteLoading"
+                    @click="handleToggleFavorite"
+                  >
+                    <Heart class="fav-icon" :class="{ 'icon-filled': isFavorited }" />
+                  </button>
+                </div>
+                <button
+                  v-if="canBuyNow"
+                  @click="handleBuyNow"
+                  class="btn-buy-now"
+                  :disabled="buyingNow || placingBid"
+                >
+                  <Loader2 v-if="buyingNow" class="btn-spinner" />
+                  {{ buyingNow
+                    ? (locale === 'zh' ? '直購中...' : 'Buying...')
+                    : (locale === 'zh' ? `⚡ 直購 ${formatPrice(Number(auction.buyNowPrice))}` : `⚡ Buy Now ${formatPrice(Number(auction.buyNowPrice))}`) }}
+                </button>
+                <p v-if="canBuyNow" class="buy-now-hint">{{ locale === 'zh' ? '點擊直購立即得標，拍賣即時結束' : 'Buy now to win the auction instantly' }}</p>
+                <p v-if="bidError" class="bid-error">{{ bidError }}</p>
+                <p v-if="bidSuccess" class="bid-success">{{ bidSuccess }}</p>
+              </div>
+            </template>
+
+            <!-- 最高出價者 -->
+            <div v-else-if="isHighestBidder && !isEnded" class="state-notice success">
+              <span>🏆 {{ locale === 'zh' ? '您目前是最高出價者，請等待其他人出價' : 'You are the highest bidder, wait for others to outbid' }}</span>
+            </div>
+
+            <!-- 賣家觀看 -->
+            <div v-else-if="isSeller" class="state-notice">
+              <span>{{ locale === 'zh' ? '這是您的拍賣商品' : 'This is your auction' }}</span>
+            </div>
+
+            <!-- 已結束 -->
+            <div v-else-if="isEnded" class="state-notice">
+              <span v-if="auction.winner">🏆 {{ locale === 'zh' ? '成交價' : 'Final Price' }}: {{ formatPrice(currentPrice) }}</span>
+              <span v-else>{{ locale === 'zh' ? '拍賣已結束 — 無人出價' : 'Auction ended — no bids' }}</span>
+            </div>
+
+            <!-- 未登入 -->
+            <div v-else class="action-row">
+              <button @click="router.push({ path: '/login', query: { redirect: `/auction/${auctionId}` } })" class="btn btn-primary">
+                {{ locale === 'zh' ? '登入後出價' : 'Login to Bid' }}
+              </button>
+            </div>
           </div>
         </div>
 
-      </div><!-- /two-col-layout -->
+      </div><!-- /product-layout -->
 
       <!-- Related Products -->
       <section v-if="!loading && relatedProducts.length > 0" class="related-section">
@@ -903,81 +949,154 @@ onUnmounted(() => {
   color: #f59e0b;
 }
 
-/* ===== MIDDLE ===== */
-
-/* 雙列佈局：桌面端左右並排，手機端單列 */
-.two-col-layout {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
+/* ===== PDV 佈局（與 ProductDetailView 統一） ===== */
+.product-layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 48px;
+  align-items: start;
+  animation: fadeUp 0.5s ease;
+  min-width: 0;
+  max-width: 100%;
 }
 
-.middle-section {
-  margin-bottom: 0;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
-.detail-section {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-}
-
-@media (min-width: 820px) {
-  .two-col-layout {
-    flex-direction: row;
-    align-items: flex-start;
-  }
-
-  .middle-section {
-    flex: 1;
-    min-width: 0;
-  }
-
-  .detail-section {
-    width: 340px;
-    flex-shrink: 0;
+@media (max-width: 960px) {
+  .product-layout {
+    grid-template-columns: 1fr;
+    gap: 24px;
   }
 }
 
-/* 圖片 */
-.image-gallery {
+/* Gallery (Left) — sticky 同 PDV */
+.gallery-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  position: sticky;
+  top: 24px;
+}
+
+@media (max-width: 960px) {
+  .gallery-wrap {
+    position: static;
+    max-width: 100%;
+    overflow: visible;
+  }
+}
+
+/* main-image — PDV 深底漸變 + 靠中 */
+.main-image {
   position: relative;
-  border-radius: var(--radius-lg);
-  overflow: hidden;
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  margin-bottom: var(--space-3);
-}
-
-/* main-image — 與 ProductDetailView 統一：深底漸變 + 靠中 */
-.image-container.main-image {
-  position: relative;
-  aspect-ratio: auto;
-  width: 100%;
-  min-height: 440px;
   background: linear-gradient(145deg, #131318 0%, #0e0e14 100%);
+  border-radius: 16px;
   overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: center;
+  min-height: 440px;
+  border: 1px solid var(--border);
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  transition: box-shadow 0.3s ease;
 }
 
-.product-image.hero-img {
+.main-image:hover {
+  box-shadow: 0 12px 40px rgba(99, 102, 241, 0.15);
+}
+
+.hero-img {
   max-width: 100%;
   max-height: 520px;
   object-fit: contain;
   display: block;
   cursor: zoom-in;
   transition: transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  position: relative;
   z-index: 1;
 }
 
-.product-image.hero-img:hover {
+.hero-img:hover {
   transform: scale(1.03);
+}
+
+/* Nav buttons — PDV hover 顯示 */
+.nav-btn {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: rgba(10, 10, 15, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+  cursor: pointer;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.25s ease;
+  opacity: 0;
+}
+
+.main-image:hover .nav-btn {
+  opacity: 1;
+}
+
+.nav-btn:hover {
+  background: rgba(99, 102, 241, 0.3);
+  border-color: rgba(129, 140, 248, 0.5);
+}
+
+.nav-prev { left: 16px; }
+.nav-next { right: 16px; }
+
+/* Zoom hint — PDV hover 顯示 */
+.zoom-hint {
+  position: absolute;
+  bottom: 16px;
+  right: 16px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(10, 10, 15, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  color: var(--text-secondary);
+  padding: 6px 12px;
+  border-radius: 100px;
+  font-size: 0.72rem;
+  border: 1px solid var(--border);
+  z-index: 5;
+  opacity: 0;
+  transition: opacity 0.25s ease;
+}
+
+.main-image:hover .zoom-hint {
+  opacity: 1;
+}
+
+/* Image counter — PDV 底部中間 */
+.img-counter {
+  position: absolute;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(10, 10, 15, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  color: var(--text-primary);
+  padding: 4px 14px;
+  border-radius: 100px;
+  font-size: 0.72rem;
+  border: 1px solid var(--border);
+  z-index: 5;
 }
 
 /* Category pill — 同 ProductDetail 浮動左上 */
@@ -1037,12 +1156,6 @@ onUnmounted(() => {
   border-color: var(--primary, #6366f1);
 }
 
-.product-image {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
 .image-placeholder {
   width: 100%;
   height: 100%;
@@ -1053,162 +1166,86 @@ onUnmounted(() => {
   background: var(--bg-elevated);
 }
 
-.fav-btn-detail {
-  position: absolute;
-  top: 12px;
-  left: 12px;
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  background: rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(4px);
-  border: none;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  z-index: 5;
-  transition: all 0.2s ease;
-
-  &:hover {
-    background: rgba(0, 0, 0, 0.7);
-    transform: scale(1.1);
-  }
-
-  &.active .fav-icon-detail {
-    color: #ef4444;
-    fill: #ef4444;
-  }
-}
-
-.fav-icon-detail {
-  width: 18px;
-  height: 18px;
-  color: white;
-}
-
-.image-dots {
-  position: absolute;
-  bottom: 8px;
-  left: 50%;
-  transform: translateX(-50%);
-  display: flex;
-  gap: 6px;
-  z-index: 2;
-}
-
-.image-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.4);
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.image-dot.active {
-  background: white;
-  width: 18px;
-  border-radius: 4px;
-}
-
-.img-nav {
-  position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  background: rgba(0,0,0,0.4);
-  color: white;
-  border: none;
-  font-size: 24px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  z-index: 2;
-  line-height: 1;
-}
-
-.img-prev { left: 8px; }
-.img-next { right: 8px; }
-
-.img-counter {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  background: rgba(0,0,0,0.5);
-  color: white;
-  font-size: var(--text-xs);
-  padding: 2px 8px;
-  border-radius: var(--radius-full);
-}
-
-/* 價格 + 計時 */
-.price-time-card {
-  display: flex;
-  justify-content: space-between;
-  align-items: stretch;
-  background: var(--bg-card);
-  border-radius: var(--radius-lg);
-  border: 1px solid var(--border);
-  overflow: hidden;
-  margin-bottom: var(--space-3);
-}
-
+/* Price — PDV 風格 */
 .price-block {
-  flex: 1;
-  padding: var(--space-4);
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 6px;
+  padding: 4px 0;
 }
 
 .price-label {
-  font-size: var(--text-xs);
+  font-size: 0.72rem;
+  font-weight: 700;
   color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
 }
 
-.current-price {
-  font-size: 28px;
+.price-line {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.price-currency {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  letter-spacing: 0.05em;
+}
+
+.price-amount {
+  font-size: 2.6rem;
   font-weight: 800;
-  color: var(--primary);
-  line-height: 1.2;
+  background: linear-gradient(135deg, #6366f1, #818cf8);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  letter-spacing: -0.03em;
+  line-height: 1;
 }
 
-.bid-count {
-  font-size: var(--text-xs);
+.price-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8rem;
   color: var(--text-secondary);
 }
 
-.time-block {
-  padding: var(--space-4);
+.meta-dot { color: var(--text-muted); }
+
+.time-row {
   display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  justify-content: center;
-  gap: 2px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 4px;
+  padding: 8px 12px;
   background: var(--bg-elevated);
-  min-width: 100px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
 }
 
 .time-label {
-  font-size: var(--text-xs);
+  font-size: 0.78rem;
   color: var(--text-muted);
 }
 
 .time-value {
-  font-size: var(--text-lg);
+  font-size: 0.95rem;
   font-weight: 700;
   color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
 }
 
-.time-block.ending-soon {
-  background: rgba(239, 68, 68, 0.1);
+.time-row.ending-soon {
+  background: rgba(239, 68, 68, 0.08);
+  border-color: rgba(239, 68, 68, 0.3);
 }
 
-.time-block.ending-soon .time-value {
+.time-row.ending-soon .time-value {
   color: #ef4444;
   animation: pulse 1s ease-in-out infinite;
 }
@@ -1218,33 +1255,42 @@ onUnmounted(() => {
   50% { opacity: 0.6; }
 }
 
-/* 拍賣規則 */
-.rules-card {
-  background: var(--bg-card);
-  border-radius: var(--radius-lg);
-  border: 1px solid var(--border);
-  padding: var(--space-4);
-  margin-bottom: var(--space-3);
-}
-
-.rules-title {
-  font-size: var(--text-sm);
+.time-row.ended .time-label {
   font-weight: 600;
-  color: var(--text-secondary);
-  margin-bottom: var(--space-3);
 }
 
-.rules-list {
+/* 拍賣規則 — PDV reservation-box 風格 */
+.rules-box {
+  background: rgba(99, 102, 241, 0.06);
+  border: 1px solid rgba(129, 140, 248, 0.2);
+  border-radius: 12px;
+  padding: 18px 20px;
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
+  gap: 12px;
+}
+
+.rules-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #818cf8;
+  letter-spacing: 0.02em;
+}
+
+.rules-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .rule-item {
   display: flex;
   justify-content: space-between;
   align-items: baseline;
-  font-size: var(--text-sm);
+  font-size: 0.85rem;
   gap: var(--space-3);
 }
 
@@ -1255,26 +1301,26 @@ onUnmounted(() => {
 
 .rule-val {
   color: var(--text-primary);
-  font-weight: 500;
+  font-weight: 600;
   text-align: right;
   word-break: break-word;
 }
 
-/* 出價框 */
-.bid-action-card {
-  background: var(--bg-card);
-  border-radius: var(--radius-lg);
-  border: 1px solid var(--border);
-  padding: var(--space-4);
-  margin-bottom: var(--space-3);
+/* 出價區 — PDV 風格 */
+.bid-box {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
 .bid-input-row {
   display: flex;
   align-items: stretch;
   gap: 0;
-  border-radius: var(--radius-lg);
+  border-radius: 12px;
   overflow: hidden;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.04);
 }
 
 .currency-prefix {
@@ -1290,47 +1336,129 @@ onUnmounted(() => {
 .bid-input {
   flex: 1;
   padding: var(--space-3);
-  background: var(--bg-dark);
-  border: 1px solid var(--border);
-  border-left: none;
-  border-right: none;
+  background: transparent;
+  border: none;
   color: var(--text-primary);
-  font-size: var(--text-lg);
-  font-weight: 600;
+  font-size: 1.05rem;
+  font-weight: 700;
   min-width: 0;
 }
 
 .bid-input:focus {
   outline: none;
-  border-color: var(--primary);
+  background: rgba(129, 140, 248, 0.08);
 }
 
-.btn-bid {
+.action-row {
+  display: flex;
+  gap: 10px;
+}
+
+.btn {
+  padding: 15px 24px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  border: none;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: var(--space-2);
-  padding: var(--space-3) var(--space-5);
-  background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
-  border: none;
-  color: white;
-  font-size: var(--text-base);
-  font-weight: 700;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: opacity 0.2s;
+  gap: 8px;
+  letter-spacing: 0.01em;
 }
 
-.btn-bid:hover:not(:disabled) { opacity: 0.9; }
-.btn-bid:disabled { opacity: 0.6; cursor: not-allowed; }
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
 
-.spinner-small {
+.btn-primary {
+  flex: 1;
+  background: linear-gradient(135deg, #6366f1, #818cf8);
+  color: white;
+  box-shadow: 0 4px 16px rgba(99, 102, 241, 0.3);
+}
+
+.btn-primary:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(99, 102, 241, 0.4);
+}
+
+.btn-primary:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.btn-fav {
+  width: 52px;
+  flex-shrink: 0;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  padding: 15px;
+}
+
+.btn-fav:hover:not(:disabled) {
+  border-color: rgba(239, 68, 68, 0.4);
+  color: #f87171;
+  background: rgba(239, 68, 68, 0.08);
+}
+
+.btn-fav.active {
+  border-color: rgba(239, 68, 68, 0.5);
+  background: rgba(239, 68, 68, 0.12);
+}
+
+.btn-fav.active .fav-icon {
+  color: #ef4444;
+  fill: #ef4444;
+}
+
+.fav-icon {
+  width: 20px;
+  height: 20px;
+}
+
+.btn-spinner {
   width: 16px;
   height: 16px;
-  border: 2px solid rgba(255,255,255,0.3);
-  border-top-color: white;
-  border-radius: 50%;
   animation: spin 0.8s linear infinite;
+}
+
+/* 狀態提示 — PDV notice 風格 */
+.state-notice {
+  padding: 12px 16px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  font-weight: 500;
+  text-align: center;
+}
+
+.state-notice.success {
+  background: rgba(34, 197, 94, 0.12);
+  border: 1px solid rgba(34, 197, 94, 0.3);
+  color: #4ade80;
+}
+
+/* 商品編號 */
+.product-number {
+  cursor: pointer;
+  font-family: var(--font-num, monospace);
+  letter-spacing: 0.04em;
+  user-select: all;
+  transition: color 0.15s;
+}
+
+.product-number:hover {
+  color: #818cf8;
+}
+
+.copied-icon {
+  color: #818cf8;
 }
 
 .bid-hint {
@@ -1393,30 +1521,6 @@ onUnmounted(() => {
   border-radius: var(--radius-md);
 }
 
-.seller-notice,
-.ended-notice,
-.login-notice,
-.highest-bidder-notice {
-  background: var(--bg-card);
-  border-radius: var(--radius-lg);
-  border: 1px solid var(--border);
-  padding: var(--space-5);
-  text-align: center;
-  color: var(--text-secondary);
-  margin-bottom: var(--space-3);
-}
-
-.btn-login {
-  padding: var(--space-3) var(--space-6);
-  background: var(--primary);
-  border: none;
-  border-radius: var(--radius-lg);
-  color: white;
-  font-size: var(--text-base);
-  font-weight: 600;
-  cursor: pointer;
-}
-
 /* ===== RIGHT: 商品詳情 (與 ProductDetailView 統一) ===== */
 .info-wrap {
   display: flex;
@@ -1454,24 +1558,6 @@ onUnmounted(() => {
   }
 }
 
-.detail-header {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-}
-
-.category-badge {
-  padding: 3px 12px;
-  background: var(--bg-elevated);
-  border-radius: 100px;
-  font-size: 0.75rem;
-  color: var(--text-secondary);
-  font-weight: 500;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-
 .badge-logo {
   display: inline-flex;
   align-items: center;
@@ -1507,6 +1593,10 @@ onUnmounted(() => {
   line-height: 1.25;
   margin: 0;
   letter-spacing: -0.02em;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
 }
 
 /* 賣家名稱行 */
@@ -1709,20 +1799,6 @@ onUnmounted(() => {
   .spec-cell {
     padding: 10px 12px;
   }
-}
-
-/* Zoom hint */
-.zoom-hint {
-  position: absolute;
-  bottom: 8px;
-  right: 8px;
-  padding: 4px 10px;
-  background: rgba(0, 0, 0, 0.6);
-  backdrop-filter: blur(4px);
-  border-radius: 100px;
-  font-size: 0.7rem;
-  color: rgba(255, 255, 255, 0.8);
-  pointer-events: none;
 }
 
 /* Lightbox */
