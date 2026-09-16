@@ -115,25 +115,6 @@ const languageLabel = computed(() => {
 
 // Auction summary attached by products API (withAuction=true)
 const auctionSummary = computed(() => (props.product as any).auctionSummary || null)
-
-const formatCountdown = (endTime: string) => {
-  const diff = new Date(endTime).getTime() - Date.now()
-  if (diff <= 0) return locale.value === 'zh' ? '已結束' : 'Ended'
-  const h = Math.floor(diff / 3600000)
-  const m = Math.floor((diff % 3600000) / 60000)
-  if (h >= 24) return `${Math.floor(h / 24)}d ${h % 24}h`
-  return `${h}h ${m}m`
-}
-
-const countdownText = computed(() => {
-  const end = auctionSummary.value?.endTime
-  return end ? formatCountdown(end) : ''
-})
-
-const reservationCountdown = computed(() => {
-  const dl = (props.product as any).reservationDeadline
-  return dl ? formatCountdown(dl) : ''
-})
 </script>
 
 <template>
@@ -193,21 +174,13 @@ const reservationCountdown = computed(() => {
         <span v-if="productTypeTagName" class="tag-chip tag-type">{{ productTypeTagName }}</span>
         <span v-if="product.condition" class="tag-chip tag-condition">{{ product.condition }}</span>
       </div>
-      <!-- Auction: current price + countdown -->
+      <!-- Auction: current price（時間條已在圖片底部，不重複展示） -->
       <template v-if="product.listingType === 'auction' && auctionSummary">
         <div class="listing-price">MOP ${{ Number(auctionSummary.currentPrice || auctionSummary.startingPrice).toLocaleString() }}</div>
-        <div class="auction-timer">
-          <Clock class="icon" />
-          <span>{{ countdownText }}</span>
-        </div>
       </template>
-      <!-- Reservation: price + deadline countdown -->
-      <template v-else-if="product.listingType === 'reservation' && (product as any).reservationDeadline">
+      <!-- Reservation: price（截單條已在圖片底部，不重複展示） -->
+      <template v-else-if="product.listingType === 'reservation'">
         <div class="listing-price">MOP ${{ Number(product.price).toLocaleString() }}</div>
-        <div class="auction-timer reservation-timer">
-          <Calendar class="icon" />
-          <span>{{ reservationCountdown }}</span>
-        </div>
       </template>
       <!-- Sale: plain price -->
       <div v-else class="listing-price">MOP ${{ Number(product.price).toLocaleString() }}</div>
@@ -428,25 +401,7 @@ const reservationCountdown = computed(() => {
   }
 }
 
-// Auction countdown / reservation deadline (unified with home cards)
-.auction-timer {
-  display: flex;
-  align-items: center;
-  gap: var(--space-1);
-  font-size: var(--text-xs);
-  color: var(--accent);
-  margin-top: var(--space-1);
-
-  .icon {
-    width: 14px;
-    height: 14px;
-  }
-
-  &.reservation-timer {
-    color: #fbbf24;
-  }
-}
-
+// Auction/reservation countdown moved to ImageDeadlineBar（圖片底部時間條）
 .listing-price {
   font-family: var(--font-num);
   font-size: var(--text-sm);
