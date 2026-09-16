@@ -7,6 +7,7 @@ import { useFavoritesStore } from '@/stores/favorites'
 import { tagApi } from '@/api/tags'
 import { auctionApi } from '@/api/auctions'
 import { useI18n } from 'vue-i18n'
+import ImageDeadlineBar from '@/components/product/ImageDeadlineBar.vue'
 
 const props = defineProps<{
   product: Product
@@ -146,6 +147,18 @@ const reservationCountdown = computed(() => {
         loading="lazy"
       />
       <div v-else class="placeholder-card">🃏</div>
+
+      <!-- 圖片底部時間條：拍賣截止 / 預約截單（魂SHOP 風格） -->
+      <ImageDeadlineBar
+        v-if="product.listingType === 'auction' && auctionSummary?.endTime"
+        :end-time="auctionSummary.endTime"
+        variant="auction"
+      />
+      <ImageDeadlineBar
+        v-else-if="product.listingType === 'reservation' && (product as any).reservationDeadline"
+        :end-time="(product as any).reservationDeadline"
+        variant="reservation"
+      />
 
       <!-- Out of Stock Overlay -->
       <div v-if="product.quantity === 0" class="out-of-stock-overlay">

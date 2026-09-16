@@ -9,6 +9,7 @@ import { tagApi } from '@/api/tags'
 import { useFavoritesStore } from '@/stores/favorites'
 import { CategoryLogo, BRAND_CATEGORIES } from '@/components/brand/CategoryLogos'
 import BannerCarousel from '@/components/home/BannerCarousel.vue'
+import ImageDeadlineBar from '@/components/product/ImageDeadlineBar.vue'
 
 const { t, locale } = useI18n()
 
@@ -97,6 +98,7 @@ const fetchHotAuctions = async () => {
           language: product.language,
           productType: product.productType,
           listingType: 'auction' as const,
+          auctionEndTime: a.endTime,
         }
       })
   } catch (e) {
@@ -244,6 +246,7 @@ const fetchNewListings = async () => {
         // Auction extras (when listingType = 'auction')
         bids: a?.bidCount || 0,
         ends: a ? getTimeRemaining(a.endTime) : '',
+        auctionEndTime: a?.endTime || '',
       }
     })
   } catch (e) {
@@ -412,6 +415,18 @@ watch([hotAuctions, newListings, hotReservations], () => {
               <img v-if="item.image" :src="item.image" :alt="item.title" />
               <div v-else class="placeholder-card">🃏</div>
 
+              <!-- 圖片底部時間條：拍賣截止 / 預約截單（魂SHOP 風格） -->
+              <ImageDeadlineBar
+                v-if="item.listingType === 'auction' && item.auctionEndTime"
+                :end-time="item.auctionEndTime"
+                variant="auction"
+              />
+              <ImageDeadlineBar
+                v-else-if="item.listingType === 'reservation' && item.reservationDeadline"
+                :end-time="item.reservationDeadline"
+                variant="reservation"
+              />
+
               <!-- Favorite & Cart buttons (left side, transparent) -->
               <div class="listing-actions">
                 <button
@@ -446,21 +461,13 @@ watch([hotAuctions, newListings, hotReservations], () => {
                 <span v-if="getProductTypeLabel(item.productType)" class="tag-chip tag-type">{{ getProductTypeLabel(item.productType) }}</span>
                 <span v-if="item.condition" class="tag-chip tag-condition">{{ item.condition }}</span>
               </div>
-              <!-- Auction: current price + countdown -->
+              <!-- Auction: current price -->
               <template v-if="item.listingType === 'auction'">
                 <div class="listing-price">MOP ${{ Number(item.price).toLocaleString() }}</div>
-                <div class="auction-timer">
-                  <Clock class="icon" />
-                  <span>{{ item.ends }}</span>
-                </div>
               </template>
-              <!-- Reservation: price + deadline countdown -->
+              <!-- Reservation: price -->
               <template v-else-if="item.listingType === 'reservation'">
                 <div class="listing-price">MOP ${{ Number(item.price).toLocaleString() }}</div>
-                <div v-if="item.reservationDeadline" class="auction-timer reservation-timer">
-                  <Calendar class="icon" />
-                  <span>{{ getTimeRemaining(item.reservationDeadline) }}</span>
-                </div>
               </template>
               <!-- Sale: plain price -->
               <div v-else class="listing-price">MOP ${{ Number(item.price).toLocaleString() }}</div>
@@ -503,6 +510,18 @@ watch([hotAuctions, newListings, hotReservations], () => {
               <img v-if="item.image" :src="item.image" :alt="item.title" />
               <div v-else class="placeholder-card">🃏</div>
 
+              <!-- 圖片底部時間條：拍賣截止 / 預約截單（魂SHOP 風格） -->
+              <ImageDeadlineBar
+                v-if="item.listingType === 'auction' && item.auctionEndTime"
+                :end-time="item.auctionEndTime"
+                variant="auction"
+              />
+              <ImageDeadlineBar
+                v-else-if="item.listingType === 'reservation' && item.reservationDeadline"
+                :end-time="item.reservationDeadline"
+                variant="reservation"
+              />
+
               <!-- Favorite & Cart buttons (left side, transparent) -->
               <div class="listing-actions">
                 <button
@@ -537,15 +556,11 @@ watch([hotAuctions, newListings, hotReservations], () => {
                 <span v-if="getProductTypeLabel(item.productType)" class="tag-chip tag-type">{{ getProductTypeLabel(item.productType) }}</span>
                 <span v-if="item.condition" class="tag-chip tag-condition">{{ item.condition }}</span>
               </div>
-              <!-- Auction: current price + countdown -->
+              <!-- Auction: current price -->
               <template v-if="item.listingType === 'auction'">
                 <div class="listing-price">MOP ${{ Number(item.price).toLocaleString() }}</div>
-                <div class="auction-timer">
-                  <Clock class="icon" />
-                  <span>{{ item.ends }}</span>
-                </div>
               </template>
-              <!-- Sale / Reservation: plain price -->
+              <!-- Sale: plain price -->
               <div v-else class="listing-price">MOP ${{ Number(item.price).toLocaleString() }}</div>
             </div>
           </RouterLink>
@@ -585,6 +600,18 @@ watch([hotAuctions, newListings, hotReservations], () => {
               <img v-if="item.image" :src="item.image" :alt="item.title" />
               <div v-else class="placeholder-card">🃏</div>
 
+              <!-- 圖片底部時間條：拍賣截止 / 預約截單（魂SHOP 風格） -->
+              <ImageDeadlineBar
+                v-if="item.listingType === 'auction' && item.auctionEndTime"
+                :end-time="item.auctionEndTime"
+                variant="auction"
+              />
+              <ImageDeadlineBar
+                v-else-if="item.listingType === 'reservation' && item.reservationDeadline"
+                :end-time="item.reservationDeadline"
+                variant="reservation"
+              />
+
               <!-- Favorite & Cart buttons (left side, transparent) -->
               <div class="listing-actions">
                 <button
@@ -615,10 +642,6 @@ watch([hotAuctions, newListings, hotReservations], () => {
                 <span v-if="item.condition" class="tag-chip tag-condition">{{ item.condition }}</span>
               </div>
               <div class="listing-price">MOP ${{ Number(item.price).toLocaleString() }}</div>
-              <div v-if="item.reservationDeadline" class="auction-timer reservation-timer">
-                <Calendar class="icon" />
-                <span>{{ getTimeRemaining(item.reservationDeadline) }}</span>
-              </div>
             </div>
           </RouterLink>
           </div>
