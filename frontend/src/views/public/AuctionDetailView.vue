@@ -8,6 +8,7 @@ import { useFavoritesStore } from '@/stores/favorites'
 import { useI18n } from 'vue-i18n'
 import { Heart, Loader2, Copy } from 'lucide-vue-next'
 import { productApi } from '@/api/products'
+import { formatPrice } from '@/utils/format'
 import ProductCard from '@/components/product/ProductCard.vue'
 
 const { t, locale } = useI18n()
@@ -222,10 +223,6 @@ const handleBuyNow = async () => {
 const isHighestBidder = computed(() => {
   return authStore.isAuthenticated && auction.value?.winnerId === authStore.user?.id
 })
-
-const formatPrice = (price: number) => {
-  return `MOP $${Number(price).toLocaleString()}`
-}
 
 // 商品編號複製
 const copied = ref(false)

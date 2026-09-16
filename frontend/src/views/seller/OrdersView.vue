@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { formatPrice } from '@/utils/format'
 import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { ordersApi } from '@/api/orders'
@@ -167,9 +168,6 @@ const openImageModal = (url: string | undefined, title: string) => {
   showImageModal.value = true
 }
 
-const formatPrice = (price: number) => {
-  return new Intl.NumberFormat('zh-MO', { style: 'currency', currency: 'MOP', minimumFractionDigits: 0 }).format(price)
-}
 
 const formatDate = (dateStr: string) => {
   return dateStr ? new Date(dateStr).toLocaleDateString('zh-CN') : '-'

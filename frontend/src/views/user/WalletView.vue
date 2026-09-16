@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { formatPrice } from '@/utils/format'
 import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
@@ -29,13 +30,6 @@ const showToast = (msg: string) => {
   toastTimer = setTimeout(() => { toastMessage.value = '' }, 3000)
 }
 
-const formatPrice = (price: number) => {
-  return new Intl.NumberFormat('zh-MO', {
-    style: 'currency',
-    currency: 'MOP',
-    minimumFractionDigits: 0,
-  }).format(price)
-}
 
 const formatDate = (dateStr: string) => {
   return new Date(dateStr).toLocaleDateString('zh-CN')

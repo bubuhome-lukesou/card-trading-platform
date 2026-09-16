@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { formatPrice } from '@/utils/format'
+import StateView from '@/components/common/StateView.vue'
 import { ref, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
@@ -21,13 +23,6 @@ const isProductSuspended = (product: any) => {
   return product?.status === 'cancelled' || product?.status === 'ended'
 }
 
-const formatPrice = (price: number) => {
-  return new Intl.NumberFormat('zh-MO', {
-    style: 'currency',
-    currency: 'MOP',
-    minimumFractionDigits: 0,
-  }).format(price)
-}
 
 const loadFavorites = async () => {
   loading.value = true
@@ -105,16 +100,14 @@ onMounted(() => {
   <div class="favorites-page">
     <h1 class="page-title">我的收藏</h1>
 
-    <div v-if="loading" class="loading-state">
-      <div class="spinner"></div>
-    </div>
+    <StateView v-if="loading" state="loading" />
 
-    <div v-else-if="favorites.length === 0" class="empty-state">
-      <div class="empty-icon">❤️</div>
-      <h3>暫無收藏</h3>
-      <p>快去收藏您喜歡的卡牌吧！</p>
+    <StateView
+      v-else-if="favorites.length === 0"
+      state="empty" icon="❤️" title="暫無收藏" message="快去收藏您喜歡的卡牌吧！"
+    >
       <router-link to="/marketplace" class="btn-primary">瀏覽商品</router-link>
-    </div>
+    </StateView>
 
     <div v-else class="favorites-grid">
       <div v-for="item in favorites" :key="item.id" class="favorite-card" :class="{ 'is-suspended': isProductSuspended(item.product) }">
@@ -198,43 +191,7 @@ onMounted(() => {
   padding: var(--space-16);
 }
 
-.spinner {
-  width: 40px;
-  height: 40px;
-  border: 3px solid var(--border);
-  border-top-color: var(--primary);
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-  margin: 0 auto;
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-
-.empty-state {
-  text-align: center;
-  padding: var(--space-16);
-  background: var(--bg-card);
-  border: 1px dashed var(--border);
-  border-radius: var(--radius-xl);
-}
-
-.empty-icon {
-  font-size: 48px;
-  margin-bottom: var(--space-4);
-}
-
-.empty-state h3 {
-  font-size: var(--text-lg);
-  color: var(--text-primary);
-  margin-bottom: var(--space-2);
-}
-
-.empty-state p {
-  color: var(--text-secondary);
-  margin-bottom: var(--space-6);
-}
+// loading/empty 狀態已由共用 StateView 組件處理
 
 .btn-primary {
   padding: var(--space-3) var(--space-6);

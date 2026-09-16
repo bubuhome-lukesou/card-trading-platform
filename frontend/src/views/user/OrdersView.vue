@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { formatPrice } from '@/utils/format'
+import StateView from '@/components/common/StateView.vue'
 import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { ordersApi } from '@/api/orders'
@@ -64,13 +66,6 @@ const filteredOrders = computed(() => {
   return orders.value.filter(o => o.status === filterStatus.value)
 })
 
-const formatPrice = (price: number) => {
-  return new Intl.NumberFormat('zh-MO', {
-    style: 'currency',
-    currency: 'MOP',
-    minimumFractionDigits: 0,
-  }).format(price)
-}
 
 const formatDate = (dateStr: string) => {
   return new Date(dateStr).toLocaleDateString('zh-CN')
@@ -391,16 +386,14 @@ onMounted(() => {
     </div>
 
     <!-- Orders List -->
-    <div v-if="loading" class="loading-state">
-      <div class="spinner"></div>
-    </div>
+    <StateView v-if="loading" state="loading" />
 
-    <div v-else-if="filteredOrders.length === 0" class="empty-state">
-      <div class="empty-icon">📦</div>
-      <h3>暫無訂單</h3>
-      <p>快去參與競拍或購買吧！</p>
+    <StateView
+      v-else-if="filteredOrders.length === 0"
+      state="empty" icon="📦" title="暫無訂單" message="快去參與競拍或購買吧！"
+    >
       <router-link to="/auctions" class="btn-primary">瀏覽拍賣</router-link>
-    </div>
+    </StateView>
 
     <div v-else class="orders-list">
       <div v-for="order in filteredOrders" :key="order.id" class="order-card">
@@ -619,48 +612,7 @@ onMounted(() => {
   color: white;
 }
 
-.loading-state {
-  text-align: center;
-  padding: var(--space-16);
-}
-
-.spinner {
-  width: 40px;
-  height: 40px;
-  border: 3px solid var(--border);
-  border-top-color: var(--primary);
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-  margin: 0 auto;
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-
-.empty-state {
-  text-align: center;
-  padding: var(--space-16);
-  background: var(--bg-card);
-  border: 1px dashed var(--border);
-  border-radius: var(--radius-xl);
-}
-
-.empty-icon {
-  font-size: 48px;
-  margin-bottom: var(--space-4);
-}
-
-.empty-state h3 {
-  font-size: var(--text-lg);
-  color: var(--text-primary);
-  margin-bottom: var(--space-2);
-}
-
-.empty-state p {
-  color: var(--text-secondary);
-  margin-bottom: var(--space-6);
-}
+// loading/empty 狀態已由共用 StateView 組件處理
 
 .btn-primary {
   padding: var(--space-3) var(--space-6);

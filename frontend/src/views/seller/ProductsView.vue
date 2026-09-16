@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { formatPrice } from '@/utils/format'
 import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
@@ -467,13 +468,6 @@ const getConditionLabel = (condition: string) => {
   return conditions.find(c => c.value === condition)?.label || condition
 }
 
-const formatPrice = (price: number) => {
-  return new Intl.NumberFormat('zh-MO', {
-    style: 'currency',
-    currency: 'MOP',
-    minimumFractionDigits: 0,
-  }).format(price)
-}
 
 const getStatusBadge = (status: string) => {
   const map: Record<string, { class: string; text: string }> = {

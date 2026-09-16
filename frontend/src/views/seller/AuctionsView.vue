@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { formatPrice } from '@/utils/format'
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { productApi } from '@/api/products'
@@ -42,9 +43,6 @@ const categories: Record<string, string> = {
   pokemon: '🎯', yugioh: '🎯', onepiece: '🎯',
   sports: '⚽', other: '🎴',
 }
-
-const formatPrice = (n: any) =>
-  'MOP ' + Number(n || 0).toLocaleString('zh-MO', { maximumFractionDigits: 0 })
 
 const parseImages = (images: any): string[] => {
   if (Array.isArray(images)) return images

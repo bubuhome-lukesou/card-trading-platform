@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { formatPrice } from '@/utils/format'
 import { ref, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { productApi } from '@/api/products'
@@ -43,9 +44,6 @@ onMounted(async () => {
   }
 })
 
-const formatPrice = (price: number) => {
-  return new Intl.NumberFormat('zh-MO', { style: 'currency', currency: 'MOP', minimumFractionDigits: 0 }).format(price)
-}
 
 const getOrderStatusText = (status: string) => {
   const map: Record<string, string> = {

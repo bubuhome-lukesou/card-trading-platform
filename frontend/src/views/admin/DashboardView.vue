@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { formatPrice } from '@/utils/format'
 import { ref, onMounted } from 'vue'
 import api from '@/api'
 
@@ -15,13 +16,6 @@ const stats = ref({
 const recentUsers = ref<any[]>([])
 const loading = ref(true)
 
-const formatPrice = (price: number) => {
-  return new Intl.NumberFormat('zh-MO', {
-    style: 'currency',
-    currency: 'MOP',
-    minimumFractionDigits: 0,
-  }).format(price)
-}
 
 const getStatusBadge = (status: string) => {
   const map: Record<string, { class: string; text: string }> = {

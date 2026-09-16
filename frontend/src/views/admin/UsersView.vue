@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { formatPrice } from '@/utils/format'
 import { ref, onMounted, computed } from 'vue'
 import api from '@/api'
 
@@ -57,9 +58,6 @@ const handleChangeRole = async (id: string, currentRole: string) => {
   }
 }
 
-const formatPrice = (price: number) => {
-  return new Intl.NumberFormat('zh-MO', { style: 'currency', currency: 'MOP', minimumFractionDigits: 0 }).format(price || 0)
-}
 
 const formatDate = (date: string) => {
   return date ? new Date(date).toLocaleDateString('zh-MO') : '-'

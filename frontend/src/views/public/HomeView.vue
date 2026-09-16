@@ -1,15 +1,13 @@
 <script setup lang="ts">
-import { ref, onMounted, computed, onBeforeUnmount, nextTick, watch } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { RouterLink, useRouter } from 'vue-router'
-import { ArrowRight, Zap, Clock, Star, Heart, ShoppingCart, Gavel, Calendar, ChevronLeft, ChevronRight } from 'lucide-vue-next'
-import { auctionApi } from '@/api/auctions'
+import { RouterLink } from 'vue-router'
+import { ArrowRight, Zap } from 'lucide-vue-next'
 import { productApi } from '@/api/products'
 import { tagApi } from '@/api/tags'
-import { useFavoritesStore } from '@/stores/favorites'
 import { CategoryLogo, BRAND_CATEGORIES } from '@/components/brand/CategoryLogos'
 import BannerCarousel from '@/components/home/BannerCarousel.vue'
-import ImageDeadlineBar from '@/components/product/ImageDeadlineBar.vue'
+import ListingsCarousel from '@/components/home/ListingsCarousel.vue'
 
 const { t, locale } = useI18n()
 
@@ -18,11 +16,10 @@ const categories = BRAND_CATEGORIES
 const hotAuctions = ref<any[]>([])
 const newListings = ref<any[]>([])
 const hotReservations = ref<any[]>([])
+const productTypeTags = ref<any[]>([])
 const loadingAuctions = ref(false)
 const loadingProducts = ref(false)
 const loadingReservations = ref(false)
-const productTypeTags = ref<any[]>([])
-const favoritesStore = useFavoritesStore()
 
 const stats = ref([
   { value: '10,000+', label: 'auctions' },
@@ -183,46 +180,6 @@ const getProductTypeLabel = (type: string | null | undefined) => {
   return productTypeLabels[type] || type
 }
 
-const isProductFavorited = (productId: number) => favoritesStore.isFavorited(String(productId))
-
-const toggleProductFavorite = (e: Event, productId: number) => {
-  e.preventDefault()
-  e.stopPropagation()
-  favoritesStore.toggleFavorite(String(productId))
-}
-
-const getCategoryName = (category: string | null | undefined) => {
-  if (!category) return ''
-  const cat = categories.find(c => c.id === category)
-  return cat ? t(cat.name) : category
-}
-
-const getListingBadgeClass = (listingType: string) => {
-  if (listingType === 'auction') return 'is-auction'
-  if (listingType === 'reservation') return 'is-reservation'
-  return 'is-sale'
-}
-
-const getListingBadgeText = (listingType: string) => {
-  if (listingType === 'auction') return 'Bid'
-  if (listingType === 'reservation') return 'Reserve'
-  return 'Sale'
-}
-
-const router = useRouter()
-
-const handleCardClick = async (e: Event, item: any) => {
-  if (item.listingType === 'auction') {
-    e.preventDefault()
-    try {
-      const res = await auctionApi.getAuctionByProductId(item.id)
-      router.push(`/auction/${res.data.id}`)
-    } catch {
-      router.push(`/product/${item.id}`)
-    }
-  }
-}
-
 const fetchNewListings = async () => {
   loadingProducts.value = true
   try {
@@ -261,60 +218,7 @@ onMounted(() => {
   fetchNewListings()
   fetchHotReservations()
   fetchProductTypeTags()
-  // 橫向滑動區塊：監聽 scroll 更新箭頭狀態
-  for (const el of [newListingsEl.value, hotAuctionsEl.value, hotReservationsEl.value]) {
-    el?.addEventListener('scroll', onAnyScroll, { passive: true })
-  }
-  updateAllScrollStates()
-  window.addEventListener('resize', updateAllScrollStates)
-  // 首屏圖片/字體載入後佈局可能變化 → 再重算一次
-  window.addEventListener('load', updateAllScrollStates, { once: true })
-  setTimeout(updateAllScrollStates, 800)
 })
-
-onBeforeUnmount(() => {
-  window.removeEventListener('resize', updateAllScrollStates)
-  window.removeEventListener('load', updateAllScrollStates)
-})
-
-// ===== 橫向滑動箭頭 =====
-const newListingsEl = ref<HTMLElement | null>(null)
-const hotAuctionsEl = ref<HTMLElement | null>(null)
-const hotReservationsEl = ref<HTMLElement | null>(null)
-
-interface ScrollState { canLeft: boolean; canRight: boolean }
-const newScrollState = ref<ScrollState>({ canLeft: false, canRight: false })
-const aucScrollState = ref<ScrollState>({ canLeft: false, canRight: false })
-const resScrollState = ref<ScrollState>({ canLeft: false, canRight: false })
-
-const computeState = (el: HTMLElement | null): ScrollState => {
-  if (!el) return { canLeft: false, canRight: false }
-  const overflow = el.scrollWidth > el.clientWidth + 4
-  return {
-    canLeft: overflow && el.scrollLeft > 4,
-    canRight: overflow && el.scrollLeft < el.scrollWidth - el.clientWidth - 4,
-  }
-}
-
-const updateAllScrollStates = () => {
-  newScrollState.value = computeState(newListingsEl.value)
-  aucScrollState.value = computeState(hotAuctionsEl.value)
-  resScrollState.value = computeState(hotReservationsEl.value)
-}
-
-const onAnyScroll = (e: Event) => updateAllScrollStates()
-
-const scrollEl = (el: HTMLElement | null, dir: number) => {
-  if (!el) return
-  const card = el.querySelector('.listing-card') as HTMLElement | null
-  const step = card ? (card.offsetWidth + 16) * 2 : el.clientWidth * 0.8
-  el.scrollBy({ left: dir * step, behavior: 'smooth' })
-}
-
-// 數據載入/語言切換後 DOM 變化 → 重算箭頭狀態（否則箭頭永遠 hidden）
-watch([hotAuctions, newListings, hotReservations], () => {
-  nextTick(updateAllScrollStates)
-}, { deep: true })
 </script>
 
 <template>
@@ -402,85 +306,12 @@ watch([hotAuctions, newListings, hotReservations], () => {
             <ArrowRight class="icon" />
           </RouterLink>
         </div>
-        <div class="scroll-wrapper">
-          <div class="listings-scroll" ref="newListingsEl">
-          <RouterLink
-            v-for="item in newListings"
-            :key="item.id"
-            :to="`/product/${item.id}`"
-            class="listing-card"
-            @click="handleCardClick($event, item)"
-          >
-            <div class="listing-image">
-              <img v-if="item.image" :src="item.image" :alt="item.title" />
-              <div v-else class="placeholder-card">🃏</div>
-
-              <!-- 圖片底部時間條：拍賣截止 / 預約截單（魂SHOP 風格） -->
-              <ImageDeadlineBar
-                v-if="item.listingType === 'auction' && item.auctionEndTime"
-                :end-time="item.auctionEndTime"
-                variant="auction"
-              />
-              <ImageDeadlineBar
-                v-else-if="item.listingType === 'reservation' && item.reservationDeadline"
-                :end-time="item.reservationDeadline"
-                variant="reservation"
-              />
-
-              <!-- Favorite & Cart buttons (left side, transparent) -->
-              <div class="listing-actions">
-                <button
-                  class="listing-action-btn"
-                  :class="{ active: isProductFavorited(item.id) }"
-                  @click="toggleProductFavorite($event, item.id)"
-                >
-                  <Heart class="action-icon" :class="{ 'icon-filled': isProductFavorited(item.id) }" />
-                </button>
-                <button class="listing-action-btn" @click.prevent>
-                  <ShoppingCart class="action-icon" />
-                </button>
-              </div>
-
-              <!-- Sale/Bid/Reservation badge (top right) -->
-              <span class="listing-badge" :class="getListingBadgeClass(item.listingType)">
-                <Gavel v-if="item.listingType === 'auction'" class="badge-icon" />
-                <Calendar v-else-if="item.listingType === 'reservation'" class="badge-icon" />
-                <ShoppingCart v-else class="badge-icon" />
-                {{ getListingBadgeText(item.listingType) }}
-              </span>
-
-              <!-- Auction live bids (bottom left) -->
-              <span v-if="item.listingType === 'auction' && item.bids > 0" class="auction-bids-inline">🔥 {{ item.bids }}</span>
-            </div>
-
-            <div class="listing-info">
-              <h3 class="listing-title">{{ item.titleEn || item.titleZh || item.title }}</h3>
-              <div class="listing-tags">
-                <span class="tag-chip tag-category">{{ getCategoryName(item.category) }}</span>
-                <span v-if="getLanguageLabel(item.language)" class="tag-chip tag-language">{{ getLanguageLabel(item.language) }}</span>
-                <span v-if="getProductTypeLabel(item.productType)" class="tag-chip tag-type">{{ getProductTypeLabel(item.productType) }}</span>
-                <span v-if="item.condition" class="tag-chip tag-condition">{{ item.condition }}</span>
-              </div>
-              <!-- Auction: current price -->
-              <template v-if="item.listingType === 'auction'">
-                <div class="listing-price">MOP ${{ Number(item.price).toLocaleString() }}</div>
-              </template>
-              <!-- Reservation: price -->
-              <template v-else-if="item.listingType === 'reservation'">
-                <div class="listing-price">MOP ${{ Number(item.price).toLocaleString() }}</div>
-              </template>
-              <!-- Sale: plain price -->
-              <div v-else class="listing-price">MOP ${{ Number(item.price).toLocaleString() }}</div>
-            </div>
-          </RouterLink>
-          </div>
-          <button class="scroll-arrow scroll-arrow-left" :class="{ hidden: !newScrollState.canLeft }" @click="scrollEl(newListingsEl, -1)" aria-label="scroll left">
-            <ChevronLeft class="arrow-icon" />
-          </button>
-          <button class="scroll-arrow scroll-arrow-right" :class="{ hidden: !newScrollState.canRight }" @click="scrollEl(newListingsEl, 1)" aria-label="scroll right">
-            <ChevronRight class="arrow-icon" />
-          </button>
-        </div>
+        <ListingsCarousel
+          :title-key="'home.newListings.title'"
+          :emoji="'✨'"
+          :see-all-to="'/marketplace?sort=newest'"
+          :items="newListings"
+        />
       </div>
     </section>
 
@@ -497,81 +328,12 @@ watch([hotAuctions, newListings, hotReservations], () => {
             <ArrowRight class="icon" />
           </RouterLink>
         </div>
-        <div class="scroll-wrapper">
-          <div class="listings-scroll" ref="hotAuctionsEl">
-          <RouterLink
-            v-for="item in hotAuctions"
-            :key="item.id"
-            :to="`/auction/${item.auctionId}`"
-            class="listing-card"
-            @click="handleCardClick($event, item)"
-          >
-            <div class="listing-image">
-              <img v-if="item.image" :src="item.image" :alt="item.title" />
-              <div v-else class="placeholder-card">🃏</div>
-
-              <!-- 圖片底部時間條：拍賣截止 / 預約截單（魂SHOP 風格） -->
-              <ImageDeadlineBar
-                v-if="item.listingType === 'auction' && item.auctionEndTime"
-                :end-time="item.auctionEndTime"
-                variant="auction"
-              />
-              <ImageDeadlineBar
-                v-else-if="item.listingType === 'reservation' && item.reservationDeadline"
-                :end-time="item.reservationDeadline"
-                variant="reservation"
-              />
-
-              <!-- Favorite & Cart buttons (left side, transparent) -->
-              <div class="listing-actions">
-                <button
-                  class="listing-action-btn"
-                  :class="{ active: isProductFavorited(item.id) }"
-                  @click="toggleProductFavorite($event, item.id)"
-                >
-                  <Heart class="action-icon" :class="{ 'icon-filled': isProductFavorited(item.id) }" />
-                </button>
-                <button class="listing-action-btn" @click.prevent>
-                  <ShoppingCart class="action-icon" />
-                </button>
-              </div>
-
-              <!-- Listing-type badge (top right) -->
-              <span class="listing-badge" :class="getListingBadgeClass(item.listingType)">
-                <Gavel v-if="item.listingType === 'auction'" class="badge-icon" />
-                <Calendar v-else-if="item.listingType === 'reservation'" class="badge-icon" />
-                <ShoppingCart v-else class="badge-icon" />
-                {{ getListingBadgeText(item.listingType) }}
-              </span>
-
-              <!-- Auction live bids (bottom left) -->
-              <span v-if="item.listingType === 'auction' && item.bids > 0" class="auction-bids-inline">🔥 {{ item.bids }}</span>
-            </div>
-
-            <div class="listing-info">
-              <h3 class="listing-title">{{ item.title }}</h3>
-              <div class="listing-tags">
-                <span class="tag-chip tag-category">{{ getCategoryName(item.category) }}</span>
-                <span v-if="getLanguageLabel(item.language)" class="tag-chip tag-language">{{ getLanguageLabel(item.language) }}</span>
-                <span v-if="getProductTypeLabel(item.productType)" class="tag-chip tag-type">{{ getProductTypeLabel(item.productType) }}</span>
-                <span v-if="item.condition" class="tag-chip tag-condition">{{ item.condition }}</span>
-              </div>
-              <!-- Auction: current price -->
-              <template v-if="item.listingType === 'auction'">
-                <div class="listing-price">MOP ${{ Number(item.price).toLocaleString() }}</div>
-              </template>
-              <!-- Sale: plain price -->
-              <div v-else class="listing-price">MOP ${{ Number(item.price).toLocaleString() }}</div>
-            </div>
-          </RouterLink>
-          </div>
-          <button class="scroll-arrow scroll-arrow-left" :class="{ hidden: !aucScrollState.canLeft }" @click="scrollEl(hotAuctionsEl, -1)" aria-label="scroll left">
-            <ChevronLeft class="arrow-icon" />
-          </button>
-          <button class="scroll-arrow scroll-arrow-right" :class="{ hidden: !aucScrollState.canRight }" @click="scrollEl(hotAuctionsEl, 1)" aria-label="scroll right">
-            <ChevronRight class="arrow-icon" />
-          </button>
-        </div>
+        <ListingsCarousel
+          :title-key="'home.hotAuctions.title'"
+          :emoji="'🔥'"
+          :see-all-to="'/marketplace?listing=auction'"
+          :items="hotAuctions"
+        />
       </div>
     </section>
 
@@ -588,70 +350,12 @@ watch([hotAuctions, newListings, hotReservations], () => {
             <ArrowRight class="icon" />
           </RouterLink>
         </div>
-        <div class="scroll-wrapper">
-          <div class="listings-scroll" ref="hotReservationsEl">
-          <RouterLink
-            v-for="item in hotReservations"
-            :key="item.id"
-            :to="`/product/${item.id}`"
-            class="listing-card"
-          >
-            <div class="listing-image">
-              <img v-if="item.image" :src="item.image" :alt="item.title" />
-              <div v-else class="placeholder-card">🃏</div>
-
-              <!-- 圖片底部時間條：拍賣截止 / 預約截單（魂SHOP 風格） -->
-              <ImageDeadlineBar
-                v-if="item.listingType === 'auction' && item.auctionEndTime"
-                :end-time="item.auctionEndTime"
-                variant="auction"
-              />
-              <ImageDeadlineBar
-                v-else-if="item.listingType === 'reservation' && item.reservationDeadline"
-                :end-time="item.reservationDeadline"
-                variant="reservation"
-              />
-
-              <!-- Favorite & Cart buttons (left side, transparent) -->
-              <div class="listing-actions">
-                <button
-                  class="listing-action-btn"
-                  :class="{ active: isProductFavorited(item.id) }"
-                  @click="toggleProductFavorite($event, item.id)"
-                >
-                  <Heart class="action-icon" :class="{ 'icon-filled': isProductFavorited(item.id) }" />
-                </button>
-                <button class="listing-action-btn" @click.prevent>
-                  <ShoppingCart class="action-icon" />
-                </button>
-              </div>
-
-              <!-- Reservation badge (top right) -->
-              <span class="listing-badge is-reservation">
-                <Calendar class="badge-icon" />
-                Reserve
-              </span>
-            </div>
-
-            <div class="listing-info">
-              <h3 class="listing-title">{{ item.title }}</h3>
-              <div class="listing-tags">
-                <span class="tag-chip tag-category">{{ getCategoryName(item.category) }}</span>
-                <span v-if="getLanguageLabel(item.language)" class="tag-chip tag-language">{{ getLanguageLabel(item.language) }}</span>
-                <span v-if="getProductTypeLabel(item.productType)" class="tag-chip tag-type">{{ getProductTypeLabel(item.productType) }}</span>
-                <span v-if="item.condition" class="tag-chip tag-condition">{{ item.condition }}</span>
-              </div>
-              <div class="listing-price">MOP ${{ Number(item.price).toLocaleString() }}</div>
-            </div>
-          </RouterLink>
-          </div>
-          <button class="scroll-arrow scroll-arrow-left" :class="{ hidden: !resScrollState.canLeft }" @click="scrollEl(hotReservationsEl, -1)" aria-label="scroll left">
-            <ChevronLeft class="arrow-icon" />
-          </button>
-          <button class="scroll-arrow scroll-arrow-right" :class="{ hidden: !resScrollState.canRight }" @click="scrollEl(hotReservationsEl, 1)" aria-label="scroll right">
-            <ChevronRight class="arrow-icon" />
-          </button>
-        </div>
+        <ListingsCarousel
+          :title-key="'home.hotReservations.title'"
+          :emoji="'📅'"
+          :see-all-to="'/marketplace?listing=reservation'"
+          :items="hotReservations"
+        />
       </div>
     </section>
 
