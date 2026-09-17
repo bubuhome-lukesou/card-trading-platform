@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { formatPrice } from '@/utils/format'
+import { formatPrice, formatDate } from '@/utils/format'
 import StateView from '@/components/common/StateView.vue'
 import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
@@ -65,11 +65,6 @@ const filteredOrders = computed(() => {
   if (filterStatus.value === 'all') return orders.value
   return orders.value.filter(o => o.status === filterStatus.value)
 })
-
-
-const formatDate = (dateStr: string) => {
-  return new Date(dateStr).toLocaleDateString('zh-CN')
-}
 
 const getStatusBadge = (status: string, orderType?: string) => {
   // 預約訂單狀態文字
@@ -612,7 +607,7 @@ onMounted(() => {
   color: white;
 }
 
-// loading/empty 狀態已由共用 StateView 組件處理
+/* loading/empty 狀態已由共用 StateView 組件處理 */
 
 .btn-primary {
   padding: var(--space-3) var(--space-6);

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { formatPrice } from '@/utils/format'
+import StateView from '@/components/common/StateView.vue'
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
@@ -188,21 +189,13 @@ onMounted(() => {
       </span>
     </div>
 
-    <!-- Loading State -->
-    <div v-if="loading" class="loading-state">
-      <div class="spinner"></div>
-      <p>加載中...</p>
-    </div>
+    <StateView v-if="loading" state="loading" />
 
-    <!-- Empty Cart -->
-    <div v-else-if="cartItems.length === 0" class="empty-cart">
-      <div class="empty-icon">🛒</div>
-      <h3>購物車是空的</h3>
-      <p>快去挑選心儀的卡牌吧！</p>
+    <StateView v-else-if="cartItems.length === 0" state="empty" icon="🛒" title="購物車是空的" message="快去挑選心儀的卡牌吧！">
       <router-link to="/marketplace" class="btn-primary">
         去逛逛
       </router-link>
-    </div>
+    </StateView>
 
     <!-- Cart Items -->
     <div v-else class="cart-content">
@@ -305,50 +298,6 @@ onMounted(() => {
 .item-count {
   color: var(--text-muted);
   font-size: var(--text-sm);
-}
-
-.loading-state {
-  text-align: center;
-  padding: var(--space-16);
-  color: var(--text-muted);
-}
-
-.spinner {
-  width: 40px;
-  height: 40px;
-  border: 3px solid var(--border);
-  border-top-color: var(--primary);
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-  margin: 0 auto var(--space-4);
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-
-.empty-cart {
-  text-align: center;
-  padding: var(--space-16);
-  background: var(--bg-card);
-  border: 1px dashed var(--border);
-  border-radius: var(--radius-xl);
-}
-
-.empty-icon {
-  font-size: 64px;
-  margin-bottom: var(--space-4);
-}
-
-.empty-cart h3 {
-  font-size: var(--text-lg);
-  color: var(--text-primary);
-  margin-bottom: var(--space-2);
-}
-
-.empty-cart p {
-  color: var(--text-secondary);
-  margin-bottom: var(--space-6);
 }
 
 .btn-primary {

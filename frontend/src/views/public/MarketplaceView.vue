@@ -6,6 +6,7 @@ import { Search, SlidersHorizontal, X, ChevronDown, Loader2 } from 'lucide-vue-n
 import { productApi } from '@/api/products'
 import type { Product, Tag } from '@/types'
 import ProductCard from '@/components/product/ProductCard.vue'
+import StateView from '@/components/common/StateView.vue'
 import { useFavoritesStore } from '@/stores/favorites'
 
 const { t, locale } = useI18n()
@@ -710,17 +711,13 @@ watch(() => route.query, () => {
           </div>
 
           <!-- Products Grid -->
-          <div v-if="loading && products.length === 0" class="loading-state">
-            <Loader2 class="spinner" />
-            <span>{{ t('common.loading') }}</span>
-          </div>
+          <StateView v-if="loading && products.length === 0" state="loading" />
 
-          <div v-else-if="products.length === 0" class="empty-state">
-            <p>{{ t('common.noResults') }}</p>
+          <StateView v-else-if="products.length === 0" state="empty" icon="🔍" :title="t('common.noResults')">
             <button class="btn btn-outline" @click="clearAllFilters">
               {{ t('product.filters.clearAll') }}
             </button>
-          </div>
+          </StateView>
 
           <div v-else class="products-grid">
             <ProductCard
@@ -1287,28 +1284,6 @@ watch(() => route.query, () => {
   margin-bottom: var(--space-6);
 }
 
-.loading-state,
-.empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: var(--space-16);
-  gap: var(--space-4);
-  color: var(--text-muted);
-}
-
-.spinner {
-  width: 32px;
-  height: 32px;
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
-}
-
 .products-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -1351,6 +1326,16 @@ watch(() => route.query, () => {
   gap: var(--space-3);
   color: var(--text-muted);
   font-size: var(--text-sm);
+}
+
+.loading-more .spinner {
+  width: 20px;
+  height: 20px;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 
 .all-loaded {

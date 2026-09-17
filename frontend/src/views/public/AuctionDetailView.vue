@@ -6,6 +6,7 @@ import { useAuthStore } from '@/stores/auth'
 import { auctionApi } from '@/api/auctions'
 import { useFavoritesStore } from '@/stores/favorites'
 import { useI18n } from 'vue-i18n'
+import StateView from '@/components/common/StateView.vue'
 import { Heart, Loader2, Copy } from 'lucide-vue-next'
 import { productApi } from '@/api/products'
 import { formatPrice } from '@/utils/format'
@@ -441,17 +442,9 @@ onUnmounted(() => {
 <template>
   <div class="auction-detail-page">
     <!-- Loading -->
-    <div v-if="loading" class="loading-container">
-      <div class="spinner"></div>
-      <p>{{ locale === 'zh' ? '加載中...' : 'Loading...' }}</p>
-    </div>
+    <StateView v-if="loading" state="loading" />
 
-    <!-- Error -->
-    <div v-else-if="error" class="error-container">
-      <div class="error-icon">⚠️</div>
-      <h2>{{ error }}</h2>
-      <button @click="loadAuction" class="btn-retry">{{ locale === 'zh' ? '重試' : 'Retry' }}</button>
-    </div>
+    <StateView v-else-if="error" state="error" :title="error" retry @retry="loadAuction" />
 
     <!-- Auction Detail — 頂部出價記錄 + PDV 雙列佈局 -->
     <div v-else-if="auction" class="auction-container">
@@ -801,35 +794,14 @@ onUnmounted(() => {
   margin: 0 auto;
 }
 
-/* ===== Loading / Error ===== */
-.loading-container,
-.error-container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  min-height: 50vh;
-  gap: var(--space-4);
-}
-
-.spinner {
-  width: 40px;
-  height: 40px;
+/* ===== Related Loading ===== */
+.related-loading .spinner {
+  width: 28px;
+  height: 28px;
   border: 3px solid var(--border);
   border-top-color: var(--primary);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
-}
-
-.error-icon { font-size: 48px; }
-
-.btn-retry {
-  padding: var(--space-3) var(--space-6);
-  background: var(--primary);
-  border: none;
-  border-radius: var(--radius-lg);
-  color: white;
-  cursor: pointer;
 }
 
 @keyframes spin { to { transform: rotate(360deg); } }

@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { formatPrice } from '@/utils/format'
+import { formatPrice, formatDate } from '@/utils/format'
+import StateView from '@/components/common/StateView.vue'
 import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { ordersApi } from '@/api/orders'
@@ -169,10 +170,6 @@ const openImageModal = (url: string | undefined, title: string) => {
 }
 
 
-const formatDate = (dateStr: string) => {
-  return dateStr ? new Date(dateStr).toLocaleDateString('zh-CN') : '-'
-}
-
 const getStatusBadge = (status: string) => {
   const map: Record<string, { class: string; text: string }> = {
     pending: { class: 'pending', text: '待付款' },
@@ -204,8 +201,8 @@ onMounted(() => loadOrders())
       <button :class="{ active: filterStatus === 'cancelled' }" @click="filterStatus = 'cancelled'">已取消 ({{ orders.filter(o => o.status === 'cancelled').length }})</button>
     </div>
 
-    <div v-if="loading" class="loading-state">載入中...</div>
-    <div v-else-if="!filteredOrders.length" class="empty-state">暫無訂單</div>
+    <StateView v-if="loading" state="loading" />
+    <StateView v-else-if="!filteredOrders.length" state="empty" icon="📋" title="暫無訂單" />
     <div v-else class="orders-table">
       <table>
         <thead>
@@ -388,10 +385,9 @@ onMounted(() => loadOrders())
   border-radius: var(--radius-lg); color: var(--text-secondary); cursor: pointer; font-size: var(--text-sm); transition: all 0.2s;
 }
 .tabs button.active { background: var(--primary-gradient); color: white; border-color: transparent; }
-.orders-table, .empty-state, .loading-state {
+.orders-table {
   background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-xl);
 }
-.empty-state, .loading-state { text-align: center; padding: var(--space-12); color: var(--text-muted); }
 table { width: 100%; border-collapse: collapse; }
 th, td { padding: var(--space-4); text-align: left; border-bottom: 1px solid var(--border); }
 th { font-size: var(--text-xs); font-weight: 500; color: var(--text-secondary); background: var(--bg-elevated); }

@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { formatPrice } from '@/utils/format'
+import { formatPrice, formatDate } from '@/utils/format'
+import StateView from '@/components/common/StateView.vue'
 import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { ordersApi } from '@/api/orders'
@@ -48,10 +49,6 @@ const loadData = async () => {
 }
 
 
-const formatDate = (dateStr: string) => {
-  return dateStr ? new Date(dateStr).toLocaleDateString('zh-CN') : '-'
-}
-
 onMounted(() => loadData())
 </script>
 
@@ -80,8 +77,8 @@ onMounted(() => loadData())
     <!-- Transaction History -->
     <div class="transactions-section">
       <h3 class="section-title">💳 交易記錄</h3>
-      <div v-if="loading" class="loading-state"><div class="spinner"></div></div>
-      <div v-else-if="!transactions.length" class="empty-state">暫無交易記錄</div>
+      <StateView v-if="loading" state="loading" />
+      <StateView v-else-if="!transactions.length" state="empty" icon="💳" title="暫無交易記錄" />
       <div v-else class="transactions-table">
         <table>
           <thead>
@@ -128,10 +125,6 @@ onMounted(() => loadData())
 .stat-meta { font-size: var(--text-xs); color: var(--text-muted); }
 .transactions-section, .withdrawal-info { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-xl); padding: var(--space-6); }
 .section-title { font-size: var(--text-base); font-weight: 600; color: var(--text-primary); margin-bottom: var(--space-4); }
-.loading-state { text-align: center; padding: var(--space-8); }
-.empty-state { text-align: center; padding: var(--space-8); color: var(--text-muted); }
-.spinner { width: 32px; height: 32px; border: 3px solid var(--border); border-top-color: var(--primary); border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto; }
-@keyframes spin { to { transform: rotate(360deg); } }
 .transactions-table { overflow-x: auto; -webkit-overflow-scrolling: touch; touch-action: pan-x; }
 table { width: 100%; border-collapse: collapse; }
 th, td { padding: var(--space-3); text-align: left; border-bottom: 1px solid var(--border); }

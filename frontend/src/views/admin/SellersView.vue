@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { formatPrice } from '@/utils/format'
+import { formatPrice, formatDate } from '@/utils/format'
 import { ref, onMounted } from 'vue'
 import api from '@/api'
 
@@ -34,11 +34,6 @@ const handleUpdateStatus = async (id: string, status: string) => {
   } catch (e) {
     alert('操作失敗')
   }
-}
-
-
-const formatDate = (date: string) => {
-  return date ? new Date(date).toLocaleDateString('zh-MO') : '-'
 }
 
 onMounted(() => fetchSellers())

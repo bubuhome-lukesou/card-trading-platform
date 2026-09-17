@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { formatPrice } from '@/utils/format'
+import { formatPrice, formatDate } from '@/utils/format'
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { productApi } from '@/api/products'
@@ -108,7 +108,7 @@ const loadReservationRows = async () => {
       extra: `已訂 ${e.count} 單 / ${e.qty} 件`,
       statusKey: st === 'deposit_paid' ? 'confirmed' : st,
       status: st === 'deposit_paid' ? '已付訂金' : st === 'pending' ? '待付訂金' : st === 'confirmed' ? '已確認' : st === 'completed' ? '已完成' : st === 'cancelled' ? '已取消' : st === 'expired' ? '已過期' : st,
-      timeText: e.product.reservationDeadline ? `截止 ${new Date(e.product.reservationDeadline).toLocaleDateString('zh-HK')}` : '',
+      timeText: e.product.reservationDeadline ? `截止 ${formatDate(e.product.reservationDeadline)}` : '',
       viewLink: `/product/${e.product.id}`,
     }
   })
@@ -134,7 +134,7 @@ const loadSaleRows = async () => {
         extra: `庫存 ${p.quantity ?? p.stock ?? 0}`,
         statusKey: st,
         status: st === 'active' ? '在售' : st === 'draft' ? '草稿' : st === 'sold' ? '已售' : st === 'removed' ? '已下架' : st,
-        timeText: p.soldAt ? `售出 ${new Date(p.soldAt).toLocaleDateString('zh-HK')}` : '',
+        timeText: p.soldAt ? `售出 ${formatDate(p.soldAt)}` : '',
         viewLink: `/product/${p.id}`,
       }
     })

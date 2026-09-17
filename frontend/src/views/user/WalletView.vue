@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { formatPrice } from '@/utils/format'
+import { formatPrice, formatDate } from '@/utils/format'
+import StateView from '@/components/common/StateView.vue'
 import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
@@ -30,10 +31,6 @@ const showToast = (msg: string) => {
   toastTimer = setTimeout(() => { toastMessage.value = '' }, 3000)
 }
 
-
-const formatDate = (dateStr: string) => {
-  return new Date(dateStr).toLocaleDateString('zh-CN')
-}
 
 const getTransactionIcon = (type: string) => {
   const map: Record<string, string> = { deposit: '💰', withdraw: '🏧', payment: '💳', refund: '↩️' }
@@ -170,13 +167,9 @@ onMounted(() => {
     <div class="transactions-section">
       <h3 class="section-title">💳 交易記錄</h3>
 
-      <div v-if="loading" class="loading-state">
-        <div class="spinner"></div>
-      </div>
+      <StateView v-if="loading" state="loading" />
 
-      <div v-else-if="transactions.length === 0" class="empty-state">
-        <p>暫無交易記錄</p>
-      </div>
+      <StateView v-else-if="transactions.length === 0" state="empty" icon="💳" title="暫無交易記錄" />
 
       <div v-else class="transactions-list">
         <div v-for="tx in transactions" :key="tx.id" class="transaction-item">
@@ -407,30 +400,6 @@ onMounted(() => {
   margin-bottom: var(--space-4);
 }
 
-.loading-state {
-  text-align: center;
-  padding: var(--space-8);
-}
-
-.spinner {
-  width: 32px;
-  height: 32px;
-  border: 3px solid var(--border);
-  border-top-color: var(--primary);
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-  margin: 0 auto;
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-
-.empty-state {
-  text-align: center;
-  padding: var(--space-8);
-  color: var(--text-secondary);
-}
 
 .transactions-list {
   display: flex;

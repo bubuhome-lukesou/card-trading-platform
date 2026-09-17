@@ -11,6 +11,7 @@ import { useFavoritesStore } from '@/stores/favorites'
 import { reservationApi } from '@/api/reservations'
 import { useAuthStore } from '@/stores/auth'
 import { tagApi } from '@/api/tags'
+import { formatDate, formatDateTime } from '@/utils/format'
 import ProductCard from '@/components/product/ProductCard.vue'
 
 const { t, locale } = useI18n()
@@ -331,21 +332,6 @@ onUnmounted(() => {
 
 const isOutOfStock = () => {
   return product.value && (product.value.quantity === 0 || product.value.quantity === undefined)
-}
-
-const formatDate = (dateStr: string, showTime = false) => {
-  if (!dateStr) return ''
-  const d = new Date(dateStr)
-  if (showTime) {
-    return d.toLocaleString('zh-TW', {
-      year: 'numeric',
-      month: 'numeric',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    })
-  }
-  return d.toLocaleDateString('zh-TW', { year: 'numeric', month: 'numeric', day: 'numeric' })
 }
 
 const getMaxQuantity = () => {
@@ -733,7 +719,7 @@ const isProductSuspended = computed(() => {
                   </div>
                   <div class="res-item" v-if="product.reservationDeadline">
                     <span class="res-label">{{ locale === 'zh' ? '截止報名' : 'Deadline' }}</span>
-                    <span class="res-value">{{ formatDate(product.reservationDeadline, true) }}</span>
+                    <span class="res-value">{{ formatDateTime(product.reservationDeadline) }}</span>
                   </div>
                 </div>
               </div>

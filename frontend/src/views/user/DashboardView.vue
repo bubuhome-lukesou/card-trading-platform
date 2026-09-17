@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { formatPrice } from '@/utils/format'
+import StateView from '@/components/common/StateView.vue'
 import { ref, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
@@ -168,7 +169,8 @@ onMounted(() => {
           <h3>🎯 我的出價</h3>
         </div>
         <div class="card-body">
-          <div v-if="!recentBids.length" class="empty-row">暫無出價記錄</div>
+          <StateView v-if="loading" state="loading" />
+          <StateView v-else-if="!recentBids.length" state="empty" icon="🎯" title="暫無出價記錄" />
           <div v-for="bid in recentBids" :key="bid.id" class="bid-item" @click="$router.push(`/auction/${bid.auctionId}`)" style="cursor:pointer">
             <div class="bid-info">
               <div class="bid-title">{{ bid.auctionTitle }}</div>
@@ -193,7 +195,8 @@ onMounted(() => {
           <router-link to="/user/orders" class="see-all">查看全部</router-link>
         </div>
         <div class="card-body">
-          <div v-if="!recentOrders.length" class="empty-row">暫無訂單記錄</div>
+          <StateView v-if="loading" state="loading" />
+          <StateView v-else-if="!recentOrders.length" state="empty" icon="📦" title="暫無訂單記錄" />
           <div v-for="order in recentOrders" :key="order.id" class="order-item">
             <div class="order-info">
               <div class="order-title">{{ order.productTitle }}</div>
@@ -341,13 +344,6 @@ onMounted(() => {
 .bid-item:hover {
   background: var(--bg-card);
   outline: 1px solid var(--border);
-}
-
-.empty-row {
-  text-align: center;
-  padding: var(--space-4);
-  color: var(--text-muted);
-  font-size: var(--text-sm);
 }
 
 .bid-title,

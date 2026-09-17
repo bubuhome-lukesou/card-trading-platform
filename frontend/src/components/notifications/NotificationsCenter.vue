@@ -3,6 +3,7 @@ import { onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { useNotificationStore } from '@/stores/notifications'
+import { formatDate } from '@/utils/format'
 
 // 共用通知中心 — user 與 seller 共用（原兩個 view 99% 相同）
 // emptyHintZh / emptyHintEn：空狀態提示文案，由路由 props 傳入
@@ -52,7 +53,7 @@ const formatTime = (dateStr: string) => {
   if (diffHour < 24) return zh() ? `${diffHour} 小時前` : `${diffHour}h ago`
   const diffDay = Math.floor(diffHour / 24)
   if (diffDay < 7) return zh() ? `${diffDay} 天前` : `${diffDay}d ago`
-  return d.toLocaleDateString(zh() ? 'zh-TW' : 'en-US')
+  return formatDate(d)
 }
 
 const handleClick = async (n: { id: string; isRead: boolean; link: string | null }) => {

@@ -186,12 +186,7 @@ onMounted(() => {
   color: var(--text-primary);
 }
 
-.loading-state {
-  text-align: center;
-  padding: var(--space-16);
-}
-
-// loading/empty 狀態已由共用 StateView 組件處理
+/* loading/empty 狀態已由共用 StateView 組件處理 */
 
 .btn-primary {
   padding: var(--space-3) var(--space-6);

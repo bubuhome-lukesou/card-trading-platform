@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { formatPrice } from '@/utils/format'
+import { formatPrice, formatDate } from '@/utils/format'
+import StateView from '@/components/common/StateView.vue'
 import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
@@ -634,16 +635,9 @@ onUnmounted(() => {
     </div>
 
     <!-- Products Grid -->
-    <div v-if="loading" class="loading-state">
-      <div class="spinner"></div>
-      <p>加載中...</p>
-    </div>
+    <StateView v-if="loading" state="loading" />
 
-    <div v-else-if="filteredProducts.length === 0" class="empty-state">
-      <div class="empty-icon">📦</div>
-      <h3>暫無商品</h3>
-      <p>點击上方「+ 發布商品」按钮發布您的第一件商品吧！</p>
-    </div>
+    <StateView v-else-if="filteredProducts.length === 0" state="empty" icon="📦" title="暫無商品" message="點击上方「+ 發布商品」按钮發布您的第一件商品吧！" />
 
     <div v-else class="products-grid">
       <div v-for="product in filteredProducts" :key="product.id" class="product-card">
@@ -1139,50 +1133,6 @@ onUnmounted(() => {
   box-shadow: 0 4px 16px #667eea66;
 }
 
-.loading-state {
-  text-align: center;
-  padding: var(--space-16);
-  color: var(--text-secondary);
-}
-
-.spinner {
-  width: 40px;
-  height: 40px;
-  border: 3px solid var(--border);
-  border-top-color: var(--primary);
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-  margin: 0 auto var(--space-4);
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-
-.empty-state {
-  text-align: center;
-  padding: var(--space-16);
-  background: var(--bg-card);
-  border: 1px dashed var(--border);
-  border-radius: var(--radius-xl);
-}
-
-.empty-icon {
-  font-size: 48px;
-  margin-bottom: var(--space-4);
-}
-
-.empty-state h3 {
-  font-size: var(--text-lg);
-  color: var(--text-primary);
-  margin-bottom: var(--space-2);
-}
-
-.empty-state p {
-  color: var(--text-secondary);
-  margin-bottom: var(--space-6);
-}
-
 .products-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -1430,15 +1380,6 @@ onUnmounted(() => {
   height: 1px;
   background: var(--border);
   margin: var(--space-4) 0;
-}
-
-.animate-spin {
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
 }
 
 .form-grid {

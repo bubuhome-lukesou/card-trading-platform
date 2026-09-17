@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { formatPrice } from '@/utils/format'
+import { formatPrice, formatDate } from '@/utils/format'
+import StateView from '@/components/common/StateView.vue'
 import { ref, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { productApi } from '@/api/products'
@@ -61,9 +62,6 @@ const getOrderStatusClass = (status: string) => {
   return map[status] || 'default'
 }
 
-const formatDate = (date: string) => {
-  return date ? new Date(date).toLocaleDateString('zh-CN') : '-'
-}
 </script>
 
 <template>
@@ -129,8 +127,8 @@ const formatDate = (date: string) => {
           <router-link to="/seller/orders" class="see-all">查看全部</router-link>
         </div>
         <div class="card-body">
-          <div v-if="loading" class="loading">加載中...</div>
-          <div v-else-if="!recentOrders.length" class="empty">暫無訂單</div>
+          <StateView v-if="loading" state="loading" title="加載中..." />
+          <StateView v-else-if="!recentOrders.length" state="empty" icon="📋" title="暫無訂單" />
           <table v-else class="data-table">
             <thead>
               <tr><th>訂單號</th><th>商品</th><th>買家</th><th>金額</th><th>狀態</th></tr>
@@ -159,8 +157,8 @@ const formatDate = (date: string) => {
           <router-link to="/seller/auctions" class="see-all">查看全部</router-link>
         </div>
         <div class="card-body">
-          <div v-if="loading" class="loading">加載中...</div>
-          <div v-else-if="!recentAuctions.length" class="empty">暫無進行中拍賣</div>
+          <StateView v-if="loading" state="loading" title="加載中..." />
+          <StateView v-else-if="!recentAuctions.length" state="empty" icon="🔥" title="暫無進行中拍賣" />
           <div v-else class="auction-list">
             <div v-for="auction in recentAuctions" :key="auction.id" class="auction-item">
               <div class="auction-info">
@@ -206,7 +204,6 @@ const formatDate = (date: string) => {
 .see-all { font-size: var(--text-sm); color: var(--primary); text-decoration: none; }
 .see-all:hover { text-decoration: underline; }
 .card-body { padding: var(--space-4); }
-.loading, .empty { text-align: center; padding: var(--space-8); color: var(--text-secondary); }
 .data-table { width: 100%; border-collapse: collapse; }
 .data-table th, .data-table td { padding: var(--space-3); text-align: left; font-size: var(--text-sm); border-bottom: 1px solid var(--border); }
 .data-table th { color: var(--text-secondary); font-weight: 500; }

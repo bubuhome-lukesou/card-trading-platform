@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { formatPrice } from '@/utils/format'
+import { formatPrice, formatDate } from '@/utils/format'
 import { ref, onMounted, computed } from 'vue'
 import api from '@/api'
 
@@ -56,11 +56,6 @@ const handleChangeRole = async (id: string, currentRole: string) => {
   } catch (e) {
     alert('操作失敗')
   }
-}
-
-
-const formatDate = (date: string) => {
-  return date ? new Date(date).toLocaleDateString('zh-MO') : '-'
 }
 
 const formatRole = (role: string) => {
