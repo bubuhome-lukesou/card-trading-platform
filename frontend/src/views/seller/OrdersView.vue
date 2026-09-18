@@ -63,19 +63,24 @@ const filteredOrders = computed(() => {
   return result
 })
 
-// 當前篩選商品名稱（顯示在篩選提示條）
+// 當前篩選商品名稱（顯示在篩選提示條）— 訂單或商品列表載入後比對
 const filterProductTitle = computed(() => {
   if (!filterProductId.value) return ''
   const o = orders.value.find(x => x.productId === filterProductId.value)
-  return o?.productTitle || filterProductId.value
+  return o?.productTitle || filterProductMap.value[filterProductId.value] || '查詢中...'
 })
+
+// productId → 商品名 對照（從商品列表跳入時，訂單可能 0 筆也能顯示商品名）
+const filterProductMap = ref<Record<string, string>>({})
+import { productApi } from '@/api/products'
 
 const clearProductFilter = () => { filterProductId.value = '' }
 
 const loadOrders = async () => {
   loading.value = true
   try {
-    const res = await ordersApi.getSellerOrders()
+    // limit=200：確保商品篩選（從商品列表「查看」跳入）能看到該商品所有訂單
+    const res = await ordersApi.getSellerOrders(1, 200)
     orders.value = (res.data.data || []).map((o: any) => {
       let images: string[] = []
       try {
@@ -202,10 +207,15 @@ const getStatusBadge = (status: string) => {
   return map[status] || { class: 'default', text: status }
 }
 
-onMounted(() => {
+onMounted(async () => {
   // 從商品列表「查看」跳入：/seller/orders?productId=xxx
   if (route.query.productId) {
     filterProductId.value = String(route.query.productId)
+    // 取商品名（訂單為 0 時也能正確顯示篩選條）
+    try {
+      const p = await productApi.getProduct(filterProductId.value)
+      filterProductMap.value[filterProductId.value] = p.data?.titleZh || p.data?.titleEn || ''
+    } catch { /* 商品名取得失敗不影響列表 */ }
   }
   loadOrders()
 })

@@ -275,12 +275,13 @@ const loadCounts = async () => {
       reservationApi.getSellerReservations().catch(() => ({ data: { data: [] } })),
       productApi.getMyProducts({ limit: 200 }),
     ])
-    const rl = r.data?.data || []
+    // reservations API 直接返回陣列（非 {data:[...]} 包裝）
+    const rl = r.data?.data || r.data || []
     const pl = (Array.isArray(p.data) ? p.data : (p.data as any)?.data) || []
     counts.value = {
       auction: (a.data?.data || []).length,
-      // 預訂 = 預訂記錄總數（每筆預約一單，含所有買家）
-      reservation: rl.length,
+      // 預訂 = 有預約的商品數量（與下方列表按商品分組的行數一致）
+      reservation: new Set(rl.map((x: any) => x.productId)).size,
       sale: pl.filter((x: any) => (x.listingType || 'sale') === 'sale').length,
     }
   } catch { /* counts 非關鍵 */ }
