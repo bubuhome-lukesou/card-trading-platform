@@ -2,11 +2,13 @@
 import { formatPrice, formatDate } from '@/utils/format'
 import StateView from '@/components/common/StateView.vue'
 import { ref, computed, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { ordersApi } from '@/api/orders'
 import { cartApi } from '@/api/cart'
 
 const { t } = useI18n()
+const route = useRoute()
 
 interface Order {
   id: string
@@ -36,6 +38,7 @@ interface Order {
 const orders = ref<Order[]>([])
 const loading = ref(true)
 const filterStatus = ref('all')
+const filterProductId = ref('') // 從商品列表「查看」跳入時按商品篩選
 const processingId = ref<string | null>(null)
 const showReceiptModal = ref(false)
 const receiptImageUrl = ref('')
@@ -50,9 +53,24 @@ const modalImageUrl = ref('')
 const modalImageTitle = ref('')
 
 const filteredOrders = computed(() => {
-  if (filterStatus.value === 'all') return orders.value
-  return orders.value.filter(o => o.status === filterStatus.value)
+  let result = orders.value
+  if (filterProductId.value) {
+    result = result.filter(o => o.productId === filterProductId.value)
+  }
+  if (filterStatus.value !== 'all') {
+    result = result.filter(o => o.status === filterStatus.value)
+  }
+  return result
 })
+
+// 當前篩選商品名稱（顯示在篩選提示條）
+const filterProductTitle = computed(() => {
+  if (!filterProductId.value) return ''
+  const o = orders.value.find(x => x.productId === filterProductId.value)
+  return o?.productTitle || filterProductId.value
+})
+
+const clearProductFilter = () => { filterProductId.value = '' }
 
 const loadOrders = async () => {
   loading.value = true
@@ -184,11 +202,24 @@ const getStatusBadge = (status: string) => {
   return map[status] || { class: 'default', text: status }
 }
 
-onMounted(() => loadOrders())
+onMounted(() => {
+  // 從商品列表「查看」跳入：/seller/orders?productId=xxx
+  if (route.query.productId) {
+    filterProductId.value = String(route.query.productId)
+  }
+  loadOrders()
+})
 </script>
 
 <template>
   <div class="orders-management">
+    <!-- 商品篩選提示條（從商品列表「查看」跳入時顯示） -->
+    <div v-if="filterProductId" class="product-filter-banner">
+      <span class="banner-icon">📦</span>
+      <span class="banner-text">商品：<strong>{{ filterProductTitle }}</strong> 的訂單（{{ filteredOrders.length }} 筆）</span>
+      <button class="btn-clear-filter" @click="clearProductFilter">✕ 顯示全部訂單</button>
+    </div>
+
     <!-- Tabs -->
     <div class="tabs">
       <button :class="{ active: filterStatus === 'all' }" @click="filterStatus = 'all'">全部 ({{ orders.length }})</button>
@@ -379,6 +410,29 @@ onMounted(() => loadOrders())
 
 <style scoped>
 .orders-management { display: flex; flex-direction: column; gap: var(--space-4); }
+.product-filter-banner {
+  display: flex; align-items: center; gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background: var(--bg-elevated);
+  border: 1px solid var(--primary);
+  border-radius: var(--radius-lg);
+  flex-wrap: wrap;
+}
+.banner-icon { font-size: 18px; }
+.banner-text { font-size: var(--text-sm); color: var(--text-primary); }
+.banner-text strong { color: var(--primary); }
+.btn-clear-filter {
+  margin-left: auto;
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: var(--text-xs);
+  transition: all var(--transition-fast);
+}
+.btn-clear-filter:hover { color: var(--text-primary); border-color: var(--primary); }
 .tabs { display: flex; gap: var(--space-2); flex-wrap: wrap; }
 .tabs button {
   padding: var(--space-2) var(--space-4); background: var(--bg-card); border: 1px solid var(--border);

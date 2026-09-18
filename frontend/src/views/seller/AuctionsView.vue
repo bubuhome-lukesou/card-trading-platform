@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { formatPrice, formatDate } from '@/utils/format'
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { productApi } from '@/api/products'
 import { auctionApi } from '@/api/auctions'
@@ -28,16 +28,26 @@ interface Row {
   image: string
   category: string
   price: string          // 主價（拍賣=當前價 / 預訂=訂金 / 銷售=售價）
+  priceValue: number     // 排序用數值
   priceLabel: string
   extra: string          // 輔助資訊（出價數/已訂名額/庫存）
+  extraValue: number     // 排序用數值
   status: string         // 狀態 badge
   statusKey: string
   timeText: string       // 截止時間 / 到期時間
-  viewLink: string       // 查看連結
+  timeValue: number      // 排序用 timestamp（0 = 無時間）
+  viewLink: string       // 查看連結 → 商家訂單頁（按商品篩選）
 }
 
 const rows = ref<Row[]>([])
 const counts = ref<Record<TabKey, number>>({ auction: 0, reservation: 0, sale: 0 })
+
+// ===== 搜尋 / 分頁 / 排序 =====
+const PAGE_SIZE = 20
+const searchQuery = ref('')
+const currentPage = ref(1)
+const sortKey = ref('')
+const sortDir = ref<'asc' | 'desc'>('asc')
 
 const categories: Record<string, string> = {
   pokemon: '🎯', yugioh: '🎯', onepiece: '🎯',
@@ -55,6 +65,53 @@ const resolveImage = (url: string) => {
   return (import.meta.env.VITE_API_URL || '') + url
 }
 
+// ===== 排序欄定義（隨分頁切換 label；圖片/操作欄不加排序） =====
+const sortableColumns = computed(() => {
+  const cols: { key: string; label: string; type: 'text' | 'number' | 'time' }[] = [
+    { key: 'title', label: '商品', type: 'text' },
+    {
+      key: 'priceValue',
+      label: activeTab.value === 'auction' ? '當前價' : activeTab.value === 'reservation' ? '訂金' : '售價',
+      type: 'number',
+    },
+    {
+      key: 'extraValue',
+      label: activeTab.value === 'auction' ? '出價' : activeTab.value === 'reservation' ? '已訂' : '庫存',
+      type: 'number',
+    },
+    { key: 'status', label: '狀態', type: 'text' },
+    {
+      key: 'timeValue',
+      label: activeTab.value === 'auction' ? '截止時間' : activeTab.value === 'reservation' ? '預約截止' : '備註',
+      type: 'time',
+    },
+  ]
+  return cols
+})
+
+const toggleSort = (key: string) => {
+  if (sortKey.value === key) {
+    sortDir.value = sortDir.value === 'asc' ? 'desc' : 'asc'
+  } else {
+    sortKey.value = key
+    sortDir.value = 'asc'
+  }
+  currentPage.value = 1
+}
+
+// 比較器：數字/時間按大小，文字按 UTF-16 二進碼（code unit）順序
+const compareRows = (a: Row, b: Row, col: { key: string; type: string }): number => {
+  let cmp = 0
+  if (col.type === 'number' || col.type === 'time') {
+    cmp = (Number((a as any)[col.key]) || 0) - (Number((b as any)[col.key]) || 0)
+  } else {
+    const as = String((a as any)[col.key] ?? '')
+    const bs = String((b as any)[col.key] ?? '')
+    cmp = as < bs ? -1 : as > bs ? 1 : 0
+  }
+  return sortDir.value === 'asc' ? cmp : -cmp
+}
+
 // ===== 拍賣分頁：GET /auctions/seller/my =====
 const loadAuctionRows = async () => {
   const res = await auctionApi.getMyAuctions({ limit: 200 })
@@ -70,12 +127,16 @@ const loadAuctionRows = async () => {
       image: resolveImage(imgs[0] || ''),
       category: p.category || 'other',
       price: formatPrice(a.currentPrice),
+      priceValue: Number(a.currentPrice) || 0,
       priceLabel: '當前價',
       extra: `出價 ${a.bidCount || 0} 次`,
+      extraValue: Number(a.bidCount) || 0,
       statusKey: st,
       status: st === 'active' ? '進行中' : st === 'pending' ? '待開始' : st === 'ended' ? '已結束' : '已取消',
       timeText: a.endTime ? new Date(a.endTime).toLocaleString('zh-HK', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '',
-      viewLink: `/auction/${a.id}`,
+      timeValue: a.endTime ? new Date(a.endTime).getTime() : 0,
+      // 拍賣訂單（auction_win）→ 商家訂單頁按商品篩選
+      viewLink: `/seller/orders?productId=${a.productId}`,
     }
   })
 }
@@ -104,12 +165,16 @@ const loadReservationRows = async () => {
       image: resolveImage(imgs[0] || ''),
       category: e.product.category || 'other',
       price: formatPrice(e.latest.depositAmount),
+      priceValue: Number(e.latest.depositAmount) || 0,
       priceLabel: '訂金',
       extra: `已訂 ${e.count} 單 / ${e.qty} 件`,
+      extraValue: e.count,
       statusKey: st === 'deposit_paid' ? 'confirmed' : st,
       status: st === 'deposit_paid' ? '已付訂金' : st === 'pending' ? '待付訂金' : st === 'confirmed' ? '已確認' : st === 'completed' ? '已完成' : st === 'cancelled' ? '已取消' : st === 'expired' ? '已過期' : st,
       timeText: e.product.reservationDeadline ? `截止 ${formatDate(e.product.reservationDeadline)}` : '',
-      viewLink: `/product/${e.product.id}`,
+      timeValue: e.product.reservationDeadline ? new Date(e.product.reservationDeadline).getTime() : 0,
+      // 預約訂單（reservation_deposit）→ 商家訂單頁按商品篩選
+      viewLink: `/seller/orders?productId=${e.product.id}`,
     }
   })
 }
@@ -130,12 +195,16 @@ const loadSaleRows = async () => {
         image: resolveImage(imgs[0] || ''),
         category: p.category || 'other',
         price: formatPrice(p.price),
+        priceValue: Number(p.price) || 0,
         priceLabel: '售價',
         extra: `庫存 ${p.quantity ?? p.stock ?? 0}`,
+        extraValue: Number(p.quantity ?? p.stock ?? 0) || 0,
         statusKey: st,
         status: st === 'active' ? '在售' : st === 'draft' ? '草稿' : st === 'sold' ? '已售' : st === 'removed' ? '已下架' : st,
         timeText: p.soldAt ? `售出 ${formatDate(p.soldAt)}` : '',
-        viewLink: `/product/${p.id}`,
+        timeValue: p.soldAt ? new Date(p.soldAt).getTime() : 0,
+        // 銷售訂單 → 商家訂單頁按商品篩選
+        viewLink: `/seller/orders?productId=${p.id}`,
       }
     })
 }
@@ -159,8 +228,44 @@ const loadTab = async () => {
 const switchTab = (key: TabKey) => {
   if (activeTab.value === key) return
   activeTab.value = key
+  // 切分頁：重置搜尋/排序/頁碼（欄位定義不同）
+  searchQuery.value = ''
+  sortKey.value = ''
+  sortDir.value = 'asc'
+  currentPage.value = 1
   loadTab()
 }
+
+// ===== 過濾 → 排序 → 分頁 =====
+const filteredRows = computed(() => {
+  const q = searchQuery.value.trim().toLowerCase()
+  if (!q) return rows.value
+  return rows.value.filter(r =>
+    r.title.toLowerCase().includes(q) ||
+    r.status.toLowerCase().includes(q)
+  )
+})
+
+const sortedRows = computed(() => {
+  const col = sortableColumns.value.find(c => c.key === sortKey.value)
+  if (!col) return filteredRows.value
+  return [...filteredRows.value].sort((a, b) => compareRows(a, b, col))
+})
+
+const totalPages = computed(() => Math.max(1, Math.ceil(sortedRows.value.length / PAGE_SIZE)))
+
+const pagedRows = computed(() => {
+  const start = (currentPage.value - 1) * PAGE_SIZE
+  return sortedRows.value.slice(start, start + PAGE_SIZE)
+})
+
+const goToPage = (p: number) => {
+  if (p < 1 || p > totalPages.value) return
+  currentPage.value = p
+}
+
+// 搜尋變更 → 回第一頁
+watch(searchQuery, () => { currentPage.value = 1 })
 
 // 初始載入三個 tab 數量（拍賣即時載，其餘兩個並行統計）
 const loadCounts = async () => {
@@ -170,10 +275,12 @@ const loadCounts = async () => {
       reservationApi.getSellerReservations().catch(() => ({ data: { data: [] } })),
       productApi.getMyProducts({ limit: 200 }),
     ])
+    const rl = r.data?.data || []
     const pl = (Array.isArray(p.data) ? p.data : (p.data as any)?.data) || []
     counts.value = {
       auction: (a.data?.data || []).length,
-      reservation: new Set((r.data?.data || []).map((x: any) => x.productId)).size,
+      // 預訂 = 預訂記錄總數（每筆預約一單，含所有買家）
+      reservation: rl.length,
       sale: pl.filter((x: any) => (x.listingType || 'sale') === 'sale').length,
     }
   } catch { /* counts 非關鍵 */ }
@@ -216,6 +323,17 @@ onMounted(() => {
       <button class="btn-new" @click="goCreate">+ 發布新商品</button>
     </div>
 
+    <!-- 關鍵字搜尋 -->
+    <div class="search-row">
+      <input
+        v-model="searchQuery"
+        type="text"
+        class="search-input"
+        placeholder="🔍 搜尋商品名稱或狀態..."
+      />
+      <button v-if="searchQuery" class="btn-clear-search" @click="searchQuery = ''">✕ 清除</button>
+    </div>
+
     <!-- Loading -->
     <div v-if="loading" class="loading-state">
       <div class="spinner"></div>
@@ -228,11 +346,18 @@ onMounted(() => {
       <button class="btn-retry" @click="loadTab">重試</button>
     </div>
 
-    <!-- Empty -->
+    <!-- Empty (no data at all) -->
     <div v-else-if="rows.length === 0" class="empty-state">
       <div class="empty-icon">{{ activeTab === 'auction' ? '🔨' : activeTab === 'reservation' ? '📅' : '🏷️' }}</div>
       <h3>暫無{{ tabs.find(t => t.key === activeTab)?.label }}商品</h3>
       <p>點击「+ 發布新商品」並選擇對應銷售模式即可創建。</p>
+    </div>
+
+    <!-- Empty (search no match) -->
+    <div v-else-if="filteredRows.length === 0" class="empty-state">
+      <div class="empty-icon">🔍</div>
+      <h3>無符合搜尋結果</h3>
+      <p>試試其他關鍵字，或清除搜尋查看全部。</p>
     </div>
 
     <!-- List (table) -->
@@ -240,16 +365,21 @@ onMounted(() => {
       <table>
         <thead>
           <tr>
-            <th>商品</th>
-            <th>{{ activeTab === 'auction' ? '當前價' : activeTab === 'reservation' ? '訂金' : '售價' }}</th>
-            <th>{{ activeTab === 'auction' ? '出價' : activeTab === 'reservation' ? '已訂' : '庫存' }}</th>
-            <th>狀態</th>
-            <th>{{ activeTab === 'auction' ? '截止時間' : activeTab === 'reservation' ? '預約截止' : '備註' }}</th>
+            <th
+              v-for="col in sortableColumns"
+              :key="col.key"
+              class="sortable-th"
+              :class="{ sorted: sortKey === col.key }"
+              @click="toggleSort(col.key)"
+            >
+              <span class="th-label">{{ col.label }}</span>
+              <span class="sort-arrow" :class="{ active: sortKey === col.key, desc: sortKey === col.key && sortDir === 'desc' }">↕</span>
+            </th>
             <th>操作</th>
           </tr>
         </thead>
         <tbody>
-          <tr v-for="row in rows" :key="activeTab + row.id">
+          <tr v-for="row in pagedRows" :key="activeTab + row.id">
             <td>
               <div class="product-cell">
                 <img v-if="row.image" :src="row.image" class="row-thumb" :alt="row.title" />
@@ -269,6 +399,13 @@ onMounted(() => {
           </tr>
         </tbody>
       </table>
+    </div>
+
+    <!-- 分頁 -->
+    <div v-if="!loading && !error && sortedRows.length > 0" class="pagination">
+      <button class="page-btn" :disabled="currentPage <= 1" @click="goToPage(currentPage - 1)">‹ 上一頁</button>
+      <span class="page-info">第 {{ currentPage }} / {{ totalPages }} 頁 · 共 {{ sortedRows.length }} 件</span>
+      <button class="page-btn" :disabled="currentPage >= totalPages" @click="goToPage(currentPage + 1)">下一頁 ›</button>
     </div>
   </div>
 </template>
@@ -344,6 +481,116 @@ onMounted(() => {
 .btn-new:hover {
   opacity: 0.9;
   transform: translateY(-1px);
+}
+
+/* ===== 搜尋列 ===== */
+.search-row {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+.search-input {
+  flex: 1;
+  max-width: 420px;
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  color: var(--text-primary);
+  font-size: var(--text-sm);
+  outline: none;
+  transition: border-color var(--transition-fast);
+}
+
+.search-input:focus {
+  border-color: var(--primary);
+}
+
+.btn-clear-search {
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+  background: var(--bg-elevated);
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: var(--text-xs);
+}
+
+.btn-clear-search:hover {
+  color: var(--text-primary);
+  border-color: var(--primary);
+}
+
+/* ===== 排序表頭 ===== */
+.sortable-th {
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+}
+
+.sortable-th:hover {
+  color: var(--text-primary);
+}
+
+.sortable-th .th-label {
+  margin-right: 4px;
+}
+
+.sort-arrow {
+  display: inline-block;
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  opacity: 0.5;
+  transition: all var(--transition-fast);
+}
+
+.sortable-th:hover .sort-arrow {
+  opacity: 1;
+}
+
+.sort-arrow.active {
+  opacity: 1;
+  color: var(--primary);
+  font-weight: 700;
+}
+
+.sort-arrow.active.desc {
+  transform: rotate(180deg);
+}
+
+/* ===== 分頁 ===== */
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-4);
+}
+
+.page-btn {
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: var(--text-sm);
+  transition: all var(--transition-fast);
+}
+
+.page-btn:hover:not(:disabled) {
+  border-color: var(--primary);
+  color: var(--text-primary);
+}
+
+.page-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.page-info {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
 }
 
 .loading-state {
