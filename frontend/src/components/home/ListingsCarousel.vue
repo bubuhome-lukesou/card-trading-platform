@@ -99,6 +99,16 @@ onMounted(() => {
     flex: 0 0 auto;
     scroll-snap-align: start;
     width: 218px;
+
+    @media (max-width: 1024px) {
+      width: 200px;
+    }
+
+    // 手機回復原首頁尺寸：兩卡/屏（(100% - 16px gap) / 2，~175px @375）
+    @media (max-width: 640px) {
+      width: calc((100% - 16px) / 2);
+      min-width: 160px;
+    }
   }
 }
 
