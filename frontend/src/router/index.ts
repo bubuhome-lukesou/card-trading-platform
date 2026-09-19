@@ -124,9 +124,9 @@ const sellerRoutes: RouteRecordRaw[] = [
         component: () => import('@/views/seller/DashboardView.vue')
       },
       {
+        // 商品管理已合併入商品列表（2026-09-19）— 舊連結 redirect，保留 query
         path: 'products',
-        name: 'SellerProducts',
-        component: () => import('@/views/seller/ProductsView.vue')
+        redirect: (to: any) => ({ path: '/seller/auctions', query: to.query })
       },
       {
         path: 'auctions',

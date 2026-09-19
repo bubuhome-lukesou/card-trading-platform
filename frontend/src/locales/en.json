@@ -182,8 +182,7 @@
   },
   "seller": {
     "dashboard": "Seller Center",
-    "products": "Products",
-    "auctions": "Product List",
+    "auctions": "Product Management",
     "orders": "Orders",
     "earnings": "Earnings",
     "reviews": "Reviews",

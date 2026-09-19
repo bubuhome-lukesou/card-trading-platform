@@ -100,13 +100,13 @@ const getOrderStatusClass = (status: string) => {
 
     <!-- Quick Actions -->
     <div class="quick-actions">
-      <router-link to="/seller/products?action=create" class="action-card">
+      <router-link to="/seller/auctions?action=create" class="action-card">
         <span class="action-icon">➕</span>
         <span class="action-text">發布新商品</span>
       </router-link>
-      <router-link to="/seller/products?action=create&mode=auction" class="action-card">
+      <router-link to="/seller/auctions" class="action-card">
         <span class="action-icon">🔨</span>
-        <span class="action-text">創建拍賣</span>
+        <span class="action-text">商品列表</span>
       </router-link>
       <router-link to="/seller/orders" class="action-card">
         <span class="action-icon">📦</span>

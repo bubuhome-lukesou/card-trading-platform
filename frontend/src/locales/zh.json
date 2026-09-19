@@ -176,20 +176,13 @@
   },
   "seller": {
     "dashboard": "賣家中心",
-    "products": "商品管理",
     "auctions": "商品列表",
     "orders": "訂單管理",
     "earnings": "收益管理",
     "reviews": "評價管理",
     "notifications": "通知中心",
     "settings": "店鋪設定",
-    "apply": "申請成為賣家",
-    "createProduct": "發布新商品",
-    "editProduct": "編輯商品",
-    "totalProducts": "商品總數",
-    "activeListings": "在售商品",
-    "totalSales": "總銷售額",
-    "pendingOrders": "待處理訂單"
+    "apply": "申請成為賣家"
   },
   "admin": {
     "dashboard": "管理後台",

@@ -1,14 +1,17 @@
 <script setup lang="ts">
 import { formatPrice, formatDate, formatDateTime } from '@/utils/format'
 import { ref, computed, watch, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { productApi } from '@/api/products'
 import { auctionApi } from '@/api/auctions'
 import { reservationApi } from '@/api/reservations'
 import { ordersApi } from '@/api/orders'
 import { cartApi } from '@/api/cart'
+import ProductFormModal from '@/components/seller/ProductFormModal.vue'
+import { CategoryLogo, CATEGORY_OPTIONS } from '@/components/brand/CategoryLogos'
 
 const router = useRouter()
+const route = useRoute()
 
 // ===== 三個分頁：拍賣 / 預訂 / 銷售 =====
 type TabKey = 'auction' | 'reservation' | 'sale'
@@ -130,6 +133,7 @@ interface Row {
   pendingCount: number   // 待處理（等確認收款/等確認訂金/待發貨）
   receivedValue: number  // 已收款（confirmed/shipped/delivered）
   totalValue: number     // 總額（全部有效訂單）
+  raw: any               // 原始商品資料（詳情/編輯用）
 }
 
 const rows = ref<Row[]>([])
@@ -245,16 +249,24 @@ const loadAuctionRows = async () => {
       timeText: a.endTime ? formatDateTime(a.endTime) : '',
       timeValue: a.endTime ? new Date(a.endTime).getTime() : 0,
       createdValue: a.createdAt ? new Date(a.createdAt).getTime() : 0,
+      raw: { ...p, listingType: 'auction' },
       ...stats,
     }
   })
 }
 
-// ===== 預訂分頁：GET /reservations/seller =====
+// ===== 預訂分頁：全部 listingType=reservation 商品（含 0 預約）+ 預約記錄合併 =====
 const loadReservationRows = async () => {
-  const res = await reservationApi.getSellerReservations()
-  const list = res.data?.data || res.data || []
-  // 按 productId 合併（同一商品多名買家 → 顯示訂單數）
+  // 並行拉：預約記錄（訂單數統計）+ 全部預訂商品（補 0 預約商品）
+  const [resRes, prodRes] = await Promise.all([
+    reservationApi.getSellerReservations(),
+    productApi.getMyProducts({ limit: 200 }),
+  ])
+  const list = resRes.data?.data || resRes.data || []
+  const prodList = (Array.isArray(prodRes.data) ? prodRes.data : (prodRes.data as any)?.data) || []
+  const reservationProducts = prodList.filter((p: any) => p.listingType === 'reservation')
+
+  // 按 productId 合併預約記錄（同一商品多名買家）
   const byProduct = new Map<string, { product: any; count: number; qty: number; latest: any }>()
   for (const r of list) {
     const p = r.product || {}
@@ -264,26 +276,30 @@ const loadReservationRows = async () => {
     entry.qty += r.quantity || 1
     byProduct.set(key, entry)
   }
-  return Array.from(byProduct.entries()).map(([pid, e]): Row => {
-    const imgs = parseImages(e.product.images)
-    const st = e.latest.status?.toLowerCase() || 'pending'
-    const stats = orderStatsFor(e.product.id || pid)
+
+  // 以商品為主行：有預約記錄用記錄統計，0 預約顯示 0 單
+  return reservationProducts.map((p: any): Row => {
+    const imgs = parseImages(p.images)
+    const entry = byProduct.get(p.id)
+    const st = entry?.latest.status?.toLowerCase() || 'none'
+    const stats = orderStatsFor(p.id)
     return {
-      id: e.latest.id,
-      productId: e.product.id || pid,
-      title: e.product.titleZh || e.product.titleEn || '未知商品',
-      productNumber: e.product.productNumber ? `#${e.product.productNumber}` : '',
+      id: entry?.latest.id || p.id,
+      productId: p.id,
+      title: p.titleZh || p.titleEn || '未知商品',
+      productNumber: p.productNumber ? `#${p.productNumber}` : '',
       image: resolveImage(imgs[0] || ''),
-      category: e.product.category || 'other',
-      price: formatPrice(e.latest.depositAmount),
-      priceValue: Number(e.latest.depositAmount) || 0,
+      category: p.category || 'other',
+      price: formatPrice(p.reservationDeposit ?? entry?.latest.depositAmount ?? 0),
+      priceValue: Number(p.reservationDeposit ?? entry?.latest.depositAmount) || 0,
       priceLabel: '訂金',
-      extra: `已訂 ${e.count} 單 / ${e.qty} 件`,
-      statusKey: st === 'deposit_paid' ? 'confirmed' : st,
-      status: st === 'deposit_paid' ? '已付訂金' : st === 'pending' ? '待付訂金' : st === 'confirmed' ? '已確認' : st === 'completed' ? '已完成' : st === 'cancelled' ? '已取消' : st === 'expired' ? '已過期' : st,
-      timeText: e.product.reservationDeadline ? `截止 ${formatDate(e.product.reservationDeadline)}` : '',
-      timeValue: e.product.reservationDeadline ? new Date(e.product.reservationDeadline).getTime() : 0,
-      createdValue: e.latest.createdAt ? new Date(e.latest.createdAt).getTime() : 0,
+      extra: entry ? `已訂 ${entry.count} 單 / ${entry.qty} 件` : '暫無預約',
+      statusKey: st === 'deposit_paid' ? 'confirmed' : st === 'none' ? 'active' : st,
+      status: st === 'deposit_paid' ? '已付訂金' : st === 'pending' ? '待付訂金' : st === 'confirmed' ? '已確認' : st === 'completed' ? '已完成' : st === 'cancelled' ? '已取消' : st === 'expired' ? '已過期' : '接受預約中',
+      timeText: p.reservationDeadline ? `截止 ${formatDate(p.reservationDeadline)}` : '',
+      timeValue: p.reservationDeadline ? new Date(p.reservationDeadline).getTime() : 0,
+      createdValue: p.createdAt ? new Date(p.createdAt).getTime() : 0,
+      raw: { ...p, listingType: 'reservation' },
       ...stats,
     }
   })
@@ -315,6 +331,7 @@ const loadSaleRows = async () => {
         timeText: p.createdAt ? formatDate(p.createdAt) : '',
         timeValue: 0,
         createdValue: p.createdAt ? new Date(p.createdAt).getTime() : 0,
+        raw: p,
         ...stats,
       }
     })
@@ -411,18 +428,15 @@ watch(searchQuery, () => { currentPage.value = 1 })
 // 初始載入三個 tab 數量（拍賣即時載，其餘兩個並行統計）
 const loadCounts = async () => {
   try {
-    const [a, r, p] = await Promise.all([
+    const [a, p] = await Promise.all([
       auctionApi.getMyAuctions({ limit: 200 }),
-      reservationApi.getSellerReservations().catch(() => ({ data: { data: [] } })),
       productApi.getMyProducts({ limit: 200 }),
     ])
-    // reservations API 直接返回陣列（非 {data:[...]} 包裝）
-    const rl = r.data?.data || r.data || []
     const pl = (Array.isArray(p.data) ? p.data : (p.data as any)?.data) || []
     counts.value = {
       auction: (a.data?.data || []).length,
-      // 預訂 = 有預約的商品數量（與下方列表按商品分組的行數一致）
-      reservation: new Set(rl.map((x: any) => x.productId)).size,
+      // 預訂 = 全部 listingType=reservation 商品數（與下方列表行數一致，含 0 預約商品）
+      reservation: pl.filter((x: any) => x.listingType === 'reservation').length,
       sale: pl.filter((x: any) => (x.listingType || 'sale') === 'sale').length,
     }
   } catch { /* counts 非關鍵 */ }
@@ -568,8 +582,8 @@ const viewReceipt = (url?: string) => {
 
 // ===== 訂單詳情彈出層 =====
 const detailOrder = ref<OrderRow | null>(null)
-const openDetail = (o: OrderRow) => { detailOrder.value = o }
-const closeDetail = () => { detailOrder.value = null }
+const openOrderDetail = (o: OrderRow) => { detailOrder.value = o }
+const closeOrderDetail = () => { detailOrder.value = null }
 
 // 詳情彈出層時間線
 const detailTimeline = computed(() => {
@@ -589,13 +603,95 @@ const detailTimeline = computed(() => {
   return items
 })
 
-const goCreate = () => router.push('/seller/products?action=create')
-const goOrdersPage = (pid: string) => router.push(`/seller/orders?productId=${pid}`)
+// ===== 商品編輯 / 刪除 / 商品詳情（合併自 ProductsView）=====
+const formOpen = ref(false)
+const formProduct = ref<any>(null)
+const openEdit = (row: Row) => { formProduct.value = row.raw; formOpen.value = true }
+
+// 詳情層「編輯此商品」：先抓快照、關詳情層、再開表單（同一函數保證 product 賦值先於 open）
+const openEditFromDetail = () => {
+  const snapshot = detailProduct.value
+  detailProduct.value = null
+  formProduct.value = snapshot
+  formOpen.value = true
+}
+
+const onFormSaved = async () => {
+  // 表單保存成功 → 刷新商品列+訂單統計
+  await refreshData()
+  loadCounts()
+}
+
+const handleDelete = async (row: Row) => {
+  if (!confirm(`確定要刪除此商品（${row.title}）嗎？`)) return
+  try {
+    await productApi.deleteProduct(row.productId)
+    await refreshData()
+    loadCounts()
+    alert('商品已刪除')
+  } catch (e: any) {
+    console.error('Failed to delete product:', e)
+    const msg = e?.response?.data?.message || '刪除失敗（商品可能有活躍拍賣/預約/未完成訂單）'
+    alert(msg)
+  }
+}
+
+// ===== 商品規格詳情彈出層 =====
+const detailProduct = ref<any>(null)
+const openDetail = (row: Row) => { detailProduct.value = row.raw }
+const closeDetail = () => { detailProduct.value = null }
+
+const PRODUCT_TYPE_TEXT: Record<string, string> = {
+  graded_card: '評分卡',
+  original_box: '原箱',
+  original_case: '原盒',
+  original_bag: '原袋',
+  raw_card: '裸卡',
+  other: '其它',
+}
+
+const LANGUAGE_TEXT: Record<string, string> = {
+  japanese: '日文',
+  english: '英文',
+  traditional_chinese: '繁體中文',
+  simplified_chinese: '簡體中文',
+  korean: '韓文',
+  other: '其他',
+}
+
+const CONDITION_TEXT: Record<string, string> = {
+  S: 'S級 - 完美品相',
+  A: 'A級 - 輕微瑕疵',
+  B: 'B級 - 少量瑕疵',
+  C: 'C級 - 磨損可見',
+  D: 'D級 - 嚴重磨損',
+}
+
+const CATEGORY_TEXT: Record<string, string> = Object.fromEntries(
+  CATEGORY_OPTIONS.map((c: any) => [c.value, c.label])
+)
 
 onMounted(() => {
   loadTab()
   loadCounts()
+  // query 開表單：?action=create（Dashboard 快捷）或 ?action=edit&id=xxx（舊商品管理連結）
+  if (route.query.action === 'create') {
+    router.replace({ query: {} })
+    formProduct.value = null
+    formOpen.value = true
+  } else if (route.query.action === 'edit' && route.query.id) {
+    const pid = String(route.query.id)
+    router.replace({ query: {} })
+    // 列表載入後取商品資料開表單
+    productApi.getProduct(pid).then((res) => {
+      formProduct.value = res.data
+      formOpen.value = true
+    }).catch(() => { /* 商品取不到靜默 */ })
+  }
 })
+
+const goCreate = () => { formProduct.value = null; formOpen.value = true }
+const goOrdersPage = (pid: string) => router.push(`/seller/orders?productId=${pid}`)
 </script>
 
 <template>
@@ -698,14 +794,12 @@ onMounted(() => {
         </div>
         <div v-if="row.timeText" class="pc-time">🕐 {{ row.timeText }}</div>
         <div class="pc-actions">
+          <button class="btn-action detail" @click="openDetail(row)">詳情</button>
+          <button v-if="row.raw?.status !== 'sold'" class="btn-action edit" @click="openEdit(row)">編輯</button>
+          <button class="btn-action delete" @click="handleDelete(row)">刪除</button>
           <button class="btn-action view" @click="toggleExpand(row)">
-            查看訂單 <span v-if="row.pendingCount > 0" class="btn-dot">{{ row.pendingCount }}</span>
+            訂單 <span v-if="row.pendingCount > 0" class="btn-dot">{{ row.pendingCount }}</span>
           </button>
-          <button
-            v-if="row.orderCount === 0 && activeTab === 'sale'"
-            class="btn-action edit"
-            @click="router.push(`/seller/products?action=edit&id=${row.productId}`)"
-          >編輯</button>
         </div>
       </div>
     </div>
@@ -768,10 +862,16 @@ onMounted(() => {
               </td>
               <td class="time-cell">{{ row.timeText || '—' }}</td>
               <td>
-                <button class="btn-action view" :class="{ active: expandedId === row.productId }" @click="toggleExpand(row)">
-                  查看訂單 <span class="chevron" :class="{ open: expandedId === row.productId }">▾</span>
-                  <span v-if="row.pendingCount > 0" class="btn-dot">{{ row.pendingCount }}</span>
-                </button>
+                <div class="actions-cell">
+                  <button class="btn-action detail" @click="openDetail(row)">詳情</button>
+                  <button v-if="row.raw?.status !== 'sold'" class="btn-action edit" @click="openEdit(row)">編輯</button>
+                  <span v-else class="sold-locked" title="已售商品不可編輯">🔒</span>
+                  <button class="btn-action delete" @click="handleDelete(row)">刪除</button>
+                  <button class="btn-action view" :class="{ active: expandedId === row.productId }" @click="toggleExpand(row)">
+                    訂單 <span class="chevron" :class="{ open: expandedId === row.productId }">▾</span>
+                    <span v-if="row.pendingCount > 0" class="btn-dot">{{ row.pendingCount }}</span>
+                  </button>
+                </div>
               </td>
             </tr>
             <!-- 展開行：該商品訂單明細 -->
@@ -871,7 +971,7 @@ onMounted(() => {
                           :disabled="processingId === o.id"
                           @click="handleCancel(o.id)"
                         >取消</button>
-                        <button class="btn-action detail" @click="openDetail(o)">詳情</button>
+                        <button class="btn-action detail" @click="openOrderDetail(o)">詳情</button>
                       </div>
                     </div>
                   </div>
@@ -989,6 +1089,108 @@ onMounted(() => {
       </div>
     </div>
   </div>
+
+  <!-- 商品規格詳情彈出層（合併自商品管理） -->
+  <div v-if="detailProduct" class="modal-overlay" @click.self="closeDetail">
+    <div class="detail-modal product-detail-modal">
+      <div class="modal-header">
+        <h3>商品詳情</h3>
+        <button @click="closeDetail" class="modal-close">✕</button>
+      </div>
+      <div class="detail-body">
+        <div class="detail-top">
+          <span v-if="detailProduct.productNumber" class="detail-number">#{{ detailProduct.productNumber }}</span>
+        </div>
+
+        <div class="detail-product">
+          <img v-if="parseImages(detailProduct.images)[0]" :src="resolveImage(parseImages(detailProduct.images)[0])" class="detail-thumb" :alt="detailProduct.titleZh" />
+          <span v-else class="pd-emoji"><CategoryLogo :category="detailProduct.category" :size="26" /></span>
+          <div class="dp-info">
+            <span class="dp-title">{{ detailProduct.titleZh || detailProduct.titleEn }}</span>
+            <span class="dp-sub">{{ detailProduct.titleEn }}</span>
+          </div>
+          <div class="dp-amount">
+            <div class="amount">{{ formatPrice(detailProduct.price) }}</div>
+          </div>
+        </div>
+
+        <div class="detail-grid">
+          <div class="dg-item">
+            <span class="dg-label">類別</span>
+            <span class="dg-value">{{ CATEGORY_TEXT[detailProduct.category] || detailProduct.category }}</span>
+          </div>
+          <div class="dg-item">
+            <span class="dg-label">品相</span>
+            <span class="dg-value">{{ detailProduct.condition ? (CONDITION_TEXT[detailProduct.condition] || detailProduct.condition) : '不指定' }}</span>
+          </div>
+          <div class="dg-item">
+            <span class="dg-label">商品種類</span>
+            <span class="dg-value">{{ PRODUCT_TYPE_TEXT[detailProduct.productType] || '不指定' }}</span>
+          </div>
+          <div class="dg-item">
+            <span class="dg-label">語言</span>
+            <span class="dg-value">{{ LANGUAGE_TEXT[detailProduct.language] || '不指定' }}</span>
+          </div>
+          <div class="dg-item">
+            <span class="dg-label">庫存</span>
+            <span class="dg-value">{{ detailProduct.quantity ?? 0 }} 件</span>
+          </div>
+          <div class="dg-item">
+            <span class="dg-label">上架時間</span>
+            <span class="dg-value">{{ formatDate(detailProduct.createdAt) }}</span>
+          </div>
+          <div class="dg-item">
+            <span class="dg-label">瀏覽</span>
+            <span class="dg-value">{{ detailProduct.viewCount || 0 }} 次</span>
+          </div>
+          <div class="dg-item">
+            <span class="dg-label">收藏</span>
+            <span class="dg-value">{{ detailProduct.favoriteCount || 0 }} 人</span>
+          </div>
+          <div v-if="detailProduct.listingType === 'auction'" class="dg-item">
+            <span class="dg-label">起拍價</span>
+            <span class="dg-value">{{ formatPrice(detailProduct.startingPrice || 0) }}</span>
+          </div>
+          <div v-if="detailProduct.listingType === 'auction' && detailProduct.auctionEndTime" class="dg-item">
+            <span class="dg-label">拍賣截止</span>
+            <span class="dg-value">{{ formatDateTime(detailProduct.auctionEndTime) }}</span>
+          </div>
+          <div v-if="detailProduct.listingType === 'reservation'" class="dg-item">
+            <span class="dg-label">預約名額</span>
+            <span class="dg-value">{{ detailProduct.reservationMax || 0 }}</span>
+          </div>
+          <div v-if="detailProduct.listingType === 'reservation'" class="dg-item">
+            <span class="dg-label">訂金</span>
+            <span class="dg-value">{{ formatPrice(detailProduct.reservationDeposit || 0) }}</span>
+          </div>
+          <div v-if="detailProduct.listingType === 'reservation' && detailProduct.reservationDeadline" class="dg-item">
+            <span class="dg-label">預約截止</span>
+            <span class="dg-value">{{ formatDateTime(detailProduct.reservationDeadline) }}</span>
+          </div>
+          <div class="dg-item" v-if="detailProduct.tags && detailProduct.tags.length">
+            <span class="dg-label">標籤</span>
+            <span class="dg-value">{{ detailProduct.tags.map((tg: any) => tg.name || tg).join('、') }}</span>
+          </div>
+        </div>
+
+        <div v-if="detailProduct.descriptionZh || detailProduct.descriptionEn" class="detail-desc">
+          <span class="dg-label">商品描述</span>
+          <p>{{ detailProduct.descriptionZh || detailProduct.descriptionEn }}</p>
+        </div>
+
+        <div class="detail-actions">
+          <button
+            v-if="detailProduct.status !== 'sold'"
+            class="btn-action detail"
+            @click="openEditFromDetail"
+          >✏️ 編輯此商品</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 商品創建/編輯表單（共用組件，合併自商品管理） -->
+  <ProductFormModal v-model:open="formOpen" :product="formProduct" @saved="onFormSaved" />
 </template>
 
 <style scoped>
@@ -1553,6 +1755,50 @@ tr.row-expanded td {
 .btn-action:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+/* ===== 操作欄（詳情/編輯/刪除/訂單）===== */
+.actions-cell {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.btn-action.detail,
+.btn-action.edit,
+.btn-action.delete {
+  background: var(--bg-elevated);
+  color: var(--text-secondary);
+}
+
+.btn-action.detail:hover {
+  background: var(--primary);
+  color: white;
+}
+
+.btn-action.edit:hover {
+  background: #10b981;
+  color: white;
+}
+
+.btn-action.delete:hover {
+  background: #ef4444;
+  color: white;
+}
+
+.sold-locked {
+  font-size: 13px;
+  cursor: default;
+}
+
+/* ===== 商品規格詳情層（同訂單詳情 modal 風格）===== */
+.product-detail-modal .pd-emoji {
+  font-size: 22px;
+  width: 48px; height: 48px;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--bg-card); border-radius: var(--radius-md); flex-shrink: 0;
+  overflow: hidden;
 }
 
 /* ===== 手機卡片（<768px 顯示，同訂單管理卡片設計）===== */

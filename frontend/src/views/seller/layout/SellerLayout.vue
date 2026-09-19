@@ -14,7 +14,6 @@ const sidebarOpen = ref(false)
 
 const navItems = [
   { path: '/seller', name: 'dashboard', icon: '📊', label: 'seller.dashboard' },
-  { path: '/seller/products', name: 'products', icon: '📦', label: 'seller.products' },
   { path: '/seller/auctions', name: 'auctions', icon: '🔨', label: 'seller.auctions' },
   { path: '/seller/orders', name: 'orders', icon: '📋', label: 'seller.orders' },
   { path: '/seller/earnings', name: 'earnings', icon: '💰', label: 'seller.earnings' },
