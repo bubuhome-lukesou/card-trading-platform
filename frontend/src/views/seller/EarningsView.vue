@@ -78,7 +78,8 @@ const compareTx = (a: Tx, b: Tx, col: { key: string; type: string }): number => 
 
 const transactions = computed<Tx[]>(() => {
   return orders.value
-    .filter(o => ['paid', 'pending_paid', 'shipped', 'delivered'].includes(o.status))
+    // 已收款（confirmed/shipped/delivered）+ 待入帳（pending/pending_paid）— 排除 cancelled/refunded
+    .filter(o => ['confirmed', 'paid', 'pending', 'pending_paid', 'shipped', 'delivered'].includes(o.status))
     .map(o => {
       const images: string[] = (() => {
         try {
@@ -95,7 +96,8 @@ const transactions = computed<Tx[]>(() => {
         amount: Number(o.totalPrice) || 0,
         type: o.type,
         status: o.status,
-        txStatus: (['paid', 'shipped', 'delivered'].includes(o.status) ? 'completed' : 'pending') as 'completed' | 'pending',
+        // 已入帳 = 已確認收款（confirmed 同預約單訂金確認，paid 係直購流程）
+        txStatus: (['confirmed', 'paid', 'shipped', 'delivered'].includes(o.status) ? 'completed' : 'pending') as 'completed' | 'pending',
         createdAt: o.createdAt,
         paymentTime: o.paymentTime || undefined,
         deliveryTime: o.deliveryTime || undefined,
@@ -148,9 +150,13 @@ const goToPage = (p: number) => {
 watch([searchQuery, filterStatus], () => { currentPage.value = 1 })
 
 // ===== 統計卡（同 summary-bar 風格）=====
+// 口徑（全站統一，2026-09-19 修正）：
+// 總收入 = confirmed/shipped/delivered（confirmed=訂金已確認，同訂單管理「已收款」一致；
+//         預約單流程 pending→pending_paid→confirmed→delivered 冇經過 paid）
+// 待入帳 = pending/pending_paid（未確認收款）
 const summary = computed(() => {
-  const completed = orders.value.filter(o => ['paid', 'shipped', 'delivered'].includes(o.status))
-  const pending = orders.value.filter(o => o.status === 'pending_paid')
+  const completed = orders.value.filter(o => ['confirmed', 'shipped', 'delivered'].includes(o.status))
+  const pending = orders.value.filter(o => ['pending', 'pending_paid'].includes(o.status))
   return {
     totalEarnings: completed.reduce((sum, o) => sum + (Number(o.totalPrice) || 0), 0),
     pendingBalance: pending.reduce((sum, o) => sum + (Number(o.totalPrice) || 0), 0),

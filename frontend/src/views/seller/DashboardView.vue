@@ -29,9 +29,9 @@ const parseImages = (images: any): string[] => {
 // ===== 統計定義（與四個分頁一致，唔好另立一套）=====
 // 商品：全部（同商品列表三 tab 總和）
 // 待處理訂單：pending/pending_paid/paid/confirmed（同訂單管理 TAB_STATUSES.todo 口徑）
-// 已入帳：paid/shipped/delivered 訂單金額（同收益管理）
+// 總收入：confirmed/shipped/delivered（同訂單管理「已收款」/收益管理口徑；預約單冇經過 paid）
 const stats = computed(() => {
-  const done = ['paid', 'shipped', 'delivered']
+  const done = ['confirmed', 'shipped', 'delivered']
   const todo = ['pending', 'pending_paid', 'paid', 'confirmed']
   const activeAuctionList = auctions.value.filter((a: any) => a.status === 'active')
   const reservationProducts = products.value.filter((p: any) => p.listingType === 'reservation')
