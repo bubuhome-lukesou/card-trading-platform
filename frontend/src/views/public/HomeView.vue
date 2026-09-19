@@ -4,19 +4,17 @@ import { useI18n } from 'vue-i18n'
 import { RouterLink } from 'vue-router'
 import { ArrowRight, Zap } from 'lucide-vue-next'
 import { productApi } from '@/api/products'
-import { tagApi } from '@/api/tags'
 import { CategoryLogo, BRAND_CATEGORIES } from '@/components/brand/CategoryLogos'
 import BannerCarousel from '@/components/home/BannerCarousel.vue'
 import ListingsCarousel from '@/components/home/ListingsCarousel.vue'
 
-const { t, locale } = useI18n()
+const { t } = useI18n()
 
 const categories = BRAND_CATEGORIES
 
 const hotAuctions = ref<any[]>([])
 const newListings = ref<any[]>([])
 const hotReservations = ref<any[]>([])
-const productTypeTags = ref<any[]>([])
 const loadingAuctions = ref(false)
 const loadingProducts = ref(false)
 const loadingReservations = ref(false)
@@ -27,49 +25,11 @@ const stats = ref([
   { value: '98%', label: 'satisfaction' }
 ])
 
-// Format time remaining
-const getTimeRemaining = (endTime: string) => {
-  const end = new Date(endTime)
-  const now = new Date()
-  const diff = end.getTime() - now.getTime()
-  
-  if (diff <= 0) return 'Ended'
-  
-  const hours = Math.floor(diff / (1000 * 60 * 60))
-  const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
-  
-  if (hours > 24) {
-    return `${Math.floor(hours / 24)}d ${hours % 24}h`
-  }
-  return `${hours}h ${minutes}m`
-}
-
-// Get image from product
-const getProductImage = (product: any) => {
-  if (product?.images) {
-    // If images is already an array, use it directly
-    if (Array.isArray(product.images)) {
-      return product.images[0] || ''
-    }
-    // Otherwise try to parse as JSON string (for backward compatibility)
-    try {
-      const images = JSON.parse(product.images)
-      return images[0] || ''
-    } catch {
-      return product.images || ''
-    }
-  }
-  return ''
-}
-
-// Get title based on locale
-const getTitle = (product: any) => {
-  return locale.value === 'zh' ? (product.titleZh || product.titleEn) : (product.titleEn || product.titleZh)
-}
-
 // 兩個區塊統一呼叫 /api/products，只係篩選唔同：
 // 熱門拍賣 = listingTypes[]=['auction'] + withAuction（附 auction 摘要：auctionId/價/出價數/結束時間）
 // 最新上架 = sortBy='newest'
+// ⚠️ 必須原樣傳 ProductCard 欄位（titleZh/titleEn/images 陣列/price/quantity/language），
+// 不可 map 成自訂形（ProductCard 讀 titleZh/images[0]/price，map 錯名會令卡空白）
 const fetchHotAuctions = async () => {
   loadingAuctions.value = true
   try {
@@ -80,24 +40,7 @@ const fetchHotAuctions = async () => {
     } as any)
     hotAuctions.value = (response.data.data || [])
       .filter((p: any) => p.auctionSummary) // 只顯示有進行中拍賣嘅商品
-      .map((product: any) => {
-        const a = product.auctionSummary
-        return {
-          id: product.id,
-          auctionId: a.auctionId,
-          title: getTitle(product),
-          price: a.currentPrice || a.startingPrice,
-          bids: a.bidCount || 0,
-          ends: getTimeRemaining(a.endTime),
-          image: getProductImage(product),
-          category: product.category,
-          condition: product.condition,
-          language: product.language,
-          productType: product.productType,
-          listingType: 'auction' as const,
-          auctionEndTime: a.endTime,
-        }
-      })
+      .map((product: any) => ({ ...product })) // 原樣保留，auctionSummary 由 ProductCard 直接讀
   } catch (e) {
     console.error('Failed to fetch auctions:', e)
   } finally {
@@ -117,18 +60,7 @@ const fetchHotReservations = async () => {
     const now = Date.now()
     hotReservations.value = (response.data.data || [])
       .filter((p: any) => !p.reservationDeadline || new Date(p.reservationDeadline).getTime() > now)
-      .map((product: any) => ({
-        id: product.id,
-        title: getTitle(product),
-        price: product.price,
-        image: getProductImage(product),
-        category: product.category,
-        condition: product.condition,
-        language: product.language,
-        productType: product.productType,
-        listingType: 'reservation' as const,
-        reservationDeadline: product.reservationDeadline,
-      }))
+      .map((product: any) => ({ ...product })) // 原樣保留（含 reservationDeadline/reservationSpots 供卡顯示）
   } catch (e) {
     console.error('Failed to fetch reservations:', e)
   } finally {
@@ -136,76 +68,11 @@ const fetchHotReservations = async () => {
   }
 }
 
-const fetchProductTypeTags = async () => {
-  try {
-    const response = await tagApi.getTags()
-    productTypeTags.value = (response.data || []).filter((t: any) => t.type === 'product_type')
-  } catch (e) {
-    console.error('Failed to fetch product type tags:', e)
-  }
-}
-
-const getProductTypeTagName = (tagId: number | null | undefined) => {
-  if (!tagId) return ''
-  const tag = productTypeTags.value.find(t => t.id === tagId)
-  return tag?.name || ''
-}
-
-// Language display mapping
-const languageLabels: Record<string, string> = {
-  japanese: '日文',
-  english: '英文',
-  traditional_chinese: '繁體中文',
-  simplified_chinese: '簡體中文',
-  korean: '韓文',
-  other: '其他'
-}
-
-const getLanguageLabel = (lang: string | null | undefined) => {
-  if (!lang) return ''
-  return languageLabels[lang] || lang
-}
-
-// Product type labels (enum value → display label)
-const productTypeLabels: Record<string, string> = {
-  graded_card: '評分卡',
-  original_box: '原箱',
-  original_case: '原盒',
-  original_bag: '原袋',
-  raw_card: '裸卡',
-  other: '其它',
-}
-const getProductTypeLabel = (type: string | null | undefined) => {
-  if (!type) return ''
-  return productTypeLabels[type] || type
-}
-
 const fetchNewListings = async () => {
   loadingProducts.value = true
   try {
     const response = await productApi.getProducts({ sortBy: 'newest', limit: 10, withAuction: true } as any)
-    newListings.value = (response.data.data || []).map((product: any) => {
-      const a = product.auctionSummary
-      return {
-        id: product.id,
-        title: getTitle(product),
-        price: (product.listingType === 'auction' && a) ? (Number(a.currentPrice) || Number(a.startingPrice)) : product.price,
-        condition: product.condition,
-        category: product.category,
-        productType: product.productType,
-        productTypeTagId: product.productTypeTagId,
-        image: getProductImage(product),
-        listingType: product.listingType || 'sale',
-        tags: product.tags || [],
-        // Reservation extras (when listingType = 'reservation')
-        reservationDeadline: product.reservationDeadline,
-        reservationDeposit: product.reservationDeposit,
-        // Auction extras (when listingType = 'auction')
-        bids: a?.bidCount || 0,
-        ends: a ? getTimeRemaining(a.endTime) : '',
-        auctionEndTime: a?.endTime || '',
-      }
-    })
+    newListings.value = (response.data.data || []).map((product: any) => ({ ...product })) // 原樣保留（ProductCard 直接讀全部欄位）
   } catch (e) {
     console.error('Failed to fetch products:', e)
   } finally {
@@ -217,7 +84,6 @@ onMounted(() => {
   fetchHotAuctions()
   fetchNewListings()
   fetchHotReservations()
-  fetchProductTypeTags()
 })
 </script>
 
