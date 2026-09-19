@@ -1,10 +1,12 @@
 <script setup lang="ts">
-import { formatPrice, formatDate } from '@/utils/format'
+import { formatPrice, formatDate, formatDateTime } from '@/utils/format'
 import { ref, computed, watch, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { productApi } from '@/api/products'
 import { auctionApi } from '@/api/auctions'
 import { reservationApi } from '@/api/reservations'
+import { ordersApi } from '@/api/orders'
+import { cartApi } from '@/api/cart'
 
 const router = useRouter()
 
@@ -21,26 +23,143 @@ const tabs: { key: TabKey; label: string; icon: string }[] = [
 const loading = ref(true)
 const error = ref('')
 
+// ===== 訂單資料（一次載入，三個 tab 共用統計） =====
+interface OrderRow {
+  id: string
+  orderNumber: string
+  productId: string
+  productTitle: string
+  productImage?: string
+  quantity: number
+  unitPrice: number
+  fullPrice?: number
+  buyerNickname: string
+  buyerEmail: string
+  amount: number
+  status: string
+  type: string
+  createdAt: string
+  transferReceipt?: string
+  transferTime?: string
+  balanceReceipt?: string
+  balanceTime?: string
+  shippingAddress?: string
+  trackingNumber?: string
+  paymentMethod?: string
+  paymentTime?: string
+  shippingTime?: string
+  deliveryTime?: string
+  notes?: string
+}
+
+const orders = ref<OrderRow[]>([])
+
+const parseImages = (images: any): string[] => {
+  if (Array.isArray(images)) return images
+  try { const arr = JSON.parse(images); return Array.isArray(arr) ? arr : [] } catch { return [] }
+}
+
+const resolveImage = (url: string) => {
+  if (!url) return ''
+  if (url.startsWith('data:') || url.startsWith('http')) return url
+  return (import.meta.env.VITE_API_URL || '') + url
+}
+
+const mapOrder = (o: any): OrderRow => {
+  const imgs = parseImages(o.product?.images)
+  const isReservation = o.type === 'reservation_deposit'
+  return {
+    id: o.id,
+    orderNumber: o.orderNumber,
+    productId: o.productId || '',
+    productTitle: o.product?.titleZh || o.product?.titleEn || '未知商品',
+    productImage: imgs[0] || '',
+    quantity: o.quantity || 1,
+    unitPrice: o.product?.price ? Number(o.product.price) : (o.totalPrice ? Number(o.totalPrice) / (o.quantity || 1) : 0),
+    fullPrice: isReservation ? Number(o.product?.price) || 0 : undefined,
+    buyerNickname: o.buyer?.nickname || '-',
+    buyerEmail: o.buyer?.email || '-',
+    amount: Number(o.totalPrice) || 0,
+    status: o.status,
+    type: o.type,
+    createdAt: o.createdAt,
+    transferReceipt: o.transferReceipt || undefined,
+    transferTime: o.transferTime || undefined,
+    balanceReceipt: o.balanceReceipt || undefined,
+    balanceTime: o.balanceTime || undefined,
+    shippingAddress: o.shippingAddress || undefined,
+    trackingNumber: o.trackingNumber || undefined,
+    paymentMethod: o.paymentMethod || undefined,
+    paymentTime: o.paymentTime || undefined,
+    shippingTime: o.shippingTime || undefined,
+    deliveryTime: o.deliveryTime || undefined,
+    notes: o.notes || undefined,
+  }
+}
+
+// orders = {data,total} 包裝；limit=200 拉全部再前端分組統計
+const loadOrders = async () => {
+  try {
+    const res = await ordersApi.getSellerOrders(1, 200)
+    orders.value = (res.data?.data || []).map(mapOrder)
+  } catch (e) {
+    console.error('Failed to load orders', e)
+    orders.value = []
+  }
+}
+
+// ===== 商品行 =====
 interface Row {
   id: string
   productId: string
   title: string
+  productNumber: string
   image: string
   category: string
   price: string          // 主價（拍賣=當前價 / 預訂=訂金 / 銷售=售價）
   priceValue: number     // 排序用數值
   priceLabel: string
-  extra: string          // 輔助資訊（出價數/已訂名額/庫存）
-  extraValue: number     // 排序用數值
+  extra: string          // 輔助資訊（出價數/庫存）
   status: string         // 狀態 badge
   statusKey: string
   timeText: string       // 截止時間 / 到期時間
   timeValue: number      // 排序用 timestamp（0 = 無時間）
-  viewLink: string       // 查看連結 → 商家訂單頁（按商品篩選）
+  createdValue: number   // 上架時間（預設排序用）
+  // —— 訂單統計（由 orders 前端分組計出）——
+  orderCount: number     // 有效訂單筆數（剔除 cancelled）
+  pendingCount: number   // 待處理（等確認收款/等確認訂金/待發貨）
+  receivedValue: number  // 已收款（confirmed/shipped/delivered）
+  totalValue: number     // 總額（全部有效訂單）
 }
 
 const rows = ref<Row[]>([])
 const counts = ref<Record<TabKey, number>>({ auction: 0, reservation: 0, sale: 0 })
+
+// ===== 訂單統計 helper =====
+const DONE_STATUSES = ['confirmed', 'shipped', 'delivered']
+const PENDING_ACTION_STATUSES = ['pending_paid', 'paid', 'confirmed']
+
+const orderStatsFor = (pid: string) => {
+  const os = orders.value.filter(o => o.productId === pid && o.status !== 'cancelled')
+  const received = os
+    .filter(o => DONE_STATUSES.includes(o.status))
+    .reduce((s, o) => s + o.amount, 0)
+  const pending = orders.value.filter(
+    o => o.productId === pid && PENDING_ACTION_STATUSES.includes(o.status)
+  ).length
+  return {
+    orderCount: os.length,
+    pendingCount: pending,
+    receivedValue: received,
+    totalValue: os.reduce((s, o) => s + o.amount, 0),
+  }
+}
+
+// 某商品嘅訂單列表（展開面板用，最新在前）
+const productOrders = (pid: string): OrderRow[] =>
+  orders.value
+    .filter(o => o.productId === pid)
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
 
 // ===== 搜尋 / 分頁 / 排序 =====
 const PAGE_SIZE = 20
@@ -54,18 +173,7 @@ const categories: Record<string, string> = {
   sports: '⚽', other: '🎴',
 }
 
-const parseImages = (images: any): string[] => {
-  if (Array.isArray(images)) return images
-  try { const arr = JSON.parse(images); return Array.isArray(arr) ? arr : [] } catch { return [] }
-}
-
-const resolveImage = (url: string) => {
-  if (!url) return ''
-  if (url.startsWith('data:') || url.startsWith('http')) return url
-  return (import.meta.env.VITE_API_URL || '') + url
-}
-
-// ===== 排序欄定義（隨分頁切換 label；圖片/操作欄不加排序） =====
+// ===== 排序欄定義（隨分頁切換 label；商品/操作欄以外全部可排序） =====
 const sortableColumns = computed(() => {
   const cols: { key: string; label: string; type: 'text' | 'number' | 'time' }[] = [
     { key: 'title', label: '商品', type: 'text' },
@@ -74,20 +182,20 @@ const sortableColumns = computed(() => {
       label: activeTab.value === 'auction' ? '當前價' : activeTab.value === 'reservation' ? '訂金' : '售價',
       type: 'number',
     },
-    {
-      key: 'extraValue',
-      label: activeTab.value === 'auction' ? '出價' : activeTab.value === 'reservation' ? '已訂' : '庫存',
-      type: 'number',
-    },
+    { key: 'orderCount', label: '訂單', type: 'number' },
+    { key: 'pendingCount', label: '待處理', type: 'number' },
+    { key: 'receivedValue', label: '收款/總額', type: 'number' },
     { key: 'status', label: '狀態', type: 'text' },
     {
       key: 'timeValue',
-      label: activeTab.value === 'auction' ? '截止時間' : activeTab.value === 'reservation' ? '預約截止' : '備註',
+      label: activeTab.value === 'auction' ? '截止時間' : activeTab.value === 'reservation' ? '預約截止' : '時間',
       type: 'time',
     },
   ]
   return cols
 })
+
+const TOTAL_COLS = 8
 
 const toggleSort = (key: string) => {
   if (sortKey.value === key) {
@@ -120,23 +228,24 @@ const loadAuctionRows = async () => {
     const p = a.product || {}
     const imgs = parseImages(p.images)
     const st = (a.status || 'active').toLowerCase()
+    const stats = orderStatsFor(a.productId)
     return {
       id: a.id,
       productId: a.productId,
       title: p.titleZh || p.titleEn || '未知商品',
+      productNumber: p.productNumber ? `#${p.productNumber}` : '',
       image: resolveImage(imgs[0] || ''),
       category: p.category || 'other',
       price: formatPrice(a.currentPrice),
       priceValue: Number(a.currentPrice) || 0,
       priceLabel: '當前價',
-      extra: `出價 ${a.bidCount || 0} 次`,
-      extraValue: Number(a.bidCount) || 0,
+      extra: a.bidCount ? `🔨 ${a.bidCount} 次出價` : '',
       statusKey: st,
       status: st === 'active' ? '進行中' : st === 'pending' ? '待開始' : st === 'ended' ? '已結束' : '已取消',
-      timeText: a.endTime ? new Date(a.endTime).toLocaleString('zh-HK', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '',
+      timeText: a.endTime ? formatDateTime(a.endTime) : '',
       timeValue: a.endTime ? new Date(a.endTime).getTime() : 0,
-      // 拍賣訂單（auction_win）→ 商家訂單頁按商品篩選
-      viewLink: `/seller/orders?productId=${a.productId}`,
+      createdValue: a.createdAt ? new Date(a.createdAt).getTime() : 0,
+      ...stats,
     }
   })
 }
@@ -158,23 +267,24 @@ const loadReservationRows = async () => {
   return Array.from(byProduct.entries()).map(([pid, e]): Row => {
     const imgs = parseImages(e.product.images)
     const st = e.latest.status?.toLowerCase() || 'pending'
+    const stats = orderStatsFor(e.product.id || pid)
     return {
       id: e.latest.id,
-      productId: e.product.id || '',
+      productId: e.product.id || pid,
       title: e.product.titleZh || e.product.titleEn || '未知商品',
+      productNumber: e.product.productNumber ? `#${e.product.productNumber}` : '',
       image: resolveImage(imgs[0] || ''),
       category: e.product.category || 'other',
       price: formatPrice(e.latest.depositAmount),
       priceValue: Number(e.latest.depositAmount) || 0,
       priceLabel: '訂金',
       extra: `已訂 ${e.count} 單 / ${e.qty} 件`,
-      extraValue: e.count,
       statusKey: st === 'deposit_paid' ? 'confirmed' : st,
       status: st === 'deposit_paid' ? '已付訂金' : st === 'pending' ? '待付訂金' : st === 'confirmed' ? '已確認' : st === 'completed' ? '已完成' : st === 'cancelled' ? '已取消' : st === 'expired' ? '已過期' : st,
       timeText: e.product.reservationDeadline ? `截止 ${formatDate(e.product.reservationDeadline)}` : '',
       timeValue: e.product.reservationDeadline ? new Date(e.product.reservationDeadline).getTime() : 0,
-      // 預約訂單（reservation_deposit）→ 商家訂單頁按商品篩選
-      viewLink: `/seller/orders?productId=${e.product.id}`,
+      createdValue: e.latest.createdAt ? new Date(e.latest.createdAt).getTime() : 0,
+      ...stats,
     }
   })
 }
@@ -188,23 +298,24 @@ const loadSaleRows = async () => {
     .map((p: any): Row => {
       const imgs = parseImages(p.images)
       const st = p.status || 'active'
+      const stats = orderStatsFor(p.id)
       return {
         id: p.id,
         productId: p.id,
         title: p.titleZh || p.titleEn || '未知商品',
+        productNumber: p.productNumber ? `#${p.productNumber}` : '',
         image: resolveImage(imgs[0] || ''),
         category: p.category || 'other',
         price: formatPrice(p.price),
         priceValue: Number(p.price) || 0,
         priceLabel: '售價',
         extra: `庫存 ${p.quantity ?? p.stock ?? 0}`,
-        extraValue: Number(p.quantity ?? p.stock ?? 0) || 0,
         statusKey: st,
         status: st === 'active' ? '在售' : st === 'draft' ? '草稿' : st === 'sold' ? '已售' : st === 'removed' ? '已下架' : st,
-        timeText: p.soldAt ? `售出 ${formatDate(p.soldAt)}` : '',
-        timeValue: p.soldAt ? new Date(p.soldAt).getTime() : 0,
-        // 銷售訂單 → 商家訂單頁按商品篩選
-        viewLink: `/seller/orders?productId=${p.id}`,
+        timeText: p.createdAt ? formatDate(p.createdAt) : '',
+        timeValue: 0,
+        createdValue: p.createdAt ? new Date(p.createdAt).getTime() : 0,
+        ...stats,
       }
     })
 }
@@ -213,6 +324,8 @@ const loadTab = async () => {
   loading.value = true
   error.value = ''
   try {
+    // 訂單先載（統計依賴），再載當前 tab 商品列
+    await loadOrders()
     if (activeTab.value === 'auction') rows.value = await loadAuctionRows()
     else if (activeTab.value === 'reservation') rows.value = await loadReservationRows()
     else rows.value = await loadSaleRows()
@@ -225,14 +338,25 @@ const loadTab = async () => {
   }
 }
 
+// 操作後刷新（唔閃 loading）
+const refreshData = async () => {
+  try {
+    await loadOrders()
+    if (activeTab.value === 'auction') rows.value = await loadAuctionRows()
+    else if (activeTab.value === 'reservation') rows.value = await loadReservationRows()
+    else rows.value = await loadSaleRows()
+  } catch { /* 靜默 */ }
+}
+
 const switchTab = (key: TabKey) => {
   if (activeTab.value === key) return
   activeTab.value = key
-  // 切分頁：重置搜尋/排序/頁碼（欄位定義不同）
+  // 切分頁：重置搜尋/排序/頁碼/展開（欄位定義不同）
   searchQuery.value = ''
   sortKey.value = ''
   sortDir.value = 'asc'
   currentPage.value = 1
+  expandedId.value = ''
   loadTab()
 }
 
@@ -248,8 +372,25 @@ const filteredRows = computed(() => {
 
 const sortedRows = computed(() => {
   const col = sortableColumns.value.find(c => c.key === sortKey.value)
-  if (!col) return filteredRows.value
-  return [...filteredRows.value].sort((a, b) => compareRows(a, b, col))
+  const base = [...filteredRows.value]
+  if (!col) {
+    // 預設排序：待處理多 → 最新上架
+    return base.sort((a, b) =>
+      (b.pendingCount - a.pendingCount) || (b.createdValue - a.createdValue)
+    )
+  }
+  return base.sort((a, b) => compareRows(a, b, col))
+})
+
+// ===== 頂部統計條（當前 tab）=====
+const summary = computed(() => {
+  const rs = filteredRows.value
+  return {
+    products: rs.length,
+    orders: rs.reduce((s, r) => s + r.orderCount, 0),
+    pending: rs.reduce((s, r) => s + r.pendingCount, 0),
+    received: rs.reduce((s, r) => s + r.receivedValue, 0),
+  }
 })
 
 const totalPages = computed(() => Math.max(1, Math.ceil(sortedRows.value.length / PAGE_SIZE)))
@@ -298,7 +439,158 @@ const getStatusClass = (key: string) => {
   return map[key] || 'ended'
 }
 
+// ===== 行內展開 =====
+const expandedId = ref('')
+const toggleExpand = (row: Row) => {
+  expandedId.value = expandedId.value === row.productId ? '' : row.productId
+}
+
+// ===== 訂單類型 / 狀態 / 下一步 =====
+const ORDER_TYPE: Record<string, { text: string; cls: string }> = {
+  direct_purchase: { text: '直購', cls: 't-sale' },
+  buy_now: { text: '拍賣直購', cls: 't-auction' },
+  auction_win: { text: '拍賣得標', cls: 't-auction' },
+  reservation_deposit: { text: '預約訂金', cls: 't-reserve' },
+  reservation_full: { text: '預約尾款', cls: 't-reserve' },
+}
+const typeTag = (type: string) => ORDER_TYPE[type] || { text: type, cls: 't-sale' }
+
+const ORDER_STATUS: Record<string, { cls: string; text: string }> = {
+  pending: { cls: 'st-pending', text: '待付款' },
+  pending_paid: { cls: 'st-pending-paid', text: '待確認' },
+  paid: { cls: 'st-paid', text: '已付款' },
+  confirmed: { cls: 'st-confirmed', text: '已確認' },
+  shipped: { cls: 'st-shipped', text: '已發貨' },
+  delivered: { cls: 'st-delivered', text: '已完成' },
+  cancelled: { cls: 'st-cancelled', text: '已取消' },
+  refunded: { cls: 'st-cancelled', text: '已退款' },
+}
+const orderStatus = (s: string) => ORDER_STATUS[s] || { cls: 'st-cancelled', text: s }
+
+const nextStepFor = (o: OrderRow): string => {
+  if (o.status === 'pending') return '等待買家付款'
+  if (o.status === 'pending_paid') {
+    return o.transferReceipt || o.balanceReceipt ? '請確認收款' : '等待買家上傳憑證'
+  }
+  if (o.status === 'confirmed') {
+    return o.type === 'reservation_deposit' ? '待買家到店付尾款' : '待發貨'
+  }
+  if (o.status === 'shipped') return '待買家確認收貨'
+  return ''
+}
+
+// ===== 訂單操作（同 OrdersView 邏輯）=====
+const processingId = ref<string | null>(null)
+
+const handleConfirmPayment = async (orderId: string) => {
+  if (!confirm('確認已收到付款？')) return
+  processingId.value = orderId
+  try {
+    await cartApi.confirmPayment(orderId)
+    await refreshData()
+    alert('確認收款成功！')
+  } catch (e) {
+    console.error('Failed to confirm payment:', e)
+    alert('操作失敗，請重試')
+  } finally {
+    processingId.value = null
+  }
+}
+
+const handleConfirmDeposit = async (orderId: string) => {
+  if (!confirm('確認已收到訂金？確認後請通知買家到店支付尾款。')) return
+  processingId.value = orderId
+  try {
+    await ordersApi.updateStatus(orderId, 'confirmed')
+    await refreshData()
+    alert('已確認收到訂金！請通知買家到店支付尾款。')
+  } catch (e) {
+    console.error('Failed to confirm deposit:', e)
+    alert('操作失敗，請重試')
+  } finally {
+    processingId.value = null
+  }
+}
+
+const handleConfirmBalance = async (orderId: string) => {
+  if (!confirm('確認已收到尾款（到店支付）？')) return
+  processingId.value = orderId
+  try {
+    await ordersApi.updateStatus(orderId, 'delivered')
+    await refreshData()
+    alert('已確認收到尾款，交易完成！')
+  } catch (e) {
+    console.error('Failed to confirm balance:', e)
+    alert('操作失敗，請重試')
+  } finally {
+    processingId.value = null
+  }
+}
+
+const handleShip = async (orderId: string) => {
+  if (!confirm('確認已發貨？')) return
+  processingId.value = orderId
+  try {
+    await ordersApi.updateStatus(orderId, 'shipped')
+    await refreshData()
+    alert('已標記發貨！')
+  } catch (e) {
+    console.error('Failed to ship:', e)
+    alert('操作失敗，請重試')
+  } finally {
+    processingId.value = null
+  }
+}
+
+const handleCancel = async (orderId: string) => {
+  if (!confirm('確認取消此訂單？')) return
+  processingId.value = orderId
+  try {
+    await ordersApi.updateStatus(orderId, 'cancelled')
+    await refreshData()
+    alert('訂單已取消')
+  } catch (e) {
+    console.error('Failed to cancel:', e)
+    alert('操作失敗，請重試')
+  } finally {
+    processingId.value = null
+  }
+}
+
+// ===== 憑證大圖 Modal =====
+const showReceiptModal = ref(false)
+const receiptImageUrl = ref('')
+const viewReceipt = (url?: string) => {
+  if (!url) return
+  receiptImageUrl.value = url
+  showReceiptModal.value = true
+}
+
+// ===== 訂單詳情彈出層 =====
+const detailOrder = ref<OrderRow | null>(null)
+const openDetail = (o: OrderRow) => { detailOrder.value = o }
+const closeDetail = () => { detailOrder.value = null }
+
+// 詳情彈出層時間線
+const detailTimeline = computed(() => {
+  const o = detailOrder.value
+  if (!o) return []
+  const items: { label: string; time: string; done: boolean }[] = [
+    { label: '訂單建立', time: o.createdAt, done: true },
+    { label: o.type === 'reservation_deposit' ? '訂金憑證上傳' : '付款憑證上傳', time: o.transferTime || '', done: !!o.transferTime },
+    { label: '收款確認', time: o.paymentTime || o.balanceTime || '', done: !!(o.paymentTime || o.balanceTime) },
+    { label: '發貨', time: o.shippingTime || '', done: !!o.shippingTime },
+    { label: '完成', time: o.deliveryTime || '', done: !!o.deliveryTime },
+  ]
+  // 預約單：尾款憑證時間補入
+  if (o.type === 'reservation_deposit' && o.balanceTime) {
+    items[2] = { label: '收款確認（含尾款）', time: o.balanceTime, done: true }
+  }
+  return items
+})
+
 const goCreate = () => router.push('/seller/products?action=create')
+const goOrdersPage = (pid: string) => router.push(`/seller/orders?productId=${pid}`)
 
 onMounted(() => {
   loadTab()
@@ -322,6 +614,26 @@ onMounted(() => {
         <span class="tab-count">{{ counts[tab.key] }}</span>
       </button>
       <button class="btn-new" @click="goCreate">+ 發布新商品</button>
+    </div>
+
+    <!-- 頂部統計條（當前 tab） -->
+    <div v-if="!loading && !error && rows.length > 0" class="summary-bar">
+      <div class="stat-item">
+        <span class="stat-label">商品</span>
+        <span class="stat-value">{{ summary.products }} <small>件</small></span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-label">有效訂單</span>
+        <span class="stat-value">{{ summary.orders }} <small>筆</small></span>
+      </div>
+      <div class="stat-item" :class="{ alert: summary.pending > 0 }">
+        <span class="stat-label">待處理</span>
+        <span class="stat-value">{{ summary.pending }} <small>筆</small></span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-label">已收款</span>
+        <span class="stat-value money">{{ formatPrice(summary.received) }}</span>
+      </div>
     </div>
 
     <!-- 關鍵字搜尋 -->
@@ -380,24 +692,156 @@ onMounted(() => {
           </tr>
         </thead>
         <tbody>
-          <tr v-for="row in pagedRows" :key="activeTab + row.id">
-            <td>
-              <div class="product-cell">
-                <img v-if="row.image" :src="row.image" class="row-thumb" :alt="row.title" />
-                <span v-else class="category-emoji">{{ categories[row.category] || '🎴' }}</span>
-                <span class="product-title">{{ row.title }}</span>
-              </div>
-            </td>
-            <td class="price-cell highlight">{{ row.price }}</td>
-            <td>{{ row.extra }}</td>
-            <td>
-              <span class="status-badge" :class="getStatusClass(row.statusKey)">{{ row.status }}</span>
-            </td>
-            <td>{{ row.timeText || '—' }}</td>
-            <td>
-              <button class="btn-action view" @click="router.push(row.viewLink)">查看</button>
-            </td>
-          </tr>
+          <template v-for="row in pagedRows" :key="activeTab + row.id">
+            <!-- 主行 -->
+            <tr :class="{ 'row-expanded': expandedId === row.productId }">
+              <td>
+                <div class="product-cell">
+                  <img v-if="row.image" :src="row.image" class="row-thumb" :alt="row.title" />
+                  <span v-else class="category-emoji">{{ categories[row.category] || '🎴' }}</span>
+                  <div class="product-info">
+                    <span class="product-title">{{ row.title }}</span>
+                    <span v-if="row.productNumber" class="product-number">{{ row.productNumber }}</span>
+                  </div>
+                </div>
+              </td>
+              <td>
+                <div class="price-cell highlight">{{ row.price }}</div>
+                <div class="cell-sub">
+                  <span v-if="row.extra" class="cell-extra">{{ row.extra }}</span>
+                  <span class="price-label">{{ row.priceLabel }}</span>
+                </div>
+              </td>
+              <td class="order-count-cell">
+                <span v-if="row.orderCount > 0">{{ row.orderCount }} 筆</span>
+                <span v-else class="cell-muted">—</span>
+              </td>
+              <td>
+                <span v-if="row.pendingCount > 0" class="pending-badge">{{ row.pendingCount }}</span>
+                <span v-else class="cell-muted">—</span>
+              </td>
+              <td>
+                <div class="money-cell">
+                  <span class="money-received">已收 {{ formatPrice(row.receivedValue) }}</span>
+                  <span class="money-total">總額 {{ formatPrice(row.totalValue) }}</span>
+                </div>
+              </td>
+              <td>
+                <span class="status-badge" :class="getStatusClass(row.statusKey)">{{ row.status }}</span>
+              </td>
+              <td class="time-cell">{{ row.timeText || '—' }}</td>
+              <td>
+                <button class="btn-action view" :class="{ active: expandedId === row.productId }" @click="toggleExpand(row)">
+                  查看訂單 <span class="chevron" :class="{ open: expandedId === row.productId }">▾</span>
+                  <span v-if="row.pendingCount > 0" class="btn-dot">{{ row.pendingCount }}</span>
+                </button>
+              </td>
+            </tr>
+            <!-- 展開行：該商品訂單明細 -->
+            <tr v-if="expandedId === row.productId" class="expand-tr">
+              <td :colspan="TOTAL_COLS">
+                <div class="orders-panel">
+                  <div class="panel-header">
+                    <span class="panel-title">訂單明細</span>
+                    <span class="panel-stats">
+                      共 {{ row.orderCount }} 筆
+                      <template v-if="row.pendingCount > 0"> · <b class="pending-text">待處理 {{ row.pendingCount }}</b></template>
+                      · 已收 {{ formatPrice(row.receivedValue) }} / 總額 {{ formatPrice(row.totalValue) }}
+                    </span>
+                    <button class="btn-link" @click="goOrdersPage(row.productId)">完整訂單頁 ↗</button>
+                  </div>
+
+                  <div v-if="row.orderCount === 0" class="panel-empty">
+                    此商品暫無有效訂單
+                  </div>
+
+                  <div v-else class="order-items">
+                    <div v-for="o in productOrders(row.productId)" :key="o.id" class="order-item">
+                      <!-- 欄 1：訂單號 + 類型 + 狀態 -->
+                      <div class="oi-col oi-main">
+                        <span class="type-tag" :class="typeTag(o.type).cls">{{ typeTag(o.type).text }}</span>
+                        <span class="oi-number">{{ o.orderNumber }}</span>
+                        <span class="order-status-badge" :class="orderStatus(o.status).cls">{{ orderStatus(o.status).text }}</span>
+                      </div>
+                      <!-- 欄 2：買家 -->
+                      <div class="oi-col oi-buyer">
+                        <div class="buyer-name">{{ o.buyerNickname }}</div>
+                        <div class="buyer-email">{{ o.buyerEmail }}</div>
+                      </div>
+                      <!-- 欄 3：數量 + 金額 -->
+                      <div class="oi-col oi-amount">
+                        <div class="oi-qty">x{{ o.quantity }}</div>
+                        <template v-if="o.type === 'reservation_deposit'">
+                          <div class="oi-money">訂金 {{ formatPrice(o.amount) }}</div>
+                          <div v-if="o.fullPrice" class="oi-money-sub">尾款 {{ formatPrice(o.fullPrice - o.amount) }}</div>
+                        </template>
+                        <div v-else class="oi-money">{{ formatPrice(o.amount) }}</div>
+                      </div>
+                      <!-- 欄 4：憑證 -->
+                      <div class="oi-col oi-receipts">
+                        <img
+                          v-if="o.transferReceipt"
+                          :src="resolveImage(o.transferReceipt)"
+                          class="receipt-thumb"
+                          title="訂金/付款憑證"
+                          @click="viewReceipt(o.transferReceipt)"
+                          alt="付款憑證"
+                        />
+                        <img
+                          v-if="o.balanceReceipt"
+                          :src="resolveImage(o.balanceReceipt)"
+                          class="receipt-thumb"
+                          title="尾款憑證"
+                          @click="viewReceipt(o.balanceReceipt)"
+                          alt="尾款憑證"
+                        />
+                        <span v-if="!o.transferReceipt && !o.balanceReceipt" class="cell-muted">無憑證</span>
+                      </div>
+                      <!-- 欄 5：下一步提示 -->
+                      <div class="oi-col oi-next">
+                        <span v-if="nextStepFor(o)" class="next-hint">{{ nextStepFor(o) }}</span>
+                        <span v-else class="cell-muted">—</span>
+                      </div>
+                      <!-- 欄 6：操作 -->
+                      <div class="oi-col oi-actions">
+                        <button
+                          v-if="o.status === 'pending_paid' && o.type === 'reservation_deposit'"
+                          class="btn-action confirm"
+                          :disabled="processingId === o.id"
+                          @click="handleConfirmDeposit(o.id)"
+                        >{{ processingId === o.id ? '處理中...' : '確認收到訂金' }}</button>
+                        <button
+                          v-else-if="o.status === 'pending_paid'"
+                          class="btn-action confirm"
+                          :disabled="processingId === o.id"
+                          @click="handleConfirmPayment(o.id)"
+                        >{{ processingId === o.id ? '處理中...' : '確認收款' }}</button>
+                        <button
+                          v-if="o.status === 'confirmed' && o.type === 'reservation_deposit'"
+                          class="btn-action confirm"
+                          :disabled="processingId === o.id"
+                          @click="handleConfirmBalance(o.id)"
+                        >{{ processingId === o.id ? '處理中...' : '確認收到尾款' }}</button>
+                        <button
+                          v-else-if="o.status === 'confirmed'"
+                          class="btn-action ship"
+                          :disabled="processingId === o.id"
+                          @click="handleShip(o.id)"
+                        >{{ processingId === o.id ? '處理中...' : '發貨' }}</button>
+                        <button
+                          v-if="o.status === 'pending_paid' && o.type !== 'reservation_deposit'"
+                          class="btn-action cancel"
+                          :disabled="processingId === o.id"
+                          @click="handleCancel(o.id)"
+                        >取消</button>
+                        <button class="btn-action detail" @click="openDetail(o)">詳情</button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </td>
+            </tr>
+          </template>
         </tbody>
       </table>
     </div>
@@ -407,6 +851,105 @@ onMounted(() => {
       <button class="page-btn" :disabled="currentPage <= 1" @click="goToPage(currentPage - 1)">‹ 上一頁</button>
       <span class="page-info">第 {{ currentPage }} / {{ totalPages }} 頁 · 共 {{ sortedRows.length }} 件</span>
       <button class="page-btn" :disabled="currentPage >= totalPages" @click="goToPage(currentPage + 1)">下一頁 ›</button>
+    </div>
+
+    <!-- 訂單詳情彈出層 -->
+    <div v-if="detailOrder" class="modal-overlay" @click.self="closeDetail">
+      <div class="detail-modal">
+        <div class="modal-header">
+          <h3>訂單詳情</h3>
+          <button @click="closeDetail" class="modal-close">✕</button>
+        </div>
+        <div class="detail-body">
+          <div class="detail-top">
+            <span class="type-tag" :class="typeTag(detailOrder.type).cls">{{ typeTag(detailOrder.type).text }}</span>
+            <span class="order-status-badge" :class="orderStatus(detailOrder.status).cls">{{ orderStatus(detailOrder.status).text }}</span>
+            <span class="detail-number">{{ detailOrder.orderNumber }}</span>
+          </div>
+
+          <div class="detail-grid">
+            <div class="dg-item">
+              <span class="dg-label">買家</span>
+              <span class="dg-value">
+                {{ detailOrder.buyerNickname }}
+                <small>{{ detailOrder.buyerEmail }}</small>
+              </span>
+            </div>
+            <div class="dg-item">
+              <span class="dg-label">商品</span>
+              <span class="dg-value">{{ detailOrder.productTitle }}</span>
+            </div>
+            <div class="dg-item">
+              <span class="dg-label">數量</span>
+              <span class="dg-value">x{{ detailOrder.quantity }}（單價 {{ formatPrice(detailOrder.unitPrice) }}）</span>
+            </div>
+            <div class="dg-item">
+              <span class="dg-label">金額</span>
+              <span class="dg-value">
+                <template v-if="detailOrder.type === 'reservation_deposit'">
+                  訂金 {{ formatPrice(detailOrder.amount) }}
+                  <span v-if="detailOrder.fullPrice" class="dg-sub">＋尾款 {{ formatPrice(detailOrder.fullPrice - detailOrder.amount) }}＝全價 {{ formatPrice(detailOrder.fullPrice) }}</span>
+                </template>
+                <template v-else>{{ formatPrice(detailOrder.amount) }}</template>
+              </span>
+            </div>
+            <div class="dg-item" v-if="detailOrder.shippingAddress">
+              <span class="dg-label">收件地址</span>
+              <span class="dg-value">{{ detailOrder.shippingAddress }}</span>
+            </div>
+            <div class="dg-item" v-if="detailOrder.trackingNumber">
+              <span class="dg-label">快遞單號</span>
+              <span class="dg-value mono">{{ detailOrder.trackingNumber }}</span>
+            </div>
+            <div class="dg-item" v-if="detailOrder.notes">
+              <span class="dg-label">備註</span>
+              <span class="dg-value">{{ detailOrder.notes }}</span>
+            </div>
+          </div>
+
+          <!-- 憑證 -->
+          <div v-if="detailOrder.transferReceipt || detailOrder.balanceReceipt" class="detail-receipts">
+            <div v-if="detailOrder.transferReceipt" class="dr-item">
+              <span class="dg-label">{{ detailOrder.type === 'reservation_deposit' ? '訂金憑證' : '付款憑證' }}</span>
+              <img :src="resolveImage(detailOrder.transferReceipt)" class="receipt-thumb lg" @click="viewReceipt(detailOrder.transferReceipt)" alt="付款憑證" />
+            </div>
+            <div v-if="detailOrder.balanceReceipt" class="dr-item">
+              <span class="dg-label">尾款憑證</span>
+              <img :src="resolveImage(detailOrder.balanceReceipt)" class="receipt-thumb lg" @click="viewReceipt(detailOrder.balanceReceipt)" alt="尾款憑證" />
+            </div>
+          </div>
+
+          <!-- 時間線 -->
+          <div class="detail-timeline">
+            <span class="dg-label">進度</span>
+            <div class="timeline">
+              <div
+                v-for="(t, i) in detailTimeline"
+                :key="i"
+                class="tl-item"
+                :class="{ done: t.done, current: t.done && !(detailTimeline[i + 1] && detailTimeline[i + 1].done) }"
+              >
+                <span class="tl-dot"></span>
+                <span class="tl-label">{{ t.label }}</span>
+                <span class="tl-time">{{ t.time ? formatDateTime(t.time) : '待處理' }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Receipt Modal -->
+    <div v-if="showReceiptModal" class="modal-overlay" @click.self="showReceiptModal = false">
+      <div class="receipt-modal">
+        <div class="modal-header">
+          <h3>轉帳憑證</h3>
+          <button @click="showReceiptModal = false" class="modal-close">✕</button>
+        </div>
+        <div class="modal-body">
+          <img :src="resolveImage(receiptImageUrl)" alt="轉帳憑證" class="receipt-image" />
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -482,6 +1025,54 @@ onMounted(() => {
 .btn-new:hover {
   opacity: 0.9;
   transform: translateY(-1px);
+}
+
+/* ===== 頂部統計條 ===== */
+.summary-bar {
+  display: flex;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.stat-item {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-5);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+}
+
+.stat-label {
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+}
+
+.stat-value {
+  font-size: var(--text-lg);
+  font-weight: 700;
+  font-family: var(--font-num);
+  color: var(--text-primary);
+}
+
+.stat-value small {
+  font-size: var(--text-xs);
+  font-weight: 400;
+  color: var(--text-secondary);
+}
+
+.stat-item.alert {
+  border-color: #f59e0b;
+  background: rgba(245, 158, 11, 0.08);
+}
+
+.stat-item.alert .stat-value {
+  color: #f59e0b;
+}
+
+.stat-value.money {
+  color: #10b981;
 }
 
 /* ===== 搜尋列 ===== */
@@ -672,6 +1263,7 @@ th, td {
   padding: var(--space-4);
   text-align: left;
   border-bottom: 1px solid var(--border);
+  vertical-align: middle;
 }
 
 th {
@@ -686,7 +1278,17 @@ td {
   color: var(--text-primary);
 }
 
-tr:last-child td {
+tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.expand-tr td {
+  padding: 0;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-elevated);
+}
+
+tr.row-expanded td {
   border-bottom: none;
 }
 
@@ -696,12 +1298,20 @@ tr:last-child td {
   gap: var(--space-3);
 }
 
+.product-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
 .row-thumb {
   width: 44px;
   height: 44px;
   border-radius: var(--radius-md);
   object-fit: cover;
   background: var(--bg-elevated);
+  flex-shrink: 0;
 }
 
 .category-emoji {
@@ -713,23 +1323,84 @@ tr:last-child td {
   justify-content: center;
   background: var(--bg-elevated);
   border-radius: var(--radius-md);
+  flex-shrink: 0;
 }
 
 .product-title {
   font-weight: 500;
-  max-width: 260px;
+  max-width: 240px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.price-cell {
+.product-number {
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
   font-family: var(--font-num);
 }
 
-.price-cell.highlight {
-  color: var(--primary);
+.price-cell {
+  font-family: var(--font-num);
   font-weight: 700;
+  color: var(--primary);
+}
+
+.cell-sub {
+  display: flex;
+  gap: var(--space-2);
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+  margin-top: 2px;
+}
+
+.cell-extra {
+  white-space: nowrap;
+}
+
+.price-label {
+  opacity: 0.7;
+}
+
+.cell-muted {
+  color: var(--text-secondary);
+  opacity: 0.5;
+}
+
+.pending-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 26px;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  background: #f59e0b4d;
+  color: #f59e0b;
+  font-weight: 700;
+  font-size: var(--text-xs);
+}
+
+.money-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-family: var(--font-num);
+}
+
+.money-received {
+  color: #10b981;
+  font-weight: 600;
+}
+
+.money-total {
+  color: var(--text-secondary);
+  font-size: var(--text-xs);
+}
+
+.time-cell {
+  white-space: nowrap;
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
 }
 
 .status-badge {
@@ -767,22 +1438,542 @@ tr:last-child td {
   border: none;
   cursor: pointer;
   transition: all var(--transition-fast);
+  white-space: nowrap;
 }
 
 .btn-action.view {
   background: var(--bg-elevated);
   color: var(--text-primary);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
 }
 
-.btn-action.view:hover {
+.btn-action.view:hover,
+.btn-action.view.active {
   background: var(--primary);
   color: white;
+}
+
+.chevron {
+  display: inline-block;
+  transition: transform var(--transition-fast);
+}
+
+.chevron.open {
+  transform: rotate(180deg);
+}
+
+.btn-dot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: var(--radius-full);
+  background: #f59e0b;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.btn-action.confirm {
+  background: #10b981;
+  color: white;
+}
+
+.btn-action.confirm:hover:not(:disabled) {
+  background: #059669;
+}
+
+.btn-action.ship {
+  background: var(--primary);
+  color: white;
+}
+
+.btn-action.detail {
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+}
+
+.btn-action.detail:hover {
+  background: var(--primary);
+  color: white;
+}
+
+.btn-action.cancel {
+  background: transparent;
+  border: 1px solid #ef4444;
+  color: #ef4444;
+}
+
+.btn-action.cancel:hover:not(:disabled) {
+  background: #ef4444;
+  color: white;
+}
+
+.btn-action:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ===== 展開訂單面板 ===== */
+.orders-panel {
+  padding: var(--space-4) var(--space-5);
+}
+
+.panel-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  margin-bottom: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.panel-title {
+  font-weight: 700;
+  font-size: var(--text-sm);
+}
+
+.panel-stats {
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+}
+
+.pending-text {
+  color: #f59e0b;
+}
+
+.btn-link {
+  margin-left: auto;
+  background: none;
+  border: none;
+  color: var(--primary);
+  font-size: var(--text-xs);
+  cursor: pointer;
+  padding: 0;
+}
+
+.btn-link:hover {
+  text-decoration: underline;
+}
+
+.panel-empty {
+  padding: var(--space-6);
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+}
+
+.order-items {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.order-item {
+  display: grid;
+  grid-template-columns: 230px 170px 140px 90px 1fr auto;
+  gap: var(--space-3);
+  align-items: center;
+  padding: var(--space-3) var(--space-4);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+}
+
+.oi-col {
+  min-width: 0;
+}
+
+.oi-main {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  align-items: flex-start;
+}
+
+.oi-number {
+  font-family: var(--font-num);
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+}
+
+.type-tag {
+  padding: 1px 8px;
+  border-radius: var(--radius-full);
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.type-tag.t-sale {
+  background: rgba(16, 185, 129, 0.18);
+  color: #10b981;
+}
+
+.type-tag.t-auction {
+  background: rgba(236, 72, 153, 0.18);
+  color: #ec4899;
+}
+
+.type-tag.t-reserve {
+  background: rgba(245, 158, 11, 0.18);
+  color: #f59e0b;
+}
+
+.order-status-badge {
+  padding: 1px 8px;
+  border-radius: var(--radius-full);
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.order-status-badge.st-pending {
+  background: #f59e0b4d;
+  color: #f59e0b;
+}
+
+.order-status-badge.st-pending-paid {
+  background: #fb923c4d;
+  color: #fb923c;
+}
+
+.order-status-badge.st-paid {
+  background: #10b98133;
+  color: #10b981;
+}
+
+.order-status-badge.st-confirmed {
+  background: #10b9814d;
+  color: #10b981;
+}
+
+.order-status-badge.st-shipped {
+  background: #8b5cf64d;
+  color: #8b5cf6;
+}
+
+.order-status-badge.st-delivered {
+  background: #10b98166;
+  color: #059669;
+}
+
+.order-status-badge.st-cancelled {
+  background: #ef44444d;
+  color: #ef4444;
+}
+
+.oi-buyer {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.buyer-name {
+  font-weight: 500;
+  font-size: var(--text-sm);
+}
+
+.buyer-email {
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+}
+
+.oi-amount {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.oi-qty {
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+}
+
+.oi-money {
+  font-family: var(--font-num);
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.oi-money-sub {
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+  font-family: var(--font-num);
+}
+
+.oi-receipts {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.receipt-thumb {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-md);
+  object-fit: cover;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  transition: transform var(--transition-fast);
+}
+
+.receipt-thumb:hover {
+  transform: scale(1.08);
+}
+
+.receipt-thumb.lg {
+  width: 64px;
+  height: 64px;
+}
+
+.next-hint {
+  font-size: var(--text-xs);
+  color: #f59e0b;
+  font-weight: 600;
+}
+
+.oi-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+/* ===== Modal 通用 ===== */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: var(--space-4);
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1px solid var(--border);
+}
+
+.modal-header h3 {
+  margin: 0;
+  font-size: var(--text-lg);
+}
+
+.modal-close {
+  background: none;
+  border: none;
+  font-size: 18px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: var(--radius-md);
+}
+
+.modal-close:hover {
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+}
+
+/* ===== 訂單詳情彈出層 ===== */
+.detail-modal {
+  width: min(640px, 100%);
+  max-height: 85vh;
+  overflow-y: auto;
+  background: var(--bg-card);
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--border);
+}
+
+.detail-body {
+  padding: var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.detail-top {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.detail-number {
+  margin-left: auto;
+  font-family: var(--font-num);
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+}
+
+.detail-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-4);
+}
+
+.dg-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.dg-label {
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+}
+
+.dg-value {
+  font-size: var(--text-sm);
+  color: var(--text-primary);
+  word-break: break-all;
+}
+
+.dg-value small {
+  display: block;
+  color: var(--text-secondary);
+  font-size: var(--text-xs);
+}
+
+.dg-value.mono {
+  font-family: var(--font-num);
+  letter-spacing: 0.5px;
+}
+
+.dg-sub {
+  display: block;
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+  margin-top: 2px;
+}
+
+.detail-receipts {
+  display: flex;
+  gap: var(--space-6);
+}
+
+.dr-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* 時間線 */
+.detail-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.timeline {
+  display: flex;
+  flex-direction: column;
+}
+
+.tl-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) 0 var(--space-2) 0;
+}
+
+.tl-item:not(:last-child)::before {
+  content: '';
+  position: absolute;
+  left: 5px;
+  top: 28px;
+  bottom: -6px;
+  width: 2px;
+  background: var(--border);
+}
+
+.tl-item.done:not(:last-child)::before {
+  background: #10b981;
+  opacity: 0.5;
+}
+
+.tl-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--border);
+  flex-shrink: 0;
+}
+
+.tl-item.done .tl-dot {
+  background: #10b981;
+}
+
+.tl-item.current .tl-dot {
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.25);
+}
+
+.tl-label {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  min-width: 110px;
+}
+
+.tl-item.done .tl-label {
+  color: var(--text-primary);
+}
+
+.tl-time {
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+  font-family: var(--font-num);
+}
+
+/* 憑證大圖 Modal */
+.receipt-modal {
+  width: min(560px, 100%);
+  max-height: 85vh;
+  overflow-y: auto;
+  background: var(--bg-card);
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--border);
+}
+
+.modal-body {
+  padding: var(--space-5);
+  display: flex;
+  justify-content: center;
+}
+
+.receipt-image {
+  max-width: 100%;
+  max-height: 70vh;
+  border-radius: var(--radius-lg);
 }
 
 /* 桌面寬屏適配 */
 @media (min-width: 820px) {
   .product-list-management {
     max-width: 100%;
+  }
+}
+
+@media (max-width: 1100px) {
+  .order-item {
+    grid-template-columns: 200px 150px 130px 80px 1fr auto;
+  }
+}
+
+@media (max-width: 900px) {
+  .order-item {
+    grid-template-columns: 1fr 1fr;
+  }
+  .oi-actions {
+    justify-content: flex-start;
   }
 }
 
@@ -794,11 +1985,21 @@ tr:last-child td {
     margin-left: 0;
     width: 100%;
   }
+  .summary-bar {
+    gap: var(--space-2);
+  }
+  .stat-item {
+    flex: 1 1 40%;
+    padding: var(--space-2) var(--space-3);
+  }
+  .detail-grid {
+    grid-template-columns: 1fr;
+  }
   .list-table {
     overflow-x: auto;
   }
   table {
-    min-width: 640px;
+    min-width: 960px;
   }
 }
 </style>
