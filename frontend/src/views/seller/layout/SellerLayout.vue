@@ -296,6 +296,10 @@ onUnmounted(() => {
     margin-left: 0;
     padding: var(--space-4);
     padding-bottom: calc(var(--space-4) + 64px);
+    /* flex min-width 傳遞鏈修復：內容唔會撐爆容器（375px 實測溢出根因） */
+    min-width: 0;
+    max-width: 100vw;
+    overflow-x: hidden;
   }
 
   .content-header {

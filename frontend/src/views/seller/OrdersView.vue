@@ -1030,6 +1030,17 @@ tr:last-child td { border-bottom: none; }
 
 /* ===== 手機版適配（<768px：表格收起，顯示卡片）===== */
 @media (max-width: 767px) {
+  /* min-width 傳遞鏈修復 — flex 內容不再撐爆容器（375px 實測溢出 31px 根因） */
+  .orders-management,
+  .summary-bar,
+  .stat-item,
+  .list-tabs,
+  .search-row,
+  .search-input,
+  .pagination {
+    min-width: 0;
+  }
+
   .desktop-table { display: none; }
   .orders-table { overflow: visible; }
   .orders-cards {

@@ -673,8 +673,45 @@ onMounted(() => {
       <p>試試其他關鍵字，或清除搜尋查看全部。</p>
     </div>
 
-    <!-- List (table) -->
-    <div v-else class="list-table">
+    <!-- 手機卡片列表（<768px，同訂單管理卡片設計） -->
+    <div v-if="!loading && !error && rows.length > 0 && filteredRows.length > 0" class="product-cards">
+      <div v-for="row in pagedRows" :key="'m' + activeTab + row.id" class="product-card">
+        <div class="pc-top">
+          <img v-if="row.image" :src="row.image" class="pc-thumb" :alt="row.title" />
+          <span v-else class="pc-emoji">{{ categories[row.category] || '🎴' }}</span>
+          <div class="pc-main">
+            <div class="pc-title">{{ row.title }}</div>
+            <div class="pc-meta">
+              <span class="status-badge" :class="getStatusClass(row.statusKey)">{{ row.status }}</span>
+              <span v-if="row.productNumber" class="pc-number">{{ row.productNumber }}</span>
+            </div>
+          </div>
+          <div class="pc-amount">
+            <div class="pc-price">{{ row.price }}</div>
+            <div v-if="row.extra" class="pc-extra">{{ row.extra }}</div>
+          </div>
+        </div>
+        <div class="pc-mid">
+          <span class="pc-orders">📋 {{ row.orderCount }} 筆</span>
+          <span v-if="row.pendingCount > 0" class="pc-pending">⚠ 待處理 {{ row.pendingCount }}</span>
+          <span class="pc-money">已收 {{ formatPrice(row.receivedValue) }}</span>
+        </div>
+        <div v-if="row.timeText" class="pc-time">🕐 {{ row.timeText }}</div>
+        <div class="pc-actions">
+          <button class="btn-action view" @click="toggleExpand(row)">
+            查看訂單 <span v-if="row.pendingCount > 0" class="btn-dot">{{ row.pendingCount }}</span>
+          </button>
+          <button
+            v-if="row.orderCount === 0 && activeTab === 'sale'"
+            class="btn-action edit"
+            @click="router.push(`/seller/products?action=edit&id=${row.productId}`)"
+          >編輯</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- List (table)：桌面 ≥768px -->
+    <div v-if="!loading && !error && rows.length > 0 && filteredRows.length > 0" class="list-table">
       <table>
         <thead>
           <tr>
@@ -1518,6 +1555,9 @@ tr.row-expanded td {
   cursor: not-allowed;
 }
 
+/* ===== 手機卡片（<768px 顯示，同訂單管理卡片設計）===== */
+.product-cards { display: none; }
+
 /* ===== 展開訂單面板 ===== */
 .orders-panel {
   padding: var(--space-4) var(--space-5);
@@ -1977,6 +2017,126 @@ tr.row-expanded td {
   }
 }
 
+/* ===== 手機版適配（<768px：表格收起，顯示卡片，同訂單管理一致）===== */
+@media (max-width: 767px) {
+  /* min-width 傳遞鏈修復 — flex 內容不再撐爆容器（375px 實測溢出 31px 根因） */
+  .product-list-management,
+  .list-tabs,
+  .summary-bar,
+  .stat-item,
+  .search-row,
+  .search-input,
+  .list-table,
+  .pagination {
+    min-width: 0;
+  }
+
+  .desktop-only {
+    display: none !important;
+  }
+
+  /* 表格收起、卡片顯示 */
+  .list-table { display: none !important; }
+  .product-cards {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+  }
+  .product-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: var(--space-3) var(--space-4);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    min-width: 0;
+  }
+  .pc-top { display: flex; gap: var(--space-3); align-items: flex-start; min-width: 0; }
+  .pc-thumb {
+    width: 48px; height: 48px;
+    border-radius: var(--radius-md);
+    object-fit: cover;
+    flex-shrink: 0;
+    background: var(--bg-elevated);
+  }
+  .pc-emoji {
+    font-size: 22px;
+    width: 48px; height: 48px;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--bg-elevated);
+    border-radius: var(--radius-md);
+    flex-shrink: 0;
+  }
+  .pc-main { flex: 1; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+  .pc-title {
+    font-weight: 600;
+    font-size: var(--text-sm);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+  }
+  .pc-meta { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+  .pc-number { font-size: 11px; color: var(--text-secondary); font-family: var(--font-num); }
+  .pc-amount { text-align: right; flex-shrink: 0; min-width: 0; }
+  .pc-price { font-family: var(--font-num); font-weight: 700; color: var(--primary); white-space: nowrap; }
+  .pc-extra { font-size: 11px; color: var(--text-secondary); white-space: nowrap; }
+  .pc-mid {
+    display: flex;
+    gap: var(--space-3);
+    align-items: center;
+    flex-wrap: wrap;
+    font-size: var(--text-xs);
+    color: var(--text-secondary);
+  }
+  .pc-pending {
+    color: #f59e0b;
+    font-weight: 600;
+    padding: 2px 8px;
+    background: rgba(245, 158, 11, 0.1);
+    border-radius: var(--radius-md);
+  }
+  .pc-money { font-family: var(--font-num); color: #10b981; }
+  .pc-time {
+    font-size: var(--text-xs);
+    color: var(--text-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .pc-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+  .pc-actions .btn-action { flex: 1; text-align: center; }
+  .btn-action.edit { background: var(--bg-elevated); color: var(--text-primary); }
+  .btn-action.edit:hover { background: var(--primary); color: white; }
+
+  /* 展開面板手機適配：訂單 grid 單欄 */
+  .orders-panel { padding: var(--space-3); }
+  .order-item {
+    grid-template-columns: 1fr 1fr;
+  }
+  .oi-actions { justify-content: flex-start; }
+
+  /* 舊 640 適配吸收（summary/tabs/detail） */
+  .summary-bar { gap: var(--space-2); }
+  .stat-item { flex: 1 1 40%; padding: var(--space-2) var(--space-3); }
+  .stat-value { font-size: var(--text-base); }
+  .list-tabs { gap: var(--space-1); flex-wrap: wrap; }
+  .list-tab { padding: var(--space-1) var(--space-3); font-size: var(--text-xs); }
+  .btn-new { margin-left: 0; width: 100%; }
+  .detail-grid { grid-template-columns: 1fr; }
+  .modal-overlay { align-items: flex-end; padding: 0; }
+  .detail-modal {
+    width: 100%;
+    max-height: 88vh;
+    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+    border-bottom: none;
+  }
+  .detail-body { padding: var(--space-4); }
+  .pagination { flex-wrap: wrap; gap: var(--space-2); }
+  .page-info { font-size: var(--text-xs); }
+}
+
 @media (max-width: 640px) {
   .list-tabs {
     flex-wrap: wrap;
@@ -1994,12 +2154,6 @@ tr.row-expanded td {
   }
   .detail-grid {
     grid-template-columns: 1fr;
-  }
-  .list-table {
-    overflow-x: auto;
-  }
-  table {
-    min-width: 960px;
   }
 }
 </style>
