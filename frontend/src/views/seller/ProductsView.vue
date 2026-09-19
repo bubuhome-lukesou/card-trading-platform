@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { formatPrice, formatDate } from '@/utils/format'
+import { formatPrice, formatDate, formatDateTime } from '@/utils/format'
 import StateView from '@/components/common/StateView.vue'
 import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
@@ -442,8 +442,118 @@ const filteredProducts = computed(() => {
   if (filterListingType.value !== 'all') {
     result = result.filter(p => p.listingType === filterListingType.value)
   }
+  const q = searchQuery.value.trim().toLowerCase()
+  if (q) {
+    result = result.filter(p =>
+      (p.titleZh || '').toLowerCase().includes(q) ||
+      (p.titleEn || '').toLowerCase().includes(q) ||
+      (p.productNumber ? String(p.productNumber) : '').includes(q)
+    )
+  }
   return result
 })
+
+// ===== 排序 / 分頁（同商品列表/訂單管理一致）=====
+const PAGE_SIZE = 12
+const searchQuery = ref('')
+const currentPage = ref(1)
+const sortKey = ref('')
+const sortDir = ref<'asc' | 'desc'>('desc')
+
+const sortableColumns = [
+  { key: 'titleZh', label: '商品', type: 'text' },
+  { key: 'price', label: '價格', type: 'number' },
+  { key: 'viewCount', label: '瀏覽', type: 'number' },
+  { key: 'favoriteCount', label: '收藏', type: 'number' },
+  { key: 'quantity', label: '庫存', type: 'number' },
+  { key: 'createdAt', label: '上架', type: 'time' },
+] as const
+
+const toggleSort = (key: string) => {
+  if (sortKey.value === key) {
+    sortDir.value = sortDir.value === 'asc' ? 'desc' : 'asc'
+  } else {
+    sortKey.value = key
+    sortDir.value = 'asc'
+  }
+  currentPage.value = 1
+}
+
+const compareProducts = (a: any, b: any, col: { key: string; type: string }): number => {
+  let cmp = 0
+  if (col.type === 'number') {
+    cmp = (Number((a as any)[col.key]) || 0) - (Number((b as any)[col.key]) || 0)
+  } else if (col.type === 'time') {
+    cmp = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+  } else {
+    const as = String((a as any)[col.key] ?? '')
+    const bs = String((b as any)[col.key] ?? '')
+    cmp = as < bs ? -1 : as > bs ? 1 : 0
+  }
+  return sortDir.value === 'asc' ? cmp : -cmp
+}
+
+const sortedProducts = computed(() => {
+  const base = filteredProducts.value
+  if (!sortKey.value) {
+    // 預設：最新上架在前
+    return [...base].sort(
+      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    )
+  }
+  const col = sortableColumns.find(c => c.key === sortKey.value)
+  if (!col) return base
+  return [...base].sort((a, b) => compareProducts(a, b, col))
+})
+
+const totalPages = computed(() => Math.max(1, Math.ceil(sortedProducts.value.length / PAGE_SIZE)))
+const pagedProducts = computed(() => {
+  const start = (currentPage.value - 1) * PAGE_SIZE
+  return sortedProducts.value.slice(start, start + PAGE_SIZE)
+})
+const goToPage = (p: number) => {
+  if (p < 1 || p > totalPages.value) return
+  currentPage.value = p
+}
+watch([searchQuery, filterStatus, filterListingType], () => { currentPage.value = 1 })
+
+// ===== 統計條（同商品列表 summary-bar）=====
+const summary = computed(() => ({
+  total: products.value.length,
+  active: products.value.filter(p => p.status === 'active').length,
+  sold: products.value.filter(p => p.status === 'sold').length,
+  views: products.value.reduce((s, p) => s + (Number(p.viewCount) || 0), 0),
+}))
+
+// ===== 詳情彈出層 =====
+const detailProduct = ref<any>(null)
+const openDetail = (p: any) => { detailProduct.value = p }
+const closeDetail = () => { detailProduct.value = null }
+
+const LISTING_TYPE_TEXT: Record<string, { text: string; cls: string }> = {
+  sale: { text: '直銷', cls: 't-sale' },
+  auction: { text: '拍賣', cls: 't-auction' },
+  reservation: { text: '預約', cls: 't-reserve' },
+}
+const listingTag = (lt: string) => LISTING_TYPE_TEXT[lt] || LISTING_TYPE_TEXT.sale
+
+const PRODUCT_TYPE_TEXT: Record<string, string> = {
+  graded_card: '評分卡',
+  original_box: '原箱',
+  original_case: '原盒',
+  original_bag: '原袋',
+  raw_card: '裸卡',
+  other: '其它',
+}
+
+const LANGUAGE_TEXT: Record<string, string> = {
+  japanese: '日文',
+  english: '英文',
+  traditional_chinese: '繁體中文',
+  simplified_chinese: '簡體中文',
+  korean: '韓文',
+  other: '其他',
+}
 
 // Get image from product
 const getProductImage = (product: any) => {
@@ -588,50 +698,76 @@ onUnmounted(() => {
 
 <template>
   <div class="products-management">
+    <!-- 頂部統計條（同商品列表/訂單管理） -->
+    <div v-if="!loading" class="summary-bar">
+      <div class="stat-item">
+        <span class="stat-label">商品</span>
+        <span class="stat-value">{{ summary.total }} <small>件</small></span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-label">在售</span>
+        <span class="stat-value money">{{ summary.active }} <small>件</small></span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-label">已售</span>
+        <span class="stat-value">{{ summary.sold }} <small>件</small></span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-label">總瀏覽</span>
+        <span class="stat-value">{{ summary.views }} <small>次</small></span>
+      </div>
+    </div>
+
     <!-- Header -->
     <div class="section-header">
-      <div class="filter-tabs">
-        <button 
-          class="tab" 
+      <div class="list-tabs">
+        <button
+          class="list-tab"
           :class="{ active: filterStatus === 'all' }"
           @click="filterStatus = 'all'"
         >
-          全部 ({{ products.length }})
+          全部
+          <span class="tab-count">{{ products.length }}</span>
         </button>
-        <button 
-          class="tab" 
+        <button
+          class="list-tab"
           :class="{ active: filterStatus === 'active' }"
           @click="filterStatus = 'active'"
         >
-          在售 ({{ products.filter(p => p.status === 'active').length }})
+          在售
+          <span class="tab-count">{{ products.filter(p => p.status === 'active').length }}</span>
         </button>
-        <button 
-          class="tab" 
+        <button
+          class="list-tab"
           :class="{ active: filterStatus === 'draft' }"
           @click="filterStatus = 'draft'"
         >
-          草稿 ({{ products.filter(p => p.status === 'draft').length }})
+          草稿
+          <span class="tab-count">{{ products.filter(p => p.status === 'draft').length }}</span>
         </button>
-        <button 
-          class="tab" 
+        <button
+          class="list-tab"
           :class="{ active: filterStatus === 'sold' }"
           @click="filterStatus = 'sold'"
         >
-          已售 ({{ products.filter(p => p.status === 'sold').length }})
+          已售
+          <span class="tab-count">{{ products.filter(p => p.status === 'sold').length }}</span>
         </button>
       </div>
-      <button @click="openCreateModal" class="btn-primary">
+      <button @click="openCreateModal" class="btn-new">
         + 發布新商品
       </button>
     </div>
 
-    <!-- Listing type filter -->
-    <div class="filter-row">
-      <span class="filter-label">銷售模式：</span>
-      <button class="chip" :class="{ active: filterListingType === 'all' }" @click="filterListingType = 'all'">全部</button>
-      <button class="chip" :class="{ active: filterListingType === 'sale' }" @click="filterListingType = 'sale'">直銷</button>
-      <button class="chip" :class="{ active: filterListingType === 'auction' }" @click="filterListingType = 'auction'">拍賣</button>
-      <button class="chip" :class="{ active: filterListingType === 'reservation' }" @click="filterListingType = 'reservation'">預約</button>
+    <!-- 搜尋（同商品列表 search-row） -->
+    <div class="search-row">
+      <input
+        v-model="searchQuery"
+        type="text"
+        class="search-input"
+        placeholder="🔍 搜尋商品名稱或編號..."
+      />
+      <button v-if="searchQuery" class="btn-clear-search" @click="searchQuery = ''">✕ 清除</button>
     </div>
 
     <!-- Products Grid -->
@@ -640,7 +776,7 @@ onUnmounted(() => {
     <StateView v-else-if="filteredProducts.length === 0" state="empty" icon="📦" title="暫無商品" message="點击上方「+ 發布商品」按钮發布您的第一件商品吧！" />
 
     <div v-else class="products-grid">
-      <div v-for="product in filteredProducts" :key="product.id" class="product-card">
+      <div v-for="product in pagedProducts" :key="product.id" class="product-card">
         <div class="product-image">
           <img v-if="getProductImage(product)" :src="resolveImageUrl(getProductImage(product))" :alt="product.titleEn" class="product-img" />
           <span v-else class="category-emoji"><CategoryLogo :category="product.category" :size="34" /></span>
@@ -651,7 +787,7 @@ onUnmounted(() => {
             📅 預約
           </span>
         </div>
-        
+
         <div class="product-info">
           <h3 class="product-title">{{ product.titleZh || product.titleEn }}</h3>
           <div class="product-meta">
@@ -669,13 +805,122 @@ onUnmounted(() => {
         </div>
 
         <div class="product-actions">
+          <button @click="openDetail(product)" class="btn-detail">詳情</button>
           <button v-if="product.status !== 'sold'" @click="openEditModal(product)" class="btn-edit">
             ✏️ 编辑
           </button>
-          <span v-else class="sold-locked">🔒 已售不可編輯</span>
+          <span v-else class="sold-locked">🔒 已售</span>
           <button @click="handleDelete(product.id)" class="btn-delete">
-            🗑️ 删除
+            🗑️
           </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 分頁（同訂單管理 pagination） -->
+    <div v-if="!loading && sortedProducts.length > 0" class="pagination">
+      <button class="page-btn" :disabled="currentPage <= 1" @click="goToPage(currentPage - 1)">‹ 上一頁</button>
+      <span class="page-info">第 {{ currentPage }} / {{ totalPages }} 頁 · 共 {{ sortedProducts.length }} 件</span>
+      <button class="page-btn" :disabled="currentPage >= totalPages" @click="goToPage(currentPage + 1)">下一頁 ›</button>
+    </div>
+
+    <!-- 商品詳情彈出層（規格表格，同商品詳情頁 spec table 風格） -->
+    <div v-if="detailProduct" class="modal-overlay" @click.self="closeDetail">
+      <div class="detail-modal">
+        <div class="modal-header">
+          <h3>商品詳情</h3>
+          <button @click="closeDetail" class="modal-close">✕</button>
+        </div>
+        <div class="detail-body">
+          <div class="detail-top">
+            <span class="type-tag" :class="listingTag(detailProduct.listingType).cls">{{ listingTag(detailProduct.listingType).text }}</span>
+            <span class="status-badge" :class="getStatusBadge(detailProduct.status).class">{{ getStatusBadge(detailProduct.status).text }}</span>
+            <span v-if="detailProduct.productNumber" class="detail-number">#{{ detailProduct.productNumber }}</span>
+          </div>
+
+          <div class="detail-product">
+            <img v-if="getProductImage(detailProduct)" :src="resolveImageUrl(getProductImage(detailProduct))" class="detail-thumb" :alt="detailProduct.titleZh" />
+            <span v-else class="category-emoji"><CategoryLogo :category="detailProduct.category" :size="26" /></span>
+            <div class="dp-info">
+              <span class="dp-title">{{ detailProduct.titleZh || detailProduct.titleEn }}</span>
+              <span class="dp-sub">{{ detailProduct.titleEn }}</span>
+            </div>
+            <div class="dp-amount">
+              <div class="amount">{{ formatPrice(detailProduct.price) }}</div>
+            </div>
+          </div>
+
+          <div class="detail-grid">
+            <div class="dg-item">
+              <span class="dg-label">類別</span>
+              <span class="dg-value">{{ getCategoryLabel(detailProduct.category) }}</span>
+            </div>
+            <div class="dg-item">
+              <span class="dg-label">品相</span>
+              <span class="dg-value">{{ detailProduct.condition ? getConditionLabel(detailProduct.condition) : '不指定' }}</span>
+            </div>
+            <div class="dg-item">
+              <span class="dg-label">商品種類</span>
+              <span class="dg-value">{{ PRODUCT_TYPE_TEXT[detailProduct.productType] || '不指定' }}</span>
+            </div>
+            <div class="dg-item">
+              <span class="dg-label">語言</span>
+              <span class="dg-value">{{ LANGUAGE_TEXT[detailProduct.language] || '不指定' }}</span>
+            </div>
+            <div class="dg-item">
+              <span class="dg-label">庫存</span>
+              <span class="dg-value">{{ detailProduct.quantity ?? 0 }} 件</span>
+            </div>
+            <div class="dg-item">
+              <span class="dg-label">上架時間</span>
+              <span class="dg-value">{{ formatDate(detailProduct.createdAt) }}</span>
+            </div>
+            <div class="dg-item">
+              <span class="dg-label">瀏覽</span>
+              <span class="dg-value">{{ detailProduct.viewCount || 0 }} 次</span>
+            </div>
+            <div class="dg-item">
+              <span class="dg-label">收藏</span>
+              <span class="dg-value">{{ detailProduct.favoriteCount || 0 }} 人</span>
+            </div>
+            <div v-if="detailProduct.listingType === 'auction'" class="dg-item">
+              <span class="dg-label">起拍價</span>
+              <span class="dg-value">{{ formatPrice(detailProduct.startingPrice || 0) }}</span>
+            </div>
+            <div v-if="detailProduct.listingType === 'auction' && detailProduct.auctionEndTime" class="dg-item">
+              <span class="dg-label">拍賣截止</span>
+              <span class="dg-value">{{ formatDateTime(detailProduct.auctionEndTime) }}</span>
+            </div>
+            <div v-if="detailProduct.listingType === 'reservation'" class="dg-item">
+              <span class="dg-label">預約名額</span>
+              <span class="dg-value">{{ detailProduct.reservationMax || 0 }}</span>
+            </div>
+            <div v-if="detailProduct.listingType === 'reservation'" class="dg-item">
+              <span class="dg-label">訂金</span>
+              <span class="dg-value">{{ formatPrice(detailProduct.reservationDeposit || 0) }}</span>
+            </div>
+            <div v-if="detailProduct.listingType === 'reservation' && detailProduct.reservationDeadline" class="dg-item">
+              <span class="dg-label">預約截止</span>
+              <span class="dg-value">{{ formatDateTime(detailProduct.reservationDeadline) }}</span>
+            </div>
+            <div class="dg-item" v-if="detailProduct.tags && detailProduct.tags.length">
+              <span class="dg-label">標籤</span>
+              <span class="dg-value">{{ detailProduct.tags.map((t: any) => t.name || t).join('、') }}</span>
+            </div>
+          </div>
+
+          <div v-if="detailProduct.descriptionZh || detailProduct.descriptionEn" class="detail-desc">
+            <span class="dg-label">商品描述</span>
+            <p>{{ detailProduct.descriptionZh || detailProduct.descriptionEn }}</p>
+          </div>
+
+          <div class="detail-actions">
+            <button
+              v-if="detailProduct.status !== 'sold'"
+              class="btn-action detail"
+              @click="closeDetail(); openEditModal(detailProduct)"
+            >✏️ 編輯此商品</button>
+          </div>
         </div>
       </div>
     </div>
@@ -1043,7 +1288,260 @@ onUnmounted(() => {
 .products-management {
   display: flex;
   flex-direction: column;
-  gap: var(--space-6);
+  gap: var(--space-4);
+}
+
+/* ===== 統計條（同商品列表/訂單管理）===== */
+.summary-bar {
+  display: flex;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.stat-item {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-5);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+}
+
+.stat-label { font-size: var(--text-xs); color: var(--text-secondary); }
+
+.stat-value {
+  font-size: var(--text-lg);
+  font-weight: 700;
+  font-family: var(--font-num);
+  color: var(--text-primary);
+}
+
+.stat-value small { font-size: var(--text-xs); font-weight: 400; color: var(--text-secondary); }
+.stat-value.money { color: #10b981; }
+
+/* ===== tabs（同商品列表 list-tab）===== */
+.list-tabs { display: flex; gap: var(--space-2); align-items: center; flex-wrap: wrap; }
+
+.list-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: var(--space-2) var(--space-5);
+  border-radius: var(--radius-lg);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--text-secondary);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.list-tab:hover { border-color: var(--primary); }
+
+.list-tab.active {
+  background: var(--primary-gradient);
+  border: none;
+  color: white;
+}
+
+.tab-count {
+  padding: 1px 8px;
+  border-radius: var(--radius-full);
+  background: rgba(0, 0, 0, 0.15);
+  font-size: var(--text-xs);
+  font-weight: 600;
+}
+
+.list-tab:not(.active) .tab-count {
+  background: var(--bg-elevated);
+  color: var(--text-secondary);
+}
+
+.btn-new {
+  margin-left: auto;
+  padding: var(--space-2) var(--space-5);
+  background: var(--primary-gradient);
+  border-radius: var(--radius-lg);
+  color: white;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  font-size: var(--text-sm);
+  transition: all var(--transition-fast);
+}
+
+.btn-new:hover {
+  opacity: 0.9;
+  transform: translateY(-1px);
+}
+
+/* ===== 搜尋（同商品列表）===== */
+.search-row { display: flex; gap: var(--space-2); align-items: center; }
+
+.search-input {
+  flex: 1;
+  max-width: 420px;
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  color: var(--text-primary);
+  font-size: var(--text-sm);
+  outline: none;
+  transition: border-color var(--transition-fast);
+}
+
+.search-input:focus { border-color: var(--primary); }
+
+.btn-clear-search {
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+  background: var(--bg-elevated);
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: var(--text-xs);
+}
+
+.btn-clear-search:hover { color: var(--text-primary); border-color: var(--primary); }
+
+/* ===== 分頁（同訂單管理）===== */
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-4);
+}
+
+.page-btn {
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: var(--text-sm);
+  transition: all var(--transition-fast);
+}
+
+.page-btn:hover:not(:disabled) { border-color: var(--primary); color: var(--text-primary); }
+.page-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.page-info { font-size: var(--text-sm); color: var(--text-secondary); }
+
+/* ===== 詳情彈出層（同訂單管理）===== */
+.detail-modal {
+  width: min(640px, 100%);
+  max-height: 85vh;
+  overflow-y: auto;
+  background: var(--bg-card);
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--border);
+}
+
+.detail-body {
+  padding: var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.detail-top { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
+
+.detail-number {
+  margin-left: auto;
+  font-family: var(--font-num);
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+}
+
+.type-tag {
+  padding: 1px 8px;
+  border-radius: var(--radius-full);
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.type-tag.t-sale { background: rgba(16, 185, 129, 0.18); color: #10b981; }
+.type-tag.t-auction { background: rgba(236, 72, 153, 0.18); color: #ec4899; }
+.type-tag.t-reserve { background: rgba(245, 158, 11, 0.18); color: #f59e0b; }
+
+.detail-product {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  background: var(--bg-elevated);
+  border-radius: var(--radius-lg);
+}
+
+.detail-thumb {
+  width: 48px; height: 48px;
+  border-radius: var(--radius-md);
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.dp-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
+.dp-title { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dp-sub { font-size: var(--text-xs); color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dp-amount { text-align: right; }
+.amount { font-family: var(--font-num); font-weight: 700; color: var(--primary); white-space: nowrap; font-size: var(--text-base); }
+
+.detail-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-4);
+}
+
+.dg-item { display: flex; flex-direction: column; gap: 4px; }
+.dg-label { font-size: var(--text-xs); color: var(--text-secondary); }
+.dg-value { font-size: var(--text-sm); color: var(--text-primary); word-break: break-all; }
+
+.detail-desc {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.detail-desc p {
+  font-size: var(--text-sm);
+  color: var(--text-primary);
+  line-height: 1.6;
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+.detail-actions { display: flex; justify-content: flex-end; gap: var(--space-2); }
+
+.btn-action {
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-md);
+  font-size: var(--text-xs);
+  border: none;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  white-space: nowrap;
+}
+
+.btn-action.detail { background: var(--bg-elevated); color: var(--text-primary); }
+.btn-action.detail:hover { background: var(--primary); color: white; }
+
+.btn-detail {
+  padding: var(--space-3);
+  font-size: var(--text-sm);
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: var(--text-secondary);
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.btn-detail:hover {
+  background: var(--primary-gradient);
+  color: white;
 }
 
 .section-header {
@@ -1775,6 +2273,49 @@ onUnmounted(() => {
   .products-grid {
     grid-template-columns: repeat(2, 1fr);
   }
+}
+
+/* ===== 手機版適配（<768px：同訂單管理）===== */
+@media (max-width: 767px) {
+  /* min-width 傳遞鏈修復 — flex 內容不再撐爆容器 */
+  .products-management,
+  .summary-bar,
+  .stat-item,
+  .list-tabs,
+  .search-row,
+  .search-input,
+  .pagination {
+    min-width: 0;
+  }
+
+  .summary-bar { gap: var(--space-2); }
+  .stat-item { flex: 1 1 40%; padding: var(--space-2) var(--space-3); }
+  .stat-value { font-size: var(--text-base); }
+
+  .list-tabs { gap: var(--space-1); }
+  .list-tab { padding: var(--space-1) var(--space-3); font-size: var(--text-xs); }
+  .btn-new { margin-left: 0; width: 100%; }
+
+  .search-input { max-width: none; width: 100%; }
+
+  .products-grid { grid-template-columns: 1fr; gap: var(--space-3); }
+  .product-card { max-width: 100%; }
+
+  .product-actions .btn-edit { flex: 1.2; }
+  .product-actions .btn-detail { flex: 1; }
+  .product-actions .btn-delete { flex: 0 0 52px; }
+
+  .detail-grid { grid-template-columns: 1fr; }
+  .modal-overlay { align-items: flex-end; padding: 0; }
+  .detail-modal {
+    width: 100%;
+    max-height: 88vh;
+    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+    border-bottom: none;
+  }
+  .modal { max-height: 92vh; }
+  .pagination { flex-wrap: wrap; gap: var(--space-2); }
+  .page-info { font-size: var(--text-xs); }
 }
 
 @media (max-width: 640px) {
