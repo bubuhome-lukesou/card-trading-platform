@@ -1,14 +1,15 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { RouterLink } from 'vue-router'
 import { ArrowRight, Zap } from 'lucide-vue-next'
 import { productApi } from '@/api/products'
+import api from '@/api'
 import { CategoryLogo, BRAND_CATEGORIES } from '@/components/brand/CategoryLogos'
 import BannerCarousel from '@/components/home/BannerCarousel.vue'
 import ListingsCarousel from '@/components/home/ListingsCarousel.vue'
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 
 const categories = BRAND_CATEGORIES
 
@@ -19,11 +20,69 @@ const loadingAuctions = ref(false)
 const loadingProducts = ref(false)
 const loadingReservations = ref(false)
 
-const stats = ref([
-  { value: '10,000+', label: 'auctions' },
-  { value: '5,000+', label: 'users' },
-  { value: '98%', label: 'satisfaction' }
-])
+// ===== 首頁 Hero + 統計條（管理員可編輯，GET /home-settings/public；null fallback 預設值）=====
+interface StatItem { value: string; labelZh: string; labelEn: string }
+const homeSettings = ref<any>(null)
+const isZh = computed(() => locale.value === 'zh')
+
+const heroTitle = computed(() => {
+  const s = homeSettings.value
+  const fallback = t('home.hero.title')
+  if (!s) return fallback
+  return (isZh.value ? (s.heroTitleZh || s.heroTitleEn) : (s.heroTitleEn || s.heroTitleZh)) || fallback
+})
+const heroSubtitle = computed(() => {
+  const s = homeSettings.value
+  const fallback = t('home.hero.subtitle')
+  if (!s) return fallback
+  return (isZh.value ? (s.heroSubtitleZh || s.heroSubtitleEn) : (s.heroSubtitleEn || s.heroSubtitleZh)) || fallback
+})
+const heroPrimaryBtn = computed(() => {
+  const s = homeSettings.value
+  const fallback = t('home.hero.bidNow')
+  if (!s) return fallback
+  return (isZh.value ? (s.heroPrimaryBtnZh || s.heroPrimaryBtnEn) : (s.heroPrimaryBtnEn || s.heroPrimaryBtnZh)) || fallback
+})
+const heroPrimaryLink = computed(() => homeSettings.value?.heroPrimaryLink || '/auctions')
+const heroSecondaryBtn = computed(() => {
+  const s = homeSettings.value
+  const fallback = t('home.hero.browse')
+  if (!s) return fallback
+  return (isZh.value ? (s.heroSecondaryBtnZh || s.heroSecondaryBtnEn) : (s.heroSecondaryBtnEn || s.heroSecondaryBtnZh)) || fallback
+})
+const heroSecondaryLink = computed(() => homeSettings.value?.heroSecondaryLink || '/marketplace')
+
+// 統計條：DB statsJson 優先，fallback i18n 預設
+const stats = computed<StatItem[]>(() => {
+  const raw = homeSettings.value?.statsJson
+  if (raw) {
+    try {
+      const parsed = JSON.parse(raw)
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed.map((s: any) => ({
+          value: String(s.value ?? ''),
+          labelZh: String(s.labelZh ?? s.label ?? ''),
+          labelEn: String(s.labelEn ?? s.label ?? ''),
+        }))
+      }
+    } catch { /* JSON 壞 → fallback */ }
+  }
+  // 預設三項（label 對應 i18n key）
+  return [
+    { value: '10,000+', labelZh: '拍賣總數', labelEn: 'Total Auctions' },
+    { value: '5,000+', labelZh: '用戶總數', labelEn: 'Total Users' },
+    { value: '98%', labelZh: '滿意度', labelEn: 'Satisfaction' },
+  ]
+})
+
+const fetchHomeSettings = async () => {
+  try {
+    const res = await api.get('/home-settings/public')
+    homeSettings.value = res.data || null
+  } catch {
+    homeSettings.value = null // 靜默 fallback 預設
+  }
+}
 
 // 兩個區塊統一呼叫 /api/products，只係篩選唔同：
 // 熱門拍賣 = listingTypes[]=['auction'] + withAuction（附 auction 摘要：auctionId/價/出價數/結束時間）
@@ -81,6 +140,7 @@ const fetchNewListings = async () => {
 }
 
 onMounted(() => {
+  fetchHomeSettings()
   fetchHotAuctions()
   fetchNewListings()
   fetchHotReservations()
@@ -89,20 +149,20 @@ onMounted(() => {
 
 <template>
   <div class="home">
-    <!-- Hero Banner -->
+    <!-- Hero Banner（內容管理員可編輯） -->
     <section class="hero-banner">
       <div class="banner-content">
         <h1 class="banner-title">
-          <span class="gradient-text">{{ t('home.hero.title') }}</span>
+          <span class="gradient-text">{{ heroTitle }}</span>
         </h1>
-        <p class="banner-subtitle">{{ t('home.hero.subtitle') }}</p>
+        <p class="banner-subtitle">{{ heroSubtitle }}</p>
         <div class="banner-actions">
-          <RouterLink to="/auctions" class="btn btn-primary btn-lg">
+          <RouterLink :to="heroPrimaryLink" class="btn btn-primary btn-lg">
             <Zap class="icon" />
-            {{ t('home.hero.bidNow') }}
+            {{ heroPrimaryBtn }}
           </RouterLink>
-          <RouterLink to="/marketplace" class="btn btn-outline btn-lg">
-            {{ t('home.hero.browse') }}
+          <RouterLink :to="heroSecondaryLink" class="btn btn-outline btn-lg">
+            {{ heroSecondaryBtn }}
             <ArrowRight class="icon" />
           </RouterLink>
         </div>
@@ -120,13 +180,13 @@ onMounted(() => {
       </div>
     </section>
 
-    <!-- Stats -->
+    <!-- Stats（內容管理員可編輯） -->
     <section class="stats-bar">
       <div class="container">
         <div class="stats-grid">
-          <div v-for="stat in stats" :key="stat.label" class="stat-item">
+          <div v-for="(stat, i) in stats" :key="i" class="stat-item">
             <span class="stat-value">{{ stat.value }}</span>
-            <span class="stat-label">{{ t(`home.stats.${stat.label}`) }}</span>
+            <span class="stat-label">{{ isZh ? stat.labelZh : (stat.labelEn || stat.labelZh) }}</span>
           </div>
         </div>
       </div>

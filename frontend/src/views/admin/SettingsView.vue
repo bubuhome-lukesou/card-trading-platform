@@ -350,6 +350,97 @@ const handleDeleteBanner = async (banner: BannerItem) => {
   }
 }
 
+// ===== 首頁 Hero + 統計條編輯（GET/PATCH /home-settings）=====
+interface HomeStatsRow { value: string; labelZh: string; labelEn: string }
+
+const heroForm = ref({
+  heroTitleZh: '', heroTitleEn: '',
+  heroSubtitleZh: '', heroSubtitleEn: '',
+  heroPrimaryBtnZh: '', heroPrimaryBtnEn: '', heroPrimaryLink: '',
+  heroSecondaryBtnZh: '', heroSecondaryBtnEn: '', heroSecondaryLink: '',
+  statsRows: [
+    { value: '10,000+', labelZh: '拍賣總數', labelEn: 'Total Auctions' },
+    { value: '5,000+', labelZh: '用戶總數', labelEn: 'Total Users' },
+    { value: '98%', labelZh: '滿意度', labelEn: 'Satisfaction' },
+  ] as HomeStatsRow[],
+})
+const heroLoading = ref(false)
+const heroSaving = ref(false)
+
+const loadHomeSettings = async () => {
+  heroLoading.value = true
+  try {
+    const res = await api.get('/home-settings')
+    const d = res.data || {}
+    let rows: HomeStatsRow[] = []
+    if (d.statsJson) {
+      try {
+        const parsed = JSON.parse(d.statsJson)
+        if (Array.isArray(parsed)) {
+          rows = parsed.map((s: any) => ({
+            value: String(s.value ?? ''),
+            labelZh: String(s.labelZh ?? s.label ?? ''),
+            labelEn: String(s.labelEn ?? s.label ?? ''),
+          }))
+        }
+      } catch { /* fallback 預設 */ }
+    }
+    heroForm.value = {
+      heroTitleZh: d.heroTitleZh || '',
+      heroTitleEn: d.heroTitleEn || '',
+      heroSubtitleZh: d.heroSubtitleZh || '',
+      heroSubtitleEn: d.heroSubtitleEn || '',
+      heroPrimaryBtnZh: d.heroPrimaryBtnZh || '',
+      heroPrimaryBtnEn: d.heroPrimaryBtnEn || '',
+      heroPrimaryLink: d.heroPrimaryLink || '/auctions',
+      heroSecondaryBtnZh: d.heroSecondaryBtnZh || '',
+      heroSecondaryBtnEn: d.heroSecondaryBtnEn || '',
+      heroSecondaryLink: d.heroSecondaryLink || '/marketplace',
+      statsRows: rows.length > 0 ? rows : heroForm.value.statsRows,
+    }
+  } catch (e) {
+    console.error('Failed to load home settings', e)
+  } finally {
+    heroLoading.value = false
+  }
+}
+
+const addStatRow = () => {
+  if (heroForm.value.statsRows.length >= 6) return
+  heroForm.value.statsRows.push({ value: '', labelZh: '', labelEn: '' })
+}
+
+const removeStatRow = (i: number) => {
+  heroForm.value.statsRows.splice(i, 1)
+}
+
+const saveHomeSettings = async () => {
+  // 必填：至少一項統計（value 非空）
+  const rows = heroForm.value.statsRows.filter(r => r.value.trim())
+  if (rows.length === 0) { alert('請至少填一項統計（數值）'); return }
+  heroSaving.value = true
+  try {
+    await api.patch('/home-settings', {
+      heroTitleZh: heroForm.value.heroTitleZh || null,
+      heroTitleEn: heroForm.value.heroTitleEn || null,
+      heroSubtitleZh: heroForm.value.heroSubtitleZh || null,
+      heroSubtitleEn: heroForm.value.heroSubtitleEn || null,
+      heroPrimaryBtnZh: heroForm.value.heroPrimaryBtnZh || null,
+      heroPrimaryBtnEn: heroForm.value.heroPrimaryBtnEn || null,
+      heroPrimaryLink: heroForm.value.heroPrimaryLink || null,
+      heroSecondaryBtnZh: heroForm.value.heroSecondaryBtnZh || null,
+      heroSecondaryBtnEn: heroForm.value.heroSecondaryBtnEn || null,
+      heroSecondaryLink: heroForm.value.heroSecondaryLink || null,
+      statsJson: JSON.stringify(rows),
+    })
+    alert('首頁內容已保存，刷新首頁即見')
+  } catch (e: any) {
+    alert(e?.response?.data?.message || '保存失敗')
+  } finally {
+    heroSaving.value = false
+  }
+}
+
 onMounted(async () => {
   loading.value = true
   try {
@@ -374,7 +465,7 @@ onMounted(async () => {
       <button class="tab-btn" :class="{ active: activeTab === 'general' }" @click="activeTab = 'general'">
         ⚙️ 平台設定
       </button>
-      <button class="tab-btn" :class="{ active: activeTab === 'banners' }" @click="activeTab === 'banners' || loadBanners(); activeTab = 'banners'">
+      <button class="tab-btn" :class="{ active: activeTab === 'banners' }" @click="activeTab === 'banners' || (loadBanners(), loadHomeSettings()); activeTab = 'banners'">
         📢 廣告設置
       </button>
       <button class="tab-btn" :class="{ active: activeTab === 'pages' }" @click="activeTab === 'pages' || loadPages(); activeTab = 'pages'">
@@ -428,6 +519,70 @@ onMounted(async () => {
 
     <!-- ===== Banners Tab ===== -->
     <template v-if="activeTab === 'banners'">
+      <!-- 首頁 Hero + 統計條編輯 -->
+      <div class="settings-card">
+        <h3 class="section-title">🏠 首頁主視覺（Hero + 統計條）</h3>
+        <p class="section-desc">首頁頂部標題、副標題、兩粒按鈕同下方統計條（例：98% 滿意度）。留空 = 用預設值。保存後刷新首頁即見。</p>
+
+        <div v-if="heroLoading" class="pages-loading">加載中...</div>
+        <template v-else>
+          <div class="form-grid">
+            <div class="form-group">
+              <label>主標題（中文）</label>
+              <input v-model="heroForm.heroTitleZh" type="text" placeholder="珍稀卡牌 限時競拍" maxlength="200" />
+            </div>
+            <div class="form-group">
+              <label>主標題（英文）</label>
+              <input v-model="heroForm.heroTitleEn" type="text" placeholder="Rare Cards, Live Auctions" maxlength="200" />
+            </div>
+            <div class="form-group">
+              <label>副標題（中文）</label>
+              <input v-model="heroForm.heroSubtitleZh" type="text" placeholder="發現最珍貴的收藏卡牌，參與激動人心的即時競拍" maxlength="300" />
+            </div>
+            <div class="form-group">
+              <label>副標題（英文）</label>
+              <input v-model="heroForm.heroSubtitleEn" type="text" placeholder="Discover rare collectible cards..." maxlength="300" />
+            </div>
+          </div>
+
+          <div class="form-grid">
+            <div class="form-group">
+              <label>主按鈕文字（中文）</label>
+              <input v-model="heroForm.heroPrimaryBtnZh" type="text" placeholder="立即競拍" maxlength="60" />
+            </div>
+            <div class="form-group">
+              <label>主按鈕連結</label>
+              <input v-model="heroForm.heroPrimaryLink" type="text" placeholder="/auctions" />
+            </div>
+            <div class="form-group">
+              <label>副按鈕文字（中文）</label>
+              <input v-model="heroForm.heroSecondaryBtnZh" type="text" placeholder="瀏覽商品" maxlength="60" />
+            </div>
+            <div class="form-group">
+              <label>副按鈕連結</label>
+              <input v-model="heroForm.heroSecondaryLink" type="text" placeholder="/marketplace" />
+            </div>
+          </div>
+
+          <div class="hero-stats-editor">
+            <div class="stats-rows-header">
+              <span class="stats-rows-title">統計條項目（{{ heroForm.statsRows.length }}/6）</span>
+              <button class="banner-btn" :disabled="heroForm.statsRows.length >= 6" @click="addStatRow">+ 添加項目</button>
+            </div>
+            <div v-for="(row, i) in heroForm.statsRows" :key="i" class="stats-row">
+              <input v-model="row.value" type="text" placeholder="數值（例：98%）" maxlength="20" class="stats-input-value" />
+              <input v-model="row.labelZh" type="text" placeholder="標籤中文（例：滿意度）" maxlength="30" />
+              <input v-model="row.labelEn" type="text" placeholder="Label EN" maxlength="30" />
+              <button class="banner-btn-delete" :disabled="heroForm.statsRows.length <= 1" @click="removeStatRow(i)">🗑️</button>
+            </div>
+          </div>
+
+          <button class="btn-primary add-banner-btn" :disabled="heroSaving" @click="saveHomeSettings">
+            {{ heroSaving ? '保存中...' : '💾 保存首頁內容' }}
+          </button>
+        </template>
+      </div>
+
       <div class="settings-card">
         <h3 class="section-title">首頁廣告走馬燈</h3>
         <p class="section-desc">圖片建議 1200×300 橫幅（手機自動調整比例）。排序越小越前，停用嘅不顯示。點擊可跳轉連結（留空 = 純展示）。</p>
@@ -741,6 +896,17 @@ onMounted(async () => {
 
 /* ===== 廣告走馬燈管理 ===== */
 .banner-form { margin-top: var(--space-4); display: flex; flex-direction: column; gap: var(--space-4); }
+
+/* ===== 首頁 Hero + 統計條編輯 ===== */
+.hero-stats-editor { margin-top: var(--space-4); display: flex; flex-direction: column; gap: var(--space-3); }
+.stats-rows-header { display: flex; justify-content: space-between; align-items: center; }
+.stats-rows-title { font-weight: 600; font-size: var(--text-sm); }
+.stats-row { display: grid; grid-template-columns: 140px 1fr 1fr 44px; gap: var(--space-2); align-items: center; }
+.stats-row .stats-input-value { font-weight: 600; }
+.stats-row button:disabled { opacity: 0.4; cursor: not-allowed; }
+@media (max-width: 767px) {
+  .stats-row { grid-template-columns: 1fr 1fr; }
+}
 .banner-preview { margin-top: var(--space-2); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; max-width: 400px; }
 .banner-preview img { width: 100%; display: block; }
 .add-banner-btn { align-self: flex-start; padding: var(--space-2) var(--space-6); border: none; border-radius: var(--radius-lg); cursor: pointer; font-weight: 600; }
