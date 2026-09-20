@@ -1,8 +1,8 @@
 {
   "app": {
-    "name": "Card Quest",
-    "tagline": "珍稀卡牌 盡在Card Quest",
-    "description": "Card Quest 是領先的卡牌拍賣平台，為全球收藏家提供安全、透明的競拍環境。"
+    "name": "PicardChu",
+    "tagline": "珍稀卡牌 盡在PicardChu",
+    "description": "PicardChu 是領先的卡牌拍賣平台，為全球收藏家提供安全、透明的競拍環境。"
   },
   "nav": {
     "home": "首頁",
@@ -67,7 +67,7 @@
     "seeAll": "查看全部",
     "cta": {
       "title": "成為賣家，開始交易",
-      "desc": "在 Card Quest 開店，銷售您的珍稀卡牌收藏",
+      "desc": "在 PicardChu 開店，銷售您的珍稀卡牌收藏",
       "button": "立即入駐"
     },
     "featuredAuctions": {

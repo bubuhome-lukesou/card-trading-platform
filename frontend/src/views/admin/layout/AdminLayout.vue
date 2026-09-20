@@ -31,7 +31,7 @@ const handleLogout = async () => {
     <!-- Desktop Sidebar -->
     <aside class="sidebar sidebar-desktop">
       <div class="sidebar-header">
-        <router-link to="/" class="logo">🃏 Card Quest</router-link>
+        <router-link to="/" class="logo"><img src="@/assets/logo-128.png" alt="PicardChu" class="logo-img" /> PicardChu</router-link>
         <span class="badge admin">Admin</span>
       </div>
       <nav class="sidebar-nav">
@@ -70,7 +70,7 @@ const handleLogout = async () => {
       <div v-if="sidebarOpen" class="mobile-panel-overlay" @click="sidebarOpen = false">
         <div class="mobile-panel" @click.stop>
           <div class="mobile-panel-header">
-            <router-link to="/" class="logo" @click="sidebarOpen = false">🃏 Card Quest</router-link>
+            <router-link to="/" class="logo" @click="sidebarOpen = false"><img src="@/assets/logo-128.png" alt="PicardChu" class="logo-img" /> PicardChu</router-link>
             <span class="badge admin">Admin</span>
           </div>
           <div class="mobile-nav-grid">
@@ -137,6 +137,16 @@ const handleLogout = async () => {
   font-weight: 700;
   color: var(--text-primary);
   text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.logo-img {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-md);
+  object-fit: cover;
 }
 
 .badge.admin {

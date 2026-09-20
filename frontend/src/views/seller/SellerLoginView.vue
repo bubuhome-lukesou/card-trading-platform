@@ -52,20 +52,10 @@ const handleLogin = async () => {
     <div class="login-container">
       <div class="login-header">
         <div class="logo">
-          <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
-            <circle cx="24" cy="24" r="24" fill="url(#grad)"/>
-            <path d="M24 12L30 20L24 28L18 20L24 12Z" fill="white" opacity="0.9"/>
-            <path d="M24 28L30 36H18L24 28Z" fill="white" opacity="0.6"/>
-            <defs>
-              <linearGradient id="grad" x1="0" y1="0" x2="48" y2="48">
-                <stop offset="0%" stop-color="#f093fb"/>
-                <stop offset="100%" stop-color="#f5576c"/>
-              </linearGradient>
-            </defs>
-          </svg>
+          <img src="@/assets/logo-128.png" alt="PicardChu" class="login-logo-img" />
         </div>
         <h1>商家登錄</h1>
-        <p>Card Quest 商家管理系統</p>
+        <p>PicardChu 商家管理系統</p>
       </div>
 
       <form @submit.prevent="handleLogin" class="login-form">
@@ -130,6 +120,13 @@ const handleLogin = async () => {
 
 .logo {
   margin-bottom: var(--space-4);
+}
+
+.login-logo-img {
+  width: 64px;
+  height: 64px;
+  border-radius: var(--radius-xl);
+  object-fit: cover;
 }
 
 .login-header h1 {

@@ -75,8 +75,8 @@ const userMenuItems = computed(() => {
       <div class="header-content">
         <!-- Logo -->
         <RouterLink to="/" class="logo">
-          <div class="logo-icon">🃏</div>
-          <span class="logo-text">Card Quest</span>
+          <img src="@/assets/logo-128.png" alt="PicardChu" class="logo-img" />
+          <span class="logo-text">PicardChu</span>
         </RouterLink>
 
         <!-- Search Bar -->
@@ -211,8 +211,8 @@ const userMenuItems = computed(() => {
         <!-- Brand -->
         <div class="footer-brand">
           <div class="footer-logo">
-            <span class="logo-icon">🃏</span>
-            <span class="logo-text">Card Quest</span>
+            <img src="@/assets/logo-128.png" alt="PicardChu" class="footer-logo-img" />
+            <span class="logo-text">PicardChu</span>
           </div>
           <p class="footer-desc">{{ t('app.description') }}</p>
           <div class="footer-social">
@@ -246,7 +246,7 @@ const userMenuItems = computed(() => {
       </div>
 
       <div class="footer-bottom">
-        <p>© 2026 Card Quest. {{ t('footer.rights') }}</p>
+        <p>© 2026 PicardChu. {{ t('footer.rights') }}</p>
       </div>
     </footer>
   </div>
@@ -294,8 +294,11 @@ const userMenuItems = computed(() => {
   text-decoration: none;
   flex-shrink: 0;
 
-  .logo-icon {
-    font-size: 28px;
+  .logo-img {
+    width: 36px;
+    height: 36px;
+    border-radius: var(--radius-md);
+    object-fit: cover;
   }
 
   .logo-text {
@@ -309,8 +312,9 @@ const userMenuItems = computed(() => {
   }
 
   @media (max-width: 768px) {
-    .logo-icon {
-      font-size: 22px;
+    .logo-img {
+      width: 30px;
+      height: 30px;
     }
     .logo-text {
       font-size: var(--text-lg);
@@ -609,8 +613,11 @@ const userMenuItems = computed(() => {
     gap: var(--space-2);
     margin-bottom: var(--space-4);
 
-    .logo-icon {
-      font-size: 28px;
+    .footer-logo-img {
+      width: 40px;
+      height: 40px;
+      border-radius: var(--radius-md);
+      object-fit: cover;
     }
 
     .logo-text {

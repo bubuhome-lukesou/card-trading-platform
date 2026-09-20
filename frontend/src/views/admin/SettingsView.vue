@@ -89,7 +89,7 @@ const savePage = async () => {
 // 註：platformName/platformUrl/supportEmail/supportPhone/platformFee 等欄位後端未支持保存（#8），
 // 隱藏假欄位直到後端實作；目前只保留取貨資訊 + QR + 密碼修改
 const settings = ref({
-  platformName: 'Card Quest',
+  platformName: 'PicardChu',
   platformUrl: 'https://card.aishoper.co',
   supportEmail: 'support@cardquest.com',
   supportPhone: '+853 1234 5678',
