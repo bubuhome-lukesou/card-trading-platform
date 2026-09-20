@@ -15,7 +15,7 @@ const bids = ref<any[]>([])
 const loading = ref(true)
 
 // ===== 統計（summary-bar 風格，同訂單頁口徑） =====
-// 累計消費 = delivered 訂單總額（同「我的訂單」累計消費一致）
+// 累計消費 = confirmed,shipped,delivered（全站收款口徑，同 admin 用戶管理 totalSpend 一致；訂金已確認即已付出）
 // 進行中 = pending/pending_paid/confirmed/shipped
 const stats = computed(() => {
   const activeBids = bids.value.filter((b: any) => {
@@ -29,7 +29,7 @@ const stats = computed(() => {
     totalBids: bids.value.length,
     activeBids,
     totalSpent: orders.value
-      .filter((o: any) => ['delivered'].includes(o.status))
+      .filter((o: any) => ['confirmed', 'shipped', 'delivered'].includes(o.status))
       .reduce((sum: number, o: any) => sum + (Number(o.totalPrice) || 0), 0),
   }
 })

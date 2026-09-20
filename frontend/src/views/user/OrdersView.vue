@@ -163,6 +163,7 @@ watch(searchQuery, () => { currentPage.value = 1 })
 watch(filterStatus, () => { currentPage.value = 1 })
 
 // ===== 統計條（同 seller summary-bar 風格） =====
+// 累計消費口徑 = confirmed,shipped,delivered（全站收款口徑：訂金已確認即已付出，同 admin 用戶管理 totalSpend 一致）
 const summary = computed(() => {
   const done = ['confirmed', 'shipped', 'delivered']
   return {
@@ -170,7 +171,7 @@ const summary = computed(() => {
     todo: todoCount.value,
     shipped: orders.value.filter(o => o.status === 'shipped').length,
     totalSpent: orders.value
-      .filter(o => ['delivered'].includes(o.status))
+      .filter(o => done.includes(o.status))
       .reduce((s, o) => s + (Number(o.amount) || 0), 0),
   }
 })
