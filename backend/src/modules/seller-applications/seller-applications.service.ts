@@ -70,22 +70,39 @@ export class SellerApplicationsService {
     })
   }
 
-  // 管理員：獲取所有待審批申請
-  async getPendingApplications(): Promise<SellerApplication[]> {
-    return this.applicationRepo.find({
+  // 管理員：獲取所有待審批申請（響應剝離 password hash）
+  async getPendingApplications(): Promise<Omit<SellerApplication, 'password'>[]> {
+    const data = await this.applicationRepo.find({
       where: { status: SellerApplicationStatus.PENDING },
       order: { createdAt: 'ASC' }
     })
+    return data.map(({ password: _pw, ...safe }) => safe as Omit<SellerApplication, 'password'>)
   }
 
-  // 管理員：獲取所有申請（分頁）
-  async getAllApplications(page = 1, limit = 20): Promise<{ data: SellerApplication[]; total: number }> {
-    const [data, total] = await this.applicationRepo.findAndCount({
-      order: { createdAt: 'DESC' },
-      skip: (page - 1) * limit,
-      take: limit,
-    })
-    return { data, total }
+  // 管理員：獲取所有申請（分頁 + 狀態/搜尋篩選；響應剝離 password hash）
+  async getAllApplications(
+    page = 1,
+    limit = 20,
+    status?: string,
+    search?: string,
+  ): Promise<{ data: Omit<SellerApplication, 'password'>[]; total: number }> {
+    const qb = this.applicationRepo
+      .createQueryBuilder('app')
+      .orderBy('app.createdAt', 'DESC')
+      .skip((page - 1) * limit)
+      .take(limit)
+    if (status && status !== 'all') {
+      qb.andWhere('app.status = :status', { status })
+    }
+    if (search && search.trim()) {
+      const kw = `%${search.trim()}%`
+      qb.andWhere('(app.storeName LIKE :kw OR app.nickname LIKE :kw OR app.email LIKE :kw)', { kw })
+    }
+    const [data, total] = await qb.getManyAndCount()
+    return {
+      data: data.map(({ password: _pw, ...safe }) => safe as Omit<SellerApplication, 'password'>),
+      total,
+    }
   }
 
   // 管理員：審批通過 — 創建商家帳號

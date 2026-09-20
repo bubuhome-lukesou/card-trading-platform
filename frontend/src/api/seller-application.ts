@@ -25,9 +25,9 @@ export const sellerApplicationApi = {
     return api.get('/seller-applications/pending')
   },
 
-  // Admin: Get all applications
-  getAllApplications(page = 1, limit = 20) {
-    return api.get('/seller-applications', { params: { page, limit } })
+  // Admin: Get all applications（後端支援 status/search 篩選，2026-09-20）
+  getAllApplications(page = 1, limit = 20, status?: string, search?: string) {
+    return api.get('/seller-applications', { params: { page, limit, status, search } })
   },
 
   // Admin: Approve application

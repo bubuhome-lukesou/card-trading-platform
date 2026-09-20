@@ -1,41 +1,38 @@
 <script setup lang="ts">
-import { formatPrice, formatDate } from '@/utils/format'
+import { formatPrice, formatDate, formatDateTime } from '@/utils/format'
 import StateView from '@/components/common/StateView.vue'
-import { ref, computed, onMounted } from 'vue'
-import { useI18n } from 'vue-i18n'
+import { ref, computed, watch, onMounted } from 'vue'
 import { ordersApi } from '@/api/orders'
-import { cartApi } from '@/api/cart'
-import { useRouter } from 'vue-router'
 import api from '@/api/index'
-
-const { t } = useI18n()
-const router = useRouter()
 
 interface Order {
   id: string
-  orderNumber: string
   productTitle: string
   productImage?: string
   sellerId: string
   sellerNickname: string
   amount: number
   quantity: number
-  status: 'pending' | 'shipped' | 'delivered' | 'cancelled' | 'refunded' | 'pending_paid' | 'confirmed'
-  type: 'direct_purchase' | 'buy_now' | 'auction_win' | 'reservation'
+  status: string
+  type: string
   createdAt: string
   transferReceipt?: string
   transferTime?: string
   balanceReceipt?: string
   balanceTime?: string
   fullPrice?: number // 預約商品全價（顯示為尾款）
+  shippingAddress?: string
+  trackingNumber?: string
+  paymentTime?: string
+  shippingTime?: string
+  deliveryTime?: string
+  notes?: string
 }
 
 const orders = ref<Order[]>([])
 const loading = ref(true)
-const filterStatus = ref('all')
 const uploadingReceipt = ref<string | null>(null)
 const processingPay = ref<string | null>(null)
-const expandedOrderId = ref<string | null>(null)
 const toastMessage = ref('')
 const toastType = ref<'success' | 'error'>('success')
 let toastTimer: ReturnType<typeof setTimeout> | null = null
@@ -54,56 +51,179 @@ const resolveImageUrl = (url: string) => {
   return apiBaseUrl + url
 }
 
-// 預約攞貨彈窗（備用，如需直接操作 reservation 記錄時使用）
-const showPickupModal = ref(false)
-const pickupInfo = ref('')
-const pickupQrCode = ref('')
-const pendingReserveOrderId = ref<string | null>(null)
-const submittingReserve = ref(false)
+// ===== 狀態 tabs（同 seller 訂單管理樣式；口徑按買家視角） =====
+const TAB_DEFS: { key: string; label: string }[] = [
+  { key: 'todo', label: '進行中' },
+  { key: 'all', label: '全部' },
+  { key: 'pending', label: '待付款' },
+  { key: 'pending_paid', label: '待確認' },
+  { key: 'confirmed', label: '待收貨' },
+  { key: 'shipped', label: '已發貨' },
+  { key: 'delivered', label: '已完成' },
+  { key: 'cancelled', label: '已取消' },
+]
+const TAB_STATUSES: Record<string, string[]> = {
+  todo: ['pending', 'pending_paid', 'confirmed', 'shipped'],
+  all: [],
+  pending: ['pending'],
+  pending_paid: ['pending_paid'],
+  confirmed: ['confirmed'],
+  shipped: ['shipped'],
+  delivered: ['delivered'],
+  cancelled: ['cancelled'],
+}
+const filterStatus = ref<string>('all')
 
-const filteredOrders = computed(() => {
-  if (filterStatus.value === 'all') return orders.value
-  return orders.value.filter(o => o.status === filterStatus.value)
-})
-
-const getStatusBadge = (status: string, orderType?: string) => {
-  // 預約訂單狀態文字
-  if (orderType === 'reservation') {
-    const map: Record<string, { class: string; text: string }> = {
-      pending: { class: 'pending', text: '待付訂金' },
-      pending_paid: { class: 'pending-paid', text: '待確認' },
-      confirmed: { class: 'confirmed', text: '待付尾款' },
-      delivered: { class: 'delivered', text: '已完成' },
-    }
-    return map[status] || { class: 'default', text: status }
-  }
-  // 普通訂單狀態
-  const map: Record<string, { class: string; text: string }> = {
-    pending: { class: 'pending', text: '待付款' },
-    pending_paid: { class: 'pending-paid', text: '待確認' },
-    confirmed: { class: 'confirmed', text: '已確認' },
-    shipped: { class: 'shipped', text: '已發貨' },
-    delivered: { class: 'delivered', text: '已完成' },
-    cancelled: { class: 'cancelled', text: '已取消' },
-    refunded: { class: 'refunded', text: '已退款' },
-  }
-  return map[status] || { class: 'default', text: status }
+const tabCount = (key: string): number => {
+  const sts = TAB_STATUSES[key]
+  if (!sts || !sts.length) return orders.value.length
+  return orders.value.filter(o => sts.includes(o.status)).length
 }
 
-const getTypeText = (type: string) => {
-  const map: Record<string, string> = {
-    direct_purchase: '直購',
-    buy_now: '立即購買',
-    auction_win: '拍賣贏取',
-    reservation: '預約',
+const todoCount = computed(() => tabCount('todo'))
+
+// ===== 搜尋 / 排序 / 分頁 =====
+const PAGE_SIZE = 20
+const searchQuery = ref('')
+const currentPage = ref(1)
+const sortKey = ref('')
+const sortDir = ref<'asc' | 'desc'>('desc')
+
+const sortableColumns = [
+  { key: 'productTitle', label: '商品', type: 'text' },
+  { key: 'sellerNickname', label: '商家', type: 'text' },
+  { key: 'amount', label: '金額', type: 'number' },
+  { key: 'status', label: '狀態', type: 'text' },
+  { key: 'createdAt', label: '時間', type: 'time' },
+] as const
+
+const toggleSort = (key: string) => {
+  if (sortKey.value === key) {
+    sortDir.value = sortDir.value === 'asc' ? 'desc' : 'asc'
+  } else {
+    sortKey.value = key
+    sortDir.value = 'asc'
   }
-  return map[type] || type
+  currentPage.value = 1
+}
+
+// 數字/時間按數值；文字按 UTF-16 二進碼序（與 seller 訂單管理一致）
+const compareOrders = (a: Order, b: Order, col: { key: string; type: string }): number => {
+  let cmp = 0
+  if (col.type === 'number' || col.type === 'time') {
+    cmp =
+      (Number(col.type === 'time' ? new Date(a.createdAt).getTime() : (a as any)[col.key]) || 0) -
+      (Number(col.type === 'time' ? new Date(b.createdAt).getTime() : (b as any)[col.key]) || 0)
+  } else {
+    const as = String((a as any)[col.key] ?? '')
+    const bs = String((b as any)[col.key] ?? '')
+    cmp = as < bs ? -1 : as > bs ? 1 : 0
+  }
+  return sortDir.value === 'asc' ? cmp : -cmp
+}
+
+// ===== 過濾：狀態 → 搜尋 =====
+const filteredOrders = computed(() => {
+  let result = orders.value
+  const sts = TAB_STATUSES[filterStatus.value]
+  if (sts && sts.length) {
+    result = result.filter(o => sts.includes(o.status))
+  }
+  const q = searchQuery.value.trim().toLowerCase()
+  if (q) {
+    result = result.filter(o =>
+      o.productTitle.toLowerCase().includes(q) ||
+      o.sellerNickname.toLowerCase().includes(q)
+    )
+  }
+  // 預設排序：進行中優先 → 最新在前
+  if (!sortKey.value) {
+    const todoIdx = (s: string) => (TAB_STATUSES.todo.includes(s) ? 0 : 1)
+    return [...result].sort(
+      (a, b) =>
+        todoIdx(a.status) - todoIdx(b.status) ||
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    )
+  }
+  const col = sortableColumns.find(c => c.key === sortKey.value)
+  if (!col) return result
+  return [...result].sort((a, b) => compareOrders(a, b, col))
+})
+
+const totalPages = computed(() => Math.max(1, Math.ceil(filteredOrders.value.length / PAGE_SIZE)))
+const pagedOrders = computed(() => {
+  const start = (currentPage.value - 1) * PAGE_SIZE
+  return filteredOrders.value.slice(start, start + PAGE_SIZE)
+})
+const goToPage = (p: number) => {
+  if (p < 1 || p > totalPages.value) return
+  currentPage.value = p
+}
+watch(searchQuery, () => { currentPage.value = 1 })
+watch(filterStatus, () => { currentPage.value = 1 })
+
+// ===== 統計條（同 seller summary-bar 風格） =====
+const summary = computed(() => {
+  const done = ['confirmed', 'shipped', 'delivered']
+  return {
+    total: orders.value.filter(o => o.status !== 'cancelled').length,
+    todo: todoCount.value,
+    shipped: orders.value.filter(o => o.status === 'shipped').length,
+    totalSpent: orders.value
+      .filter(o => ['delivered'].includes(o.status))
+      .reduce((s, o) => s + (Number(o.amount) || 0), 0),
+  }
+})
+
+// ===== 類型 tag（色制同 seller：直購綠/拍賣粉/預約琥珀） =====
+const ORDER_TYPE: Record<string, { text: string; cls: string }> = {
+  direct_purchase: { text: '直購', cls: 't-sale' },
+  buy_now: { text: '拍賣直購', cls: 't-auction' },
+  auction_win: { text: '拍賣得標', cls: 't-auction' },
+  reservation_deposit: { text: '預約訂金', cls: 't-reserve' },
+  reservation_full: { text: '預約尾款', cls: 't-reserve' },
+}
+const typeTag = (type: string) => ORDER_TYPE[type] || { text: type, cls: 't-sale' }
+
+// ===== 狀態徽章（買家視角：confirmed=待收貨/待付尾款） =====
+const getStatusBadge = (status: string, orderType?: string) => {
+  if (orderType === 'reservation_deposit') {
+    const map: Record<string, { class: string; text: string }> = {
+      pending: { class: 'st-pending', text: '待付訂金' },
+      pending_paid: { class: 'st-pending-paid', text: '待商家確認' },
+      confirmed: { class: 'st-confirmed', text: '待付尾款' },
+      delivered: { class: 'st-delivered', text: '已完成' },
+      cancelled: { class: 'st-cancelled', text: '已取消' },
+    }
+    return map[status] || { class: 'st-default', text: status }
+  }
+  const map: Record<string, { class: string; text: string }> = {
+    pending: { class: 'st-pending', text: '待付款' },
+    pending_paid: { class: 'st-pending-paid', text: '待商家確認' },
+    confirmed: { class: 'st-confirmed', text: '待收貨' },
+    shipped: { class: 'st-shipped', text: '已發貨' },
+    delivered: { class: 'st-delivered', text: '已完成' },
+    cancelled: { class: 'st-cancelled', text: '已取消' },
+    refunded: { class: 'st-cancelled', text: '已退款' },
+  }
+  return map[status] || { class: 'st-default', text: status }
+}
+
+// ===== 下一步提示（買家視角） =====
+const nextStepFor = (o: Order): string => {
+  if (o.status === 'pending') return o.type === 'reservation_deposit' ? '請上傳訂金憑證' : '請上傳付款憑證'
+  if (o.status === 'pending_paid') return '等待商家確認收款'
+  if (o.status === 'confirmed') {
+    return o.type === 'reservation_deposit' ? '請到店支付尾款' : '待商家發貨'
+  }
+  if (o.status === 'shipped') return '請確認收貨'
+  return ''
 }
 
 const loadOrders = async () => {
   loading.value = true
   try {
-    const res = await ordersApi.getMyOrders()
+    const res = await ordersApi.getMyOrders(1, 200)
     const list = Array.isArray(res.data) ? res.data : (res.data?.data || [])
     orders.value = list.map((o: any) => {
       let images: string[] = []
@@ -112,36 +232,28 @@ const loadOrders = async () => {
           ? JSON.parse(o.product.images)
           : (Array.isArray(o.product?.images) ? o.product.images : [])
       } catch {}
-      // 將 backend 類型映射到前端顯示類型
-      let displayType = o.type
-      if (o.type === 'reservation_deposit' || o.type === 'reservation_full') {
-        displayType = 'reservation'
-      }
-      // 預約訂單的狀態映射：pending -> 待付訂金, confirmed -> 待付尾款
-      let displayStatus = o.status
-      if (displayType === 'reservation') {
-        if (o.status === 'pending') displayStatus = 'pending'
-        else if (o.status === 'pending_paid') displayStatus = 'pending_paid'
-        else if (o.status === 'confirmed') displayStatus = 'confirmed'
-        else if (o.status === 'delivered') displayStatus = 'delivered'
-      }
       return {
         id: o.id,
-        orderNumber: o.orderNumber,
         productTitle: o.product?.titleZh || o.product?.titleEn || '未知商品',
         productImage: images[0] || '',
         sellerId: o.sellerId || '',
-        sellerNickname: o.seller?.nickname || o.seller?.username || (o.sellerId ? `賣家${o.sellerId.slice(0,8)}` : '未知賣家'),
+        sellerNickname: o.seller?.nickname || '未知商家',
         amount: Number(o.totalPrice) || 0,
         quantity: o.quantity || 1,
-        status: displayStatus,
-        type: displayType,
+        status: o.status,
+        type: o.type,
         createdAt: o.createdAt,
-        transferReceipt: o.transferReceipt,
-        transferTime: o.transferTime,
-        balanceReceipt: o.balanceReceipt,
-        balanceTime: o.balanceTime,
-        fullPrice: displayType === 'reservation' ? Number(o.product?.price) || 0 : undefined,
+        transferReceipt: o.transferReceipt || undefined,
+        transferTime: o.transferTime || undefined,
+        balanceReceipt: o.balanceReceipt || undefined,
+        balanceTime: o.balanceTime || undefined,
+        fullPrice: (o.type === 'reservation_deposit' || o.type === 'reservation_full') ? Number(o.product?.price) || 0 : undefined,
+        shippingAddress: o.shippingAddress || undefined,
+        trackingNumber: o.trackingNumber || undefined,
+        paymentTime: o.paymentTime || undefined,
+        shippingTime: o.shippingTime || undefined,
+        deliveryTime: o.deliveryTime || undefined,
+        notes: o.notes || undefined,
       }
     })
   } catch (error) {
@@ -152,11 +264,10 @@ const loadOrders = async () => {
   }
 }
 
+// ===== 操作（全部保留原有流程） =====
 const handlePay = async (orderId: string) => {
   processingPay.value = orderId
   try {
-    // For pending orders: buyer uploads receipt to move to pending_paid
-    // Since there's no payment gateway, "立即支付" triggers receipt upload
     const fileInput = document.createElement('input')
     fileInput.type = 'file'
     fileInput.accept = 'image/*'
@@ -184,22 +295,14 @@ const handlePay = async (orderId: string) => {
   }
 }
 
-const toggleOrderDetail = (orderId: string) => {
-  expandedOrderId.value = expandedOrderId.value === orderId ? null : orderId
-}
-
-const handleReceive = async (orderId: string) => {
-  try {
-    await ordersApi.updateStatus(orderId, 'delivered')
-    await loadOrders()
-  } catch (error) {
-    console.error('Confirm failed:', error)
-    showToast('操作失敗，請重試', 'error')
-  }
-}
+// 預約攞貨彈窗
+const showPickupModal = ref(false)
+const pickupInfo = ref('')
+const pickupQrCode = ref('')
+const pendingReserveOrderId = ref<string | null>(null)
+const submittingReserve = ref(false)
 
 const handleReserve = async (orderId: string, sellerId: string) => {
-  // 根據 sellerId 獲取該商家的取貨資訊
   try {
     const res = await api.get(`/users/seller/${sellerId}/pickup-info`)
     pickupInfo.value = res.data.pickupInfo || ''
@@ -216,8 +319,6 @@ const confirmReserve = async () => {
   if (!pendingReserveOrderId.value) return
   submittingReserve.value = true
   try {
-    // S9: Upload transfer receipt to move order to pending_paid (not direct status update)
-    // Trigger file picker for the buyer to upload payment proof
     const input = document.createElement('input')
     input.type = 'file'
     input.accept = 'image/*'
@@ -307,10 +408,42 @@ const handleUploadReceipt = async (orderId: string, file: File) => {
   }
 }
 
+const handleReceive = async (orderId: string) => {
+  try {
+    await ordersApi.updateStatus(orderId, 'delivered')
+    await loadOrders()
+    showToast('已確認收貨')
+  } catch (error) {
+    console.error('Confirm failed:', error)
+    showToast('操作失敗，請重試', 'error')
+  }
+}
+
 const viewReceipt = (url: string) => {
   receiptImageUrl.value = url
   showReceiptModal.value = true
 }
+
+// ===== 訂單詳情彈出層 =====
+const detailOrder = ref<Order | null>(null)
+const openDetail = (o: Order) => { detailOrder.value = o }
+const closeDetail = () => { detailOrder.value = null }
+
+const detailTimeline = computed(() => {
+  const o = detailOrder.value
+  if (!o) return []
+  const items: { label: string; time: string; done: boolean }[] = [
+    { label: '訂單建立', time: o.createdAt, done: true },
+    { label: o.type === 'reservation_deposit' ? '訂金憑證上傳' : '付款憑證上傳', time: o.transferTime || '', done: !!o.transferTime },
+    { label: '商家確認收款', time: o.paymentTime || o.balanceTime || '', done: !!(o.paymentTime || o.balanceTime) },
+    { label: '發貨', time: o.shippingTime || '', done: !!o.shippingTime },
+    { label: '完成', time: o.deliveryTime || '', done: !!o.deliveryTime },
+  ]
+  if (o.type === 'reservation_deposit' && o.balanceTime) {
+    items[2] = { label: '商家確認收款（含尾款）', time: o.balanceTime, done: true }
+  }
+  return items
+})
 
 onMounted(() => {
   loadOrders()
@@ -318,275 +451,388 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="orders-page">
-    <!-- Toast notification -->
+  <div class="orders-management">
+    <!-- Toast -->
     <Transition name="toast">
       <div v-if="toastMessage" class="toast" :class="toastType">
         {{ toastMessage }}
       </div>
     </Transition>
-    <h1 class="page-title">我的訂單</h1>
 
-    <!-- Filter Tabs -->
-    <div class="filter-tabs">
-      <button 
-        class="tab" 
-        :class="{ active: filterStatus === 'all' }"
-        @click="filterStatus = 'all'"
+    <!-- 頂部統計條（同 seller summary-bar） -->
+    <div v-if="!loading" class="summary-bar">
+      <div class="stat-item">
+        <span class="stat-label">訂單</span>
+        <span class="stat-value">{{ summary.total }} <small>筆</small></span>
+      </div>
+      <div class="stat-item" :class="{ alert: summary.todo > 0 }">
+        <span class="stat-label">進行中</span>
+        <span class="stat-value">{{ summary.todo }} <small>筆</small></span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-label">待收貨</span>
+        <span class="stat-value">{{ summary.shipped }} <small>筆</small></span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-label">累計消費</span>
+        <span class="stat-value money">{{ formatPrice(summary.totalSpent) }}</span>
+      </div>
+    </div>
+
+    <!-- 狀態 tabs -->
+    <div class="list-tabs">
+      <button
+        v-for="tab in TAB_DEFS"
+        :key="tab.key"
+        class="list-tab"
+        :class="{ active: filterStatus === tab.key }"
+        @click="filterStatus = tab.key"
       >
-        全部 ({{ orders.length }})
-      </button>
-      <button 
-        class="tab" 
-        :class="{ active: filterStatus === 'pending' }"
-        @click="filterStatus = 'pending'"
-      >
-        待付款 ({{ orders.filter(o => o.status === 'pending').length }})
-      </button>
-      <button 
-        class="tab" 
-        :class="{ active: filterStatus === 'pending_paid' }"
-        @click="filterStatus = 'pending_paid'"
-      >
-        待確認 ({{ orders.filter(o => o.status === 'pending_paid').length }})
-      </button>
-      <button 
-        class="tab" 
-        :class="{ active: filterStatus === 'confirmed' }"
-        @click="filterStatus = 'confirmed'"
-      >
-        已確認 ({{ orders.filter(o => o.status === 'confirmed').length }})
-      </button>
-      <button 
-        class="tab" 
-        :class="{ active: filterStatus === 'shipped' }"
-        @click="filterStatus = 'shipped'"
-      >
-        已發貨 ({{ orders.filter(o => o.status === 'shipped').length }})
-      </button>
-      <button 
-        class="tab" 
-        :class="{ active: filterStatus === 'delivered' }"
-        @click="filterStatus = 'delivered'"
-      >
-        已完成 ({{ orders.filter(o => o.status === 'delivered').length }})
-      </button>
-      <button 
-        class="tab" 
-        :class="{ active: filterStatus === 'cancelled' }"
-        @click="filterStatus = 'cancelled'"
-      >
-        已取消 ({{ orders.filter(o => o.status === 'cancelled').length }})
+        {{ tab.label }}
+        <span class="tab-count">{{ tabCount(tab.key) }}</span>
       </button>
     </div>
 
-    <!-- Orders List -->
-    <StateView v-if="loading" state="loading" />
+    <!-- 搜尋 -->
+    <div class="search-row">
+      <input
+        v-model="searchQuery"
+        type="text"
+        class="search-input"
+        placeholder="🔍 搜尋商品或商家..."
+      />
+      <button v-if="searchQuery" class="btn-clear-search" @click="searchQuery = ''">✕ 清除</button>
+    </div>
 
+    <StateView v-if="loading" state="loading" />
     <StateView
-      v-else-if="filteredOrders.length === 0"
+      v-else-if="!filteredOrders.length"
       state="empty" icon="📦" title="暫無訂單" message="快去參與競拍或購買吧！"
     >
       <router-link to="/auctions" class="btn-primary">瀏覽拍賣</router-link>
     </StateView>
 
-    <div v-else class="orders-list">
-      <div v-for="order in filteredOrders" :key="order.id" class="order-card">
-        <div class="order-header">
-          <span class="order-number">{{ order.orderNumber }}</span>
-          <span class="type-badge" :class="order.type">
-            {{ getTypeText(order.type) }}
-          </span>
-          <span class="status-badge" :class="getStatusBadge(order.status, order.type).class">
-            {{ getStatusBadge(order.status, order.type).text }}
-          </span>
-        </div>
-
-        <div class="order-body">
-          <div class="product-image">
-            <img v-if="order.productImage" :src="order.productImage" :alt="order.productTitle" />
-            <span v-else class="placeholder-emoji">🃏</span>
-          </div>
-          <div class="product-info">
-            <div class="product-title">{{ order.productTitle }}</div>
-            <div class="product-meta">
-              賣家: {{ order.sellerNickname }} | {{ formatDate(order.createdAt) }}
-            </div>
-            <!-- 預約訂單：顯示尾款資訊 -->
-            <div v-if="order.type === 'reservation' && order.fullPrice" class="reservation-info">
-              <span class="reservation-label">📅 預約</span>
-              <span class="deposit-info">訂金已付 {{ formatPrice(order.amount) }}</span>
-              <span class="remaining-info">到尾款 {{ formatPrice((order.fullPrice || 0) * order.quantity - order.amount) }}</span>
-            </div>
-          </div>
-          <div class="order-amount">
-            <div class="amount-label">金額</div>
-            <div v-if="order.type === 'reservation'" class="reservation-amount">
-              <div class="deposit-value">{{ formatPrice(order.amount) }}</div>
-              <div class="remaining-value">+ {{ formatPrice((order.fullPrice || 0) * order.quantity - order.amount) }} 到尾款</div>
-            </div>
-            <div v-else class="amount-value">{{ formatPrice(order.amount) }}</div>
-          </div>
-        </div>
-
-        <div class="order-actions">
-          <!-- 預約訂單：待付訂金 -> 上傳憑證 -->
-          <button
-            v-if="order.type === 'reservation' && order.status === 'pending'"
-            class="btn-upload"
-            @click="triggerReceiptUpload(order.id)"
-            :disabled="uploadingReceipt === order.id"
-          >
-            {{ uploadingReceipt === order.id ? '上傳中...' : '上傳訂金憑證' }}
-          </button>
-          <!-- 預約訂單：待確認 -> 等待商家確認 -->
-          <span v-if="order.type === 'reservation' && order.status === 'pending_paid'" class="waiting-confirm">
-            ⏳ 等待商家確認
-          </span>
-          <!-- 預約訂單：待付尾款 -> 提醒到店支付 + 上傳尾款憑證 -->
-          <template v-if="order.type === 'reservation' && order.status === 'confirmed'">
-            <button
-              class="btn-upload"
-              @click="triggerBalanceUpload(order.id)"
-              :disabled="uploadingReceipt === order.id"
+    <!-- ===== 桌面表格（≥768px） ===== -->
+    <div v-else class="orders-table">
+      <table class="desktop-table">
+        <thead>
+          <tr>
+            <th>商品</th>
+            <th
+              v-for="col in sortableColumns.filter(c => c.key !== 'productTitle')"
+              :key="col.key"
+              class="sortable-th"
+              :class="{ sorted: sortKey === col.key }"
+              @click="toggleSort(col.key)"
             >
-              {{ uploadingReceipt === order.id ? '上傳中...' : '上傳尾款憑證' }}
-            </button>
-          </template>
-          <!-- 預約訂單：已完成 -> 顯示完成 -->
-          <span v-if="order.type === 'reservation' && order.status === 'delivered'" class="reservation-done">
-            ✅ 交易完成
-          </span>
-          <!-- 普通訂單按鈕 -->
-          <button
-            v-if="order.status === 'pending' && order.type !== 'reservation'"
-            class="btn-pay"
-            @click="handlePay(order.id)"
-            :disabled="processingPay === order.id"
-          >
-            {{ processingPay === order.id ? '處理中...' : '立即支付' }}
-          </button>
-          <button
-            v-if="order.status === 'pending' && order.type !== 'reservation'"
-            class="btn-reserve"
-            @click="handleReserve(order.id, order.sellerId)"
-          >
-            預約拿貨
-          </button>
-          <button
-            v-if="(order.status === 'pending' || order.status === 'pending_paid') && order.type !== 'reservation'"
-            class="btn-upload"
-            @click="triggerReceiptUpload(order.id)"
-            :disabled="uploadingReceipt === order.id"
-          >
-            {{ uploadingReceipt === order.id ? '上傳中...' : '上傳轉帳憑證' }}
-          </button>
-          <button 
-            v-if="order.status === 'shipped' && order.type !== 'reservation'" 
-            class="btn-receive"
-            @click="handleReceive(order.id)"
-          >
-            確認收貨
-          </button>
-          <button
-            class="btn-detail"
-            @click="toggleOrderDetail(order.id)"
-          >
-            {{ expandedOrderId === order.id ? '收起詳情' : '訂單詳情' }}
-          </button>
-        </div>
+              <span class="th-label">{{ col.label }}</span>
+              <span class="sort-arrow" :class="{ active: sortKey === col.key, desc: sortKey === col.key && sortDir === 'desc' }">↕</span>
+            </th>
+            <th>下一步</th>
+            <th>操作</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="order in pagedOrders" :key="order.id">
+            <td>
+              <div class="product-cell">
+                <img v-if="order.productImage" :src="resolveImageUrl(order.productImage)" class="row-thumb" :alt="order.productTitle" />
+                <span v-else class="placeholder-emoji">🃏</span>
+                <div class="product-info">
+                  <span class="product-name">{{ order.productTitle }}</span>
+                  <span class="type-tag" :class="ORDER_TYPE[order.type]?.cls">{{ ORDER_TYPE[order.type]?.text || order.type }}</span>
+                </div>
+              </div>
+            </td>
+            <td>
+              <div class="buyer-name">{{ order.sellerNickname }}</div>
+              <div class="cell-sub">x{{ order.quantity }}</div>
+            </td>
+            <td>
+              <template v-if="order.type === 'reservation_deposit'">
+                <div class="amount">訂金 {{ formatPrice(order.amount) }}</div>
+                <div v-if="order.fullPrice" class="cell-sub">尾款 {{ formatPrice(order.fullPrice - order.amount) }}</div>
+              </template>
+              <template v-else>
+                <div class="amount">{{ formatPrice(order.amount) }}</div>
+              </template>
+            </td>
+            <td>
+              <span class="status-badge" :class="getStatusBadge(order.status, order.type).class">
+                {{ getStatusBadge(order.status, order.type).text }}
+              </span>
+            </td>
+            <td class="date">{{ formatDate(order.createdAt) }}</td>
+            <td>
+              <span v-if="nextStepFor(order)" class="next-hint">{{ nextStepFor(order) }}</span>
+              <span v-else class="cell-muted">—</span>
+            </td>
+            <td>
+              <div class="actions-cell">
+                <!-- 待付款 -->
+                <button
+                  v-if="order.status === 'pending'"
+                  class="btn-action confirm"
+                  :disabled="uploadingReceipt === order.id || processingPay === order.id"
+                  @click="handlePay(order.id)"
+                >{{ processingPay === order.id ? '處理中...' : (order.type === 'reservation_deposit' ? '上傳訂金憑證' : '立即支付') }}</button>
+                <!-- 待付尾款 -->
+                <button
+                  v-if="order.status === 'confirmed' && order.type === 'reservation_deposit'"
+                  class="btn-action confirm"
+                  :disabled="uploadingReceipt === order.id"
+                  @click="triggerBalanceUpload(order.id)"
+                >{{ uploadingReceipt === order.id ? '上傳中...' : '上傳尾款憑證' }}</button>
+                <!-- 已發貨 -->
+                <button
+                  v-if="order.status === 'shipped' && order.type !== 'reservation_deposit'"
+                  class="btn-action confirm"
+                  @click="handleReceive(order.id)"
+                >確認收貨</button>
+                <button
+                  v-if="order.status === 'pending' && order.type !== 'reservation_deposit'"
+                  class="btn-action detail"
+                  @click="handleReserve(order.id, order.sellerId)"
+                >預約拿貨</button>
+                <button class="btn-action detail" @click="openDetail(order)">詳情</button>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
 
-        <!-- 訂單詳情展開區 -->
-        <div v-if="expandedOrderId === order.id" class="order-detail-expand">
-          <div class="detail-row"><span>訂單編號</span><span>{{ order.orderNumber }}</span></div>
-          <div class="detail-row"><span>下單時間</span><span>{{ formatDate(order.createdAt) }}</span></div>
-          <div class="detail-row"><span>數量</span><span>{{ order.quantity }}</span></div>
-          <div class="detail-row"><span>總價</span><span>{{ formatPrice(order.amount) }}</span></div>
-          <div class="detail-row" v-if="order.type === 'reservation' && order.fullPrice">
-            <span>尾款</span><span>{{ formatPrice(order.fullPrice * order.quantity - order.amount) }}</span>
+    <!-- ===== 手機卡片列表（<768px） ===== -->
+    <div v-if="!loading && filteredOrders.length" class="orders-cards">
+      <div v-for="order in pagedOrders" :key="'m' + order.id" class="order-card">
+        <div class="card-top">
+          <img v-if="order.productImage" :src="resolveImageUrl(order.productImage)" class="card-thumb" :alt="order.productTitle" />
+          <span v-else class="card-emoji">🃏</span>
+          <div class="card-main">
+            <div class="card-title">{{ order.productTitle }}</div>
+            <div class="card-meta">
+              <span class="type-tag" :class="ORDER_TYPE[order.type]?.cls">{{ ORDER_TYPE[order.type]?.text || order.type }}</span>
+              <span class="status-badge" :class="getStatusBadge(order.status, order.type).class">{{ getStatusBadge(order.status, order.type).text }}</span>
+            </div>
           </div>
-          <div class="detail-row"><span>賣家</span><span>{{ order.sellerNickname }}</span></div>
+          <div class="card-amount">
+            <template v-if="order.type === 'reservation_deposit'">
+              <div class="amount">訂金 {{ formatPrice(order.amount) }}</div>
+              <div v-if="order.fullPrice" class="cell-sub">尾款 {{ formatPrice(order.fullPrice - order.amount) }}</div>
+            </template>
+            <template v-else>
+              <div class="amount">{{ formatPrice(order.amount) }}</div>
+            </template>
+          </div>
         </div>
-
-        <!-- 轉帳憑證：獨立顯示，任何狀態有憑證就顯示 -->
-        <div v-if="order.transferReceipt" class="receipt-row">
-          <span class="receipt-label">訂金憑證</span>
-          <img 
-            :src="resolveImageUrl(order.transferReceipt)" 
-            class="receipt-thumbnail"
-            @click="viewReceipt(order.transferReceipt)"
-            alt="訂金憑證"
-          />
+        <div class="card-mid">
+          <span class="card-buyer">🏪 {{ order.sellerNickname }}</span>
+          <span class="card-date">{{ formatDate(order.createdAt) }}</span>
         </div>
-        <div v-if="order.balanceReceipt" class="receipt-row">
-          <span class="receipt-label">尾款憑證</span>
-          <img 
-            :src="resolveImageUrl(order.balanceReceipt)" 
-            class="receipt-thumbnail"
-            @click="viewReceipt(order.balanceReceipt)"
-            alt="尾款憑證"
-          />
+        <div v-if="nextStepFor(order)" class="card-next">{{ nextStepFor(order) }}</div>
+        <div class="card-actions">
+          <button
+            v-if="order.status === 'pending'"
+            class="btn-action confirm"
+            :disabled="uploadingReceipt === order.id || processingPay === order.id"
+            @click="handlePay(order.id)"
+          >{{ order.type === 'reservation_deposit' ? '上傳訂金憑證' : '立即支付' }}</button>
+          <button
+            v-if="order.status === 'confirmed' && order.type === 'reservation_deposit'"
+            class="btn-action confirm"
+            :disabled="uploadingReceipt === order.id"
+            @click="triggerBalanceUpload(order.id)"
+          >上傳尾款憑證</button>
+          <button
+            v-if="order.status === 'shipped' && order.type !== 'reservation_deposit'"
+            class="btn-action confirm"
+            @click="handleReceive(order.id)"
+          >確認收貨</button>
+          <button
+            v-if="order.status === 'pending' && order.type !== 'reservation_deposit'"
+            class="btn-action detail"
+            @click="handleReserve(order.id, order.sellerId)"
+          >預約拿貨</button>
+          <button class="btn-action detail" @click="openDetail(order)">詳情</button>
         </div>
       </div>
     </div>
-  </div>
 
-  <!-- Receipt Modal -->
-  <div v-if="showReceiptModal" class="modal-overlay" @click.self="showReceiptModal = false">
-    <div class="receipt-modal">
-      <div class="modal-header">
-        <h3>轉帳憑證</h3>
-        <button @click="showReceiptModal = false" class="modal-close">✕</button>
-      </div>
-      <div class="modal-body">
-        <img :src="resolveImageUrl(receiptImageUrl)" alt="轉帳憑證" class="receipt-image" />
+    <!-- 分頁 -->
+    <div v-if="!loading && filteredOrders.length" class="pagination">
+      <button class="page-btn" :disabled="currentPage <= 1" @click="goToPage(currentPage - 1)">‹ 上一頁</button>
+      <span class="page-info">第 {{ currentPage }} / {{ totalPages }} 頁 · 共 {{ filteredOrders.length }} 筆</span>
+      <button class="page-btn" :disabled="currentPage >= totalPages" @click="goToPage(currentPage + 1)">下一頁 ›</button>
+    </div>
+
+    <!-- 訂單詳情彈出層 -->
+    <div v-if="detailOrder" class="modal-overlay" @click.self="closeDetail">
+      <div class="detail-modal">
+        <div class="modal-header">
+          <h3>訂單詳情</h3>
+          <button @click="closeDetail" class="modal-close">✕</button>
+        </div>
+        <div class="detail-body">
+          <div class="detail-top">
+            <span class="type-tag" :class="ORDER_TYPE[detailOrder.type]?.cls">{{ ORDER_TYPE[detailOrder.type]?.text || detailOrder.type }}</span>
+            <span class="status-badge" :class="getStatusBadge(detailOrder.status, detailOrder.type).class">{{ getStatusBadge(detailOrder.status, detailOrder.type).text }}</span>
+          </div>
+
+          <div class="detail-product">
+            <img v-if="detailOrder.productImage" :src="resolveImageUrl(detailOrder.productImage)" class="detail-thumb" :alt="detailOrder.productTitle" />
+            <span v-else class="card-emoji">🃏</span>
+            <div class="dp-info">
+              <span class="dp-title">{{ detailOrder.productTitle }}</span>
+              <span class="dp-sub">x{{ detailOrder.quantity }} · 商家 {{ detailOrder.sellerNickname }}</span>
+            </div>
+            <div class="dp-amount">
+              <template v-if="detailOrder.type === 'reservation_deposit'">
+                <div class="amount">訂金 {{ formatPrice(detailOrder.amount) }}</div>
+                <div v-if="detailOrder.fullPrice" class="cell-sub">＋尾款 {{ formatPrice(detailOrder.fullPrice - detailOrder.amount) }}＝全價 {{ formatPrice(detailOrder.fullPrice) }}</div>
+              </template>
+              <template v-else>
+                <div class="amount">{{ formatPrice(detailOrder.amount) }}</div>
+              </template>
+            </div>
+          </div>
+
+          <div class="detail-grid">
+            <div class="dg-item" v-if="detailOrder.shippingAddress">
+              <span class="dg-label">收件地址</span>
+              <span class="dg-value">{{ detailOrder.shippingAddress }}</span>
+            </div>
+            <div class="dg-item" v-if="detailOrder.trackingNumber">
+              <span class="dg-label">快遞單號</span>
+              <span class="dg-value mono">{{ detailOrder.trackingNumber }}</span>
+            </div>
+            <div class="dg-item" v-if="detailOrder.notes">
+              <span class="dg-label">備註</span>
+              <span class="dg-value">{{ detailOrder.notes }}</span>
+            </div>
+            <div class="dg-item">
+              <span class="dg-label">下單時間</span>
+              <span class="dg-value">{{ formatDateTime(detailOrder.createdAt) }}</span>
+            </div>
+          </div>
+
+          <!-- 操作（詳情層內重複入口） -->
+          <div class="detail-actions">
+            <button
+              v-if="detailOrder.status === 'pending'"
+              class="btn-action confirm"
+              :disabled="uploadingReceipt === detailOrder.id || processingPay === detailOrder.id"
+              @click="handlePay(detailOrder.id)"
+            >{{ detailOrder.type === 'reservation_deposit' ? '上傳訂金憑證' : '立即支付' }}</button>
+            <button
+              v-if="detailOrder.status === 'confirmed' && detailOrder.type === 'reservation_deposit'"
+              class="btn-action confirm"
+              :disabled="uploadingReceipt === detailOrder.id"
+              @click="triggerBalanceUpload(detailOrder.id)"
+            >上傳尾款憑證</button>
+            <button
+              v-if="detailOrder.status === 'shipped' && detailOrder.type !== 'reservation_deposit'"
+              class="btn-action confirm"
+              @click="handleReceive(detailOrder.id)"
+            >確認收貨</button>
+          </div>
+
+          <!-- 憑證 -->
+          <div v-if="detailOrder.transferReceipt || detailOrder.balanceReceipt" class="detail-receipts">
+            <div v-if="detailOrder.transferReceipt" class="dr-item">
+              <span class="dg-label">{{ detailOrder.type === 'reservation_deposit' ? '訂金憑證' : '付款憑證' }}</span>
+              <img :src="resolveImageUrl(detailOrder.transferReceipt)" class="receipt-thumb lg" @click="viewReceipt(detailOrder.transferReceipt!)" alt="付款憑證" />
+            </div>
+            <div v-if="detailOrder.balanceReceipt" class="dr-item">
+              <span class="dg-label">尾款憑證</span>
+              <img :src="resolveImageUrl(detailOrder.balanceReceipt)" class="receipt-thumb lg" @click="viewReceipt(detailOrder.balanceReceipt!)" alt="尾款憑證" />
+            </div>
+          </div>
+
+          <!-- 時間線 -->
+          <div class="detail-timeline">
+            <span class="dg-label">進度</span>
+            <div class="timeline">
+              <div
+                v-for="(t, i) in detailTimeline"
+                :key="i"
+                class="tl-item"
+                :class="{ done: t.done, current: t.done && !(detailTimeline[i + 1] && detailTimeline[i + 1].done) }"
+              >
+                <span class="tl-dot"></span>
+                <span class="tl-label">{{ t.label }}</span>
+                <span class="tl-time">{{ t.time ? formatDateTime(t.time) : '待處理' }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
-  </div>
 
-  <!-- 預約攞貨彈窗 -->
-  <div v-if="showPickupModal" class="modal-overlay" @click.self="cancelReserve">
-    <div class="pickup-modal">
-      <div class="modal-header">
-        <h3>📦 預約攞貨</h3>
-        <button @click="cancelReserve" class="modal-close">✕</button>
+    <!-- Receipt Modal -->
+    <div v-if="showReceiptModal" class="modal-overlay" @click.self="showReceiptModal = false">
+      <div class="receipt-modal">
+        <div class="modal-header">
+          <h3>轉帳憑證</h3>
+          <button @click="showReceiptModal = false" class="modal-close">✕</button>
+        </div>
+        <div class="modal-body">
+          <img :src="resolveImageUrl(receiptImageUrl)" alt="轉帳憑證" class="receipt-image" />
+        </div>
       </div>
-      <div class="modal-body">
-        <div v-if="pickupInfo" class="pickup-info">{{ pickupInfo }}</div>
-        <div v-else class="pickup-empty">賣家尚未設定預約資訊</div>
-        <img v-if="pickupQrCode" :src="resolveImageUrl(pickupQrCode)" alt="WeChat 二維碼" class="qr-code" />
-      </div>
-      <div class="modal-footer">
-        <button @click="cancelReserve" class="btn-cancel">返回</button>
-        <button @click="confirmReserve" class="btn-confirm" :disabled="submittingReserve">
-          {{ submittingReserve ? '確認中...' : '確認預約' }}
-        </button>
+    </div>
+
+    <!-- 預約攞貨彈窗 -->
+    <div v-if="showPickupModal" class="modal-overlay" @click.self="cancelReserve">
+      <div class="pickup-modal">
+        <div class="modal-header">
+          <h3>📦 預約攞貨</h3>
+          <button @click="cancelReserve" class="modal-close">✕</button>
+        </div>
+        <div class="modal-body">
+          <div v-if="pickupInfo" class="pickup-info">{{ pickupInfo }}</div>
+          <div v-else class="pickup-empty">商家尚未設定預約資訊</div>
+          <img v-if="pickupQrCode" :src="resolveImageUrl(pickupQrCode)" alt="WeChat 二維碼" class="qr-code" />
+        </div>
+        <div class="modal-footer">
+          <button @click="cancelReserve" class="btn-cancel">返回</button>
+          <button @click="confirmReserve" class="btn-confirm" :disabled="submittingReserve">
+            {{ submittingReserve ? '確認中...' : '確認預約' }}
+          </button>
+        </div>
       </div>
     </div>
   </div>
 </template>
 
 <style scoped>
-.orders-page {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-6);
-}
+.orders-management { display: flex; flex-direction: column; gap: var(--space-4); }
 
-.page-title {
-  font-size: var(--text-2xl);
-  font-weight: 700;
-  color: var(--text-primary);
-}
-
-.filter-tabs {
+/* ===== 統計條（同 seller）===== */
+.summary-bar { display: flex; gap: var(--space-3); flex-wrap: wrap; }
+.stat-item {
   display: flex;
+  align-items: baseline;
   gap: var(--space-2);
-  flex-wrap: wrap;
+  padding: var(--space-3) var(--space-5);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  min-width: 0;
 }
+.stat-label { font-size: var(--text-xs); color: var(--text-secondary); }
+.stat-value { font-size: var(--text-lg); font-weight: 700; font-family: var(--font-num); color: var(--text-primary); }
+.stat-value small { font-size: var(--text-xs); font-weight: 400; color: var(--text-secondary); }
+.stat-value.money { color: #10b981; }
+.stat-item.alert { border-color: #f59e0b; background: rgba(245, 158, 11, 0.08); }
+.stat-item.alert .stat-value { color: #f59e0b; }
 
-.tab {
-  padding: var(--space-2) var(--space-4);
+/* ===== tabs（同 seller list-tab）===== */
+.list-tabs { display: flex; gap: var(--space-2); flex-wrap: wrap; }
+.list-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: var(--space-2) var(--space-5);
   border-radius: var(--radius-lg);
   font-size: var(--text-sm);
   font-weight: 500;
@@ -596,18 +842,43 @@ onMounted(() => {
   cursor: pointer;
   transition: all var(--transition-fast);
 }
-
-.tab:hover {
-  border-color: var(--primary);
+.list-tab:hover { border-color: var(--primary); }
+.list-tab.active { background: var(--primary-gradient); border: none; color: white; }
+.tab-count {
+  padding: 1px 8px;
+  border-radius: var(--radius-full);
+  background: rgba(0, 0, 0, 0.15);
+  font-size: var(--text-xs);
+  font-weight: 600;
 }
+.list-tab:not(.active) .tab-count { background: var(--bg-elevated); color: var(--text-secondary); }
 
-.tab.active {
-  background: var(--primary-gradient);
-  border: none;
-  color: white;
+/* ===== 搜尋 ===== */
+.search-row { display: flex; gap: var(--space-2); align-items: center; }
+.search-input {
+  flex: 1;
+  max-width: 420px;
+  min-width: 0;
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  color: var(--text-primary);
+  font-size: var(--text-sm);
+  outline: none;
+  transition: border-color var(--transition-fast);
 }
-
-/* loading/empty 狀態已由共用 StateView 組件處理 */
+.search-input:focus { border-color: var(--primary); }
+.btn-clear-search {
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+  background: var(--bg-elevated);
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: var(--text-xs);
+}
+.btn-clear-search:hover { color: var(--text-primary); border-color: var(--primary); }
 
 .btn-primary {
   padding: var(--space-3) var(--space-6);
@@ -619,342 +890,269 @@ onMounted(() => {
   display: inline-block;
 }
 
-.orders-list {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
-}
-
-.order-card {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-xl);
+/* ===== 桌面表格 ===== */
+.orders-table {
+  background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-xl);
   overflow: hidden;
 }
+table { width: 100%; border-collapse: collapse; }
+th, td { padding: var(--space-4); text-align: left; border-bottom: 1px solid var(--border); vertical-align: middle; }
+th { font-size: var(--text-sm); font-weight: 500; color: var(--text-secondary); background: var(--bg-elevated); }
+td { font-size: var(--text-sm); color: var(--text-primary); }
+tr:last-child td { border-bottom: none; }
 
-.order-header {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  padding: var(--space-4);
-  background: var(--bg-elevated);
-  border-bottom: 1px solid var(--border);
-}
-
-.order-number {
-  font-family: var(--font-num);
-  font-size: var(--text-sm);
-  color: var(--text-secondary);
-}
-
-.type-badge {
-  padding: 2px 8px;
-  border-radius: var(--radius-full);
+.sortable-th { cursor: pointer; user-select: none; white-space: nowrap; }
+.sortable-th:hover { color: var(--text-primary); }
+.sortable-th .th-label { margin-right: 4px; }
+.sort-arrow {
+  display: inline-block;
   font-size: var(--text-xs);
+  color: var(--text-muted);
+  opacity: 0.5;
+  transition: all var(--transition-fast);
 }
+.sortable-th:hover .sort-arrow { opacity: 1; }
+.sort-arrow.active { opacity: 1; color: var(--primary); font-weight: 700; }
+.sort-arrow.active.desc { transform: rotate(180deg); }
 
-.type-badge.auction {
-  background: #667eea33;
-  color: #667eea;
+.product-cell { display: flex; align-items: center; gap: var(--space-3); }
+.row-thumb {
+  width: 44px; height: 44px; border-radius: var(--radius-md);
+  object-fit: cover; background: var(--bg-elevated); flex-shrink: 0;
 }
-
-.type-badge.purchase {
-  background: #10b98133;
-  color: #10b981;
+.placeholder-emoji {
+  font-size: 22px;
+  width: 44px; height: 44px;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--bg-elevated); border-radius: var(--radius-md); flex-shrink: 0;
 }
-
-.type-badge.direct_purchase {
-  background: #10b98133;
-  color: #10b981;
+.product-cell .product-name {
+  font-weight: 500;
+  max-width: 240px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
+.buyer-name { font-weight: 500; }
+.amount { font-family: var(--font-num); font-weight: 600; color: var(--primary); white-space: nowrap; }
+.cell-sub { font-size: var(--text-xs); color: var(--text-secondary); margin-top: 2px; font-family: var(--font-num); }
+.date { font-size: var(--text-xs); color: var(--text-muted); white-space: nowrap; }
+.cell-muted { color: var(--text-secondary); opacity: 0.5; }
+.next-hint { font-size: var(--text-xs); color: #f59e0b; font-weight: 600; white-space: nowrap; }
+.actions-cell { display: flex; gap: 6px; flex-wrap: wrap; }
 
-.type-badge.buy_now {
-  background: #f59e0b33;
-  color: #f59e0b;
-}
-
-.type-badge.auction_win {
-  background: #667eea33;
-  color: #667eea;
-}
-
-.status-badge {
-  padding: 2px 10px;
+/* 類型 tag（同 seller 色制）*/
+.type-tag {
+  padding: 1px 8px;
   border-radius: var(--radius-full);
-  font-size: var(--text-xs);
+  font-size: 11px;
   font-weight: 600;
+  white-space: nowrap;
+  width: fit-content;
 }
+.type-tag.t-sale { background: rgba(16, 185, 129, 0.18); color: #10b981; }
+.type-tag.t-auction { background: rgba(236, 72, 153, 0.18); color: #ec4899; }
+.type-tag.t-reserve { background: rgba(245, 158, 11, 0.18); color: #f59e0b; }
 
-.status-badge.pending {
-  background: #f59e0b4d;
-  color: #f59e0b;
+.status-badge { padding: 2px 10px; border-radius: var(--radius-full); font-size: var(--text-xs); font-weight: 600; white-space: nowrap; }
+.st-pending { background: #f59e0b4d; color: #f59e0b; }
+.st-pending-paid { background: #fb923c4d; color: #fb923c; }
+.st-confirmed { background: #10b9814d; color: #10b981; }
+.st-shipped { background: #8b5cf64d; color: #8b5cf6; }
+.st-delivered { background: #10b98166; color: #059669; }
+.st-cancelled, .st-refunded { background: #ef44444d; color: #ef4444; }
+.st-default { background: #6b72804d; color: #6b7280; }
+
+.btn-action {
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-md);
+  font-size: var(--text-xs);
+  border: none;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  white-space: nowrap;
 }
+.btn-action.confirm { background: #10b981; color: white; }
+.btn-action.confirm:hover:not(:disabled) { background: #059669; }
+.btn-action.detail { background: var(--bg-elevated); color: var(--text-primary); }
+.btn-action.detail:hover { background: var(--primary); color: white; }
+.btn-action:disabled { opacity: 0.5; cursor: not-allowed; }
 
-.status-badge.pending-paid {
-  background: #f59e0b4d;
-  color: #f59e0b;
-}
+/* ===== 手機卡片（<768px 才顯示）===== */
+.orders-cards { display: none; }
 
-.status-badge.confirmed {
-  background: #10b9814d;
-  color: #10b981;
-}
-
-.status-badge.paid {
-  background: #3b82f64d;
-  color: #3b82f6;
-}
-
-.status-badge.shipped {
-  background: #8b5cf64d;
-  color: #8b5cf6;
-}
-
-.status-badge.delivered {
-  background: #10b9814d;
-  color: #10b981;
-}
-
-.order-body {
-  display: flex;
-  align-items: center;
-  gap: var(--space-4);
-  padding: var(--space-4);
-}
-
-.product-image {
-  width: 80px;
-  height: 80px;
-  background: var(--bg-elevated);
+/* ===== 分頁 ===== */
+.pagination { display: flex; align-items: center; justify-content: center; gap: var(--space-4); }
+.page-btn {
+  padding: var(--space-2) var(--space-4);
   border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: var(--text-sm);
+  transition: all var(--transition-fast);
+}
+.page-btn:hover:not(:disabled) { border-color: var(--primary); color: var(--text-primary); }
+.page-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.page-info { font-size: var(--text-sm); color: var(--text-secondary); }
+
+/* ===== Modal ===== */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
   display: flex;
   align-items: center;
   justify-content: center;
-  overflow: hidden;
+  z-index: 1000;
+  padding: var(--space-4);
 }
-
-.product-image img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
+.detail-modal {
+  width: min(640px, 100%);
+  max-height: 85vh;
+  overflow-y: auto;
+  background: var(--bg-card);
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--border);
 }
-
-.placeholder-emoji {
-  font-size: 32px;
-}
-
-.product-info {
-  flex: 1;
-}
-
-.product-title {
-  font-size: var(--text-sm);
-  font-weight: 600;
-  color: var(--text-primary);
-  margin-bottom: var(--space-1);
-}
-
-.product-meta {
-  font-size: var(--text-xs);
-  color: var(--text-secondary);
-}
-
-.order-amount {
-  text-align: right;
-}
-
-.amount-label {
-  font-size: var(--text-xs);
-  color: var(--text-secondary);
-}
-
-.amount-value {
-  font-family: var(--font-num);
-  font-size: var(--text-lg);
-  font-weight: 700;
-  color: var(--primary);
-}
-
-.reservation-info {
+.modal-header {
   display: flex;
   align-items: center;
-  gap: var(--space-2);
-  margin-top: var(--space-2);
-  font-size: var(--text-xs);
+  justify-content: space-between;
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1px solid var(--border);
 }
-.reservation-label { color: #f59e0b; font-weight: 600; }
-.deposit-info { color: var(--text-secondary); }
-.remaining-info { color: #f59e0b; font-weight: 500; }
-
-.reservation-amount {
+.modal-header h3 { margin: 0; font-size: var(--text-lg); }
+.modal-close {
+  background: none;
+  border: none;
+  font-size: 18px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: var(--radius-md);
+}
+.modal-close:hover { background: var(--bg-elevated); color: var(--text-primary); }
+.detail-body {
+  padding: var(--space-5);
   display: flex;
   flex-direction: column;
-  align-items: flex-end;
-  gap: 2px;
+  gap: var(--space-5);
 }
-.deposit-value {
-  font-family: var(--font-num);
-  font-size: var(--text-lg);
-  font-weight: 700;
-  color: var(--primary);
-}
-.remaining-value {
-  font-size: var(--text-xs);
-  color: #f59e0b;
-  font-weight: 500;
-}
-
-.waiting-confirm {
-  font-size: var(--text-sm);
-  color: var(--text-muted);
-  display: flex;
-  align-items: center;
-  gap: var(--space-1);
-}
-.waiting-balance {
-  font-size: var(--text-sm);
-  color: #f59e0b;
-  font-weight: 600;
-  display: flex;
-  align-items: center;
-  gap: var(--space-1);
-}
-.reservation-done {
-  font-size: var(--text-sm);
-  color: #10b981;
-  font-weight: 600;
-}
-
-.order-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: var(--space-3);
-  padding: var(--space-4);
-  border-top: 1px solid var(--border);
-}
-
-.receipt-row {
+.detail-top { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
+.detail-product {
   display: flex;
   align-items: center;
   gap: var(--space-3);
-  padding: var(--space-3) var(--space-4);
+  padding: var(--space-3);
   background: var(--bg-elevated);
-  border-top: 1px solid var(--border);
+  border-radius: var(--radius-lg);
 }
-
-.receipt-label {
-  font-size: var(--text-xs);
-  color: var(--text-secondary);
-  font-weight: 500;
+.card-emoji {
+  font-size: 22px;
+  width: 48px; height: 48px;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--bg-card); border-radius: var(--radius-md); flex-shrink: 0;
 }
-
-.receipt-thumbnail {
-  width: 40px;
-  height: 40px;
+.dp-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
+.dp-title { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dp-sub { font-size: var(--text-xs); color: var(--text-secondary); }
+.dp-amount { text-align: right; }
+.detail-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-4);
+}
+.dg-item { display: flex; flex-direction: column; gap: 4px; }
+.dg-label { font-size: var(--text-xs); color: var(--text-secondary); }
+.dg-value { font-size: var(--text-sm); color: var(--text-primary); word-break: break-all; }
+.dg-value.mono { font-family: var(--font-num); letter-spacing: 0.5px; }
+.detail-actions { display: flex; gap: var(--space-3); flex-wrap: wrap; }
+.detail-actions .btn-action { padding: var(--space-2) var(--space-5); font-size: var(--text-sm); }
+.detail-receipts { display: flex; gap: var(--space-6); }
+.dr-item { display: flex; flex-direction: column; gap: 6px; }
+.receipt-thumb {
+  width: 40px; height: 40px;
   border-radius: var(--radius-md);
   object-fit: cover;
   cursor: pointer;
-  border: 2px solid var(--border);
-  transition: border-color var(--transition-fast);
+  border: 1px solid var(--border);
+  transition: transform var(--transition-fast);
 }
-
-.receipt-thumbnail:hover {
-  border-color: var(--primary);
+.receipt-thumb:hover { transform: scale(1.08); }
+.receipt-thumb.lg { width: 64px; height: 64px; }
+.detail-timeline { display: flex; flex-direction: column; gap: var(--space-2); }
+.timeline { display: flex; flex-direction: column; }
+.tl-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) 0;
 }
-
-.btn-pay,
-.btn-receive,
-.btn-detail {
-  padding: var(--space-2) var(--space-4);
-  border-radius: var(--radius-md);
-  font-size: var(--text-sm);
-  font-weight: 500;
-  text-decoration: none;
-  cursor: pointer;
-  border: none;
-  transition: all var(--transition-fast);
-}
-
-.btn-pay {
-  background: var(--primary-gradient);
-  color: white;
-}
-
-.btn-pay:hover {
-  opacity: 0.9;
-}
-
-.btn-pay:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-  background: var(--bg-elevated);
-  color: var(--text-muted);
-}
-
-.btn-reserve {
-  background: #8b5cf6;
-  color: white;
-}
-
-.btn-reserve:hover {
-  background: #7c3aed;
-}
-
-.btn-upload {
-  background: #f59e0b;
-  color: white;
-}
-
-.btn-upload:hover:not(:disabled) {
-  background: #d97706;
-}
-
-.btn-upload:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.btn-receive {
-  background: #10b981;
-  color: white;
-}
-
-.btn-detail {
-  background: var(--bg-elevated);
-  color: var(--text-primary);
-}
-
-.btn-detail:hover {
+.tl-item:not(:last-child)::before {
+  content: '';
+  position: absolute;
+  left: 5px;
+  top: 28px;
+  bottom: -6px;
+  width: 2px;
   background: var(--border);
 }
+.tl-item.done:not(:last-child)::before { background: #10b981; opacity: 0.5; }
+.tl-dot { width: 12px; height: 12px; border-radius: 50%; background: var(--border); flex-shrink: 0; }
+.tl-item.done .tl-dot { background: #10b981; }
+.tl-item.current .tl-dot { box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.25); }
+.tl-label { font-size: var(--text-sm); color: var(--text-secondary); min-width: 110px; }
+.tl-item.done .tl-label { color: var(--text-primary); }
+.tl-time { font-size: var(--text-xs); color: var(--text-secondary); font-family: var(--font-num); }
 
-.order-detail-expand {
-  background: var(--bg-elevated);
-  border-radius: 8px;
-  padding: 12px 16px;
-  margin: 8px 0;
+.receipt-modal {
+  width: min(560px, 100%);
+  max-height: 85vh;
+  overflow-y: auto;
+  background: var(--bg-card);
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--border);
+}
+.pickup-modal {
+  width: min(480px, 100%);
+  max-height: 85vh;
+  overflow-y: auto;
+  background: var(--bg-card);
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--border);
+}
+.modal-body {
+  padding: var(--space-5);
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  align-items: center;
+  gap: var(--space-4);
 }
-
-.order-detail-expand .detail-row {
+.receipt-image { max-width: 100%; max-height: 70vh; border-radius: var(--radius-lg); }
+.pickup-info { font-size: var(--text-sm); color: var(--text-primary); white-space: pre-wrap; width: 100%; }
+.pickup-empty { font-size: var(--text-sm); color: var(--text-muted); }
+.qr-code { max-width: 180px; border-radius: var(--radius-lg); border: 1px solid var(--border); }
+.modal-footer {
   display: flex;
-  justify-content: space-between;
-  font-size: 13px;
-  color: var(--text-secondary);
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-5);
+  border-top: 1px solid var(--border);
 }
-
-.order-detail-expand .detail-row span:first-child {
-  color: var(--text-muted);
+.btn-cancel, .btn-confirm {
+  flex: 1;
+  padding: var(--space-3);
+  border-radius: var(--radius-lg);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
 }
+.btn-cancel { background: var(--bg-elevated); color: var(--text-primary); }
+.btn-confirm { background: var(--primary-gradient); color: white; }
+.btn-confirm:disabled { opacity: 0.5; cursor: not-allowed; }
 
-.order-detail-expand .detail-row span:last-child {
-  color: var(--text-primary);
-  font-weight: 500;
-}
-
-/* Toast notification */
+/* Toast */
 .toast {
   position: fixed;
   top: 20px;
@@ -962,151 +1160,97 @@ onMounted(() => {
   transform: translateX(-50%);
   padding: 12px 24px;
   border-radius: 8px;
+  background: var(--primary-gradient);
+  color: white;
   font-size: 14px;
   font-weight: 500;
   z-index: 9999;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
-.toast.success {
-  background: rgba(34, 197, 94, 0.95);
-  color: white;
-}
-.toast.error {
-  background: rgba(239, 68, 68, 0.95);
-  color: white;
-}
-.toast-enter-active, .toast-leave-active {
-  transition: all 0.3s ease;
-}
-.toast-enter-from, .toast-leave-to {
-  opacity: 0;
-  transform: translateX(-50%) translateY(-10px);
+.toast.error { background: #ef4444; }
+.toast-enter-active, .toast-leave-active { transition: all 0.3s ease; }
+.toast-enter-from, .toast-leave-to { opacity: 0; transform: translateX(-50%) translateY(-10px); }
+
+/* ===== 手機版適配（<768px：表格收起，顯示卡片）===== */
+@media (max-width: 767px) {
+  .orders-management,
+  .summary-bar,
+  .stat-item,
+  .list-tabs,
+  .search-row,
+  .search-input,
+  .pagination {
+    min-width: 0;
+  }
+
+  .desktop-table { display: none; }
+  .orders-table { overflow: visible; }
+  .orders-cards {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+  }
+  .order-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: var(--space-3) var(--space-4);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+  .card-top { display: flex; gap: var(--space-3); align-items: flex-start; }
+  .card-thumb, .card-main { min-width: 0; }
+  .card-thumb { width: 48px; height: 48px; border-radius: var(--radius-md); object-fit: cover; flex-shrink: 0; }
+  .card-main { flex: 1; display: flex; flex-direction: column; gap: 4px; }
+  .card-title {
+    font-weight: 600;
+    font-size: var(--text-sm);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .card-meta { display: flex; gap: 6px; flex-wrap: wrap; }
+  .card-amount { text-align: right; flex-shrink: 0; }
+  .card-mid {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: var(--text-xs);
+    color: var(--text-secondary);
+  }
+  .card-next {
+    font-size: var(--text-xs);
+    color: #f59e0b;
+    font-weight: 600;
+    padding: var(--space-1) var(--space-2);
+    background: rgba(245, 158, 11, 0.1);
+    border-radius: var(--radius-md);
+    width: fit-content;
+  }
+  .card-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+  .card-actions .btn-action { flex: 1; text-align: center; }
+
+  .summary-bar { gap: var(--space-2); }
+  .stat-item { flex: 1 1 40%; padding: var(--space-2) var(--space-3); }
+  .stat-value { font-size: var(--text-base); }
+  .list-tabs { gap: var(--space-1); }
+  .list-tab { padding: var(--space-1) var(--space-3); font-size: var(--text-xs); }
+  .detail-grid { grid-template-columns: 1fr; }
+  .modal-overlay { align-items: flex-end; padding: 0; }
+  .detail-modal, .receipt-modal, .pickup-modal {
+    width: 100%;
+    max-height: 88vh;
+    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+    border-bottom: none;
+  }
+  .detail-body { padding: var(--space-4); }
+  .pagination { flex-wrap: wrap; gap: var(--space-2); }
+  .page-info { font-size: var(--text-xs); }
 }
 
-.modal-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.8);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-}
-
-.receipt-modal {
-  background: var(--bg-card);
-  border-radius: var(--radius-xl);
-  max-width: 600px;
-  width: 90%;
-  max-height: 90vh;
-  overflow: hidden;
-}
-
-.receipt-modal .modal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: var(--space-4);
-  border-bottom: 1px solid var(--border);
-}
-
-.receipt-modal .modal-header h3 {
-  font-size: var(--text-lg);
-  font-weight: 600;
-}
-
-.modal-close {
-  width: 32px;
-  height: 32px;
-  border-radius: var(--radius-md);
-  border: none;
-  background: var(--bg-elevated);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.receipt-image {
-  width: 100%;
-  height: auto;
-  display: block;
-}
-
-.pickup-modal {
-  background: var(--bg-card);
-  border-radius: var(--radius-xl);
-  padding: var(--space-6);
-  max-width: 400px;
-  width: 90%;
-}
-
-.pickup-modal .modal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: var(--space-4);
-}
-
-.pickup-modal .modal-header h3 {
-  font-size: var(--text-lg);
-  font-weight: 600;
-}
-
-.pickup-info {
-  white-space: pre-wrap;
-  font-size: var(--text-sm);
-  color: var(--text-primary);
-  line-height: 1.6;
-  margin-bottom: var(--space-4);
-  background: var(--bg-elevated);
-  padding: var(--space-4);
-  border-radius: var(--radius-lg);
-}
-
-.pickup-empty {
-  font-size: var(--text-sm);
-  color: var(--text-muted);
-  margin-bottom: var(--space-4);
-}
-
-.qr-code {
-  width: 160px;
-  height: auto;
-  display: block;
-  margin: 0 auto var(--space-4);
-  border-radius: var(--radius-lg);
-}
-
-.modal-footer {
-  display: flex;
-  gap: var(--space-3);
-  justify-content: flex-end;
-  margin-top: var(--space-4);
-}
-
-.btn-cancel {
-  padding: var(--space-3) var(--space-6);
-  background: var(--bg-elevated);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  color: var(--text-secondary);
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.btn-confirm {
-  padding: var(--space-3) var(--space-6);
-  background: var(--primary-gradient);
-  border: none;
-  border-radius: var(--radius-lg);
-  color: white;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.btn-confirm:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
+/* 桌面寬屏適配 */
+@media (min-width: 820px) {
+  .orders-management { max-width: 100%; }
 }
 </style>

@@ -257,6 +257,10 @@ watch(() => route.path, (p) => {
     margin-left: 0;
     padding: var(--space-4);
     padding-bottom: calc(var(--space-4) + 64px);
+    /* min-width:0 傳遞鏈修復 — 同 SellerLayout（375px 溢出根因） */
+    min-width: 0;
+    max-width: 100vw;
+    overflow-x: hidden;
   }
 }
 

@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { formatPrice, formatDate } from '@/utils/format'
+import { formatPrice, formatPriceExact, formatDate } from '@/utils/format'
 import StateView from '@/components/common/StateView.vue'
-import { ref, computed, onMounted } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
 import api from '@/api'
@@ -11,7 +11,7 @@ const authStore = useAuthStore()
 
 interface Transaction {
   id: string
-  type: 'deposit' | 'withdraw' | 'payment' | 'refund'
+  type: 'deposit' | 'withdraw' | 'payment' | 'refund' | 'receive'
   amount: number
   description: string
   createdAt: string
@@ -21,26 +21,96 @@ interface Transaction {
 const balance = computed(() => Number(authStore.user?.balance) || 0)
 const loading = ref(true)
 const transactions = ref<Transaction[]>([])
-const showWithdrawModal = ref(false)
-const withdrawAmount = ref(0)
-const toastMessage = ref('')
-let toastTimer: ReturnType<typeof setTimeout> | null = null
-const showToast = (msg: string) => {
-  toastMessage.value = msg
-  if (toastTimer) clearTimeout(toastTimer)
-  toastTimer = setTimeout(() => { toastMessage.value = '' }, 3000)
-}
-
 
 const getTransactionIcon = (type: string) => {
-  const map: Record<string, string> = { deposit: '💰', withdraw: '🏧', payment: '💳', refund: '↩️' }
+  const map: Record<string, string> = { deposit: '💰', withdraw: '🏧', payment: '💳', refund: '↩️', receive: '📥' }
   return map[type] || '💱'
 }
 
-const getTransactionClass = (type: string) => {
-  const map: Record<string, string> = { deposit: 'success', withdraw: 'warning', payment: 'danger', refund: 'info' }
-  return map[type] || 'default'
+// ===== 狀態 tabs（類型篩選） =====
+const TAB_DEFS: { key: string; label: string }[] = [
+  { key: 'all', label: '全部' },
+  { key: 'income', label: '收入' },
+  { key: 'expense', label: '支出' },
+]
+const filterType = ref('all')
+const TAB_TYPES: Record<string, string[]> = {
+  all: [],
+  income: ['deposit', 'refund', 'receive'],
+  expense: ['withdraw', 'payment'],
 }
+
+// ===== 搜尋 / 排序 / 分頁 =====
+const PAGE_SIZE = 20
+const searchQuery = ref('')
+const currentPage = ref(1)
+const sortKey = ref('')
+const sortDir = ref<'asc' | 'desc'>('desc')
+
+const sortableColumns = [
+  { key: 'description', label: '項目', type: 'text' },
+  { key: 'amount', label: '金額', type: 'number' },
+  { key: 'createdAt', label: '日期', type: 'time' },
+] as const
+
+const toggleSort = (key: string) => {
+  if (sortKey.value === key) {
+    sortDir.value = sortDir.value === 'asc' ? 'desc' : 'asc'
+  } else {
+    sortKey.value = key
+    sortDir.value = 'asc'
+  }
+  currentPage.value = 1
+}
+
+const compareTx = (a: Transaction, b: Transaction, col: { key: string; type: string }): number => {
+  let cmp = 0
+  if (col.type === 'number' || col.type === 'time') {
+    cmp =
+      (Number(col.type === 'time' ? new Date(a.createdAt).getTime() : (a as any)[col.key]) || 0) -
+      (Number(col.type === 'time' ? new Date(b.createdAt).getTime() : (b as any)[col.key]) || 0)
+  } else {
+    const as = String((a as any)[col.key] ?? '')
+    const bs = String((b as any)[col.key] ?? '')
+    cmp = as < bs ? -1 : as > bs ? 1 : 0
+  }
+  return sortDir.value === 'asc' ? cmp : -cmp
+}
+
+const filteredTx = computed(() => {
+  let result = transactions.value
+  const types = TAB_TYPES[filterType.value]
+  if (types && types.length) {
+    result = result.filter(t => types.includes(t.type))
+  }
+  const q = searchQuery.value.trim().toLowerCase()
+  if (q) {
+    result = result.filter(t => (t.description || '').toLowerCase().includes(q))
+  }
+  if (!sortKey.value) {
+    return [...result].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+  }
+  const col = sortableColumns.find(c => c.key === sortKey.value)
+  if (!col) return result
+  return [...result].sort((a, b) => compareTx(a, b, col))
+})
+
+const tabCount = (key: string): number => {
+  const types = TAB_TYPES[key]
+  if (!types || !types.length) return transactions.value.length
+  return transactions.value.filter(t => types.includes(t.type)).length
+}
+
+const totalPages = computed(() => Math.max(1, Math.ceil(filteredTx.value.length / PAGE_SIZE)))
+const pagedTx = computed(() => {
+  const start = (currentPage.value - 1) * PAGE_SIZE
+  return filteredTx.value.slice(start, start + PAGE_SIZE)
+})
+const goToPage = (p: number) => {
+  if (p < 1 || p > totalPages.value) return
+  currentPage.value = p
+}
+watch([searchQuery, filterType], () => { currentPage.value = 1 })
 
 // Load real wallet transactions from wallet API
 const loadData = async () => {
@@ -48,14 +118,14 @@ const loadData = async () => {
   try {
     // Load wallet transactions + balance in parallel
     const [txRes, balRes] = await Promise.all([
-      api.get('/wallet/transactions?page=1&limit=20'),
+      api.get('/wallet/transactions?page=1&limit=200'),
       api.get('/wallet'),
     ])
     const txList = txRes.data?.data || txRes.data || []
     transactions.value = txList.map((tx: any) => ({
       id: tx.id,
-      type: tx.type === 'withdrawal' ? 'withdraw' as const : tx.type === 'deposit' ? 'deposit' as const : tx.type === 'refund' ? 'refund' as const : 'payment' as const,
-      amount: Number(tx.amount),
+      type: tx.type === 'withdrawal' ? 'withdraw' as const : tx.type === 'deposit' ? 'deposit' as const : tx.type === 'refund' ? 'refund' as const : tx.type === 'receive' ? 'receive' as const : 'payment' as const,
+      amount: Number(tx.amount) || 0,
       description: tx.description || tx.type,
       createdAt: tx.createdAt,
     }))
@@ -66,69 +136,9 @@ const loadData = async () => {
     }
   } catch (error) {
     console.error('Failed to load wallet:', error)
-    // Fallback: load from orders
-    try {
-      const res = await api.get('/orders')
-      const orders = res.data?.data || res.data || []
-      transactions.value = orders.map((o: any) => {
-        const isRefund = o.status === 'cancelled' || o.status === 'refunded'
-        return {
-          id: o.id,
-          type: isRefund ? 'refund' as const : 'payment' as const,
-          amount: isRefund ? Number(o.totalPrice) : -Number(o.totalPrice),
-          description: o.product?.titleZh || o.product?.titleEn || o.orderNumber || 'Order',
-          createdAt: o.createdAt,
-        }
-      }).slice(0, 20)
-    } catch {
-      transactions.value = []
-    }
+    transactions.value = []
   } finally {
     loading.value = false
-  }
-}
-
-const handleWithdraw = async () => {
-  if (withdrawAmount.value <= 0) {
-    showToast(locale.value === 'zh' ? '請輸入有效金額' : 'Please enter a valid amount')
-    return
-  }
-  if (withdrawAmount.value > balance.value) {
-    showToast(locale.value === 'zh' ? '餘額不足' : 'Insufficient balance')
-    return
-  }
-  try {
-    await api.post('/wallet/withdraw', { amount: withdrawAmount.value })
-    showToast(locale.value === 'zh' ? `提現 ${formatPrice(withdrawAmount.value)} 成功` : `Withdrawal ${formatPrice(withdrawAmount.value)} successful`)
-    showWithdrawModal.value = false
-    withdrawAmount.value = 0
-    await loadData()
-  } catch (err: any) {
-    showToast(err.response?.data?.message || (locale.value === 'zh' ? '提現失敗' : 'Withdrawal failed'))
-  }
-}
-
-const showDepositModal = ref(false)
-const depositAmount = ref(0)
-
-const handleDeposit = () => {
-  showDepositModal.value = true
-  depositAmount.value = 0
-}
-
-const confirmDeposit = async () => {
-  if (depositAmount.value <= 0) {
-    showToast(locale.value === 'zh' ? '請輸入有效金額' : 'Please enter a valid amount')
-    return
-  }
-  try {
-    await api.post('/wallet/deposit', { amount: depositAmount.value, description: locale.value === 'zh' ? '充值' : 'Deposit' })
-    showToast(locale.value === 'zh' ? `充值 ${formatPrice(depositAmount.value)} 成功` : `Deposit ${formatPrice(depositAmount.value)} successful`)
-    showDepositModal.value = false
-    depositAmount.value = 0
-    await loadData()
-  } catch (err: any) {
-    showToast(err.response?.data?.message || (locale.value === 'zh' ? '充值失敗' : 'Deposit failed'))
   }
 }
 
@@ -139,17 +149,13 @@ onMounted(() => {
 
 <template>
   <div class="wallet-page">
-    <!-- Toast -->
-    <Transition name="toast">
-      <div v-if="toastMessage" class="toast">{{ toastMessage }}</div>
-    </Transition>
     <h1 class="page-title">{{ locale === 'zh' ? '我的帳戶' : 'My Wallet' }}</h1>
 
     <!-- Balance Cards -->
     <div class="balance-grid">
       <div class="balance-card primary">
         <div class="balance-label">總餘額</div>
-        <div class="balance-value">{{ formatPrice(balance) }}</div>
+        <div class="balance-value">{{ formatPriceExact(balance) }}</div>
         <div class="balance-hint">充值及提現功能即將推出</div>
       </div>
     </div>
@@ -167,13 +173,38 @@ onMounted(() => {
     <div class="transactions-section">
       <h3 class="section-title">💳 交易記錄</h3>
 
+      <!-- 類型 tabs -->
+      <div class="list-tabs">
+        <button
+          v-for="tab in TAB_DEFS"
+          :key="tab.key"
+          class="list-tab"
+          :class="{ active: filterType === tab.key }"
+          @click="filterType = tab.key"
+        >
+          {{ tab.label }}
+          <span class="tab-count">{{ tabCount(tab.key) }}</span>
+        </button>
+      </div>
+
+      <!-- 搜尋 -->
+      <div class="search-row">
+        <input
+          v-model="searchQuery"
+          type="text"
+          class="search-input"
+          placeholder="🔍 搜尋項目..."
+        />
+        <button v-if="searchQuery" class="btn-clear-search" @click="searchQuery = ''">✕ 清除</button>
+      </div>
+
       <StateView v-if="loading" state="loading" />
 
-      <StateView v-else-if="transactions.length === 0" state="empty" icon="💳" title="暫無交易記錄" />
+      <StateView v-else-if="filteredTx.length === 0" state="empty" icon="💳" title="暫無交易記錄" />
 
       <div v-else class="transactions-list">
-        <div v-for="tx in transactions" :key="tx.id" class="transaction-item">
-          <div class="tx-icon" :class="getTransactionClass(tx.type)">
+        <div v-for="tx in pagedTx" :key="tx.id" class="transaction-item">
+          <div class="tx-icon" :class="tx.amount > 0 ? 'positive' : 'negative'">
             {{ getTransactionIcon(tx.type) }}
           </div>
           <div class="tx-info">
@@ -185,72 +216,12 @@ onMounted(() => {
           </div>
         </div>
       </div>
-    </div>
 
-    <!-- Withdraw Modal（充值/提現功能暫時隱藏，modal 不會觸發） -->
-    <div v-if="false && showWithdrawModal" class="modal-overlay" @click.self="showWithdrawModal = false">
-      <div class="modal">
-        <div class="modal-header">
-          <h2>提現</h2>
-          <button @click="showWithdrawModal = false" class="modal-close">✕</button>
-        </div>
-        <div class="modal-body">
-          <div class="balance-info">
-            目前可提現餘額: <strong>{{ formatPrice(balance) }}</strong>
-          </div>
-          <div class="form-group">
-            <label>提現金額 (MOP)</label>
-            <input 
-              v-model.number="withdrawAmount" 
-              type="number" 
-              :max="balance"
-              min="1"
-              placeholder="請輸入提現金額"
-            />
-          </div>
-          <div class="withdraw-info">
-            <p>⚠️ 提現將在 1-3 個工作日內到賬</p>
-            <p>收款賬戶: **** **** **** 5678</p>
-          </div>
-        </div>
-        <div class="modal-footer">
-          <button @click="showWithdrawModal = false" class="btn-cancel">取消</button>
-          <button @click="handleWithdraw" class="btn-submit">確認提現</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Deposit Modal（充值/提現功能暫時隱藏，modal 不會觸發） -->
-    <div v-if="false && showDepositModal" class="modal-overlay" @click.self="showDepositModal = false">
-      <div class="modal">
-        <div class="modal-header">
-          <h2>{{ locale === 'zh' ? '充值' : 'Deposit' }}</h2>
-          <button @click="showDepositModal = false" class="modal-close">✕</button>
-        </div>
-        <div class="modal-body">
-          <div class="balance-info">
-            {{ locale === 'zh' ? '目前餘額' : 'Current Balance' }}: <strong>{{ formatPrice(balance) }}</strong>
-          </div>
-          <div class="form-group">
-            <label>{{ locale === 'zh' ? '充值金額 (MOP)' : 'Amount (MOP)' }}</label>
-            <input
-              v-model.number="depositAmount"
-              type="number"
-              min="1"
-              :placeholder="locale === 'zh' ? '請輸入充值金額' : 'Enter deposit amount'"
-            />
-          </div>
-          <div class="quick-amounts">
-            <button @click="depositAmount = 100" class="btn-quick">100</button>
-            <button @click="depositAmount = 500" class="btn-quick">500</button>
-            <button @click="depositAmount = 1000" class="btn-quick">1,000</button>
-            <button @click="depositAmount = 5000" class="btn-quick">5,000</button>
-          </div>
-        </div>
-        <div class="modal-footer">
-          <button @click="showDepositModal = false" class="btn-cancel">{{ locale === 'zh' ? '取消' : 'Cancel' }}</button>
-          <button @click="confirmDeposit" class="btn-submit">{{ locale === 'zh' ? '確認充值' : 'Confirm Deposit' }}</button>
-        </div>
+      <!-- 分頁 -->
+      <div v-if="!loading && filteredTx.length > PAGE_SIZE" class="pagination">
+        <button class="page-btn" :disabled="currentPage <= 1" @click="goToPage(currentPage - 1)">‹ 上一頁</button>
+        <span class="page-info">第 {{ currentPage }} / {{ totalPages }} 頁 · 共 {{ filteredTx.length }} 筆</span>
+        <button class="page-btn" :disabled="currentPage >= totalPages" @click="goToPage(currentPage + 1)">下一頁 ›</button>
       </div>
     </div>
   </div>
@@ -260,25 +231,8 @@ onMounted(() => {
 .wallet-page {
   display: flex;
   flex-direction: column;
-  gap: var(--space-6);
+  gap: var(--space-4);
 }
-
-.toast {
-  position: fixed;
-  top: 20px;
-  left: 50%;
-  transform: translateX(-50%);
-  padding: 12px 24px;
-  border-radius: 8px;
-  background: var(--primary-gradient);
-  color: white;
-  font-size: 14px;
-  font-weight: 500;
-  z-index: 9999;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-}
-.toast-enter-active, .toast-leave-active { transition: all 0.3s ease; }
-.toast-enter-from, .toast-leave-to { opacity: 0; transform: translateX(-50%) translateY(-10px); }
 
 .page-title {
   font-size: var(--text-2xl);
@@ -310,10 +264,6 @@ onMounted(() => {
   margin-bottom: var(--space-2);
 }
 
-.balance-card:not(.primary) .balance-label {
-  color: var(--text-secondary);
-}
-
 .balance-value {
   font-family: var(--font-num);
   font-size: var(--text-2xl);
@@ -322,22 +272,9 @@ onMounted(() => {
   margin-bottom: var(--space-1);
 }
 
-.balance-value.secondary {
-  color: var(--text-primary);
-}
-
 .balance-hint {
   font-size: var(--text-xs);
   color: rgba(255, 255, 255, 0.6);
-}
-
-.balance-card:not(.primary) .balance-hint {
-  color: var(--text-muted);
-}
-
-.action-buttons {
-  display: flex;
-  gap: var(--space-4);
 }
 
 /* 充值/提現暫停通知卡 */
@@ -354,52 +291,76 @@ onMounted(() => {
 .notice-icon { font-size: 20px; flex-shrink: 0; }
 .notice-text { font-size: var(--text-sm); color: var(--text-secondary); line-height: 1.5; }
 
-.btn-deposit,
-.btn-withdraw {
-  flex: 1;
-  padding: var(--space-4);
-  border-radius: var(--radius-xl);
-  font-size: var(--text-base);
-  font-weight: 600;
-  border: none;
-  cursor: pointer;
-  transition: all var(--transition-fast);
-}
-
-.btn-deposit {
-  background: #10b981;
-  color: white;
-}
-
-.btn-deposit:hover {
-  background: #059669;
-}
-
-.btn-withdraw {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  color: var(--text-primary);
-}
-
-.btn-withdraw:hover {
-  border-color: var(--primary);
-  color: var(--primary);
-}
-
+/* ===== 交易記錄（同四分頁組件風格）===== */
 .transactions-section {
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: var(--radius-xl);
-  padding: var(--space-6);
+  padding: var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-width: 0;
 }
 
 .section-title {
   font-size: var(--text-base);
   font-weight: 600;
   color: var(--text-primary);
-  margin-bottom: var(--space-4);
+  margin: 0;
 }
 
+.list-tabs { display: flex; gap: var(--space-2); flex-wrap: wrap; }
+.list-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: var(--space-2) var(--space-5);
+  border-radius: var(--radius-lg);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--text-secondary);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+.list-tab:hover { border-color: var(--primary); }
+.list-tab.active { background: var(--primary-gradient); border: none; color: white; }
+.tab-count {
+  padding: 1px 8px;
+  border-radius: var(--radius-full);
+  background: rgba(0, 0, 0, 0.15);
+  font-size: var(--text-xs);
+  font-weight: 600;
+}
+.list-tab:not(.active) .tab-count { background: var(--bg-card); color: var(--text-secondary); }
+
+.search-row { display: flex; gap: var(--space-2); align-items: center; }
+.search-input {
+  flex: 1;
+  max-width: 420px;
+  min-width: 0;
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  color: var(--text-primary);
+  font-size: var(--text-sm);
+  outline: none;
+  transition: border-color var(--transition-fast);
+}
+.search-input:focus { border-color: var(--primary); }
+.btn-clear-search {
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+  background: var(--bg-elevated);
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: var(--text-xs);
+}
+.btn-clear-search:hover { color: var(--text-primary); border-color: var(--primary); }
 
 .transactions-list {
   display: flex;
@@ -414,6 +375,7 @@ onMounted(() => {
   padding: var(--space-3);
   background: var(--bg-elevated);
   border-radius: var(--radius-lg);
+  min-width: 0;
 }
 
 .tx-icon {
@@ -424,32 +386,24 @@ onMounted(() => {
   align-items: center;
   justify-content: center;
   font-size: 18px;
+  flex-shrink: 0;
 }
 
-.tx-icon.success {
-  background: #10b98133;
-}
-
-.tx-icon.warning {
-  background: #f59e0b33;
-}
-
-.tx-icon.danger {
-  background: #ef444433;
-}
-
-.tx-icon.info {
-  background: #3b82f633;
-}
+.tx-icon.positive { background: #10b98133; }
+.tx-icon.negative { background: #ef444433; }
 
 .tx-info {
   flex: 1;
+  min-width: 0;
 }
 
 .tx-desc {
   font-size: var(--text-sm);
   font-weight: 500;
   color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .tx-date {
@@ -461,6 +415,7 @@ onMounted(() => {
   font-family: var(--font-num);
   font-size: var(--text-base);
   font-weight: 700;
+  flex-shrink: 0;
 }
 
 .tx-amount.positive {
@@ -471,157 +426,41 @@ onMounted(() => {
   color: var(--text-primary);
 }
 
-/* Modal */
-.modal-overlay {
-  position: fixed;
-  inset: 0;
-  background: #000000b3;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  padding: var(--space-6);
-}
-
-.quick-amounts {
-  display: flex;
-  gap: 8px;
-}
-
-.btn-quick {
-  flex: 1;
-  padding: 8px;
-  background: var(--bg-elevated);
+/* ===== 分頁 ===== */
+.pagination { display: flex; align-items: center; justify-content: center; gap: var(--space-4); }
+.page-btn {
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-lg);
   border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  color: var(--text-primary);
-  font-size: var(--text-sm);
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.btn-quick:hover {
-  border-color: var(--primary);
-  color: var(--primary);
-}
-
-.modal {
   background: var(--bg-card);
-  border-radius: var(--radius-2xl);
-  width: 100%;
-  max-width: 400px;
-}
-
-.modal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: var(--space-6);
-  border-bottom: 1px solid var(--border);
-}
-
-.modal-header h2 {
-  font-size: var(--text-lg);
-  font-weight: 700;
-  color: var(--text-primary);
-}
-
-.modal-close {
-  width: 32px;
-  height: 32px;
-  border-radius: var(--radius-lg);
-  border: none;
-  background: var(--bg-elevated);
   color: var(--text-secondary);
   cursor: pointer;
-}
-
-.modal-close:hover {
-  background: var(--danger);
-  color: white;
-}
-
-.modal-body {
-  padding: var(--space-6);
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
-}
-
-.balance-info {
-  padding: var(--space-3);
-  background: var(--bg-elevated);
-  border-radius: var(--radius-lg);
   font-size: var(--text-sm);
-  color: var(--text-secondary);
+  transition: all var(--transition-fast);
 }
+.page-btn:hover:not(:disabled) { border-color: var(--primary); color: var(--text-primary); }
+.page-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.page-info { font-size: var(--text-sm); color: var(--text-secondary); }
 
-.balance-info strong {
-  color: var(--primary);
-}
+/* ===== 手機適配（<768px）===== */
+@media (max-width: 767px) {
+  .wallet-page,
+  .balance-grid,
+  .transactions-section,
+  .list-tabs,
+  .search-row,
+  .search-input,
+  .pagination {
+    min-width: 0;
+  }
 
-.form-group {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-}
-
-.form-group label {
-  font-size: var(--text-sm);
-  font-weight: 500;
-  color: var(--text-secondary);
-}
-
-.form-group input {
-  padding: var(--space-3) var(--space-4);
-  background: var(--bg-elevated);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  color: var(--text-primary);
-  font-size: var(--text-base);
-}
-
-.form-group input:focus {
-  outline: none;
-  border-color: var(--primary);
-}
-
-.withdraw-info {
-  font-size: var(--text-sm);
-  color: var(--text-secondary);
-}
-
-.withdraw-info p {
-  margin-bottom: var(--space-1);
-}
-
-.modal-footer {
-  display: flex;
-  justify-content: flex-end;
-  gap: var(--space-3);
-  padding: var(--space-6);
-  border-top: 1px solid var(--border);
-  background: var(--bg-elevated);
-}
-
-.btn-cancel {
-  padding: var(--space-3) var(--space-6);
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  color: var(--text-primary);
-  font-weight: 500;
-  cursor: pointer;
-}
-
-.btn-submit {
-  padding: var(--space-3) var(--space-6);
-  background: var(--primary-gradient);
-  border: none;
-  border-radius: var(--radius-lg);
-  color: white;
-  font-weight: 600;
-  cursor: pointer;
+  .list-tabs { gap: var(--space-1); }
+  .list-tab { padding: var(--space-1) var(--space-3); font-size: var(--text-xs); }
+  .search-row { flex-wrap: wrap; }
+  .search-input { max-width: 100%; flex: 1 1 100%; }
+  .transactions-section { padding: var(--space-4); }
+  .transaction-item { gap: var(--space-3); }
+  .pagination { flex-wrap: wrap; gap: var(--space-2); }
+  .page-info { font-size: var(--text-xs); }
 }
 </style>

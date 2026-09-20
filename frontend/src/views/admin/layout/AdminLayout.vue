@@ -13,7 +13,6 @@ const sidebarOpen = ref(false)
 const navItems = [
   { path: '/admin', name: 'dashboard', icon: '📊', label: 'admin.dashboard' },
   { path: '/admin/users', name: 'users', icon: '👥', label: 'admin.users' },
-  { path: '/admin/sellers', name: 'sellers', icon: '🏪', label: 'admin.sellers' },
   { path: '/admin/seller-applications', name: 'sellerApplications', icon: '📝', label: 'admin.sellerApplications' },
   { path: '/admin/settings', name: 'settings', icon: '⚙️', label: 'admin.settings' },
 ]
@@ -205,6 +204,10 @@ const handleLogout = async () => {
     margin-left: 0;
     padding: var(--space-4);
     padding-bottom: calc(var(--space-4) + 64px);
+    /* min-width:0 傳遞鏈修復 — flex item 內容 min-content 撐爆容器（375px 溢出根因，同 SellerLayout 一致） */
+    min-width: 0;
+    max-width: 100vw;
+    overflow-x: hidden;
   }
 }
 

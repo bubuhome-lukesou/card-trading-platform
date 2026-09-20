@@ -23,20 +23,47 @@ export class AdminService {
     private auctionRepo: Repository<Auction>,
   ) {}
 
-  async getUsers(page = 1, limit = 20, role?: string) {
+  async getUsers(page = 1, limit = 20, role?: string, status?: string, search?: string) {
     const where: any = {};
     if (role) where.role = role;
-    const [data, total] = await this.userRepo.findAndCount({
-      where,
-      order: { createdAt: 'DESC' },
-      skip: (page - 1) * limit,
-      take: limit,
-    });
+    if (status) where.status = status;
+    if (search && search.trim()) {
+      const kw = search.trim();
+      where.nickname = kw;
+      where.email = kw;
+    }
+    const qb = this.userRepo
+      .createQueryBuilder('user')
+      .orderBy('user.createdAt', 'DESC')
+      .skip((page - 1) * limit)
+      .take(limit);
+    if (where.role) qb.andWhere('user.role = :role', { role: where.role });
+    if (where.status) qb.andWhere('user.status = :status', { status: where.status });
+    if (where.nickname) {
+      qb.andWhere('(user.nickname LIKE :kw OR user.email LIKE :kw OR user.phone LIKE :kw)', { kw: `%${where.nickname}%` });
+    }
+    const [data, total] = await qb.getManyAndCount();
+
+    // 累計消費（真數）：confirmed/shipped/delivered 訂單總額（同全站收款口徑，預約單冇經過 paid）
+    const spendRows = await this.orderRepo
+      .createQueryBuilder('order')
+      .select('order.buyerId', 'buyerId')
+      .addSelect('COALESCE(SUM(order.totalPrice), 0)', 'totalSpend')
+      .addSelect('COUNT(order.id)', 'orderCount')
+      .where('order.status IN (:...statuses)', { statuses: [OrderStatus.CONFIRMED, OrderStatus.SHIPPED, OrderStatus.DELIVERED] })
+      .groupBy('order.buyerId')
+      .getRawMany();
+    const spendMap = new Map<string, { totalSpend: number; orderCount: number }>();
+    for (const row of spendRows) {
+      spendMap.set(row.buyerId, { totalSpend: Number(row.totalSpend || 0), orderCount: Number(row.orderCount || 0) });
+    }
+
     // 安全：移除敏感欄位（password hash / 驗證 token）— 同 getRecentUsers 一致
     return {
       data: data.map(u => {
         const { password, emailVerificationToken, resetPasswordToken, ...safe } = u as any;
-        return safe;
+        const spend = spendMap.get(u.id) || { totalSpend: 0, orderCount: 0 };
+        return { ...safe, totalSpend: spend.totalSpend, orderCount: spend.orderCount };
       }),
       total, page, limit,
     };
