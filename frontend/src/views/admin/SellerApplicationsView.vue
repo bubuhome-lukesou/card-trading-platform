@@ -38,8 +38,7 @@ const filterStatus = ref('all')
 const PAGE_SIZE = 20
 const searchQuery = ref('')
 const currentPage = ref(1)
-watch([searchQuery, filterStatus], () => { currentPage.value = 1 })
-watch([searchQuery, filterStatus], () => { loadApplications() })
+watch([searchQuery, filterStatus], () => { currentPage.value = 1; loadApplications() })
 
 const totalPages = computed(() => Math.max(1, Math.ceil(apiTotal.value / PAGE_SIZE)))
 const goToPage = (p: number) => {
@@ -225,7 +224,8 @@ onMounted(() => {
         v-model="searchQuery"
         type="text"
         class="search-input"
-        placeholder="🔍 搜尋商店名、申請人或 Email..."
+        placeholder="🔍 搜尋商店名、申請人或 Email（按 Enter 搜尋）..."
+        @keyup.enter="loadApplications()"
       />
       <button v-if="searchQuery" class="btn-clear-search" @click="searchQuery = ''">✕ 清除</button>
     </div>

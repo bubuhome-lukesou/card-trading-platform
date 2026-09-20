@@ -234,7 +234,24 @@ export class OrdersService {
     if (order.buyerId !== userId) {
       throw new ForbiddenException('Only the buyer can upload receipts');
     }
-    // Must be in PENDING status (buyer uploads balance receipt before seller confirms)
+    // 預約流程：PENDING=待付訂金（尾款未到時間不應上傳）；CONFIRMED=訂金已確認待付尾款（上傳後完成交易）
+    // （2026-09-20 修復：舊版只允許 PENDING，令「待付尾款」階段的上傳按鈕全部 400 卡死預約流程）
+    const isReservation = order.type === OrderType.RESERVATION_DEPOSIT || order.type === OrderType.RESERVATION_FULL;
+    if (isReservation && order.status === OrderStatus.CONFIRMED) {
+      order.balanceReceipt = receiptUrl;
+      order.balanceTime = new Date();
+      order.status = OrderStatus.DELIVERED; // 尾款憑證上傳後直接完成（賣家另有到店確認流程）
+      const saved = await this.orderRepo.save(order);
+      this.notificationService.notify({
+        userId: order.sellerId,
+        type: NotificationType.PAYMENT_RECEIVED,
+        title: '收到尾款憑證',
+        message: `買家已上傳「${order.product?.titleZh || order.product?.titleEn || order.orderNumber}」的尾款憑證，請確認`,
+        link: '/seller/orders',
+      }).catch(() => {});
+      return saved;
+    }
+    // 非預約單維持原邏輯：僅 PENDING 可上傳尾款憑證（走 pending_paid 待確認）
     if (order.status !== OrderStatus.PENDING) {
       throw new BadRequestException('Cannot upload balance receipt in current order status');
     }

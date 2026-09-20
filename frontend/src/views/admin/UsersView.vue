@@ -86,8 +86,8 @@ const PAGE_SIZE = 20
 const searchQuery = ref('')
 const filterStatus = ref('all')
 const currentPage = ref(1)
-watch([searchQuery, filterStatus, activeTab], () => { currentPage.value = 1 })
-watch([searchQuery, filterStatus, activeTab], () => { fetchUsers() })
+// tab 切換：先設 activeTab 再 fetch（避免 onMounted 設 tab 後 fetchUsers 帶舊 role）
+watch([searchQuery, filterStatus, activeTab], () => { currentPage.value = 1; fetchUsers() })
 
 const totalPages = computed(() => Math.max(1, Math.ceil(apiTotal.value / PAGE_SIZE)))
 const goToPage = (p: number) => {
@@ -202,13 +202,16 @@ const openDetail = (u: UserRow) => { detailUser.value = u }
 const closeDetail = () => { detailUser.value = null }
 
 // query 重放：/admin/users?role=seller（商家管理併入後跳入）
+// watch 會在 onMounted 前註冊，onMounted 改 activeTab 會觸發 fetchUsers（帶新 role）— 呢度唔使重複 fetch
 onMounted(() => {
   const qRole = String(route.query.role || '')
   if (qRole && TAB_DEFS.some(t => t.role === qRole)) {
     activeTab.value = qRole
+    loadSummary()
+  } else {
+    fetchUsers()
+    loadSummary()
   }
-  fetchUsers()
-  loadSummary()
 })
 </script>
 
@@ -254,7 +257,8 @@ onMounted(() => {
         v-model="searchQuery"
         type="text"
         class="search-input"
-        placeholder="🔍 搜尋暱稱、Email 或電話..."
+        placeholder="🔍 搜尋暱稱、Email 或電話（按 Enter 搜尋）..."
+        @keyup.enter="fetchUsers()"
       />
       <button v-if="searchQuery" class="btn-clear-search" @click="searchQuery = ''">✕ 清除</button>
       <select v-model="filterStatus" class="status-select">
