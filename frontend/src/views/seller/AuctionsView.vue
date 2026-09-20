@@ -1566,6 +1566,7 @@ tr.row-expanded td {
 }
 
 .product-title {
+  font-size: var(--text-sm); /* 2026-09-20 明確聲明，同訂單管理 .product-name 一致 — 全局樣式污染防護 */
   font-weight: 500;
   max-width: 240px;
   overflow: hidden;

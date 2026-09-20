@@ -790,18 +790,23 @@ small {
   }
 }
 
-.product-info {
-  .product-title {
-    font-size: var(--text-3xl);
-    font-weight: 700;
-    margin-bottom: var(--space-2);
-  }
+// ⚠️ 2026-09-20 修正：呢段原本係 ProductDetailView 嘅 scoped CSS workaround，
+// 但 ProductDetailView 根本冇 .product-info wrapper（佢自帶 scoped .product-title），
+// 而 seller 商品列表（AuctionsView）表格行結構恰巧係 .product-info > .product-title，
+// 被呢條全局規則污染令商品名變 30px。全 src 已確認冇任何 view 用呢段結構（孤兒樣式）→ 收窄到 .product-detail 下
+.product-detail {
+  .product-info {
+    .product-title {
+      font-size: var(--text-3xl);
+      font-weight: 700;
+      margin-bottom: var(--space-2);
+    }
 
-  .product-subtitle {
-    color: var(--text-muted);
-    font-size: var(--text-lg);
-    margin-bottom: var(--space-4);
-  }
+    .product-subtitle {
+      color: var(--text-muted);
+      font-size: var(--text-lg);
+      margin-bottom: var(--space-4);
+    }
 
   .product-meta {
     display: flex;
@@ -867,6 +872,7 @@ small {
       font-weight: 700;
       color: var(--primary);
     }
+  }
   }
 }
 
