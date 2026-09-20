@@ -225,10 +225,34 @@ const compareRows = (a: Row, b: Row, col: { key: string; type: string }): number
 }
 
 // ===== 拍賣分頁：GET /auctions/seller/my =====
+// ⚠️ 同一商品可能有多條 auction 記錄（舊場 cancelled + 重開場）— 按 productId 去重，
+// 每件商品只顯示一行，保留最活躍記錄：active > pending > ended > cancelled，同優先級取最新
+const AUCTION_PRIORITY: Record<string, number> = { active: 4, pending: 3, ended: 2, cancelled: 1 }
+
 const loadAuctionRows = async () => {
   const res = await auctionApi.getMyAuctions({ limit: 200 })
   const list = res.data?.data || []
-  return list.map((a: any): Row => {
+
+  // 按 productId 去重：優先級高者勝，同級取 createdAt 最新
+  const byProduct = new Map<string, any>()
+  for (const a of list) {
+    const pid = a.productId
+    if (!pid) continue
+    const existing = byProduct.get(pid)
+    if (!existing) {
+      byProduct.set(pid, a)
+      continue
+    }
+    const pa = AUCTION_PRIORITY[(a.status || '').toLowerCase()] ?? 0
+    const pe = AUCTION_PRIORITY[(existing.status || '').toLowerCase()] ?? 0
+    if (pa > pe) {
+      byProduct.set(pid, a)
+    } else if (pa === pe && new Date(a.createdAt).getTime() > new Date(existing.createdAt).getTime()) {
+      byProduct.set(pid, a)
+    }
+  }
+
+  return Array.from(byProduct.values()).map((a: any): Row => {
     const p = a.product || {}
     const imgs = parseImages(p.images)
     const st = (a.status || 'active').toLowerCase()
