@@ -42,14 +42,20 @@ export class OrdersService {
     private dataSource: DataSource,
   ) {}
 
-  async findByBuyer(buyerId: string, page = 1, limit = 20) {
-    const [data, total] = await this.orderRepo.findAndCount({
-      where: { buyerId },
-      relations: ['product', 'seller'],
-      order: { createdAt: 'DESC' },
-      skip: (page - 1) * limit,
-      take: limit,
-    });
+  async findByBuyer(buyerId: string, page = 1, limit = 20, search?: string) {
+    const qb = this.orderRepo
+      .createQueryBuilder('order')
+      .leftJoinAndSelect('order.product', 'product')
+      .leftJoinAndSelect('order.seller', 'seller')
+      .where('order.buyerId = :buyerId', { buyerId })
+      .orderBy('order.createdAt', 'DESC')
+      .skip((page - 1) * limit)
+      .take(limit);
+    if (search && search.trim()) {
+      const kw = `%${search.trim()}%`;
+      qb.andWhere('(product.titleZh LIKE :kw OR product.titleEn LIKE :kw OR seller.nickname LIKE :kw)', { kw });
+    }
+    const [data, total] = await qb.getManyAndCount();
     return { data, total, page, limit };
   }
 

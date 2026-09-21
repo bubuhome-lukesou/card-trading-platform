@@ -2,8 +2,7 @@
 import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
-import { Heart, Loader2, Copy } from 'lucide-vue-next'
-import { CategoryLogo } from '@/components/brand/CategoryLogos'
+import { Heart, Loader2 } from 'lucide-vue-next'
 import { productApi } from '@/api/products'
 import { cartApi } from '@/api/cart'
 import { favoritesApi } from '@/api/favorites'
@@ -13,6 +12,11 @@ import { useAuthStore } from '@/stores/auth'
 import { tagApi } from '@/api/tags'
 import { formatDate, formatDateTime } from '@/utils/format'
 import ProductCard from '@/components/product/ProductCard.vue'
+import ImageGallery from '@/components/product/detail/ImageGallery.vue'
+import SpecTable from '@/components/product/detail/SpecTable.vue'
+import SellerCard from '@/components/product/detail/SellerCard.vue'
+import RelatedProducts from '@/components/product/detail/RelatedProducts.vue'
+import { useProductInfo } from '@/composables/useProductInfo'
 
 const { t, locale } = useI18n()
 const route = useRoute()
@@ -22,15 +26,30 @@ const favoritesStore = useFavoritesStore()
 
 const loading = ref(true)
 const product = ref<any>(null)
-const currentImageIndex = ref(0)
 const processing = ref(false)
 const message = ref('')
 const messageType = ref<'success' | 'error'>('success')
 const selectedQuantity = ref(1)
-const lightboxOpen = ref(false)
 // P2: Use favoritesStore for sync across pages
 const isFavorited = computed(() => favoritesStore.isFavorited(product.value?.id || ''))
 const favoriteLoading = ref(false)
+
+// T7 共用 helpers（原 inline 定義已抽去 composables/useProductInfo.ts）
+const {
+  getTitle,
+  getDescription,
+  copied,
+  copyProductNumber,
+  getConditionColor,
+  getProductTypeLabel,
+  getLanguageLabel,
+  getGeneralTags,
+} = useProductInfo()
+const conditionColor = computed(() => getConditionColor(product.value?.condition))
+
+const relatedProducts = ref<any[]>([])
+const relatedLoading = ref(false)
+const allTags = ref<any[]>([])
 
 // Load favorites on mount
 const loadFavorites = async () => {
@@ -50,124 +69,15 @@ const handleToggleFavorite = async () => {
   await favoritesStore.toggleFavorite(product.value.id)
   favoriteLoading.value = false
 }
-const relatedProducts = ref<any[]>([])
-const relatedLoading = ref(false)
-const allTags = ref<any[]>([])
 
-// Touch/swipe state for mobile
-const touchStartX = ref(0)
-const touchEndX = ref(0)
-
-// Category emoji & labels
-const categoryInfo = computed(() => ({
-  pokemon: { emoji: '🎮', zh: '寶可夢', en: 'Pokemon', color: '#e74c3c' },
-  yugioh: { emoji: '⚡', zh: '遊戲王', en: 'Yu-Gi-Oh!', color: '#f39c12' },
-  mtg: { emoji: '🧙', zh: '萬智牌', en: 'Magic: The Gathering', color: '#1abc9c' },
-  ultraman: { emoji: '👾', zh: '奧特曼', en: 'Ultraman', color: '#3498db' },
-  onepiece: { emoji: '🏴‍☠️', zh: '海賊王', en: 'One Piece', color: '#e74c3c' },
-  doraemon: { emoji: '🤖', zh: '哆啦A夢', en: 'Doraemon', color: '#2196f3' },
-  sports: { emoji: '⚽', zh: '體育卡', en: 'Sports Cards', color: '#27ae60' },
-  other: { emoji: '📦', zh: '其他', en: 'Other', color: '#9b59b6' }
-}))
-
-const categoryColor = computed(() => {
-  const info = categoryInfo.value[product.value?.category as keyof typeof categoryInfo.value]
-  return info?.color || '#6366f1'
-})
-
-const conditionColor = computed(() => ({
-  'S': '#22c55e',
-  'A': '#84cc16',
-  'B': '#eab308',
-  'C': '#f97316',
-  'D': '#ef4444'
-} as Record<string, string>)[product.value?.condition as string] || '#6366f1')
-
-// Get title based on locale
-const getTitle = (product: any) => {
-  return locale.value === 'zh' ? (product.titleZh || product.titleEn) : (product.titleEn || product.titleZh)
+// T7：categoryColor（--cat-color 變數用；categoryInfo 已抽入 composable）
+const CATEGORY_COLORS: Record<string, string> = {
+  pokemon: '#e74c3c', yugioh: '#f39c12', mtg: '#1abc9c', ultraman: '#3498db',
+  onepiece: '#e74c3c', doraemon: '#2196f3', sports: '#27ae60', other: '#9b59b6',
 }
-
-// 點擊賣家框 → 跳轉 marketplace 並篩選該商家
-const goToSellerMarketplace = () => {
-  const sellerId = product.value?.seller?.id || product.value?.sellerId
-  if (sellerId) router.push({ path: '/marketplace', query: { sellers: sellerId } })
-}
-
-// Get description based on locale
-const getDescription = (product: any) => {
-  if (locale.value === 'zh') {
-    return product.descriptionZh || product.descriptionEn || ''
-  }
-  return product.descriptionEn || product.descriptionZh || ''
-}
-
-// Get category info
-const getCategoryInfo = (category: string) => {
-  return categoryInfo.value[category as keyof typeof categoryInfo.value] || { emoji: '📦', zh: category, en: category }
-}
-
-// 商品編號複製
-const copied = ref(false)
-let copyTimer: ReturnType<typeof setTimeout> | null = null
-const copyProductNumber = async (num: number) => {
-  try {
-    await navigator.clipboard.writeText(String(num))
-    copied.value = true
-    if (copyTimer) clearTimeout(copyTimer)
-    copyTimer = setTimeout(() => { copied.value = false }, 1500)
-  } catch { /* clipboard 不可用時靜默 */ }
-}
-
-// Get category label only
-const getCategoryLabel = (category: string) => {
-  const info = getCategoryInfo(category)
-  return locale.value === 'zh' ? info.zh : info.en
-}
-
-// Get product type label from enum value
-const productTypeLabels: Record<string, { zh: string; en: string }> = {
-  graded_card: { zh: '評分卡', en: 'Graded Card' },
-  original_box: { zh: '原箱', en: 'Original Box' },
-  original_case: { zh: '原盒', en: 'Original Case' },
-  original_bag: { zh: '原袋', en: 'Original Bag' },
-  raw_card: { zh: '裸卡', en: 'Raw Card' },
-  other: { zh: '其它', en: 'Other' },
-}
-const getProductTypeLabel = (type: string | null) => {
-  if (!type) return '—'
-  const labels = productTypeLabels[type]
-  if (!labels) return type
-  return labels[locale.value as 'zh' | 'en'] || labels.zh
-}
-
-// Get product type (for matching)
-const getProductType = (product: any) => {
-  return (product as any).productType || null
-}
-
-// Get general tags
-const getGeneralTags = (product: any) => {
-  if (!product.tags) return []
-  return product.tags.filter((tag: any) => tag.type !== 'product_type' && tag.type !== 'PRODUCT_TYPE')
-}
-
-// Language display mapping
-const languageLabels: Record<string, { zh: string; en: string }> = {
-  japanese: { zh: '日文', en: 'Japanese' },
-  english: { zh: '英文', en: 'English' },
-  traditional_chinese: { zh: '繁體中文', en: 'Traditional Chinese' },
-  simplified_chinese: { zh: '簡體中文', en: 'Simplified Chinese' },
-  korean: { zh: '韓文', en: 'Korean' },
-  other: { zh: '其他', en: 'Other' }
-}
-
-const getLanguageLabel = (lang: string | null | undefined) => {
-  if (!lang) return ''
-  const labels = languageLabels[lang]
-  if (!labels) return lang
-  return locale.value === 'zh' ? labels.zh : labels.en
-}
+const categoryColor = computed(() =>
+  (product.value?.category && CATEGORY_COLORS[product.value.category]) || '#6366f1'
+)
 
 // Fetch related products (you may like)
 const fetchRelatedProducts = async () => {
@@ -223,7 +133,6 @@ const loadProduct = async () => {
     ])
     product.value = productRes.data
     allTags.value = tagsRes.data || []
-    currentImageIndex.value = 0
     selectedQuantity.value = 1
     await fetchRelatedProducts()
   } catch (error) {
@@ -244,7 +153,6 @@ watch(
 )
 
 onMounted(async () => {
-  window.addEventListener('keydown', handleKeydown)
   await loadProduct()
   // P2: Load favorites from store for cross-page sync
   await loadFavorites()
@@ -259,76 +167,7 @@ onMounted(async () => {
   }
 })
 
-const selectImage = (index: number) => {
-  currentImageIndex.value = index
-}
-
-const openLightbox = () => {
-  lightboxOpen.value = true
-  document.body.style.overflow = 'hidden'
-}
-
-const closeLightbox = () => {
-  lightboxOpen.value = false
-  document.body.style.overflow = ''
-}
-
-const prevImage = () => {
-  if (!product.value?.images?.length) return
-  currentImageIndex.value = currentImageIndex.value > 0
-    ? currentImageIndex.value - 1
-    : product.value.images.length - 1
-}
-
-const nextImage = () => {
-  if (!product.value?.images?.length) return
-  currentImageIndex.value = currentImageIndex.value < product.value.images.length - 1
-    ? currentImageIndex.value + 1
-    : 0
-}
-
-// Touch handlers for mobile swipe
-const onTouchStart = (e: TouchEvent) => {
-  touchStartX.value = e.changedTouches[0].screenX
-}
-
-const onTouchEnd = (e: TouchEvent) => {
-  touchEndX.value = e.changedTouches[0].screenX
-  const diff = touchStartX.value - touchEndX.value
-  if (Math.abs(diff) > 50) {
-    // Swipe — switch images, prevent click
-    e.preventDefault()
-    handleSwipe()
-  } else {
-    // Tap — open lightbox (let click handler work, don't preventDefault)
-    openLightbox()
-  }
-}
-
-const handleSwipe = () => {
-  if (!product.value?.images?.length || product.value.images.length <= 1) return
-  const diff = touchStartX.value - touchEndX.value
-  if (Math.abs(diff) > 50) {
-    if (diff > 0) {
-      nextImage()
-    } else {
-      prevImage()
-    }
-  }
-}
-
-// Keyboard navigation for lightbox
-const handleKeydown = (e: KeyboardEvent) => {
-  if (!lightboxOpen.value) return
-  if (e.key === 'ArrowLeft') prevImage()
-  if (e.key === 'ArrowRight') nextImage()
-  if (e.key === 'Escape') closeLightbox()
-}
-
-onUnmounted(() => {
-  window.removeEventListener('keydown', handleKeydown)
-  document.body.style.overflow = ''
-})
+// T7：gallery 邏輯（index/nav/swipe/lightbox/keydown）已全部抽入 components/product/detail/ImageGallery.vue
 
 const isOutOfStock = () => {
   return product.value && (product.value.quantity === 0 || product.value.quantity === undefined)
@@ -520,64 +359,12 @@ const isProductSuspended = computed(() => {
       <!-- Product exists -->
       <div v-else-if="product" class="product-layout">
         <!-- ════════════════ LEFT: Image Gallery ════════════════ -->
-        <div class="gallery-wrap">
-          <div
-            class="main-image"
-            :style="{ '--cat-color': categoryColor }"
-            @touchstart="onTouchStart"
-            @touchend="onTouchEnd"
-          >
-            <!-- Category pill -->
-            <div class="cat-pill">
-              <span class="cat-emoji"><CategoryLogo :category="product.category" :size="15" /></span>
-              <span class="cat-text">{{ getCategoryLabel(product.category) }}</span>
-            </div>
-
-            <!-- Nav arrows -->
-            <button v-if="product.images?.length > 1" class="nav-btn nav-prev" @click.stop="prevImage">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
-            </button>
-
-            <img
-              :src="product.images?.[currentImageIndex] || '/placeholder-card.png'"
-              :alt="getTitle(product)"
-              @click="openLightbox"
-              class="hero-img"
-            />
-
-            <button v-if="product.images?.length > 1" class="nav-btn nav-next" @click.stop="nextImage">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
-            </button>
-
-            <!-- Zoom hint -->
-            <div class="zoom-hint">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="11" cy="11" r="8"/>
-                <path d="m21 21-4.35-4.35"/>
-                <path d="M11 8v6M8 11h6"/>
-              </svg>
-              <span>{{ locale === 'zh' ? '點擊放大' : 'Click to zoom' }}</span>
-            </div>
-
-            <!-- Counter -->
-            <div v-if="product.images?.length > 1" class="img-counter">
-              {{ currentImageIndex + 1 }} / {{ product.images.length }}
-            </div>
-          </div>
-
-          <!-- Thumbnails -->
-          <div v-if="product.images?.length > 1" class="thumb-strip">
-            <img
-              v-for="(img, idx) in product.images"
-              :key="idx"
-              :src="img"
-              :alt="`${getTitle(product)} ${Number(idx) + 1}`"
-              class="thumb"
-              :class="{ active: idx === currentImageIndex }"
-              @click="selectImage(Number(idx))"
-            />
-          </div>
-        </div>
+        <ImageGallery
+          :images="product.images || []"
+          :title="getTitle(product)"
+          :category="product.category"
+          :cat-color="categoryColor"
+        />
 
         <!-- ════════════════ RIGHT: Info (Glass Card) ════════════════ -->
         <div class="info-wrap">
@@ -589,68 +376,10 @@ const isProductSuspended = computed(() => {
             </h1>
 
             <!-- 賣家名稱（可點擊 → 跳轉該商家 marketplace 篩選頁） -->
-            <div v-if="product.seller" class="seller-info-row seller-clickable" @click="goToSellerMarketplace" :title="locale === 'zh' ? '查看此商家全部商品' : 'View all products from this seller'">
-              <span class="seller-label">{{ locale === 'zh' ? '商鋪' : 'Seller' }}</span>
-              <div class="seller-avatar-sm">{{ (product.seller.nickname || '?').charAt(0) }}</div>
-              <span class="seller-name-text">{{ product.seller.nickname || (locale === 'zh' ? '未知商家' : 'Unknown Seller') }}</span>
-              <span class="seller-arrow">→</span>
-            </div>
+            <SellerCard :seller="product.seller" />
 
             <!-- Spec table -->
-            <div class="spec-table">
-              <div class="spec-row">
-                <div class="spec-cell">
-                  <span class="spec-label">{{ locale === 'zh' ? '品牌' : 'Brand' }}</span>
-                  <span class="spec-value"><span class="spec-logo"><CategoryLogo :category="product.category" :size="16" /></span> {{ getCategoryLabel(product.category) }}</span>
-                </div>
-                <div class="spec-cell">
-                  <span class="spec-label">{{ locale === 'zh' ? '語言' : 'Language' }}</span>
-                  <span class="spec-value">{{ getLanguageLabel(product.language) || '—' }}</span>
-                </div>
-              </div>
-              <div class="spec-row">
-                <div class="spec-cell">
-                  <span class="spec-label">{{ locale === 'zh' ? '品相' : 'Condition' }}</span>
-                  <span class="spec-value">
-                    <template v-if="product.condition">
-                      <span class="condition-dot" :style="{ backgroundColor: conditionColor }"></span>
-                      {{ product.condition }}{{ locale === 'zh' ? '品, ' + ({ S: '完美品相', A: '輕微瑕疵', B: '正常使用痕跡', C: '較明顯磨損', D: '嚴重磨損' } as Record<string, string>)[product.condition] || '' : '' }}
-                    </template>
-                    <template v-else>—</template>
-                  </span>
-                </div>
-                <div class="spec-cell">
-                  <span class="spec-label">{{ locale === 'zh' ? '商品種類' : 'Type' }}</span>
-                  <span class="spec-value">{{ getProductTypeLabel(product.productType) }}</span>
-                </div>
-              </div>
-              <div class="spec-row" v-if="getGeneralTags(product).length > 0">
-                <div class="spec-cell spec-cell-full">
-                  <span class="spec-label">{{ locale === 'zh' ? '其它標籤' : 'Tags' }}</span>
-                  <span class="spec-value spec-tags">
-                    <span
-                      v-for="tag in getGeneralTags(product)"
-                      :key="tag.id"
-                      class="tag-chip"
-                      :style="tag.color ? { '--tag-color': tag.color } : {}"
-                      @click="router.push({ path: '/marketplace', query: { search: tag.name } })"
-                    >
-                      <span class="tag-dot" :style="{ backgroundColor: tag.color || '#818cf8' }"></span>
-                      {{ tag.name }}
-                    </span>
-                  </span>
-                </div>
-              </div>
-              <div class="spec-row" v-if="(product as any).productNumber">
-                <div class="spec-cell spec-cell-full">
-                  <span class="spec-label">{{ locale === 'zh' ? '商品編號' : 'Item No.' }}</span>
-                  <span class="spec-value product-number" @click="copyProductNumber((product as any).productNumber)" :title="locale === 'zh' ? '點擊複製' : 'Click to copy'">
-                    {{ (product as any).productNumber }}
-                    <Copy v-if="copied" :size="12" class="copied-icon" />
-                  </span>
-                </div>
-              </div>
-            </div>
+            <SpecTable :product="product" :condition-color="conditionColor" />
 
             <!-- Description -->
             <div v-if="getDescription(product)" class="description-block">
@@ -789,39 +518,9 @@ const isProductSuspended = computed(() => {
       </div>
 
       <!-- ════════════════ You May Also Like ════════════════ -->
-      <section v-if="!loading && relatedProducts.length > 0" class="related-section">
-        <h2 class="related-title">{{ locale === 'zh' ? '你可能喜歡' : 'You May Also Like' }}</h2>
-        <div v-if="relatedLoading" class="loading-state">
-          <Loader2 class="spinner" />
-        </div>
-        <div v-else class="related-grid">
-          <ProductCard
-            v-for="p in relatedProducts"
-            :key="p.id"
-            :product="p"
-          />
-        </div>
-      </section>
+      <RelatedProducts :products="relatedProducts" :loading="relatedLoading" />
     </div>
   </div>
-
-  <!-- ════════════════ Lightbox ════════════════ -->
-  <transition name="lightbox-fade">
-    <div v-if="lightboxOpen" class="lightbox" @click.self="closeLightbox">
-      <button class="lb-close" @click="closeLightbox">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-      </button>
-      <button v-if="product.images?.length > 1" class="lb-nav lb-prev" @click.stop="prevImage">
-        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
-      </button>
-      <img :src="product.images?.[currentImageIndex]" :alt="getTitle(product)" class="lb-img" @click.stop />
-      <button v-if="product.images?.length > 1" class="lb-nav lb-next" @click.stop="nextImage">
-        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
-      </button>
-      <div v-if="product.images?.length > 1" class="lb-counter">{{ currentImageIndex + 1 }} / {{ product.images.length }}</div>
-      <div class="lb-hint">{{ locale === 'zh' ? '按 ESC 關閉 · 左右鍵切換' : 'ESC to close · Arrow keys to navigate' }}</div>
-    </div>
-  </transition>
 </template>
 
 <style scoped lang="scss">
@@ -918,224 +617,8 @@ $radius: 16px;
 }
 
 // ════════════════════════════════════════════
-// Gallery (Left)
+// Gallery (Left) — 已抽入 components/product/detail/ImageGallery.vue（T7 2026-09-21）
 // ════════════════════════════════════════════
-.gallery-wrap {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  position: sticky;
-  top: 24px;
-}
-
-@media (max-width: 960px) {
-  .gallery-wrap {
-    position: static;
-    max-width: 100%;
-    overflow: visible;
-  }
-}
-
-.main-image {
-  position: relative;
-  background: linear-gradient(145deg, #131318 0%, #0e0e14 100%);
-  border-radius: $radius;
-  overflow: hidden;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 440px;
-  border: 1px solid $border-glass;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
-  transition: box-shadow 0.3s ease;
-
-  &::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: radial-gradient(ellipse at 50% 30%, rgba(99, 102, 241, 0.06) 0%, transparent 60%);
-    pointer-events: none;
-    z-index: 0;
-  }
-
-  &:hover {
-    box-shadow: 0 12px 40px rgba(99, 102, 241, 0.15);
-  }
-}
-
-.hero-img {
-  max-width: 100%;
-  max-height: 520px;
-  object-fit: contain;
-  display: block;
-  cursor: zoom-in;
-  transition: transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-  position: relative;
-  z-index: 1;
-
-  &:hover {
-    transform: scale(1.03);
-  }
-}
-
-// Category pill (floating top-left)
-.cat-pill {
-  position: absolute;
-  top: 16px;
-  left: 16px;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  background: rgba(10, 10, 15, 0.7);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid $border-glass;
-  border-radius: 100px;
-  padding: 6px 14px 6px 10px;
-  z-index: 5;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
-
-  .cat-emoji {
-    font-size: 1.1rem;
-    line-height: 1;
-  }
-
-  .cat-text {
-    font-size: 0.75rem;
-    font-weight: 600;
-    color: $text-hi;
-    letter-spacing: 0.03em;
-  }
-}
-
-// Nav buttons
-.nav-btn {
-  position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-  background: rgba(10, 10, 15, 0.7);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid $border-glass;
-  color: $text-hi;
-  cursor: pointer;
-  z-index: 5;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.25s ease;
-  opacity: 0;
-}
-
-.main-image:hover .nav-btn {
-  opacity: 1;
-}
-
-.nav-btn:hover {
-  background: rgba(99, 102, 241, 0.3);
-  border-color: rgba(129, 140, 248, 0.5);
-}
-
-.nav-prev { left: 16px; }
-.nav-next { right: 16px; }
-
-// Zoom hint
-.zoom-hint {
-  position: absolute;
-  bottom: 16px;
-  right: 16px;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  background: rgba(10, 10, 15, 0.7);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  color: $text-mid;
-  padding: 6px 12px;
-  border-radius: 100px;
-  font-size: 0.72rem;
-  border: 1px solid $border-glass;
-  z-index: 5;
-  opacity: 0;
-  transition: opacity 0.25s ease;
-}
-
-.main-image:hover .zoom-hint {
-  opacity: 1;
-}
-
-// Image counter
-.img-counter {
-  position: absolute;
-  bottom: 16px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: rgba(10, 10, 15, 0.7);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  color: $text-hi;
-  padding: 4px 14px;
-  border-radius: 100px;
-  font-size: 0.72rem;
-  border: 1px solid $border-glass;
-  z-index: 5;
-}
-
-// Thumbnails
-.thumb-strip {
-  display: flex;
-  gap: 10px;
-  overflow-x: auto;
-  overflow-y: hidden;
-  -webkit-overflow-scrolling: touch;
-  touch-action: pan-x;
-  padding: 4px 0 8px;
-  scrollbar-width: thin;
-  scrollbar-color: rgba(129, 140, 248, 0.3) transparent;
-  scroll-behavior: smooth;
-
-  &::-webkit-scrollbar {
-    height: 4px;
-  }
-  &::-webkit-scrollbar-thumb {
-    background: rgba(129, 140, 248, 0.3);
-    border-radius: 2px;
-  }
-  // Hide scrollbar on mobile but keep scrollable
-  @media (max-width: 960px) {
-    &::-webkit-scrollbar {
-      display: none;
-    }
-    scrollbar-width: none;
-  }
-}
-
-.thumb {
-  width: 76px;
-  height: 76px;
-  object-fit: cover;
-  border-radius: 10px;
-  border: 2px solid transparent;
-  cursor: pointer;
-  transition: all 0.25s ease;
-  flex-shrink: 0;
-  opacity: 0.5;
-  background: #131318;
-
-  &:hover {
-    opacity: 0.85;
-    transform: translateY(-2px);
-  }
-
-  &.active {
-    opacity: 1;
-    border-color: $grad-end;
-    box-shadow: 0 0 0 1px $grad-end, 0 4px 16px rgba(99, 102, 241, 0.25);
-  }
-}
 
 // ════════════════════════════════════════════
 // Info — Glass Card (Right)
@@ -1186,64 +669,6 @@ $radius: 16px;
   display: flex;
   align-items: center;
 }
-
-/* 賣家名稱行 */
-.seller-info-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: var(--space-4);
-  padding: 8px 12px;
-  background: var(--bg-elevated);
-  border-radius: var(--radius-md);
-  width: fit-content;
-}
-/* 可點擊賣家框 → 跳轉商家篩選 */
-.seller-info-row.seller-clickable {
-  cursor: pointer;
-  transition: all var(--transition-fast);
-  border: 1px solid transparent;
-
-  &:hover {
-    background: rgba(102, 126, 234, 0.15);
-    border-color: rgba(102, 126, 234, 0.4);
-
-    .seller-arrow {
-      transform: translateX(3px);
-      opacity: 1;
-    }
-  }
-
-  .seller-arrow {
-    font-size: 14px;
-    color: #8fa3f5;
-    opacity: 0.5;
-    transition: all var(--transition-fast);
-  }
-}
-.seller-label {
-  font-size: var(--text-xs);
-  color: var(--text-muted);
-  font-weight: 400;
-}
-.seller-avatar-sm {
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  background: var(--primary-gradient);
-  color: white;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 13px;
-  font-weight: 600;
-  flex-shrink: 0;
-}
-.seller-name-text {
-  font-size: var(--text-sm);
-  font-weight: 500;
-  color: var(--text-secondary);
-}
 .product-title {
   gap: 12px;
   flex-wrap: wrap;
@@ -1263,126 +688,7 @@ $radius: 16px;
   letter-spacing: 0.05em;
 }
 
-// Spec table
-.spec-table {
-  display: flex;
-  flex-direction: column;
-  border: 1px solid $border-glass;
-  border-radius: 12px;
-  overflow: hidden;
-  background: rgba(255, 255, 255, 0.02);
-  min-width: 0;
-  max-width: 100%;
-}
-
-.spec-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  min-width: 0;
-
-  & + .spec-row {
-    border-top: 1px solid $border-glass;
-  }
-}
-
-.spec-cell {
-  padding: 14px 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  min-width: 0;
-  overflow-wrap: break-word;
-  word-break: break-word;
-
-  & + .spec-cell {
-    border-left: 1px solid $border-glass;
-  }
-}
-
-.spec-cell-full {
-  grid-column: 1 / -1;
-  border-left: none;
-}
-
-.spec-label {
-  font-size: 0.72rem;
-  font-weight: 700;
-  color: $text-lo;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-}
-
-.spec-value {
-  font-size: 0.92rem;
-  font-weight: 600;
-  color: $text-hi;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.condition-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  flex-shrink: 0;
-  box-shadow: 0 0 8px currentColor;
-}
-
-.spec-tags {
-  gap: 8px;
-}
-
-.product-number {
-  cursor: pointer;
-  font-family: var(--font-num, monospace);
-  letter-spacing: 0.04em;
-  user-select: all;
-  transition: color 0.15s;
-
-  &:hover {
-    color: var(--primary);
-  }
-}
-
-.copied-icon {
-  color: var(--primary);
-}
-
-.spec-logo {
-  display: inline-flex;
-  align-items: center;
-}
-
-// Tag chips (inside spec table)
-.tag-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 4px 12px;
-  border-radius: 100px;
-  font-size: 0.75rem;
-  font-weight: 500;
-  background: color-mix(in srgb, var(--tag-color, #818cf8) 10%, transparent);
-  border: 1px solid color-mix(in srgb, var(--tag-color, #818cf8) 30%, transparent);
-  color: var(--tag-color, #818cf8);
-  cursor: pointer;
-  transition: all 0.2s ease;
-
-  &:hover {
-    transform: translateY(-1px);
-    background: color-mix(in srgb, var(--tag-color, #818cf8) 18%, transparent);
-    box-shadow: 0 4px 12px color-mix(in srgb, var(--tag-color, #818cf8) 20%, transparent);
-  }
-}
-
-.tag-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
+// Spec table — 已抽入 components/product/detail/SpecTable.vue（T7 2026-09-21）
 
 // Price
 .price-block {
@@ -1699,149 +1005,8 @@ $radius: 16px;
 }
 
 // ════════════════════════════════════════════
-// Related Products
+// Related Products + Lightbox — 已抽入 components/product/detail/（T7 2026-09-21）
 // ════════════════════════════════════════════
-.related-section {
-  margin-top: 64px;
-  padding-top: 8px;
-}
-
-.related-title {
-  font-size: 1.35rem;
-  font-weight: 800;
-  color: $text-hi;
-  margin-bottom: 24px;
-  letter-spacing: -0.01em;
-  position: relative;
-  padding-left: 16px;
-
-  &::before {
-    content: '';
-    position: absolute;
-    left: 0;
-    top: 50%;
-    transform: translateY(-50%);
-    width: 4px;
-    height: 24px;
-    border-radius: 2px;
-    background: linear-gradient(180deg, $grad-start, $grad-end);
-  }
-}
-
-.related-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 20px;
-}
-
-// ════════════════════════════════════════════
-// Lightbox
-// ════════════════════════════════════════════
-.lightbox {
-  position: fixed;
-  inset: 0;
-  z-index: 9999;
-  background: rgba(5, 5, 10, 0.96);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.lightbox-fade-enter-active, .lightbox-fade-leave-active {
-  transition: opacity 0.25s ease;
-}
-.lightbox-fade-enter-from, .lightbox-fade-leave-to {
-  opacity: 0;
-}
-
-.lb-img {
-  max-width: 90vw;
-  max-height: 85vh;
-  object-fit: contain;
-  border-radius: 12px;
-  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.6);
-  animation: fadeUp 0.3s ease;
-}
-
-.lb-close {
-  position: absolute;
-  top: 24px;
-  right: 24px;
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.08);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  color: $text-hi;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s ease;
-
-  &:hover {
-    background: rgba(239, 68, 68, 0.2);
-    border-color: rgba(239, 68, 68, 0.4);
-    transform: rotate(90deg);
-  }
-}
-
-.lb-nav {
-  position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 56px;
-  height: 56px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.08);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  color: $text-hi;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s ease;
-
-  &:hover {
-    background: rgba(99, 102, 241, 0.25);
-    border-color: rgba(129, 140, 248, 0.5);
-  }
-}
-
-.lb-prev { left: 24px; }
-.lb-next { right: 24px; }
-
-.lb-counter {
-  position: absolute;
-  bottom: 56px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: rgba(255, 255, 255, 0.08);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  color: $text-hi;
-  padding: 6px 18px;
-  border-radius: 100px;
-  font-size: 0.85rem;
-  font-weight: 600;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-}
-
-.lb-hint {
-  position: absolute;
-  bottom: 24px;
-  left: 50%;
-  transform: translateX(-50%);
-  color: rgba(255, 255, 255, 0.4);
-  font-size: 0.75rem;
-  letter-spacing: 0.03em;
-}
 
 // ════════════════════════════════════════════
 // Responsive

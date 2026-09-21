@@ -82,9 +82,23 @@ const tabCount = (key: string): number => {
 
 const todoCount = computed(() => tabCount('todo'))
 
-// ===== 搜尋 / 排序 / 分頁 =====
+// ===== 搜尋（後端 search 參數，Enter 觸發同 admin/users 模式）/ 排序 / 分頁 =====
 const PAGE_SIZE = 20
 const searchQuery = ref('')
+const appliedSearch = ref('') // 已套用到後端嘅搜尋詞
+const applySearch = () => {
+  appliedSearch.value = searchQuery.value.trim()
+  currentPage.value = 1
+  loadOrders()
+}
+const clearSearch = () => {
+  searchQuery.value = ''
+  if (appliedSearch.value) {
+    appliedSearch.value = ''
+    currentPage.value = 1
+    loadOrders()
+  }
+}
 const currentPage = ref(1)
 const sortKey = ref('')
 const sortDir = ref<'asc' | 'desc'>('desc')
@@ -129,13 +143,7 @@ const filteredOrders = computed(() => {
   if (sts && sts.length) {
     result = result.filter(o => sts.includes(o.status))
   }
-  const q = searchQuery.value.trim().toLowerCase()
-  if (q) {
-    result = result.filter(o =>
-      o.productTitle.toLowerCase().includes(q) ||
-      o.sellerNickname.toLowerCase().includes(q)
-    )
-  }
+  // 搜尋已由後端 ?search= 處理（商品名/商家 nickname），本地唔再過濾
   // 預設排序：進行中優先 → 最新在前
   if (!sortKey.value) {
     const todoIdx = (s: string) => (TAB_STATUSES.todo.includes(s) ? 0 : 1)
@@ -159,7 +167,6 @@ const goToPage = (p: number) => {
   if (p < 1 || p > totalPages.value) return
   currentPage.value = p
 }
-watch(searchQuery, () => { currentPage.value = 1 })
 watch(filterStatus, () => { currentPage.value = 1 })
 
 // ===== 統計條（同 seller summary-bar 風格） =====
@@ -224,7 +231,7 @@ const nextStepFor = (o: Order): string => {
 const loadOrders = async () => {
   loading.value = true
   try {
-    const res = await ordersApi.getMyOrders(1, 200)
+    const res = await ordersApi.getMyOrders(1, 200, appliedSearch.value || undefined)
     const list = Array.isArray(res.data) ? res.data : (res.data?.data || [])
     orders.value = list.map((o: any) => {
       let images: string[] = []
@@ -494,15 +501,16 @@ onMounted(() => {
       </button>
     </div>
 
-    <!-- 搜尋 -->
+    <!-- 搜尋（按 Enter 搜尋，後端篩選） -->
     <div class="search-row">
       <input
         v-model="searchQuery"
         type="text"
         class="search-input"
-        placeholder="🔍 搜尋商品或商家..."
+        placeholder="🔍 搜尋商品或商家，按 Enter 搜尋..."
+        @keyup.enter="applySearch"
       />
-      <button v-if="searchQuery" class="btn-clear-search" @click="searchQuery = ''">✕ 清除</button>
+      <button v-if="searchQuery || appliedSearch" class="btn-clear-search" @click="clearSearch">✕ 清除</button>
     </div>
 
     <StateView v-if="loading" state="loading" />

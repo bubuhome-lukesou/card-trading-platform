@@ -238,7 +238,7 @@ const userMenuItems = computed(() => {
           </div>
           <div class="footer-col">
             <h4>{{ t('footer.contact') }}</h4>
-            <p>📧 support@cardquest.com</p>
+            <p>📧 support@aishoper.co</p>
             <p>📱 +853 1234 5678</p>
             <p>📍 {{ t('footer.location') }}</p>
           </div>

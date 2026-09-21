@@ -1,16 +1,19 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { CategoryLogo } from '@/components/brand/CategoryLogos'
 import { useAuthStore } from '@/stores/auth'
 import { auctionApi } from '@/api/auctions'
 import { useFavoritesStore } from '@/stores/favorites'
 import { useI18n } from 'vue-i18n'
 import StateView from '@/components/common/StateView.vue'
-import { Heart, Loader2, Copy } from 'lucide-vue-next'
+import { Heart, Loader2 } from 'lucide-vue-next'
 import { productApi } from '@/api/products'
 import { formatPrice } from '@/utils/format'
-import ProductCard from '@/components/product/ProductCard.vue'
+import ImageGallery from '@/components/product/detail/ImageGallery.vue'
+import SpecTable from '@/components/product/detail/SpecTable.vue'
+import SellerCard from '@/components/product/detail/SellerCard.vue'
+import RelatedProducts from '@/components/product/detail/RelatedProducts.vue'
+import { useProductInfo } from '@/composables/useProductInfo'
 
 const { t, locale } = useI18n()
 
@@ -27,68 +30,10 @@ const bidAmount = ref(0)
 const placingBid = ref(false)
 const bidError = ref('')
 const bidSuccess = ref('')
-const currentImageIndex = ref(0)
-const showLightbox = ref(false)
 // U1: Tick ref to force timeRemaining re-evaluation every second
 const tick = ref(0)
 
-// Touch/swipe state for mobile
-const touchStartX = ref(0)
-const touchEndX = ref(0)
-
-const onTouchStart = (e: TouchEvent) => {
-  touchStartX.value = e.changedTouches[0].screenX
-}
-
-const onTouchEnd = (e: TouchEvent) => {
-  touchEndX.value = e.changedTouches[0].screenX
-  handleSwipe()
-}
-
-const handleSwipe = () => {
-  if (parsedImages.value.length <= 1) return
-  const diff = touchStartX.value - touchEndX.value
-  if (Math.abs(diff) < 30) return
-  if (diff > 0) {
-    nextImage()
-  } else {
-    prevImage()
-  }
-}
-
-const openLightbox = () => {
-  if (parsedImages.value.length > 0) {
-    showLightbox.value = true
-    document.body.style.overflow = 'hidden'
-  }
-}
-
-const closeLightbox = () => {
-  showLightbox.value = false
-  document.body.style.overflow = ''
-}
-
-const prevImage = () => {
-  if (parsedImages.value.length <= 1) return
-  currentImageIndex.value = currentImageIndex.value > 0
-    ? currentImageIndex.value - 1
-    : parsedImages.value.length - 1
-}
-
-const nextImage = () => {
-  if (parsedImages.value.length <= 1) return
-  currentImageIndex.value = currentImageIndex.value < parsedImages.value.length - 1
-    ? currentImageIndex.value + 1
-    : 0
-}
-
-const lightboxPrev = () => {
-  if (currentImageIndex.value > 0) currentImageIndex.value--
-}
-
-const lightboxNext = () => {
-  if (currentImageIndex.value < parsedImages.value.length - 1) currentImageIndex.value++
-}
+// T7：gallery 邏輯（index/nav/swipe/lightbox）已抽入 components/product/detail/ImageGallery.vue
 
 const auctionId = computed(() => route.params.id as string)
 
@@ -225,17 +170,13 @@ const isHighestBidder = computed(() => {
   return authStore.isAuthenticated && auction.value?.winnerId === authStore.user?.id
 })
 
-// 商品編號複製
-const copied = ref(false)
-let copyTimer: ReturnType<typeof setTimeout> | null = null
-const copyProductNumber = async (num: number) => {
-  try {
-    await navigator.clipboard.writeText(String(num))
-    copied.value = true
-    if (copyTimer) clearTimeout(copyTimer)
-    copyTimer = setTimeout(() => { copied.value = false }, 1500)
-  } catch { /* clipboard 不可用時靜默 */ }
-}
+// T7 共用 helpers（原 inline 定義已抽去 composables/useProductInfo.ts）
+const {
+  getTitle,
+  getDescription,
+  getConditionColor,
+} = useProductInfo()
+const conditionColor = computed(() => getConditionColor(auction.value?.product?.condition))
 
 const formatDateTime = (dateStr: string) => {
   const date = new Date(dateStr)
@@ -245,87 +186,6 @@ const formatDateTime = (dateStr: string) => {
     hour: '2-digit',
     minute: '2-digit'
   })
-}
-
-// === Product info helpers (synced with ProductDetailView) ===
-const categoryInfo = computed(() => ({
-  pokemon: { emoji: '🎯', zh: '寶可夢', en: 'Pokemon', color: '#e74c3c' },
-  yugioh: { emoji: '🎯', zh: '遊戲王', en: 'Yu-Gi-Oh!', color: '#f39c12' },
-  mtg: { emoji: '🧙', zh: '萬智牌', en: 'Magic: The Gathering', color: '#1abc9c' },
-  ultraman: { emoji: '👾', zh: '奧特曼', en: 'Ultraman', color: '#3498db' },
-  onepiece: { emoji: '🎯', zh: '海賊王', en: 'One Piece', color: '#e74c3c' },
-  doraemon: { emoji: '🤖', zh: '哆啦A夢', en: 'Doraemon', color: '#2196f3' },
-  sports: { emoji: '⚽', zh: '體育卡', en: 'Sports Cards', color: '#27ae60' },
-  other: { emoji: '📦', zh: '其他', en: 'Other', color: '#9b59b6' }
-}))
-
-const getCategoryInfo = (category: string) => {
-  return categoryInfo.value[category as keyof typeof categoryInfo.value] || { emoji: '📦', zh: category, en: category }
-}
-
-const getCategoryLabel = (category: string) => {
-  const info = getCategoryInfo(category)
-  return locale.value === 'zh' ? info.zh : info.en
-}
-
-const getTitle = (product: any) => {
-  return locale.value === 'zh' ? (product?.titleZh || product?.titleEn) : (product?.titleEn || product?.titleZh)
-}
-
-// 點擊賣家框 → 跳轉 marketplace 並篩選該商家
-const goToSellerMarketplace = () => {
-  const sellerId = auction.value?.seller?.id || auction.value?.product?.sellerId
-  if (sellerId) router.push({ path: '/marketplace', query: { sellers: sellerId } })
-}
-
-const getDescription = (product: any) => {
-  if (locale.value === 'zh') return product?.descriptionZh || product?.descriptionEn || ''
-  return product?.descriptionEn || product?.descriptionZh || ''
-}
-
-const conditionColor = computed(() => ({
-  'S': '#22c55e',
-  'A': '#84cc16',
-  'B': '#eab308',
-  'C': '#f97316',
-  'D': '#ef4444'
-} as Record<string, string>)[auction.value?.product?.condition as string] || '#6366f1')
-
-const productTypeLabels: Record<string, { zh: string; en: string }> = {
-  graded_card: { zh: '評分卡', en: 'Graded Card' },
-  original_box: { zh: '原箱', en: 'Original Box' },
-  original_case: { zh: '原盒', en: 'Original Case' },
-  original_bag: { zh: '原袋', en: 'Original Bag' },
-  raw_card: { zh: '裸卡', en: 'Raw Card' },
-  other: { zh: '其它', en: 'Other' },
-}
-
-const getProductTypeLabel = (type: string | null | undefined) => {
-  if (!type) return '—'
-  const labels = productTypeLabels[type]
-  if (!labels) return type
-  return labels[locale.value as 'zh' | 'en'] || labels.zh
-}
-
-const languageLabels: Record<string, { zh: string; en: string }> = {
-  japanese: { zh: '日文', en: 'Japanese' },
-  english: { zh: '英文', en: 'English' },
-  traditional_chinese: { zh: '繁體中文', en: 'Traditional Chinese' },
-  simplified_chinese: { zh: '簡體中文', en: 'Simplified Chinese' },
-  korean: { zh: '韓文', en: 'Korean' },
-  other: { zh: '其他', en: 'Other' }
-}
-
-const getLanguageLabel = (lang: string | null | undefined) => {
-  if (!lang) return ''
-  const labels = languageLabels[lang]
-  if (!labels) return lang
-  return locale.value === 'zh' ? labels.zh : labels.en
-}
-
-const getGeneralTags = (product: any) => {
-  if (!product?.tags) return []
-  return product.tags.filter((tag: any) => tag.type !== 'product_type' && tag.type !== 'PRODUCT_TYPE')
 }
 
 const loadAuction = async () => {
@@ -428,7 +288,6 @@ onMounted(() => {
 // Reload on route param change (navigating between auctions)
 watch(auctionId, (newId) => {
   if (newId) {
-    currentImageIndex.value = 0
     loadAuction()
   }
 })
@@ -481,65 +340,11 @@ onUnmounted(() => {
       <div class="product-layout">
 
         <!-- LEFT: Image Gallery（與 ProductDetailView 佈局統一） -->
-        <div class="gallery-wrap">
-          <div
-            class="main-image"
-            @touchstart="onTouchStart"
-            @touchend="onTouchEnd"
-          >
-            <!-- Category pill -->
-            <div class="cat-pill">
-              <span class="cat-emoji"><CategoryLogo :category="auction.product?.category || 'other'" :size="15" /></span>
-              <span class="cat-text">{{ getCategoryLabel(auction.product?.category || 'other') }}</span>
-            </div>
-
-            <!-- Nav arrows -->
-            <button v-if="parsedImages.length > 1" class="nav-btn nav-prev" @click.stop="prevImage">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
-            </button>
-
-            <img
-              v-if="parsedImages.length > 0"
-              :src="parsedImages[currentImageIndex]"
-              :alt="auction.product?.titleEn"
-              class="hero-img"
-              @click="openLightbox"
-            />
-            <div v-else class="image-placeholder">🃏</div>
-
-            <button v-if="parsedImages.length > 1" class="nav-btn nav-next" @click.stop="nextImage">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
-            </button>
-
-            <!-- Zoom hint -->
-            <div v-if="parsedImages.length > 0" class="zoom-hint">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="11" cy="11" r="8"/>
-                <path d="m21 21-4.35-4.35"/>
-                <path d="M11 8v6M8 11h6"/>
-              </svg>
-              <span>{{ locale === 'zh' ? '點擊放大' : 'Click to zoom' }}</span>
-            </div>
-
-            <!-- Counter -->
-            <div v-if="parsedImages.length > 1" class="img-counter">
-              {{ currentImageIndex + 1 }} / {{ parsedImages.length }}
-            </div>
-          </div>
-
-          <!-- Thumbnails -->
-          <div v-if="parsedImages.length > 1" class="thumb-strip">
-            <img
-              v-for="(img, idx) in parsedImages"
-              :key="idx"
-              :src="img"
-              :alt="`${getTitle(auction.product)} ${idx + 1}`"
-              class="thumb"
-              :class="{ active: idx === currentImageIndex }"
-              @click="currentImageIndex = idx"
-            />
-          </div>
-        </div>
+        <ImageGallery
+          :images="parsedImages"
+          :title="getTitle(auction.product)"
+          :category="auction.product?.category || 'other'"
+        />
 
         <!-- RIGHT: Info（PDV glass-card 佈局） -->
         <div class="info-wrap">
@@ -553,68 +358,10 @@ onUnmounted(() => {
             </h1>
 
             <!-- 賣家名稱（可點擊 → 跳轉該商家 marketplace 篩選頁） -->
-            <div v-if="auction.seller" class="seller-info-row seller-clickable" @click="goToSellerMarketplace" :title="locale === 'zh' ? '查看此商家全部商品' : 'View all products from this seller'">
-              <span class="seller-label">{{ locale === 'zh' ? '商鋪' : 'Seller' }}</span>
-              <div class="seller-avatar-sm">{{ (auction.seller?.nickname || '?').charAt(0) }}</div>
-              <span class="seller-name-text">{{ auction.seller?.nickname || (locale === 'zh' ? '未知商家' : 'Unknown Seller') }}</span>
-              <span class="seller-arrow">→</span>
-            </div>
+            <SellerCard :seller="auction.seller" />
 
             <!-- Spec table -->
-            <div class="spec-table">
-              <div class="spec-row">
-                <div class="spec-cell">
-                  <span class="spec-label">{{ locale === 'zh' ? '品牌' : 'Brand' }}</span>
-                  <span class="spec-value"><span class="badge-logo"><CategoryLogo :category="auction.product?.category || 'other'" :size="16" /></span> {{ getCategoryLabel(auction.product?.category || 'other') }}</span>
-                </div>
-                <div class="spec-cell">
-                  <span class="spec-label">{{ locale === 'zh' ? '語言' : 'Language' }}</span>
-                  <span class="spec-value">{{ getLanguageLabel(auction.product?.language) || '—' }}</span>
-                </div>
-              </div>
-              <div class="spec-row">
-                <div class="spec-cell">
-                  <span class="spec-label">{{ locale === 'zh' ? '品相' : 'Condition' }}</span>
-                  <span class="spec-value">
-                    <template v-if="auction.product?.condition">
-                      <span class="condition-dot" :style="{ backgroundColor: conditionColor }"></span>
-                      {{ auction.product?.condition || '—' }}{{ locale === 'zh' ? '品, ' + ({ S: '完美品相', A: '輕微瑕疵', B: '正常使用痕跡', C: '較明顯磨損', D: '嚴重磨損' } as Record<string, string>)[auction.product?.condition] || '' : '' }}
-                    </template>
-                    <template v-else>—</template>
-                  </span>
-                </div>
-                <div class="spec-cell">
-                  <span class="spec-label">{{ locale === 'zh' ? '商品種類' : 'Type' }}</span>
-                  <span class="spec-value">{{ getProductTypeLabel(auction.product?.productType) }}</span>
-                </div>
-              </div>
-              <div class="spec-row" v-if="getGeneralTags(auction.product).length > 0">
-                <div class="spec-cell spec-cell-full">
-                  <span class="spec-label">{{ locale === 'zh' ? '其它標籤' : 'Tags' }}</span>
-                  <span class="spec-value spec-tags">
-                    <span
-                      v-for="tag in getGeneralTags(auction.product)"
-                      :key="tag.id"
-                      class="tag-chip"
-                      :style="tag.color ? { '--tag-color': tag.color } : {}"
-                      @click="router.push({ path: '/marketplace', query: { search: tag.name } })"
-                    >
-                      <span class="tag-dot" :style="{ backgroundColor: tag.color || '#818cf8' }"></span>
-                      {{ tag.name }}
-                    </span>
-                  </span>
-                </div>
-              </div>
-              <div class="spec-row" v-if="auction.product?.productNumber">
-                <div class="spec-cell spec-cell-full">
-                  <span class="spec-label">{{ locale === 'zh' ? '商品編號' : 'Item No.' }}</span>
-                  <span class="spec-value product-number" @click="copyProductNumber(auction.product.productNumber)" :title="locale === 'zh' ? '點擊複製' : 'Click to copy'">
-                    {{ auction.product.productNumber }}
-                    <Copy v-if="copied" :size="12" class="copied-icon" />
-                  </span>
-                </div>
-              </div>
-            </div>
+            <SpecTable :product="auction.product" :condition-color="conditionColor" />
 
             <!-- Description -->
             <div v-if="getDescription(auction.product)" class="description-block">
@@ -757,31 +504,9 @@ onUnmounted(() => {
       </div><!-- /product-layout -->
 
       <!-- Related Products -->
-      <section v-if="!loading && relatedProducts.length > 0" class="related-section">
-        <h2 class="related-title">{{ locale === 'zh' ? '你可能喜歡' : 'You May Also Like' }}</h2>
-        <div v-if="relatedLoading" class="related-loading">
-          <Loader2 class="spinner" />
-        </div>
-        <div v-else class="related-grid">
-          <ProductCard
-            v-for="p in relatedProducts"
-            :key="p.id"
-            :product="p"
-          />
-        </div>
-      </section>
+      <RelatedProducts :products="relatedProducts" :loading="relatedLoading" />
 
     </div>
-
-    <!-- Lightbox -->
-    <div v-if="showLightbox" class="lightbox" @click="closeLightbox">
-      <button class="lightbox-close" @click="closeLightbox">✕</button>
-      <button v-if="currentImageIndex > 0" class="lightbox-nav lightbox-prev" @click.stop="lightboxPrev">‹</button>
-      <img :src="parsedImages[currentImageIndex]" class="lightbox-img" @click.stop />
-      <button v-if="currentImageIndex < parsedImages.length - 1" class="lightbox-nav lightbox-next" @click.stop="lightboxNext">›</button>
-      <span v-if="parsedImages.length > 1" class="lightbox-counter">{{ currentImageIndex + 1 }} / {{ parsedImages.length }}</span>
-    </div>
-
   </div>
 </template>
 
@@ -793,18 +518,6 @@ onUnmounted(() => {
   max-width: 1280px;
   margin: 0 auto;
 }
-
-/* ===== Related Loading ===== */
-.related-loading .spinner {
-  width: 28px;
-  height: 28px;
-  border: 3px solid var(--border);
-  border-top-color: var(--primary);
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-}
-
-@keyframes spin { to { transform: rotate(360deg); } }
 
 /* ===== TOP: 出價記錄 — 圓形頭像 ===== */
 .bid-bar-section {
@@ -939,200 +652,6 @@ onUnmounted(() => {
     grid-template-columns: 1fr;
     gap: 24px;
   }
-}
-
-/* Gallery (Left) — sticky 同 PDV */
-.gallery-wrap {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  position: sticky;
-  top: 24px;
-}
-
-@media (max-width: 960px) {
-  .gallery-wrap {
-    position: static;
-    max-width: 100%;
-    overflow: visible;
-  }
-}
-
-/* main-image — PDV 深底漸變 + 靠中 */
-.main-image {
-  position: relative;
-  background: linear-gradient(145deg, #131318 0%, #0e0e14 100%);
-  border-radius: 16px;
-  overflow: hidden;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 440px;
-  border: 1px solid var(--border);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
-  transition: box-shadow 0.3s ease;
-}
-
-.main-image:hover {
-  box-shadow: 0 12px 40px rgba(99, 102, 241, 0.15);
-}
-
-.hero-img {
-  max-width: 100%;
-  max-height: 520px;
-  object-fit: contain;
-  display: block;
-  cursor: zoom-in;
-  transition: transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-  position: relative;
-  z-index: 1;
-}
-
-.hero-img:hover {
-  transform: scale(1.03);
-}
-
-/* Nav buttons — PDV hover 顯示 */
-.nav-btn {
-  position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-  background: rgba(10, 10, 15, 0.7);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid var(--border);
-  color: var(--text-primary);
-  cursor: pointer;
-  z-index: 5;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.25s ease;
-  opacity: 0;
-}
-
-.main-image:hover .nav-btn {
-  opacity: 1;
-}
-
-.nav-btn:hover {
-  background: rgba(99, 102, 241, 0.3);
-  border-color: rgba(129, 140, 248, 0.5);
-}
-
-.nav-prev { left: 16px; }
-.nav-next { right: 16px; }
-
-/* Zoom hint — PDV hover 顯示 */
-.zoom-hint {
-  position: absolute;
-  bottom: 16px;
-  right: 16px;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  background: rgba(10, 10, 15, 0.7);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  color: var(--text-secondary);
-  padding: 6px 12px;
-  border-radius: 100px;
-  font-size: 0.72rem;
-  border: 1px solid var(--border);
-  z-index: 5;
-  opacity: 0;
-  transition: opacity 0.25s ease;
-}
-
-.main-image:hover .zoom-hint {
-  opacity: 1;
-}
-
-/* Image counter — PDV 底部中間 */
-.img-counter {
-  position: absolute;
-  bottom: 16px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: rgba(10, 10, 15, 0.7);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  color: var(--text-primary);
-  padding: 4px 14px;
-  border-radius: 100px;
-  font-size: 0.72rem;
-  border: 1px solid var(--border);
-  z-index: 5;
-}
-
-/* Category pill — 同 ProductDetail 浮動左上 */
-.cat-pill {
-  position: absolute;
-  top: 16px;
-  left: 16px;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  background: rgba(10, 10, 15, 0.7);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid var(--border);
-  border-radius: 100px;
-  padding: 6px 14px 6px 10px;
-  z-index: 5;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
-}
-.cat-pill .cat-emoji { font-size: 1.1rem; line-height: 1; }
-.cat-pill .cat-text { font-size: 0.75rem; font-weight: 600; color: var(--text-primary, #fff); letter-spacing: 0.03em; }
-
-/* Thumbnails — 同 ProductDetail thumb-strip */
-.thumb-strip {
-  display: flex;
-  gap: 10px;
-  overflow-x: auto;
-  overflow-y: hidden;
-  -webkit-overflow-scrolling: touch;
-  touch-action: pan-x;
-  padding: 10px 14px 12px;
-  scrollbar-width: thin;
-  scrollbar-color: rgba(129, 140, 248, 0.3) transparent;
-  scroll-behavior: smooth;
-}
-.thumb-strip::-webkit-scrollbar { height: 4px; }
-.thumb-strip::-webkit-scrollbar-thumb {
-  background: rgba(129, 140, 248, 0.3);
-  border-radius: 2px;
-}
-
-.thumb {
-  width: 76px;
-  height: 76px;
-  object-fit: cover;
-  border-radius: 10px;
-  border: 2px solid transparent;
-  cursor: pointer;
-  transition: all 0.25s ease;
-  flex-shrink: 0;
-  opacity: 0.5;
-  background: #131318;
-}
-.thumb:hover { opacity: 0.85; transform: translateY(-2px); }
-.thumb.active {
-  opacity: 1;
-  border-color: var(--primary, #6366f1);
-}
-
-.image-placeholder {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 80px;
-  background: var(--bg-elevated);
 }
 
 /* Price — PDV 風格 */
@@ -1413,23 +932,6 @@ onUnmounted(() => {
   color: #4ade80;
 }
 
-/* 商品編號 */
-.product-number {
-  cursor: pointer;
-  font-family: var(--font-num, monospace);
-  letter-spacing: 0.04em;
-  user-select: all;
-  transition: color 0.15s;
-}
-
-.product-number:hover {
-  color: #818cf8;
-}
-
-.copied-icon {
-  color: #818cf8;
-}
-
 .bid-hint {
   margin-top: var(--space-2);
   font-size: var(--text-xs);
@@ -1527,11 +1029,6 @@ onUnmounted(() => {
   }
 }
 
-.badge-logo {
-  display: inline-flex;
-  align-items: center;
-}
-
 .status-badge {
   padding: 3px 12px;
   border-radius: 100px;
@@ -1568,165 +1065,6 @@ onUnmounted(() => {
   flex-wrap: wrap;
 }
 
-/* 賣家名稱行 */
-.seller-info-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: var(--space-2);
-  padding: 8px 12px;
-  background: var(--bg-elevated);
-  border-radius: var(--radius-md);
-  width: fit-content;
-}
-/* 可點擊賣家框 → 跳轉商家篩選 */
-.seller-info-row.seller-clickable {
-  cursor: pointer;
-  transition: all var(--transition-fast);
-  border: 1px solid transparent;
-
-  &:hover {
-    background: rgba(102, 126, 234, 0.15);
-    border-color: rgba(102, 126, 234, 0.4);
-
-    .seller-arrow {
-      transform: translateX(3px);
-      opacity: 1;
-    }
-  }
-
-  .seller-arrow {
-    font-size: 14px;
-    color: #8fa3f5;
-    opacity: 0.5;
-    transition: all var(--transition-fast);
-  }
-}
-
-.seller-label {
-  font-size: var(--text-xs);
-  color: var(--text-muted);
-  font-weight: 400;
-}
-
-.seller-avatar-sm {
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #667eea, #764ba2);
-  color: white;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 13px;
-  font-weight: 600;
-  flex-shrink: 0;
-}
-
-.seller-name-text {
-  font-size: var(--text-sm);
-  font-weight: 500;
-  color: var(--text-secondary);
-}
-
-/* Spec table — 與 ProductDetailView 統一 */
-.spec-table {
-  display: flex;
-  flex-direction: column;
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  overflow: hidden;
-  background: var(--bg-elevated);
-  min-width: 0;
-  max-width: 100%;
-}
-
-.spec-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  min-width: 0;
-
-  & + .spec-row {
-    border-top: 1px solid var(--border);
-  }
-}
-
-.spec-cell {
-  padding: 14px 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  min-width: 0;
-  overflow-wrap: break-word;
-  word-break: break-word;
-
-  & + .spec-cell {
-    border-left: 1px solid var(--border);
-  }
-}
-
-.spec-cell-full {
-  grid-column: 1 / -1;
-  border-left: none;
-}
-
-.spec-label {
-  font-size: 0.72rem;
-  font-weight: 700;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-}
-
-.spec-value {
-  font-size: 0.92rem;
-  font-weight: 600;
-  color: var(--text-primary);
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.condition-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  flex-shrink: 0;
-  box-shadow: 0 0 8px currentColor;
-}
-
-.spec-tags {
-  gap: 8px;
-}
-
-.tag-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 4px 12px;
-  border-radius: 100px;
-  font-size: 0.75rem;
-  font-weight: 500;
-  background: color-mix(in srgb, var(--tag-color, #818cf8) 10%, transparent);
-  border: 1px solid color-mix(in srgb, var(--tag-color, #818cf8) 30%, transparent);
-  color: var(--tag-color, #818cf8);
-  cursor: pointer;
-  transition: all 0.2s ease;
-
-  &:hover {
-    transform: translateY(-1px);
-    background: color-mix(in srgb, var(--tag-color, #818cf8) 18%, transparent);
-    box-shadow: 0 4px 12px color-mix(in srgb, var(--tag-color, #818cf8) 20%, transparent);
-  }
-}
-
-.tag-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
 
 /* Description */
 .description-block {
@@ -1770,113 +1108,4 @@ onUnmounted(() => {
   }
 }
 
-/* Lightbox */
-.lightbox {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.9);
-  z-index: 9999;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-}
-
-.lightbox-img {
-  max-width: 90vw;
-  max-height: 90vh;
-  object-fit: contain;
-  border-radius: 8px;
-  cursor: default;
-}
-
-.lightbox-close {
-  position: absolute;
-  top: 20px;
-  right: 20px;
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.1);
-  border: none;
-  color: white;
-  font-size: 18px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
-  &:hover {
-    background: rgba(255, 255, 255, 0.2);
-  }
-}
-
-.lightbox-nav {
-  position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.1);
-  border: none;
-  color: white;
-  font-size: 28px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
-  &:hover {
-    background: rgba(255, 255, 255, 0.2);
-  }
-}
-
-.lightbox-prev { left: 20px; }
-.lightbox-next { right: 20px; }
-
-.lightbox-counter {
-  position: absolute;
-  bottom: 20px;
-  left: 50%;
-  transform: translateX(-50%);
-  color: rgba(255, 255, 255, 0.7);
-  font-size: 0.85rem;
-}
-
-/* Related Products */
-.related-section {
-  margin-top: 48px;
-}
-
-.related-title {
-  font-size: 1.4rem;
-  font-weight: 700;
-  color: var(--text-primary);
-  margin-bottom: 20px;
-}
-
-.related-loading {
-  display: flex;
-  justify-content: center;
-  padding: 40px;
-}
-
-.related-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 20px;
-}
-
-@media (max-width: 768px) {
-  .related-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-
-@media (max-width: 480px) {
-  .related-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
 </style>

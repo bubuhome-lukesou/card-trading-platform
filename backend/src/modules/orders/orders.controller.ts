@@ -9,8 +9,8 @@ export class OrdersController {
   constructor(private ordersService: OrdersService) {}
 
   @Get()
-  getMyOrders(@Request() req, @Query('page') page = '1', @Query('limit') limit = '20') {
-    return this.ordersService.findByBuyer(req.user.id, Number(page), Number(limit));
+  getMyOrders(@Request() req, @Query('page') page = '1', @Query('limit') limit = '20', @Query('search') search?: string) {
+    return this.ordersService.findByBuyer(req.user.id, Number(page), Number(limit), search);
   }
 
   @Get('seller')

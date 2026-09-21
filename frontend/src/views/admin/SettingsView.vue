@@ -91,7 +91,7 @@ const savePage = async () => {
 const settings = ref({
   platformName: 'PicardChu',
   platformUrl: 'https://card.aishoper.co',
-  supportEmail: 'support@cardquest.com',
+  supportEmail: 'support@aishoper.co',
   supportPhone: '+853 1234 5678',
   platformFee: 5,
   minWithdraw: 100,

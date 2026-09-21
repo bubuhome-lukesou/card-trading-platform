@@ -921,7 +921,6 @@ const goOrdersPage = (pid: string) => router.push(`/seller/orders?productId=${pi
                       <!-- 欄 1：訂單號 + 類型 + 狀態 -->
                       <div class="oi-col oi-main">
                         <span class="type-tag" :class="typeTag(o.type).cls">{{ typeTag(o.type).text }}</span>
-                        <span class="oi-number">{{ o.orderNumber }}</span>
                         <span class="order-status-badge" :class="orderStatus(o.status).cls">{{ orderStatus(o.status).text }}</span>
                       </div>
                       <!-- 欄 2：買家 -->
@@ -1025,7 +1024,6 @@ const goOrdersPage = (pid: string) => router.push(`/seller/orders?productId=${pi
           <div class="detail-top">
             <span class="type-tag" :class="typeTag(detailOrder.type).cls">{{ typeTag(detailOrder.type).text }}</span>
             <span class="order-status-badge" :class="orderStatus(detailOrder.status).cls">{{ orderStatus(detailOrder.status).text }}</span>
-            <span class="detail-number">{{ detailOrder.orderNumber }}</span>
           </div>
 
           <div class="detail-grid">
@@ -1905,12 +1903,6 @@ tr.row-expanded td {
   align-items: flex-start;
 }
 
-.oi-number {
-  font-family: var(--font-num);
-  font-size: var(--text-xs);
-  color: var(--text-secondary);
-}
-
 .type-tag {
   padding: 1px 8px;
   border-radius: var(--radius-full);
@@ -2116,13 +2108,6 @@ tr.row-expanded td {
   align-items: center;
   gap: var(--space-2);
   flex-wrap: wrap;
-}
-
-.detail-number {
-  margin-left: auto;
-  font-family: var(--font-num);
-  font-size: var(--text-xs);
-  color: var(--text-secondary);
 }
 
 .detail-grid {

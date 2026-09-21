@@ -8,9 +8,9 @@ export interface CreateOrderDto {
 }
 
 export const ordersApi = {
-  // Get buyer's own orders — limit 200 拉全部（同 seller 口徑，前端搜尋/統計需要全量）
-  getMyOrders(page = 1, limit = 200) {
-    return api.get('/orders', { params: { page, limit } })
+  // Get buyer's own orders — limit 200 拉全部（同 seller 口徑，前端統計需要全量）；search=商品名/商家 nickname 後端篩選
+  getMyOrders(page = 1, limit = 200, search?: string) {
+    return api.get('/orders', { params: { page, limit, search: search || undefined } })
   },
   // Get seller's orders (with auth) — default limit 200 so product-filter view shows all orders of a product
   getSellerOrders(page = 1, limit = 200) {
