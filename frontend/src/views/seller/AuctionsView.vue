@@ -291,13 +291,21 @@ const loadReservationRows = async () => {
   const reservationProducts = prodList.filter((p: any) => p.listingType === 'reservation')
 
   // 按 productId 合併預約記錄（同一商品多名買家）
-  const byProduct = new Map<string, { product: any; count: number; qty: number; latest: any }>()
+  // T3 口徑定案（9/21 Luke 方案 B）：有效單 = deposit_paid/confirmed/completed；
+  // cancelled/expired 為失效筆數，主數唔計、淡色後綴顯示
+  const VALID_STATUSES = ['deposit_paid', 'confirmed', 'completed']
+  const byProduct = new Map<string, { product: any; count: number; qty: number; invalid: number; latest: any }>()
   for (const r of list) {
     const p = r.product || {}
     const key = r.productId
-    const entry = byProduct.get(key) || { product: p, count: 0, qty: 0, latest: r }
-    entry.count++
-    entry.qty += r.quantity || 1
+    const entry = byProduct.get(key) || { product: p, count: 0, qty: 0, invalid: 0, latest: r }
+    const st = (r.status || '').toLowerCase()
+    if (VALID_STATUSES.includes(st)) {
+      entry.count++
+      entry.qty += r.quantity || 1
+    } else {
+      entry.invalid++
+    }
     byProduct.set(key, entry)
   }
 
@@ -317,7 +325,7 @@ const loadReservationRows = async () => {
       price: formatPrice(p.reservationDeposit ?? entry?.latest.depositAmount ?? 0),
       priceValue: Number(p.reservationDeposit ?? entry?.latest.depositAmount) || 0,
       priceLabel: '訂金',
-      extra: entry ? `已訂 ${entry.count} 單 / ${entry.qty} 件` : '暫無預約',
+      extra: entry ? `已訂 ${entry.count} 單 / ${entry.qty} 件` + (entry.invalid > 0 ? `<span class="inv-count"> · ${entry.invalid} 筆失效</span>` : '') : '暫無預約',
       statusKey: st === 'deposit_paid' ? 'confirmed' : st === 'none' ? 'active' : st,
       status: st === 'deposit_paid' ? '已付訂金' : st === 'pending' ? '待付訂金' : st === 'confirmed' ? '已確認' : st === 'completed' ? '已完成' : st === 'cancelled' ? '已取消' : st === 'expired' ? '已過期' : '接受預約中',
       timeText: p.reservationDeadline ? `截止 ${formatDate(p.reservationDeadline)}` : '',
@@ -808,7 +816,7 @@ const goOrdersPage = (pid: string) => router.push(`/seller/orders?productId=${pi
           </div>
           <div class="pc-amount">
             <div class="pc-price">{{ row.price }}</div>
-            <div v-if="row.extra" class="pc-extra">{{ row.extra }}</div>
+            <div v-if="row.extra" class="pc-extra" v-html="row.extra"></div>
           </div>
         </div>
         <div class="pc-mid">
@@ -863,7 +871,7 @@ const goOrdersPage = (pid: string) => router.push(`/seller/orders?productId=${pi
               <td>
                 <div class="price-cell highlight">{{ row.price }}</div>
                 <div class="cell-sub">
-                  <span v-if="row.extra" class="cell-extra">{{ row.extra }}</span>
+                  <span v-if="row.extra" class="cell-extra" v-html="row.extra"></span>
                   <span class="price-label">{{ row.priceLabel }}</span>
                 </div>
               </td>
@@ -1618,6 +1626,12 @@ tr.row-expanded td {
 
 .cell-extra {
   white-space: nowrap;
+}
+
+/* T3 方案 B：失效筆數淡色後綴（桌面表格 + 手機卡共用） */
+.inv-count {
+  opacity: 0.55;
+  font-weight: 400;
 }
 
 .price-label {
