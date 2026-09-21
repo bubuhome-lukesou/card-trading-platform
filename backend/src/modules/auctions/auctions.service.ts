@@ -182,13 +182,15 @@ export class AuctionsService {
           }
         } else {
           // A1: No winner (no bids or reserve not met) — restore product to ACTIVE for re-sale
+          // ⚠️ Only restore listing states (ACTIVE/ENDED). Never resurrect soft-deleted (REMOVED),
+          // cancelled or sold products — a soft-deleted product must stay deleted.
           const product = await this.productRepo.findOne({ where: { id: auction.productId } })
-          if (product && product.status !== ProductStatus.SOLD) {
+          if (product && (product.status === ProductStatus.ACTIVE || product.status === ProductStatus.ENDED)) {
             product.status = ProductStatus.ACTIVE
             await this.productRepo.save(product)
           }
         }
-        
+
         // A3: Broadcast auction end via WebSocket
         try {
           this.auctionGateway.broadcastAuctionEnd(auction.id, {
@@ -731,8 +733,10 @@ export class AuctionsService {
       }
     } else {
       // A1: No winner — restore product to ACTIVE for re-sale
+      // ⚠️ Only restore listing states (ACTIVE/ENDED). Never resurrect soft-deleted (REMOVED),
+      // cancelled or sold products — a soft-deleted product must stay deleted.
       const product = await this.productRepo.findOne({ where: { id: auction.productId } })
-      if (product && product.status !== ProductStatus.SOLD) {
+      if (product && (product.status === ProductStatus.ACTIVE || product.status === ProductStatus.ENDED)) {
         product.status = ProductStatus.ACTIVE
         await this.productRepo.save(product)
       }
