@@ -150,16 +150,14 @@ watch(() => props.images, () => { currentImageIndex.value = 0 })
 
 <style scoped>
 /* ===== Gallery（源：ProductDetailView L625-840，改 $var → CSS var/literal） ===== */
+/* Luke 9/22 定案：完全靜態 — 移除 sticky，所有框跟頁面一齊捲動，無中途停低 */
 .d-gallery {
   display: flex;
   flex-direction: column;
   gap: 16px;
-  position: sticky;
-  top: 24px;
 }
 @media (max-width: 960px) {
   .d-gallery {
-    position: static;
     max-width: 100%;
     overflow: visible;
   }
