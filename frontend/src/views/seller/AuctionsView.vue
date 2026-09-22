@@ -1629,10 +1629,11 @@ tr.row-expanded td {
 }
 
 /* T3 方案 B：失效筆數淡色後綴（桌面表格 + 手機卡共用）
-   ⚠️ 用後代選擇器 — span 係 v-html 注入，Vue 唔會加 data-v scope 屬性，
-   寫 .inv-count 會編譯成 .inv-count[data-v-xxx] 永遠唔命中（線上實測 opacity 1） */
-.cell-extra .inv-count,
-.pc-extra .inv-count {
+   ⚠️ span 係 v-html 注入，Vue 唔會對佢加 data-v scope 屬性；
+   scoped 編譯會將 [data-v] 加喺選擇器最尾元素 → 必須 :deep() 先命中
+   （第一次修用 .cell-extra .inv-count 純後代仍編譯成 .inv-count[data-v-xxx] 唔命中） */
+.cell-extra :deep(.inv-count),
+.pc-extra :deep(.inv-count) {
   opacity: 0.55;
   font-weight: 400;
 }
