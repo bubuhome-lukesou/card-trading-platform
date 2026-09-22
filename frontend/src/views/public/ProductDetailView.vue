@@ -359,12 +359,15 @@ const isProductSuspended = computed(() => {
       <!-- Product exists -->
       <div v-else-if="product" class="product-layout">
         <!-- ════════════════ LEFT: Image Gallery ════════════════ -->
-        <ImageGallery
-          :images="product.images || []"
-          :title="getTitle(product)"
-          :category="product.category"
-          :cat-color="categoryColor"
-        />
+        <!-- gallery-col：grid item 拉滿欄高，sticky 範圍涵蓋整條右欄 -->
+        <div class="gallery-col">
+          <ImageGallery
+            :images="product.images || []"
+            :title="getTitle(product)"
+            :category="product.category"
+            :cat-color="categoryColor"
+          />
+        </div>
 
         <!-- ════════════════ RIGHT: Info (Glass Card) ════════════════ -->
         <div class="info-wrap">
@@ -603,16 +606,28 @@ $radius: 16px;
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 48px;
-  align-items: start;
+  align-items: stretch; /* 兩欄拉滿同高 — gallery-col sticky 範圍涵蓋整條右欄 */
   animation: fadeUp 0.5s ease;
   min-width: 0;
   max-width: 100%;
+}
+
+/* Gallery 欄：grid item 拉滿欄高（align-self:stretch），內部 gallery sticky。
+   sticky 範圍 = gallery-col 高度 = 右欄高度 → 圖片框滾動時全程跟貼 viewport 頂 */
+.gallery-col {
+  align-self: stretch;
+  min-width: 0;
 }
 
 @media (max-width: 960px) {
   .product-layout {
     grid-template-columns: 1fr;
     gap: 24px;
+  }
+
+  /* 手機單欄：gallery-col 唔再 stretch，gallery 已 static（組件內 960 media） */
+  .gallery-col {
+    align-self: auto;
   }
 }
 

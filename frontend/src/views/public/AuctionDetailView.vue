@@ -339,12 +339,15 @@ onUnmounted(() => {
       <!-- ===== 雙列區：PDV 佈局 — 左=圖片庫  右=資訊卡（價格/規則/出價） ===== -->
       <div class="product-layout">
 
-        <!-- LEFT: Image Gallery（與 ProductDetailView 佈局統一） -->
-        <ImageGallery
-          :images="parsedImages"
-          :title="getTitle(auction.product)"
-          :category="auction.product?.category || 'other'"
-        />
+        <!-- LEFT: ImageGallery（與 ProductDetailView 佈局統一） -->
+        <!-- gallery-col：grid item 拉滿欄高，sticky 範圍涵蓋整條右欄 -->
+        <div class="gallery-col">
+          <ImageGallery
+            :images="parsedImages"
+            :title="getTitle(auction.product)"
+            :category="auction.product?.category || 'other'"
+          />
+        </div>
 
         <!-- RIGHT: Info（PDV glass-card 佈局） -->
         <div class="info-wrap">
@@ -636,10 +639,16 @@ onUnmounted(() => {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 48px;
-  align-items: start;
+  align-items: stretch; /* 兩欄拉滿同高 — gallery-col sticky 範圍涵蓋整條右欄 */
   animation: fadeUp 0.5s ease;
   min-width: 0;
   max-width: 100%;
+}
+
+/* Gallery 欄：grid item 拉滿欄高，內部 gallery sticky（同 ProductDetailView 修復） */
+.gallery-col {
+  align-self: stretch;
+  min-width: 0;
 }
 
 @keyframes fadeUp {
@@ -651,6 +660,11 @@ onUnmounted(() => {
   .product-layout {
     grid-template-columns: 1fr;
     gap: 24px;
+  }
+
+  /* 手機單欄：gallery-col 唔再 stretch，gallery 已 static（組件內 960 media） */
+  .gallery-col {
+    align-self: auto;
   }
 }
 
