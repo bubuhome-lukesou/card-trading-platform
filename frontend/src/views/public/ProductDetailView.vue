@@ -370,8 +370,6 @@ const isProductSuspended = computed(() => {
         </div>
 
         <!-- ════════════════ RIGHT: Info (Glass Card) ════════════════ -->
-        <!-- 右欄 = info + related（閒魚式：左 gallery 貼住 viewport，右欄一路向下） -->
-        <!-- sticky 範圍 = 右欄總高（含 related）→ 圖片框滾動全程跟貼 -->
         <div class="info-wrap">
           <div class="glass-card">
             <!-- Title -->
@@ -514,9 +512,6 @@ const isProductSuspended = computed(() => {
               </div>
             </template>
           </div>
-
-          <!-- ════════════════ You May Also Like（併入右欄底 — sticky 範圍涵蓋） ════════════════ -->
-          <RelatedProducts :products="relatedProducts" :loading="relatedLoading" />
         </div>
       </div>
 
@@ -524,6 +519,9 @@ const isProductSuspended = computed(() => {
       <div v-else class="error-state">
         <p>{{ t('common.error') || '商品不存在' }}</p>
       </div>
+
+      <!-- ════════════════ You May Also Like ════════════════ -->
+      <RelatedProducts :products="relatedProducts" :loading="relatedLoading" />
     </div>
   </div>
 </template>

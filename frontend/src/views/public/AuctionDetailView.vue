@@ -502,12 +502,12 @@ onUnmounted(() => {
               </button>
             </div>
           </div>
-
-          <!-- ════════════════ You May Also Like（併入右欄底 — sticky 範圍涵蓋） ════════════════ -->
-          <RelatedProducts :products="relatedProducts" :loading="relatedLoading" />
         </div>
 
       </div><!-- /product-layout -->
+
+      <!-- Related Products -->
+      <RelatedProducts :products="relatedProducts" :loading="relatedLoading" />
 
     </div>
   </div>
