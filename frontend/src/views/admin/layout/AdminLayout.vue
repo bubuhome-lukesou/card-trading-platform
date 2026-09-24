@@ -97,7 +97,7 @@ const handleLogout = async () => {
     <!-- Main Content -->
     <main class="main-content">
       <header class="content-header">
-        <h1 class="page-title">{{ t(`admin.${route.name?.toString().replace('Admin', '').replace('SellerApplications', 'sellerApplications').toLowerCase().replace('sellerapplications', 'sellerApplications')}`) }}</h1>
+        <h1 class="page-title">{{ t(`admin.${route.name?.toString().replace('Admin', '').replace('SellerApplications', 'sellerApplications').replace('ContactMessages', 'contactMessages').toLowerCase().replace('sellerapplications', 'sellerApplications').replace('contactmessages', 'contactMessages')}`) }}</h1>
       </header>
       <router-view />
     </main>
