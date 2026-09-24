@@ -14,6 +14,7 @@ const navItems = [
   { path: '/admin', name: 'dashboard', icon: '📊', label: 'admin.dashboard' },
   { path: '/admin/users', name: 'users', icon: '👥', label: 'admin.users' },
   { path: '/admin/seller-applications', name: 'sellerApplications', icon: '📝', label: 'admin.sellerApplications' },
+  { path: '/admin/contact-messages', name: 'contactMessages', icon: '📨', label: 'admin.contactMessages' },
   { path: '/admin/settings', name: 'settings', icon: '⚙️', label: 'admin.settings' },
 ]
 

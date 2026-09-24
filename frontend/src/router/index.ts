@@ -31,7 +31,12 @@ const publicRoutes: RouteRecordRaw[] = [
     component: () => import('@/views/public/AuctionDetailView.vue')
   },
   {
-    path: '/:type(help|contact|faq)',
+    path: '/contact',
+    name: 'Contact',
+    component: () => import('@/views/public/ContactView.vue')
+  },
+  {
+    path: '/:type(help|faq)',
     name: 'Page',
     component: () => import('@/views/public/PageView.vue')
   },
@@ -180,6 +185,7 @@ const adminRoutes: RouteRecordRaw[] = [
       // 商家管理併入用戶管理（2026-09-20，同 seller 商品管理合併慣例）— 舊連結 redirect 保留 query
       { path: 'sellers', redirect: (to: any) => ({ path: '/admin/users', query: { role: 'seller', ...to.query } }) },
       { path: 'seller-applications', name: 'AdminSellerApplications', component: () => import('@/views/admin/SellerApplicationsView.vue') },
+      { path: 'contact-messages', name: 'AdminContactMessages', component: () => import('@/views/admin/ContactMessagesView.vue') },
       { path: 'settings', name: 'AdminSettings', component: () => import('@/views/admin/SettingsView.vue') },
       { path: 'pages', redirect: '/admin/settings' }
     ]
