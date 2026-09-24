@@ -7,6 +7,7 @@ import { productApi } from '@/api/products'
 import type { Product, Tag } from '@/types'
 import ProductCard from '@/components/product/ProductCard.vue'
 import StateView from '@/components/common/StateView.vue'
+import HideEndedToggle from '@/components/common/HideEndedToggle.vue'
 import { useFavoritesStore } from '@/stores/favorites'
 import { useListingVisibility } from '@/composables/useListingVisibility'
 
@@ -675,18 +676,8 @@ watch(hideEnded, () => {
                 </span>
               </button>
 
-              <!-- Hide Sold / Expired / Ended Toggle — 與頂部導覽列開關同一全局狀態（useListingVisibility） -->
-              <label class="hide-sold-toggle">
-                <input
-                  type="checkbox"
-                  :checked="hideEnded"
-                  @change="setHideEnded(($event.target as HTMLInputElement).checked)"
-                />
-                <span class="toggle-track" :class="{ active: hideEnded }">
-                  <span class="toggle-thumb" />
-                </span>
-                <span class="toggle-label">{{ t('product.filters.hideSold') || '隱藏已售出' }}</span>
-              </label>
+              <!-- Hide Sold / Expired / Ended Toggle — 共用組件（同導覽列，無文字+2秒提示） -->
+              <HideEndedToggle />
             </div>
 
             <!-- Sort -->
@@ -1159,61 +1150,6 @@ watch(hideEnded, () => {
   display: flex;
   align-items: center;
   gap: var(--space-3);
-}
-
-// Hide Sold Toggle
-.hide-sold-toggle {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  cursor: pointer;
-  user-select: none;
-
-  input[type="checkbox"] {
-    position: absolute;
-    opacity: 0;
-    width: 0;
-    height: 0;
-  }
-
-  .toggle-track {
-    position: relative;
-    width: 36px;
-    height: 20px;
-    background: var(--border);
-    border-radius: var(--radius-full);
-    transition: background var(--transition-fast);
-    flex-shrink: 0;
-
-    &.active {
-      background: var(--primary);
-    }
-  }
-
-  .toggle-thumb {
-    position: absolute;
-    top: 2px;
-    left: 2px;
-    width: 16px;
-    height: 16px;
-    background: white;
-    border-radius: 50%;
-    transition: transform var(--transition-fast);
-
-    .active & {
-      transform: translateX(16px);
-    }
-  }
-
-  .toggle-label {
-    font-size: var(--text-sm);
-    color: var(--text-secondary);
-    white-space: nowrap;
-
-    @media (max-width: 768px) {
-      display: none;
-    }
-  }
 }
 
 .filter-toggle {

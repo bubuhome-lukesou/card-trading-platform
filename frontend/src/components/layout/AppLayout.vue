@@ -16,11 +16,10 @@ import {
   Settings,
   Package,
   Sun,
-  Moon,
-  EyeOff
+  Moon
 } from 'lucide-vue-next'
 import { useTheme } from '@/composables/useTheme'
-import { useListingVisibility } from '@/composables/useListingVisibility'
+import HideEndedToggle from '@/components/common/HideEndedToggle.vue'
 
 const { t, locale } = useI18n()
 const router = useRouter()
@@ -30,9 +29,6 @@ const { theme, toggleTheme } = useTheme()
 const mobileMenuOpen = ref(false)
 const userMenuOpen = ref(false)
 const searchQuery = ref('')
-
-// 全局「隱藏已售出／已過期預訂／已結束拍賣」開關（marketplace 頁共用，localStorage 持久化）
-const { hideEnded, setHideEnded } = useListingVisibility()
 
 const toggleLocale = () => {
   locale.value = locale.value === 'zh' ? 'en' : 'zh'
@@ -100,18 +96,8 @@ const userMenuItems = computed(() => {
 
         <!-- Right Actions -->
         <div class="header-actions">
-          <!-- Hide Ended Listings Toggle — 隱藏已售出／已過期預訂／已結束拍賣（預設開啟） -->
-          <button
-            class="action-btn hide-ended-toggle"
-            :class="{ 'is-active': hideEnded }"
-            :title="hideEnded
-              ? (locale === 'zh' ? '已隱藏已售出／已過期預訂／已結束拍賣（點擊顯示全部）' : 'Hiding sold / expired / ended listings (click to show all)')
-              : (locale === 'zh' ? '顯示全部商品（點擊隱藏已售出／已過期／已結束）' : 'Showing all listings (click to hide sold / expired / ended)')"
-            @click="setHideEnded(!hideEnded)"
-          >
-            <EyeOff class="icon" />
-            <span v-if="hideEnded" class="toggle-dot" />
-          </button>
+          <!-- Hide Ended Listings Toggle — 共用組件（toggle 樣式+2秒提示），marketplace 同款 -->
+          <HideEndedToggle />
 
           <!-- Theme Toggle -->
           <button class="action-btn theme-toggle" @click="toggleTheme" :title="theme === 'dark' ? 'Switch to Light' : 'Switch to Dark'">
@@ -445,26 +431,6 @@ const userMenuItems = computed(() => {
 
   @media (max-width: 768px) {
     display: none;
-  }
-}
-
-// 全局「隱藏已結束」開關 — 開啟時帶綠點提示（同主色）
-.hide-ended-toggle {
-  position: relative;
-
-  &.is-active {
-    color: var(--primary);
-
-    .toggle-dot {
-      position: absolute;
-      top: 4px;
-      right: 4px;
-      width: 7px;
-      height: 7px;
-      border-radius: 50%;
-      background: #10b981;
-      border: 1.5px solid var(--bg-card);
-    }
   }
 }
 

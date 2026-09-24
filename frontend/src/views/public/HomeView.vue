@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { RouterLink } from 'vue-router'
 import { ArrowRight, Zap } from 'lucide-vue-next'
@@ -8,8 +8,12 @@ import api from '@/api'
 import { CategoryLogo, BRAND_CATEGORIES } from '@/components/brand/CategoryLogos'
 import BannerCarousel from '@/components/home/BannerCarousel.vue'
 import ListingsCarousel from '@/components/home/ListingsCarousel.vue'
+import { useListingVisibility } from '@/composables/useListingVisibility'
 
 const { t, locale } = useI18n()
+
+// 全局「隱藏已售出／已過期預訂／已結束拍賣」開關（導覽列共用，三區塊 fetch 帶過濾參數）
+const { hideEnded } = useListingVisibility()
 
 const categories = BRAND_CATEGORIES
 
@@ -130,7 +134,15 @@ const fetchHotReservations = async () => {
 const fetchNewListings = async () => {
   loadingProducts.value = true
   try {
-    const response = await productApi.getProducts({ sortBy: 'newest', limit: 10, withAuction: true } as any)
+    // 全局「隱藏已結束」開關：三過濾參數與 marketplace 同步（hideSold/hideExpired/hideEndedAuction）
+    const response = await productApi.getProducts({
+      sortBy: 'newest',
+      limit: 10,
+      withAuction: true,
+      hideSold: hideEnded.value,
+      hideExpired: hideEnded.value,
+      hideEndedAuction: hideEnded.value
+    } as any)
     newListings.value = (response.data.data || []).map((product: any) => ({ ...product })) // 原樣保留（ProductCard 直接讀全部欄位）
   } catch (e) {
     console.error('Failed to fetch products:', e)
@@ -138,6 +150,13 @@ const fetchNewListings = async () => {
     loadingProducts.value = false
   }
 }
+
+// 全局開關改動（導覽列/marketplace toggle 觸發）→ 首頁三區塊重新 fetch
+watch(hideEnded, () => {
+  fetchHotAuctions()
+  fetchNewListings()
+  fetchHotReservations()
+})
 
 onMounted(() => {
   fetchHomeSettings()
