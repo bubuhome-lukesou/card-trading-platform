@@ -96,10 +96,14 @@ const fetchHomeSettings = async () => {
 const fetchHotAuctions = async () => {
   loadingAuctions.value = true
   try {
+    // 全局「隱藏已結束」開關：hideEndedAuction 濾走已結束拍賣（hideSold 對拍賣品 qty=1 無影響，照帶保持一致）
     const response = await productApi.getProducts({
       listingTypes: ['auction'],
       withAuction: true,
       limit: 10,
+      hideSold: hideEnded.value,
+      hideExpired: hideEnded.value,
+      hideEndedAuction: hideEnded.value
     } as any)
     hotAuctions.value = (response.data.data || [])
       .filter((p: any) => p.auctionSummary) // 只顯示有進行中拍賣嘅商品
@@ -115,10 +119,14 @@ const fetchHotAuctions = async () => {
 const fetchHotReservations = async () => {
   loadingReservations.value = true
   try {
+    // 全局開關：hideExpired 濾走 reservationDeadline 已過嘅商品（前端 filter 為雙保險）
     const response = await productApi.getProducts({
       listingTypes: ['reservation'],
       sortBy: 'newest',
       limit: 10,
+      hideSold: hideEnded.value,
+      hideExpired: hideEnded.value,
+      hideEndedAuction: hideEnded.value
     } as any)
     const now = Date.now()
     hotReservations.value = (response.data.data || [])
