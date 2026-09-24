@@ -19,9 +19,23 @@ const pageTitle = computed(() => {
 
 const pageContent = computed(() => {
   if (!pageData.value) return ''
-  return locale.value === 'zh'
+  const raw = locale.value === 'zh'
     ? pageData.value.contentZh || pageData.value.contentEn
     : pageData.value.contentEn || pageData.value.contentZh
+  // Admin 常寫純文字（冇任何 HTML 標籤）— 按隔行轉 <p>，空行變分段間距；已係 HTML 就原樣渲染
+  if (raw && !/<[a-z][\s\S]*>/i.test(raw)) {
+    const paras = raw.split(/\n\s*\n/) // 空行分段
+    return paras
+      .map((block: string) =>
+        (block.split(/\r?\n/) as string[])
+          .filter((l: string) => l.trim() !== '')
+          .map((l: string) => `<p>${l}</p>`)
+          .join('')
+      )
+      .filter((html: string) => html !== '')
+      .join('<div class="para-gap"></div>')
+  }
+  return raw
 })
 
 const loadPage = async () => {
@@ -100,7 +114,12 @@ watch(() => route.path, loadPage)
   }
 
   :deep(p) {
-    margin-bottom: var(--space-4);
+    margin-bottom: var(--space-2);
+  }
+
+  // 純文字內容分段間距（空行轉成嘅分隔）
+  :deep(.para-gap) {
+    height: var(--space-5);
   }
 
   :deep(ul), :deep(ol) {
