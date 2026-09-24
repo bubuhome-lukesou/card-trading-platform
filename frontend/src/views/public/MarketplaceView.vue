@@ -8,6 +8,7 @@ import type { Product, Tag } from '@/types'
 import ProductCard from '@/components/product/ProductCard.vue'
 import StateView from '@/components/common/StateView.vue'
 import { useFavoritesStore } from '@/stores/favorites'
+import { useListingVisibility } from '@/composables/useListingVisibility'
 
 const { t, locale } = useI18n()
 const route = useRoute()
@@ -18,6 +19,10 @@ const favoritesStore = useFavoritesStore()
 const props = defineProps<{
   lockedListing?: string
 }>()
+
+// 全局「隱藏已售出／已過期預訂／已結束拍賣」開關（頂部導覽列控制，localStorage 持久化）
+// 本頁 hideSold 開關同佢共用一個 ref — 兩處任何一方改動都同步
+const { hideEnded, setHideEnded } = useListingVisibility()
 
 // State
 const products = ref<Product[]>([])
@@ -219,7 +224,16 @@ const fetchProducts = async (append = false) => {
     }
     // sellerIds 陣列以逗號傳遞（paramsSerializer 自動處理）
     console.log('[DEBUG] fetchProducts params:', JSON.stringify(cleanParams))
-    const response = await productApi.getProducts({ ...cleanParams, withAuction: true })
+    // 全局「隱藏已結束」開關（頂部導覽列／本頁 toggle 共用）：hideSold=已售出，
+    // hideExpired=已過期預訂，hideEndedAuction=已結束拍賣 — 後端配合過濾
+    delete (cleanParams as any).hideSold
+    const response = await productApi.getProducts({
+      ...cleanParams,
+      hideSold: hideEnded.value,
+      hideExpired: hideEnded.value,
+      hideEndedAuction: hideEnded.value,
+      withAuction: true
+    })
     if (append) {
       products.value = [...products.value, ...response.data.data]
     } else {
@@ -393,6 +407,12 @@ const handleScroll = () => {
 watch(() => route.query, () => {
   parseUrlFilters()
   if (!loading.value) fetchProducts()
+})
+
+// 全局「隱藏已結束」開關改動（無論由頂部導覽列定本頁 toggle 觸發）→ 重新 fetch
+watch(hideEnded, () => {
+  filters.value.page = 1
+  fetchProducts()
 })
 </script>
 
@@ -655,14 +675,14 @@ watch(() => route.query, () => {
                 </span>
               </button>
 
-              <!-- Hide Sold Toggle -->
+              <!-- Hide Sold / Expired / Ended Toggle — 與頂部導覽列開關同一全局狀態（useListingVisibility） -->
               <label class="hide-sold-toggle">
                 <input
                   type="checkbox"
-                  v-model="filters.hideSold"
-                  @change="updateFilter('hideSold', filters.hideSold)"
+                  :checked="hideEnded"
+                  @change="setHideEnded(($event.target as HTMLInputElement).checked)"
                 />
-                <span class="toggle-track" :class="{ active: filters.hideSold }">
+                <span class="toggle-track" :class="{ active: hideEnded }">
                   <span class="toggle-thumb" />
                 </span>
                 <span class="toggle-label">{{ t('product.filters.hideSold') || '隱藏已售出' }}</span>

@@ -112,6 +112,14 @@ export class ProductFiltersDto {
   @IsOptional()
   @Type(() => Boolean)
   hideSold?: boolean
+
+  @IsOptional()
+  @Type(() => Boolean)
+  hideExpired?: boolean
+
+  @IsOptional()
+  @Type(() => Boolean)
+  hideEndedAuction?: boolean
 }
 
 export class CreateProductDto {

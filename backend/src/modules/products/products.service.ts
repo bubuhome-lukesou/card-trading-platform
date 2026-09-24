@@ -89,6 +89,21 @@ export class ProductsService {
     if (filters.hideSold) {
       queryBuilder.andWhere('product.quantity > 0')
     }
+    // Filter out expired reservations (reservationDeadline 已過) — 逾時未成交嘅預訂商品
+    // 條件：listingType=reservation 時 deadline 必須未過；deadline 為 NULL 一律隱藏（無有效截單時間）
+    if ((filters as any).hideExpired) {
+      queryBuilder.andWhere(
+        "(product.listingType != 'reservation' OR (product.reservationDeadline IS NOT NULL AND product.reservationDeadline > :nowExpired))",
+        { nowExpired: new Date() }
+      )
+    }
+    // Filter out ended auctions — 拍賣品其最新 auction 記錄已 ended（effective：endTime 已過）
+    // 用 NOT EXISTS 子查詢：存在 active/pending 拍賣先顯示；ended/cancelled/無記錄都隱藏
+    if ((filters as any).hideEndedAuction) {
+      queryBuilder.andWhere(
+        "(product.listingType != 'auction' OR EXISTS (SELECT 1 FROM auctions a WHERE a.productId = product.id AND a.status IN ('active','pending')))"
+      )
+    }
 
     // Sorting
     switch (filters.sortBy) {
