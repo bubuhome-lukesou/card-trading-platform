@@ -110,20 +110,17 @@ export class ProductFiltersDto {
   sellerIds?: string[]
 
   @IsOptional()
-  // ⚠️ class-transformer @Type(() => Boolean) 會將 query string 'false' 轉成 true
-  // （Boolean('false') === true）— 必須用 Transform 顯式解析，否則前端關閉開關時後端照樣隱藏
+  // ⚠️ query string 布林陷阱：@Type(() => Boolean) 用 Boolean('false')=true，且 Type 先於 Transform
+  // 執行（'false' 已被轉成 true）— 只用 Transform 顯式解析，唔好加 @Type
   @Transform(({ value }) => value === true || value === 'true' || value === '1')
-  @Type(() => Boolean)
   hideSold?: boolean
 
   @IsOptional()
   @Transform(({ value }) => value === true || value === 'true' || value === '1')
-  @Type(() => Boolean)
   hideExpired?: boolean
 
   @IsOptional()
   @Transform(({ value }) => value === true || value === 'true' || value === '1')
-  @Type(() => Boolean)
   hideEndedAuction?: boolean
 }
 
