@@ -13,8 +13,8 @@ let tipTimer: ReturnType<typeof setTimeout> | null = null
 
 const tipText = () =>
   hideEnded.value
-    ? (locale.value === 'zh' ? '現不顯示已售出商品' : 'Now hiding sold items')
-    : (locale.value === 'zh' ? '現顯示已售出商品' : 'Now showing sold items')
+    ? (locale.value === 'zh' ? '隱藏已售出商品' : 'Hiding sold items')
+    : (locale.value === 'zh' ? '顯示已售出商品' : 'Showing sold items')
 
 const onToggle = (e: Event) => {
   const checked = (e.target as HTMLInputElement).checked
