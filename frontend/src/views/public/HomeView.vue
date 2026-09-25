@@ -218,8 +218,9 @@ onMounted(() => {
         </div>
       </div>
     </section>
+    </div><!-- /.home-top -->
 
-    <!-- Categories -->
+    <!-- Categories — 頂部場景（Hero→廣告→統計）之外，正常 body 背景 -->
     <section class="section categories-section">
       <div class="container">
         <div class="section-header">
@@ -245,7 +246,6 @@ onMounted(() => {
         </div>
       </div>
     </section>
-    </div><!-- /.home-top -->
 
     <!-- New Listings -->
     <section class="section listings-section">
@@ -335,9 +335,9 @@ onMounted(() => {
   background: transparent;
 }
 
-// 頂部一體化場景：Hero→廣告→統計→快速分類 共用浮世繪背景（SVG 1600x1400：
-// 上 500px 富士山場景 + 下方青海波海域延伸，底部漸融 body 底色；
-// background-color 兜底 + 任何高度都有海域延伸，唔會露 body 花紋）
+// 頂部一體化場景：Hero→廣告→統計 三區共用浮世繪背景（SVG 1600x1400：
+// 上 500px 富士山場景 + 下方青海波海域延伸；快速分類區喺場景之外）
+// background-color 兜底 + 任何高度都有海域延伸，唔會露 body 花紋
 .home-top {
   position: relative;
   overflow: hidden;
@@ -354,7 +354,7 @@ onMounted(() => {
     pointer-events: none;
   }
 
-  // 底部收口：漸融 body 底色（SVG 底 fade 後再補一層，任何高度都自然）
+  // 底部收口：漸融 body 底色（統計區之後過渡返 body 背景）
   &::after {
     content: '';
     position: absolute;
@@ -374,32 +374,20 @@ onMounted(() => {
 }
 
 // Hero Banner — 場景頂部（富士山+櫻花+朝燒），文字區
+// ⚠️ 唔好加任何 ::after 底部壓暗/過渡條 — hero 同廣告區同處一體場景，
+// 任何區界漸變都會喺 section 邊界形成可見硬邊（Luke 實測回饋「斷裂」）
 .hero-banner {
   position: relative;
   min-height: 300px;
   display: flex;
   align-items: center;
-
-  // 底部同海域過渡（輕微，SVG 場景→海域本身已漸變）
-  &::after {
-    content: '';
-    position: absolute;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    height: 60px;
-    background: linear-gradient(180deg, transparent, rgba(18, 22, 47, 0.55));
-    pointer-events: none;
-  }
 }
 
-// 文字可讀性紗幕：向左加壓（文字喺左側）
+// 文字可讀性紗幕：只向左加壓，上下唔收口（避免區界硬邊）
 .hero-scrim {
   position: absolute;
   inset: 0;
-  background:
-    linear-gradient(90deg, rgba(10, 10, 24, 0.62) 0%, rgba(10, 10, 24, 0.38) 38%, rgba(10, 10, 24, 0.05) 72%),
-    linear-gradient(180deg, rgba(10, 10, 24, 0.25) 0%, transparent 30%, transparent 70%, rgba(20, 20, 42, 0.55) 100%);
+  background: linear-gradient(90deg, rgba(10, 10, 24, 0.62) 0%, rgba(10, 10, 24, 0.38) 38%, rgba(10, 10, 24, 0.05) 72%);
   pointer-events: none;
 }
 
@@ -536,10 +524,9 @@ onMounted(() => {
   }
 }
 
-// Categories Grid — 頂部場景最底區（背景已由 .home-top 統一）
+// Categories Grid — 場景之外，正常 body 背景
 .categories-section {
   background: transparent;
-  padding-bottom: var(--space-10);
 }
 
 .categories-grid {
