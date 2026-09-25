@@ -176,27 +176,27 @@ onMounted(() => {
 
 <template>
   <div class="home">
-    <!-- Hero Banner（內容管理員可編輯） -->
+    <!-- Hero Banner（內容管理員可編輯）— 浮世繪背景：青海波+富士山+櫻花 -->
     <section class="hero-banner">
-      <div class="banner-content">
-        <h1 class="banner-title">
-          <span class="gradient-text">{{ heroTitle }}</span>
-        </h1>
-        <p class="banner-subtitle">{{ heroSubtitle }}</p>
-        <div class="banner-actions">
-          <RouterLink :to="heroPrimaryLink" class="btn btn-primary btn-lg">
-            <Zap class="icon" />
-            {{ heroPrimaryBtn }}
-          </RouterLink>
-          <RouterLink :to="heroSecondaryLink" class="btn btn-outline btn-lg">
-            {{ heroSecondaryBtn }}
-            <ArrowRight class="icon" />
-          </RouterLink>
+      <div class="hero-bg" aria-hidden="true"></div>
+      <div class="hero-scrim" aria-hidden="true"></div>
+      <div class="container">
+        <div class="banner-content">
+          <h1 class="banner-title">
+            <span class="gradient-text">{{ heroTitle }}</span>
+          </h1>
+          <p class="banner-subtitle">{{ heroSubtitle }}</p>
+          <div class="banner-actions">
+            <RouterLink :to="heroPrimaryLink" class="btn btn-primary btn-lg">
+              <Zap class="icon" />
+              {{ heroPrimaryBtn }}
+            </RouterLink>
+            <RouterLink :to="heroSecondaryLink" class="btn btn-outline btn-lg">
+              {{ heroSecondaryBtn }}
+              <ArrowRight class="icon" />
+            </RouterLink>
+          </div>
         </div>
-      </div>
-      <div class="banner-bg">
-        <div class="gradient-orb orb-1"></div>
-        <div class="gradient-orb orb-2"></div>
       </div>
     </section>
 
@@ -334,92 +334,94 @@ onMounted(() => {
   background: transparent;
 }
 
-// Hero Banner
+// Hero Banner — 浮世繪場景（青海波+富士山+櫻花），緊湊高度
 .hero-banner {
   position: relative;
-  padding: var(--space-16) var(--space-6);
-  min-height: 400px;
+  min-height: 300px;
   display: flex;
   align-items: center;
-  justify-content: center;
   overflow: hidden;
-  // 實色：唔透明，蓋住 body 花紋背景
-  background: linear-gradient(180deg, #1a1a2e 0%, #14142a 100%);
+  // 實色兜底：SVG 載入前/載入失敗都係深色，唔會透 body 花紋
+  background: #131530;
+}
+
+.hero-bg {
+  position: absolute;
+  inset: 0;
+  background-image: url('@/assets/home/hero-ukiyo.svg');
+  background-size: cover;
+  background-position: center bottom;
+}
+
+// 文字可讀性紗幕：向左加壓（文字喺左側）
+.hero-scrim {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(90deg, rgba(10, 10, 24, 0.62) 0%, rgba(10, 10, 24, 0.38) 38%, rgba(10, 10, 24, 0.05) 72%),
+    linear-gradient(180deg, rgba(10, 10, 24, 0.25) 0%, transparent 30%, transparent 70%, rgba(20, 20, 42, 0.55) 100%);
 }
 
 .banner-content {
   position: relative;
   z-index: 2;
-  text-align: center;
-  max-width: 700px;
+  max-width: 640px;
+  padding: var(--space-8) 0 var(--space-10);
 }
 
 .banner-title {
   font-family: var(--font-display);
-  font-size: clamp(2rem, 6vw, 3.5rem);
+  font-size: clamp(1.9rem, 4.6vw, 3rem);
   font-weight: 900;
-  margin-bottom: var(--space-4);
+  margin-bottom: var(--space-3);
   letter-spacing: -0.02em;
 }
 
 .banner-subtitle {
-  font-size: var(--text-lg);
+  font-size: var(--text-base);
   color: var(--text-secondary);
-  margin-bottom: var(--space-8);
+  margin-bottom: var(--space-5);
 }
 
 .banner-actions {
   display: flex;
-  gap: var(--space-4);
-  justify-content: center;
+  gap: var(--space-3);
   flex-wrap: wrap;
 
   .icon {
-    width: 20px;
-    height: 20px;
+    width: 18px;
+    height: 18px;
+  }
+
+  :deep(.btn-lg) {
+    padding: 0.625rem var(--space-6);
+    font-size: var(--text-base);
   }
 }
 
-.banner-bg {
-  position: absolute;
-  inset: 0;
-  overflow: hidden;
-}
-
-.gradient-orb {
-  position: absolute;
-  border-radius: 50%;
-  filter: blur(80px);
-  opacity: 0.3;
-
-  &.orb-1 {
-    width: 400px;
-    height: 400px;
-    background: var(--primary);
-    top: -100px;
-    left: -100px;
+// 手機：文字置中（富士山喺右側會被裁走大半，左對齊佈局唔成立）
+@media (max-width: 640px) {
+  .banner-content {
+    max-width: 100%;
+    text-align: center;
+    padding: var(--space-8) 0;
   }
 
-  &.orb-2 {
-    width: 300px;
-    height: 300px;
-    background: var(--accent);
-    bottom: -50px;
-    right: -50px;
+  .banner-actions {
+    justify-content: center;
   }
 }
 
-// Banner Ads（走馬燈）— 實色背景，唔透出 body 花紋
+// Banner Ads（走馬燈）— 實色背景，唔透出 body 花紋；上緊貼 hero
 .banner-section {
-  padding: var(--space-6) 0 0;
+  padding: var(--space-5) 0;
   background: #14142a;
-  padding-bottom: var(--space-6);
 }
 
 // Stats Bar — 實色背景，唔透出 body 花紋
 .stats-bar {
   background: #14142a;
-  padding: var(--space-6) 0;
+  padding: var(--space-5) 0 var(--space-6);
   border-bottom: 1px solid var(--border);
 }
 
@@ -450,16 +452,16 @@ onMounted(() => {
   color: var(--text-muted);
 }
 
-// Sections
+// Sections — 緊湊節奏
 .section {
-  padding: var(--space-12) 0;
+  padding: var(--space-8) 0 var(--space-6);
 }
 
 .section-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: var(--space-6);
+  margin-bottom: var(--space-4);
 }
 
 .section-title {
@@ -898,7 +900,7 @@ onMounted(() => {
 .cta-card {
   background: var(--primary-gradient);
   border-radius: var(--radius-2xl);
-  padding: var(--space-12);
+  padding: var(--space-8) var(--space-12);
   text-align: center;
   position: relative;
   overflow: hidden;

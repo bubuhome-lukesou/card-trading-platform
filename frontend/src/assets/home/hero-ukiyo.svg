@@ -1,0 +1,149 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="500" viewBox="0 0 1600 500" preserveAspectRatio="xMidYMax slice">
+  <defs>
+    <!-- 青海波 (Seigaiha) — 浮世繪經典波紋，同全站 body 花紋同源 -->
+    <pattern id="seigaiha" x="0" y="0" width="70" height="70" patternUnits="userSpaceOnUse">
+      <path d="M35 42 A 28 28 0 0 1 7 42" fill="none" stroke="#6b7db3" stroke-width="1.6" opacity="0.30"/>
+      <path d="M35 42 A 22 22 0 0 1 13 42" fill="none" stroke="#6b7db3" stroke-width="1.3" opacity="0.24"/>
+      <path d="M35 42 A 16 16 0 0 1 19 42" fill="none" stroke="#6b7db3" stroke-width="1.1" opacity="0.20"/>
+      <path d="M35 42 A 10 10 0 0 1 25 42" fill="none" stroke="#6b7db3" stroke-width="0.9" opacity="0.16"/>
+      <circle cx="35" cy="42" r="1.5" fill="#8c9ecf" opacity="0.25"/>
+      <path d="M70 7 A 28 28 0 0 1 42 7" fill="none" stroke="#6b7db3" stroke-width="1.6" opacity="0.30"/>
+      <path d="M70 7 A 22 22 0 0 1 48 7" fill="none" stroke="#6b7db3" stroke-width="1.3" opacity="0.20"/>
+      <path d="M70 7 A 16 16 0 0 1 54 7" fill="none" stroke="#6b7db3" stroke-width="1.1" opacity="0.15"/>
+      <path d="M70 7 A 10 10 0 0 1 60 7" fill="none" stroke="#6b7db3" stroke-width="0.9" opacity="0.12"/>
+      <circle cx="70" cy="7" r="1.5" fill="#8c9ecf" opacity="0.25"/>
+      <path d="M0 7 A 28 28 0 0 1 -28 7" fill="none" stroke="#6b7db3" stroke-width="1.6" opacity="0.30"/>
+      <path d="M0 7 A 22 22 0 0 1 -22 7" fill="none" stroke="#6b7db3" stroke-width="1.3" opacity="0.20"/>
+      <path d="M0 7 A 16 16 0 0 1 -16 7" fill="none" stroke="#6b7db3" stroke-width="1.1" opacity="0.15"/>
+      <path d="M0 7 A 10 10 0 0 1 -10 7" fill="none" stroke="#6b7db3" stroke-width="0.9" opacity="0.12"/>
+    </pattern>
+
+    <!-- 青海波帶向上漸隱 mask（避免生硬橫線） -->
+    <linearGradient id="wave-fade" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#fff" stop-opacity="0"/>
+      <stop offset="55%" stop-color="#fff" stop-opacity="0.9"/>
+      <stop offset="100%" stop-color="#fff" stop-opacity="1"/>
+    </linearGradient>
+    <mask id="wave-mask">
+      <rect x="0" y="300" width="1600" height="200" fill="url(#wave-fade)"/>
+    </mask>
+
+    <!-- 櫻花五瓣 — 統一模板 -->
+    <g id="sakura-flower">
+      <circle cx="0" cy="-4.2" r="3.4" fill="currentColor"/>
+      <circle cx="4.0" cy="-1.3" r="3.4" fill="currentColor"/>
+      <circle cx="2.5" cy="3.4" r="3.4" fill="currentColor"/>
+      <circle cx="-2.5" cy="3.4" r="3.4" fill="currentColor"/>
+      <circle cx="-4.0" cy="-1.3" r="3.4" fill="currentColor"/>
+      <circle cx="0" cy="0" r="1.4" fill="#f5d5e8"/>
+    </g>
+
+    <!-- 散落櫻花布局（右上密 → 左下疏；稀疏避免波點感） -->
+    <pattern id="sakura-scatter" x="0" y="0" width="520" height="330" patternUnits="userSpaceOnUse">
+      <use href="#sakura-flower" transform="translate(80,55) scale(1.1) rotate(15)" color="#f0a8c8" opacity="0.5"/>
+      <use href="#sakura-flower" transform="translate(240,130) scale(0.75) rotate(55)" color="#f0a8c8" opacity="0.32"/>
+      <use href="#sakura-flower" transform="translate(395,42) scale(0.95) rotate(-20)" color="#f0a8c8" opacity="0.42"/>
+      <use href="#sakura-flower" transform="translate(470,190) scale(0.65) rotate(70)" color="#e898bc" opacity="0.28"/>
+      <use href="#sakura-flower" transform="translate(170,250) scale(0.6) rotate(-40)" color="#e898bc" opacity="0.22"/>
+    </pattern>
+    <!-- 櫻花向下漸隱（山腰/海面唔留花） -->
+    <linearGradient id="sakura-fade" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#fff" stop-opacity="1"/>
+      <stop offset="48%" stop-color="#fff" stop-opacity="0.55"/>
+      <stop offset="75%" stop-color="#fff" stop-opacity="0.1"/>
+      <stop offset="100%" stop-color="#fff" stop-opacity="0"/>
+    </linearGradient>
+    <mask id="sakura-mask">
+      <rect width="1600" height="500" fill="url(#sakura-fade)"/>
+    </mask>
+
+    <!-- 富士山 — 山體漸變（上亮下暗融夜色） -->
+    <linearGradient id="fuji-body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#39466f"/>
+      <stop offset="45%" stop-color="#28315a"/>
+      <stop offset="100%" stop-color="#1a2148"/>
+    </linearGradient>
+    <!-- 山腳霧氣：向上透明 → 向下融底色 -->
+    <linearGradient id="fuji-mist" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#131530" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#131530" stop-opacity="0.95"/>
+    </linearGradient>
+
+    <!-- 朝燒：左紅 → 中紫 → 右藍 橫向霞光 -->
+    <linearGradient id="sky-glow" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#e0507a" stop-opacity="0.32"/>
+      <stop offset="45%" stop-color="#7a5cc8" stop-opacity="0.16"/>
+      <stop offset="100%" stop-color="#3a4a9c" stop-opacity="0.28"/>
+    </linearGradient>
+    <!-- 頂部霞光向下漸隱 -->
+    <linearGradient id="sky-fade" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#fff" stop-opacity="1"/>
+      <stop offset="70%" stop-color="#fff" stop-opacity="0.5"/>
+      <stop offset="100%" stop-color="#fff" stop-opacity="0"/>
+    </linearGradient>
+    <mask id="sky-mask">
+      <rect x="0" y="0" width="1600" height="330" fill="url(#sky-fade)"/>
+    </mask>
+
+    <!-- 朝燒紅暈（radial 無硬邊） -->
+    <radialGradient id="dawn-glow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#e0507a" stop-opacity="0.30"/>
+      <stop offset="55%" stop-color="#c04870" stop-opacity="0.12"/>
+      <stop offset="100%" stop-color="#c04870" stop-opacity="0"/>
+    </radialGradient>
+
+    <radialGradient id="moon-glow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#ffd9e8" stop-opacity="0.85"/>
+      <stop offset="55%" stop-color="#f0a8c8" stop-opacity="0.22"/>
+      <stop offset="100%" stop-color="#f0a8c8" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <!-- 夜空底色（同 body #0d0d1a~#141430 一族） -->
+  <rect width="1600" height="500" fill="#131530"/>
+
+  <!-- 頂部朝燒霞光（mask 漸隱，無硬邊） -->
+  <rect width="1600" height="330" fill="url(#sky-glow)" mask="url(#sky-mask)"/>
+  <!-- 左上紅日方向大光暈（radial 無邊） -->
+  <ellipse cx="200" cy="80" rx="560" ry="300" fill="url(#dawn-glow)"/>
+
+  <!-- 右上月光暈 + 月亮 -->
+  <circle cx="1400" cy="90" r="170" fill="url(#moon-glow)"/>
+  <circle cx="1400" cy="90" r="34" fill="#ffe8f2" opacity="0.88"/>
+  <circle cx="1389" cy="81" r="8" fill="#e8c8d8" opacity="0.45"/>
+  <circle cx="1411" cy="97" r="5.5" fill="#e8c8d8" opacity="0.38"/>
+  <circle cx="1402" cy="76" r="4" fill="#e8c8d8" opacity="0.3"/>
+
+  <!-- 遠處小山（左側低調） -->
+  <path d="M -60 500 L 180 396 Q 192 388 204 396 L 470 500 Z" fill="#1a2145" opacity="0.65"/>
+
+  <!-- 富士山主體（右側大景） -->
+  <g>
+    <path d="M 990 500
+             L 1238 206
+             Q 1252 190 1266 206
+             L 1514 500 Z"
+          fill="url(#fuji-body)"/>
+    <!-- 山頂雪冠（鋸齒緣） -->
+    <path d="M 1238 206
+             L 1212 238 L 1226 231 L 1240 251 L 1254 233 L 1268 249 L 1284 232 L 1292 240
+             L 1266 206 Q 1252 190 1238 206 Z"
+          fill="#e8ecf8" opacity="0.92"/>
+    <!-- 山體霧氣融合（向底部融夜色） -->
+    <path d="M 990 500 L 1514 500 L 1514 360 Q 1252 300 990 380 Z" fill="url(#fuji-mist)"/>
+  </g>
+
+  <!-- 山腳遠景波浪帶（延伸出畫面避免接縫） -->
+  <path d="M 940 500 Q 1080 436 1230 474 Q 1380 508 1660 452 L 1660 500 Z" fill="#182043" opacity="0.85"/>
+  <path d="M -60 500 Q 200 458 460 488 T 980 470 L 980 500 Z" fill="#161d3e" opacity="0.85"/>
+  <path d="M 860 500 Q 1120 452 1360 486 T 1660 468 L 1660 500 L 860 500 Z" fill="#141b3a" opacity="0.9"/>
+
+  <!-- 青海波紋（底部海面，向上漸隱） -->
+  <rect y="300" width="1600" height="200" fill="url(#seigaiha)" mask="url(#wave-mask)"/>
+
+  <!-- 散落櫻花（空中，向下漸隱） -->
+  <rect width="1600" height="500" fill="url(#sakura-scatter)" mask="url(#sakura-mask)"/>
+
+  <!-- 底緣暗壓，令下接 banner 區有收口 -->
+  <rect y="450" width="1600" height="50" fill="#14142a" opacity="0.5"/>
+</svg>
