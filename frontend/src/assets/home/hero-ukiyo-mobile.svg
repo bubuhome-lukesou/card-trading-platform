@@ -116,50 +116,50 @@
   <ellipse cx="120" cy="100" rx="320" ry="240" fill="url(#m-dawn-glow)"/>
 
   <!-- 月亮（右上） -->
-  <circle cx="620" cy="120" r="120" fill="url(#m-moon-glow)"/>
-  <circle cx="620" cy="120" r="30" fill="#ffe8f2" opacity="0.88"/>
-  <circle cx="610" cy="112" r="7" fill="#e8c8d8" opacity="0.45"/>
-  <circle cx="629" cy="126" r="5" fill="#e8c8d8" opacity="0.38"/>
-  <circle cx="622" cy="108" r="3.5" fill="#e8c8d8" opacity="0.3"/>
+  <circle cx="600" cy="95" r="110" fill="url(#m-moon-glow)"/>
+  <circle cx="600" cy="95" r="28" fill="#ffe8f2" opacity="0.88"/>
+  <circle cx="591" cy="88" r="6.5" fill="#e8c8d8" opacity="0.45"/>
+  <circle cx="608" cy="100" r="4.8" fill="#e8c8d8" opacity="0.38"/>
+  <circle cx="602" cy="84" r="3.3" fill="#e8c8d8" opacity="0.3"/>
 
   <!-- 海鷗（月旁） -->
   <g stroke="#d8e0f0" stroke-width="2.2" fill="none" stroke-linecap="round" opacity="0.5">
-    <path d="M 430 170 Q 437 163 444 170 Q 451 163 458 170"/>
-    <path d="M 465 150 Q 470 145 475 150 Q 480 145 485 150" opacity="0.7"/>
-    <path d="M 400 128 Q 404 124 408 128 Q 412 124 416 128" opacity="0.6"/>
+    <path d="M 430 150 Q 437 143 444 150 Q 451 143 458 150"/>
+    <path d="M 465 128 Q 470 123 475 128 Q 480 123 485 128" opacity="0.7"/>
+    <path d="M 400 108 Q 404 104 408 108 Q 412 104 416 108" opacity="0.6"/>
   </g>
 
-  <!-- 富士山（置中，直幅構圖主體） -->
+  <!-- 富士山（右側，同桌面構圖一致 — Luke 9/25 定案） -->
   <g>
-    <path d="M 130 640
-             L 368 330
-             Q 380 316 392 330
-             L 630 640 Z"
+    <path d="M 330 640
+             L 568 260
+             Q 580 246 592 260
+             L 830 640 Z"
           fill="url(#m-fuji-body)"/>
     <!-- 山頂雪冠 -->
-    <path d="M 368 330
-             L 344 361 L 357 354 L 370 373 L 383 356 L 396 371 L 411 355 L 420 362
-             L 392 330 Q 380 316 368 330 Z"
+    <path d="M 568 260
+             L 540 296 L 555 288 L 570 309 L 596 289 L 611 307 L 628 289 L 620 296
+             L 592 260 Q 580 246 568 260 Z"
           fill="#e8ecf8" opacity="0.92"/>
     <!-- 山體霧氣（弧形兩側下斜，無直角） -->
-    <path d="M 125 640 Q 300 520 380 518 Q 462 520 635 640 Z" fill="url(#m-fuji-mist)"/>
+    <path d="M 325 640 Q 500 500 580 498 Q 662 500 835 640 Z" fill="url(#m-fuji-mist)"/>
   </g>
 
-  <!-- 山腳霧林（兩層） -->
+  <!-- 山腳霧林（兩層：左側疏、右側山腳密） -->
   <g color="#141b3a" opacity="0.85">
-    <use href="#m-pine-tree" transform="translate(90,625) scale(1.05)"/>
-    <use href="#m-pine-tree" transform="translate(135,630) scale(0.75)"/>
-    <use href="#m-pine-tree" transform="translate(175,627) scale(0.95)"/>
-    <use href="#m-pine-tree" transform="translate(590,628) scale(0.9)"/>
-    <use href="#m-pine-tree" transform="translate(635,626) scale(1.0)"/>
-    <use href="#m-pine-tree" transform="translate(680,630) scale(0.75)"/>
+    <use href="#m-pine-tree" transform="translate(80,628) scale(0.9)"/>
+    <use href="#m-pine-tree" transform="translate(120,632) scale(0.7)"/>
+    <use href="#m-pine-tree" transform="translate(290,630) scale(0.95)"/>
+    <use href="#m-pine-tree" transform="translate(700,628) scale(1.0)"/>
+    <use href="#m-pine-tree" transform="translate(745,626) scale(1.05)"/>
+    <use href="#m-pine-tree" transform="translate(790,630) scale(0.85)"/>
   </g>
   <g color="#1c2547" opacity="0.9">
-    <use href="#m-pine-tree" transform="translate(65,638) scale(0.85)"/>
-    <use href="#m-pine-tree" transform="translate(112,642) scale(0.68)"/>
-    <use href="#m-pine-tree" transform="translate(155,640) scale(0.8)"/>
-    <use href="#m-pine-tree" transform="translate(610,642) scale(0.72)"/>
-    <use href="#m-pine-tree" transform="translate(655,640) scale(0.9)"/>
+    <use href="#m-pine-tree" transform="translate(58,638) scale(0.8)"/>
+    <use href="#m-pine-tree" transform="translate(102,642) scale(0.65)"/>
+    <use href="#m-pine-tree" transform="translate(250,640) scale(0.8)"/>
+    <use href="#m-pine-tree" transform="translate(672,642) scale(0.75)"/>
+    <use href="#m-pine-tree" transform="translate(725,640) scale(0.9)"/>
   </g>
 
   <!-- 山腳過渡波浪帶（弧形，無直角） -->
