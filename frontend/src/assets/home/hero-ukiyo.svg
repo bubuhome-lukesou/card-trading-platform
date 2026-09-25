@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="500" viewBox="0 0 1600 500" preserveAspectRatio="xMidYMax slice">
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1400" viewBox="0 0 1600 1400" preserveAspectRatio="xMidYMin slice">
   <defs>
     <!-- 青海波 (Seigaiha) — 浮世繪經典波紋，同全站 body 花紋同源 -->
     <pattern id="seigaiha" x="0" y="0" width="70" height="70" patternUnits="userSpaceOnUse">
@@ -21,11 +21,13 @@
     <!-- 青海波帶向上漸隱 mask（避免生硬橫線） -->
     <linearGradient id="wave-fade" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0%" stop-color="#fff" stop-opacity="0"/>
-      <stop offset="55%" stop-color="#fff" stop-opacity="0.9"/>
-      <stop offset="100%" stop-color="#fff" stop-opacity="1"/>
+      <stop offset="12%" stop-color="#fff" stop-opacity="0.85"/>
+      <stop offset="30%" stop-color="#fff" stop-opacity="1"/>
+      <stop offset="88%" stop-color="#fff" stop-opacity="0.9"/>
+      <stop offset="100%" stop-color="#fff" stop-opacity="0"/>
     </linearGradient>
     <mask id="wave-mask">
-      <rect x="0" y="300" width="1600" height="200" fill="url(#wave-fade)"/>
+      <rect x="0" y="320" width="1600" height="1080" fill="url(#wave-fade)"/>
     </mask>
 
     <!-- 櫻花五瓣 — 統一模板 -->
@@ -46,7 +48,7 @@
       <use href="#sakura-flower" transform="translate(470,190) scale(0.65) rotate(70)" color="#e898bc" opacity="0.28"/>
       <use href="#sakura-flower" transform="translate(170,250) scale(0.6) rotate(-40)" color="#e898bc" opacity="0.22"/>
     </pattern>
-    <!-- 櫻花向下漸隱（山腰/海面唔留花） -->
+    <!-- 櫻花向下漸隱（海面唔留花） -->
     <linearGradient id="sakura-fade" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0%" stop-color="#fff" stop-opacity="1"/>
       <stop offset="48%" stop-color="#fff" stop-opacity="0.55"/>
@@ -97,6 +99,18 @@
       <stop offset="55%" stop-color="#f0a8c8" stop-opacity="0.22"/>
       <stop offset="100%" stop-color="#f0a8c8" stop-opacity="0"/>
     </radialGradient>
+
+    <!-- 深海光暈（中段海域中央微光，避免過平） -->
+    <radialGradient id="deep-glow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#2a3560" stop-opacity="0.5"/>
+      <stop offset="100%" stop-color="#2a3560" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- 底部收口：融入 body 底色 #0d0d1a -->
+    <linearGradient id="bottom-fade" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#0d0d1a" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#0d0d1a" stop-opacity="0.9"/>
+    </linearGradient>
   </defs>
 
   <!-- 夜空底色（同 body #0d0d1a~#141430 一族） -->
@@ -138,12 +152,20 @@
   <path d="M -60 500 Q 200 458 460 488 T 980 470 L 980 500 Z" fill="#161d3e" opacity="0.85"/>
   <path d="M 860 500 Q 1120 452 1360 486 T 1660 468 L 1660 500 L 860 500 Z" fill="#141b3a" opacity="0.9"/>
 
-  <!-- 青海波紋（底部海面，向上漸隱） -->
-  <rect y="300" width="1600" height="200" fill="url(#seigaiha)" mask="url(#wave-mask)"/>
+  <!-- 海域主體（500→1400 延伸，超寬螢幕都有波紋） -->
+  <rect y="500" width="1600" height="900" fill="#12162f"/>
+  <!-- 海面中央微光 -->
+  <ellipse cx="800" cy="780" rx="700" ry="260" fill="url(#deep-glow)"/>
+
+  <!-- 青海波紋（海面全帶，上下漸隱） -->
+  <rect y="320" width="1600" height="1080" fill="url(#seigaiha)" mask="url(#wave-mask)"/>
 
   <!-- 散落櫻花（空中，向下漸隱） -->
   <rect width="1600" height="500" fill="url(#sakura-scatter)" mask="url(#sakura-mask)"/>
 
-  <!-- 底緣暗壓，令下接 banner 區有收口 -->
-  <rect y="450" width="1600" height="50" fill="#14142a" opacity="0.5"/>
+  <!-- 海面縱向柔光層：波紋上疊漸變令中段更柔和 -->
+  <rect y="500" width="1600" height="900" fill="#131530" opacity="0.28"/>
+
+  <!-- 底部收口：漸融入 body 底色 -->
+  <rect y="1150" width="1600" height="250" fill="url(#bottom-fade)"/>
 </svg>

@@ -176,9 +176,9 @@ onMounted(() => {
 
 <template>
   <div class="home">
+    <div class="home-top">
     <!-- Hero Banner（內容管理員可編輯）— 浮世繪背景：青海波+富士山+櫻花 -->
     <section class="hero-banner">
-      <div class="hero-bg" aria-hidden="true"></div>
       <div class="hero-scrim" aria-hidden="true"></div>
       <div class="container">
         <div class="banner-content">
@@ -245,6 +245,7 @@ onMounted(() => {
         </div>
       </div>
     </section>
+    </div><!-- /.home-top -->
 
     <!-- New Listings -->
     <section class="section listings-section">
@@ -334,23 +335,62 @@ onMounted(() => {
   background: transparent;
 }
 
-// Hero Banner — 浮世繪場景（青海波+富士山+櫻花），緊湊高度
+// 頂部一體化場景：Hero→廣告→統計→快速分類 共用浮世繪背景（SVG 1600x1400：
+// 上 500px 富士山場景 + 下方青海波海域延伸，底部漸融 body 底色；
+// background-color 兜底 + 任何高度都有海域延伸，唔會露 body 花紋）
+.home-top {
+  position: relative;
+  overflow: hidden;
+
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image: url('@/assets/home/hero-ukiyo.svg');
+    background-size: 100% auto;
+    background-position: top center;
+    background-repeat: no-repeat;
+    background-color: #12162f;
+    pointer-events: none;
+  }
+
+  // 底部收口：漸融 body 底色（SVG 底 fade 後再補一層，任何高度都自然）
+  &::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 140px;
+    background: linear-gradient(180deg, rgba(13, 13, 26, 0) 0%, rgba(13, 13, 26, 0.95) 100%);
+    pointer-events: none;
+  }
+
+  // 內容抬高到背景之上
+  > * {
+    position: relative;
+    z-index: 1;
+  }
+}
+
+// Hero Banner — 場景頂部（富士山+櫻花+朝燒），文字區
 .hero-banner {
   position: relative;
   min-height: 300px;
   display: flex;
   align-items: center;
-  overflow: hidden;
-  // 實色兜底：SVG 載入前/載入失敗都係深色，唔會透 body 花紋
-  background: #131530;
-}
 
-.hero-bg {
-  position: absolute;
-  inset: 0;
-  background-image: url('@/assets/home/hero-ukiyo.svg');
-  background-size: cover;
-  background-position: center bottom;
+  // 底部同海域過渡（輕微，SVG 場景→海域本身已漸變）
+  &::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 60px;
+    background: linear-gradient(180deg, transparent, rgba(18, 22, 47, 0.55));
+    pointer-events: none;
+  }
 }
 
 // 文字可讀性紗幕：向左加壓（文字喺左側）
@@ -360,6 +400,7 @@ onMounted(() => {
   background:
     linear-gradient(90deg, rgba(10, 10, 24, 0.62) 0%, rgba(10, 10, 24, 0.38) 38%, rgba(10, 10, 24, 0.05) 72%),
     linear-gradient(180deg, rgba(10, 10, 24, 0.25) 0%, transparent 30%, transparent 70%, rgba(20, 20, 42, 0.55) 100%);
+  pointer-events: none;
 }
 
 .banner-content {
@@ -412,17 +453,14 @@ onMounted(() => {
   }
 }
 
-// Banner Ads（走馬燈）— 實色背景，唔透出 body 花紋；上緊貼 hero
+// Banner Ads（走馬燈）— 透明，浮世繪海域背景由 .home-top 統一供應
 .banner-section {
   padding: var(--space-5) 0;
-  background: #14142a;
 }
 
-// Stats Bar — 實色背景，唔透出 body 花紋
+// Stats Bar — 透明，同上
 .stats-bar {
-  background: #14142a;
   padding: var(--space-5) 0 var(--space-6);
-  border-bottom: 1px solid var(--border);
 }
 
 .stats-grid {
@@ -498,9 +536,10 @@ onMounted(() => {
   }
 }
 
-// Categories Grid
+// Categories Grid — 頂部場景最底區（背景已由 .home-top 統一）
 .categories-section {
   background: transparent;
+  padding-bottom: var(--space-10);
 }
 
 .categories-grid {
