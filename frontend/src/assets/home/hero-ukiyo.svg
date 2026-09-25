@@ -41,20 +41,12 @@
       <stop offset="100%" stop-color="#12162f" stop-opacity="0.9"/>
     </linearGradient>
 
-    <!-- 天空遮罩 v2（R8 無縫核心）：
-         1) 色帶 sky-cover-h = tile 底色疊 CSS 紗幕後嘅精確最終色（橫向 4 stops，同 CSS 紗幕同參數）
-         2) 縱向 sky-cover：y 0-55% 不透明（遮走背後 tile 波紋）→ 78% 全透明（海平線下放波紋）
-         ⚠️ 波浪全頁只由 sea-tile 渲染，場景自身零波紋 — 呢個係無接縫嘅根本保證 -->
-    <linearGradient id="sky-cover-h" x1="0" y1="0" x2="1" y2="0">
-      <stop offset="0%" stop-color="#0e111e"/>
-      <stop offset="38%" stop-color="#101428"/>
-      <stop offset="72%" stop-color="#12162e"/>
-      <stop offset="100%" stop-color="#12162e"/>
-    </linearGradient>
+    <!-- 天空遮罩 v3（R10）：純 #12162f 單色（配合無紗幕架構 — 拆除 R8 為紗幕而造嘅橫向色帶）
+         縱向 y 0-55% 不透明（遮住下方）→ 78% 全透明 -->
     <linearGradient id="sky-cover" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#fff" stop-opacity="1"/>
-      <stop offset="55%" stop-color="#fff" stop-opacity="1"/>
-      <stop offset="78%" stop-color="#fff" stop-opacity="0"/>
+      <stop offset="0%" stop-color="#12162f" stop-opacity="1"/>
+      <stop offset="55%" stop-color="#12162f" stop-opacity="1"/>
+      <stop offset="78%" stop-color="#12162f" stop-opacity="0"/>
     </linearGradient>
     <mask id="sky-cover-mask">
       <rect width="1600" height="500" fill="url(#sky-cover)"/>
@@ -117,9 +109,9 @@
     </g>
   </defs>
 
-  <!-- 天空遮罩：色帶（=tile+紗幕精確色）× 縱向漸隱 mask -->
+  <!-- 天空遮罩：純 #12162f × 縱向漸隱 mask（海平線以下漸淡，自然接 body 背景） -->
   <g mask="url(#sky-cover-mask)">
-    <rect width="1600" height="500" fill="url(#sky-cover-h)"/>
+    <rect width="1600" height="500" fill="#12162f"/>
   </g>
 
   <!-- 頂部朝燒霞光（y>500 段完全歸零 — 交界帶零殘色） -->

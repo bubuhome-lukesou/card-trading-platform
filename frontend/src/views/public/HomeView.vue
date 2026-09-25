@@ -177,9 +177,8 @@ onMounted(() => {
 <template>
   <div class="home">
     <div class="home-top">
-    <!-- Hero Banner（內容管理員可編輯）— 浮世繪背景：青海波+富士山+櫻花 -->
+    <!-- Hero Banner（內容管理員可編輯）— 浮世繪背景：富士山+月光+櫻花 -->
     <section class="hero-banner">
-      <div class="hero-scrim" aria-hidden="true"></div>
       <div class="container">
         <div class="banner-content">
           <h1 class="banner-title">
@@ -347,7 +346,7 @@ onMounted(() => {
   position: relative;
 
   // 場景（等比滿寬，高隨寬度 500/1600 = 31.25%）
-  // R9（Luke 定案：去除波浪層）— 波浪 tile 已拆，海域 = 純色 #12162f（body 背景兜底）
+  // R10（Luke 定案：只保留富士山場景一層）— 波浪 tile/統一紗幕全部拆除
   &::before {
     content: '';
     position: absolute;
@@ -377,31 +376,14 @@ onMounted(() => {
   }
 }
 
-// 統一紗幕：同 hero-scrim 同款左壓漸變，全頁一條過
-// （波浪層已拆 — 紗幕直接疊喺純色海域上）
-.home-top {
-  &::after {
-    background-image: linear-gradient(90deg, rgba(10, 10, 24, 0.45) 0%, rgba(10, 10, 24, 0.28) 38%, rgba(10, 10, 24, 0.04) 72%);
-    background-size: 100% 100%;
-  }
-}
-
 // Hero Banner — 場景頂部（富士山+櫻花+朝燒），文字區
-// ⚠️ 唔好加任何 ::after 底部壓暗/過渡條 — hero 同廣告區同處一體場景，
-// 任何區界漸變都會喺 section 邊界形成可見硬邊（Luke 實測回饋「斷裂」）
+// R10（Luke 定案：只留富士山場景）— 統一紗幕/hero-scrim 全部拆除
+// 標題可讀性由 SVG 內建深色天空承擔，唔好加返任何紗幕層
 .hero-banner {
   position: relative;
   min-height: 300px;
   display: flex;
   align-items: center;
-}
-
-// 文字可讀性紗幕：只向左加壓，上下唔收口（避免區界硬邊）
-.hero-scrim {
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(90deg, rgba(10, 10, 24, 0.62) 0%, rgba(10, 10, 24, 0.38) 38%, rgba(10, 10, 24, 0.05) 72%);
-  pointer-events: none;
 }
 
 .banner-content {
