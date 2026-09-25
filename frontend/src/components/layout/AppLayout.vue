@@ -599,7 +599,8 @@ const userMenuItems = computed(() => {
   -webkit-backdrop-filter: blur(14px);
   border-top: 1px solid var(--border);
   padding: var(--space-16) 0 var(--space-8);
-  margin-top: var(--space-16);
+  // R12：margin-top 拆除 — margin 空隙會露出 body 黑漸變（首頁海域貫通斷開）
+  // footer 同 main 之間嘅間距由各頁面最尾 section 自己 padding-bottom 承擔
 }
 
 .footer-content {

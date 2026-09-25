@@ -340,6 +340,9 @@ onMounted(() => {
 // （tile 底色 #12162f 同場景底緣一致 → 數學上無縫）；場景之下全係海域，CTA 後先收口
 .home {
   position: relative;
+  // R12：海域實底墊到 footer — 場景淡出後露出同色，首頁背景貫通到底
+  // （body 底色 #0d0d1a 偏黑，唔加呢層場景以下會跌入 body 黑漸變 = Luke 截圖「冇延伸到 footer」）
+  background-color: #12162f;
 }
 
 .home-top {
