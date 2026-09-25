@@ -270,7 +270,10 @@ const userMenuItems = computed(() => {
   top: 0;
   width: 100%;
   overflow: visible;
-  background: var(--bg-card);
+  // 半透明毛玻璃：首頁全頁浮世繪海域贯通（body 深色透出，其他頁面一樣協調）
+  background: rgba(19, 21, 48, 0.75);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
   border-bottom: 1px solid var(--border);
   z-index: 100;
 
@@ -590,7 +593,10 @@ const userMenuItems = computed(() => {
 
 // Footer
 .footer {
-  background: var(--bg-card);
+  // 半透明毛玻璃：首頁海域延伸到頁底（Luke 9/25：背景延伸到最底）
+  background: rgba(19, 21, 48, 0.75);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
   border-top: 1px solid var(--border);
   padding: var(--space-16) 0 var(--space-8);
   margin-top: var(--space-16);

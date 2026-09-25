@@ -110,6 +110,14 @@
       <stop offset="0%" stop-color="#12162f" stop-opacity="0"/>
       <stop offset="100%" stop-color="#12162f" stop-opacity="1"/>
     </linearGradient>
+
+    <!-- 山腳霧林：針葉樹剪影模板 -->
+    <g id="pine-tree">
+      <path d="M 0 0 L -14 0 L 0 -26 L 14 0 Z" fill="currentColor"/>
+      <path d="M 0 -10 L -11 -10 L 0 -34 L 11 -10 Z" fill="currentColor"/>
+      <path d="M 0 -20 L -8 -20 L 0 -40 L 8 -20 Z" fill="currentColor"/>
+      <rect x="-1.5" y="0" width="3" height="8" fill="currentColor"/>
+    </g>
   </defs>
 
   <!-- 全場景統一底色 = 海域色（上下同色，任何橫向界面都無色差） -->
@@ -127,6 +135,13 @@
   <circle cx="1411" cy="97" r="5.5" fill="#e8c8d8" opacity="0.38"/>
   <circle cx="1402" cy="76" r="4" fill="#e8c8d8" opacity="0.3"/>
 
+  <!-- 海鷗（月中剪影 V 形） -->
+  <g stroke="#d8e0f0" stroke-width="2.2" fill="none" stroke-linecap="round" opacity="0.5">
+    <path d="M 1150 150 Q 1158 142 1166 150 Q 1174 142 1182 150"/>
+    <path d="M 1195 130 Q 1201 124 1207 130 Q 1213 124 1219 130" opacity="0.7"/>
+    <path d="M 1108 120 Q 1113 115 1118 120 Q 1123 115 1128 120" opacity="0.6"/>
+  </g>
+
   <!-- 遠處小山（左側低調） -->
   <path d="M -60 500 L 180 396 Q 192 388 204 396 L 470 500 Z" fill="#1a2145" opacity="0.65"/>
 
@@ -142,14 +157,81 @@
              L 1212 238 L 1226 231 L 1240 251 L 1254 233 L 1268 249 L 1284 232 L 1292 240
              L 1266 206 Q 1252 190 1238 206 Z"
           fill="#e8ecf8" opacity="0.92"/>
-    <!-- 山體霧氣融合（向底部融海域色） -->
-    <path d="M 990 500 L 1514 500 L 1514 360 Q 1252 300 990 380 Z" fill="url(#fuji-mist)"/>
+    <!-- 山體霧氣融合（弧形兩側下斜，無直角硬邊） -->
+    <path d="M 985 500 Q 1150 388 1252 386 Q 1355 388 1519 500 Z" fill="url(#fuji-mist)"/>
+  </g>
+
+  <!-- 山腳霧林（左中右三簇針葉樹剪影，前後兩層深淺） -->
+  <g color="#141b3a" opacity="0.85">
+    <use href="#pine-tree" transform="translate(560,470) scale(1.1)"/>
+    <use href="#pine-tree" transform="translate(610,476) scale(0.8)"/>
+    <use href="#pine-tree" transform="translate(655,472) scale(1.0)"/>
+    <use href="#pine-tree" transform="translate(710,478) scale(0.75)"/>
+    <use href="#pine-tree" transform="translate(920,476) scale(0.85)"/>
+    <use href="#pine-tree" transform="translate(965,474) scale(1.05)"/>
+    <use href="#pine-tree" transform="translate(1015,478) scale(0.8)"/>
+  </g>
+  <g color="#1c2547" opacity="0.9">
+    <use href="#pine-tree" transform="translate(530,484) scale(0.9)"/>
+    <use href="#pine-tree" transform="translate(585,488) scale(0.7)"/>
+    <use href="#pine-tree" transform="translate(680,486) scale(0.85)"/>
+    <use href="#pine-tree" transform="translate(895,488) scale(0.75)"/>
+    <use href="#pine-tree" transform="translate(945,486) scale(0.95)"/>
   </g>
 
   <!-- 山腳遠景波浪帶（延伸出畫面避免接縫） -->
-  <path d="M 940 500 Q 1080 436 1230 474 Q 1380 508 1660 452 L 1660 500 Z" fill="#182043" opacity="0.75"/>
-  <path d="M -60 500 Q 200 458 460 488 T 980 470 L 980 500 Z" fill="#161d3e" opacity="0.75"/>
-  <path d="M 860 500 Q 1120 452 1360 486 T 1660 468 L 1660 500 L 860 500 Z" fill="#141b3a" opacity="0.8"/>
+  <!-- 山腳遠景波浪帶（右帶弧頂下降收窄，避免矩形硬邊） -->
+  <path d="M 1000 500 Q 1120 452 1260 478 Q 1420 502 1600 480 L 1600 500 Z" fill="#182043" opacity="0.6"/>
+  <path d="M -60 500 Q 200 458 460 488 T 980 470 L 980 500 Z" fill="#161d3e" opacity="0.6"/>
+  <path d="M 860 500 Q 1120 452 1360 486 T 1600 470 L 1600 500 Z" fill="#141b3a" opacity="0.65"/>
+
+  <!-- 燈籠串（左側，山腳漁村感） -->
+  <g>
+    <!-- 燈籠繩 -->
+    <path d="M 60 300 Q 130 330 200 306" stroke="#8a6a5c" stroke-width="1.5" fill="none" opacity="0.6"/>
+    <!-- 燈籠本體（橢圓+上下箍） -->
+    <g opacity="0.9">
+      <ellipse cx="95" cy="316" rx="9" ry="11" fill="#e8a04a" opacity="0.75"/>
+      <ellipse cx="95" cy="316" rx="4" ry="11" fill="none" stroke="#c07830" stroke-width="1" opacity="0.5"/>
+      <line x1="95" y1="304" x2="95" y2="301" stroke="#8a6a5c" stroke-width="1.2"/>
+      <line x1="95" y1="327" x2="95" y2="331" stroke="#8a6a5c" stroke-width="1.2"/>
+    </g>
+    <g opacity="0.85">
+      <ellipse cx="150" cy="326" rx="8" ry="10" fill="#e8a04a" opacity="0.7"/>
+      <ellipse cx="150" cy="326" rx="4" ry="10" fill="none" stroke="#c07830" stroke-width="1" opacity="0.5"/>
+      <line x1="150" y1="315" x2="150" y2="312" stroke="#8a6a5c" stroke-width="1.2"/>
+      <line x1="150" y1="336" x2="150" y2="340" stroke="#8a6a5c" stroke-width="1.2"/>
+    </g>
+    <g opacity="0.8">
+      <ellipse cx="200" cy="322" rx="7" ry="9" fill="#e8a04a" opacity="0.65"/>
+      <line x1="200" y1="312" x2="200" y2="309" stroke="#8a6a5c" stroke-width="1.2"/>
+      <line x1="200" y1="331" x2="200" y2="335" stroke="#8a6a5c" stroke-width="1.2"/>
+    </g>
+    <!-- 燈籠光暈 -->
+    <circle cx="95" cy="316" r="26" fill="url(#moon-glow)" opacity="0.5"/>
+    <circle cx="150" cy="326" r="22" fill="url(#moon-glow)" opacity="0.45"/>
+    <circle cx="200" cy="322" r="20" fill="url(#moon-glow)" opacity="0.45"/>
+  </g>
+
+  <!-- 海面燈籠倒影（拉長光斑） -->
+  <g opacity="0.35">
+    <ellipse cx="95" cy="360" rx="5" ry="18" fill="#e8a04a" opacity="0.5"/>
+    <ellipse cx="150" cy="372" rx="4" ry="16" fill="#e8a04a" opacity="0.4"/>
+    <ellipse cx="200" cy="366" rx="4" ry="14" fill="#e8a04a" opacity="0.35"/>
+  </g>
+
+  <!-- 海上孤舟剪影（右下） -->
+  <g opacity="0.55">
+    <path d="M 480 442 Q 500 452 520 442 L 514 450 Q 500 458 486 450 Z" fill="#0c0f20"/>
+    <line x1="505" y1="440" x2="505" y2="414" stroke="#0c0f20" stroke-width="1.5"/>
+    <path d="M 505 414 L 517 434 L 505 434 Z" fill="#12162f" opacity="0.9"/>
+  </g>
+
+  <!-- 錦鯉躍出（中海域，弧形剪影） -->
+  <g opacity="0.4">
+    <path d="M 760 430 Q 780 408 800 424 Q 790 414 776 418 Q 764 422 760 430 Z" fill="#d8e0f0"/>
+    <path d="M 800 424 Q 806 420 810 424 Q 804 426 800 424 Z" fill="#d8e0f0" opacity="0.7"/>
+  </g>
 
   <!-- 青海波紋（場景內海面帶，與下方 tile 波紋同 opacity 相銜接） -->
   <rect y="280" width="1600" height="220" fill="url(#seigaiha)" mask="url(#wave-mask)"/>

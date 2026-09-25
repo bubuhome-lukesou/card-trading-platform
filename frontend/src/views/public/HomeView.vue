@@ -341,16 +341,6 @@ onMounted(() => {
 // （tile 底色 #12162f 同場景底緣一致 → 數學上無縫）；場景之下全係海域，CTA 後先收口
 .home {
   position: relative;
-
-  &::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 0; // fallback：舊瀏覽器無 aspect-ratio 時靠 home-top 場景
-    pointer-events: none;
-  }
 }
 
 .home-top {
@@ -386,6 +376,17 @@ onMounted(() => {
   > * {
     position: relative;
     z-index: 2;
+  }
+}
+
+// 統一紗幕：同 hero-scrim 同款左壓漸變，全頁一條過
+// （紗幕疊喺 tile ::after background 第一層 — 全頁覆蓋、橫向左壓、無縱向收口）
+.home-top {
+  &::after {
+    background-image:
+      linear-gradient(90deg, rgba(10, 10, 24, 0.45) 0%, rgba(10, 10, 24, 0.28) 38%, rgba(10, 10, 24, 0.04) 72%),
+      url('@/assets/home/sea-tile.svg');
+    background-size: 100% 100%, 140px 140px;
   }
 }
 

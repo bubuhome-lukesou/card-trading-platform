@@ -199,22 +199,19 @@ body {
   font-size: var(--text-base);
   line-height: 1.6;
   color: var(--text-primary);
-  background-color: var(--bg-dark);
+  background-color: #0d0d1a;
   overflow-x: hidden;
 
-  // ═══ 日系寶可夢風格背景 ═══
+  // ═══ 日系夜空漸變背景（青海波花紋由首頁 .home-top 場景承擔，body 保持素色
+  // 避免首頁邊緣露出舊寶可夢花紋同新場景打架 — Luke 9/25 定案） ═══
   background-image:
-    url('@/assets/pokeball-bg.svg'),
-    // 顶部的柔和光晕 — 模仿精灵球的红蓝光
-    radial-gradient(ellipse at 15% 0%, rgba(239, 68, 68, 0.12) 0%, transparent 40%),
-    radial-gradient(ellipse at 85% 0%, rgba(59, 130, 246, 0.10) 0%, transparent 40%),
-    radial-gradient(ellipse at 50% 100%, rgba(168, 85, 247, 0.08) 0%, transparent 55%),
-    // 底层渐变 — 深夜日本天空的蓝紫调
-    linear-gradient(180deg, #0d0d1a 0%, #141430 30%, #11112a 60%, #0d0d1a 100%);
+    radial-gradient(ellipse at 15% 0%, rgba(239, 68, 68, 0.10) 0%, transparent 40%),
+    radial-gradient(ellipse at 85% 0%, rgba(59, 130, 246, 0.08) 0%, transparent 40%),
+    radial-gradient(ellipse at 50% 100%, rgba(168, 85, 247, 0.06) 0%, transparent 55%),
+    linear-gradient(180deg, #0d0d1a 0%, #121430 30%, #11112a 60%, #0d0d1a 100%);
   background-attachment: fixed;
-  background-repeat: repeat, no-repeat, no-repeat, no-repeat, no-repeat;
-  background-size: 400px 400px, cover, cover, cover, cover;
-  background-position: 0 0, center, center, center, center;
+  background-repeat: no-repeat;
+  background-size: cover;
 }
 
 #app {
