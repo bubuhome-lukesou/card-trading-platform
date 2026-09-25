@@ -218,9 +218,7 @@ onMounted(() => {
         </div>
       </div>
     </section>
-    </div><!-- /.home-top -->
-
-    <!-- Categories — 頂部場景（Hero→廣告→統計）之外，正常 body 背景 -->
+    <!-- Categories -->
     <section class="section categories-section">
       <div class="container">
         <div class="section-header">
@@ -327,6 +325,7 @@ onMounted(() => {
         </div>
       </div>
     </section>
+    </div><!-- /.home-top -->
   </div>
 </template>
 
@@ -335,41 +334,58 @@ onMounted(() => {
   background: transparent;
 }
 
-// 頂部一體化場景：Hero→廣告→統計 三區共用浮世繪背景（SVG 1600x1400：
-// 上 500px 富士山場景 + 下方青海波海域延伸；快速分類區喺場景之外）
-// background-color 兜底 + 任何高度都有海域延伸，唔會露 body 花紋
-.home-top {
+// 頂部一體化場景：Hero→廣告→統計 三區共用浮世繪場景（SVG 1600x500：
+// 富士山+青海波場景，底緣漸入 #12162f 海域色與下方 tile 無縫銜接）
+// 全頁背景一體化（Luke 9/25 定案）：hero→CTA 全部區域共用：
+// ::before = 浮世繪場景（頂部，等比滿寬）；::after = 青海波海域 tile 無縫平鋪
+// （tile 底色 #12162f 同場景底緣一致 → 數學上無縫）；場景之下全係海域，CTA 後先收口
+.home {
   position: relative;
-  overflow: hidden;
 
   &::before {
     content: '';
     position: absolute;
-    inset: 0;
-    background-image: url('@/assets/home/hero-ukiyo.svg');
-    background-size: 100% auto;
-    background-position: top center;
-    background-repeat: no-repeat;
-    background-color: #12162f;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 0; // fallback：舊瀏覽器無 aspect-ratio 時靠 home-top 場景
     pointer-events: none;
   }
+}
 
-  // 底部收口：漸融 body 底色（統計區之後過渡返 body 背景）
+.home-top {
+  position: relative;
+
+  // 海域 tile 無縫平鋪成個 home-top（場景之下全部海域）
+  // ⚠️ z-index 0 — ::after 喺 DOM 順序上後畫，必須壓低過場景，否則蓋住富士山
   &::after {
     content: '';
     position: absolute;
+    inset: 0;
+    background-image: url('@/assets/home/sea-tile.svg');
+    background-size: 140px 140px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  // 場景（等比滿寬，高隨寬度 500/1600 = 31.25%），疊喺 tile 之上
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
     left: 0;
     right: 0;
-    bottom: 0;
-    height: 140px;
-    background: linear-gradient(180deg, rgba(13, 13, 26, 0) 0%, rgba(13, 13, 26, 0.95) 100%);
+    aspect-ratio: 1600 / 500;
+    background-image: url('@/assets/home/hero-ukiyo.svg');
+    background-size: 100% 100%;
     pointer-events: none;
+    z-index: 1;
   }
 
   // 內容抬高到背景之上
   > * {
     position: relative;
-    z-index: 1;
+    z-index: 2;
   }
 }
 
