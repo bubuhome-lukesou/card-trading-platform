@@ -346,19 +346,8 @@ onMounted(() => {
 .home-top {
   position: relative;
 
-  // 海域 tile 無縫平鋪成個 home-top（場景之下全部海域）
-  // ⚠️ z-index 0 — ::after 喺 DOM 順序上後畫，必須壓低過場景，否則蓋住富士山
-  &::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background-image: url('@/assets/home/sea-tile.svg');
-    background-size: 140px 140px;
-    pointer-events: none;
-    z-index: 0;
-  }
-
-  // 場景（等比滿寬，高隨寬度 500/1600 = 31.25%），疊喺 tile 之上
+  // 場景（等比滿寬，高隨寬度 500/1600 = 31.25%）
+  // R9（Luke 定案：去除波浪層）— 波浪 tile 已拆，海域 = 純色 #12162f（body 背景兜底）
   &::before {
     content: '';
     position: absolute;
@@ -371,9 +360,7 @@ onMounted(() => {
     pointer-events: none;
     z-index: 1;
 
-    // 手機：滿寬等比得 ~122px 高，富士山/月光全部縮細擠頂 — 改直幅專用場景
-    // （hero-ukiyo-mobile.svg 800x1000：元素垂直重組 — 山置中、月光右上、
-    //   燈籠/孤舟/錦鯉全部保留；cover 高度制 300px，無縫銜接海域 tile 同款底色）
+    // 手機：直幅專用場景（山置中、月光右上、燈籠/孤舟/錦鯉垂直重組）
     @media (max-width: 640px) {
       aspect-ratio: auto;
       height: 300px;
@@ -391,13 +378,11 @@ onMounted(() => {
 }
 
 // 統一紗幕：同 hero-scrim 同款左壓漸變，全頁一條過
-// （紗幕疊喺 tile ::after background 第一層 — 全頁覆蓋、橫向左壓、無縱向收口）
+// （波浪層已拆 — 紗幕直接疊喺純色海域上）
 .home-top {
   &::after {
-    background-image:
-      linear-gradient(90deg, rgba(10, 10, 24, 0.45) 0%, rgba(10, 10, 24, 0.28) 38%, rgba(10, 10, 24, 0.04) 72%),
-      url('@/assets/home/sea-tile.svg');
-    background-size: 100% 100%, 140px 140px;
+    background-image: linear-gradient(90deg, rgba(10, 10, 24, 0.45) 0%, rgba(10, 10, 24, 0.28) 38%, rgba(10, 10, 24, 0.04) 72%);
+    background-size: 100% 100%;
   }
 }
 
