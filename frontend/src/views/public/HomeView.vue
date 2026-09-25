@@ -370,6 +370,15 @@ onMounted(() => {
     background-size: 100% 100%;
     pointer-events: none;
     z-index: 1;
+
+    // 手機：滿寬等比得 ~122px 高，富士山/月光全部縮細擠頂 — 改 cover 高度制
+    // （以高度為準 300px，background-position 右下保留富士山+月光主體，左側融入海域色）
+    @media (max-width: 640px) {
+      aspect-ratio: auto;
+      height: 300px;
+      background-size: cover;
+      background-position: right center;
+    }
   }
 
   // 內容抬高到背景之上
