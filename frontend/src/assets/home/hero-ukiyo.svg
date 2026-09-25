@@ -1,34 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1600" height="500" viewBox="0 0 1600 500" preserveAspectRatio="xMidYMid slice">
   <defs>
-    <!-- 青海波 (Seigaiha) — 浮世繪經典波紋，同全站 body 花紋同源 -->
-    <pattern id="seigaiha" x="0" y="0" width="70" height="70" patternUnits="userSpaceOnUse">
-      <path d="M35 42 A 28 28 0 0 1 7 42" fill="none" stroke="#6b7db3" stroke-width="1.6" opacity="0.30"/>
-      <path d="M35 42 A 22 22 0 0 1 13 42" fill="none" stroke="#6b7db3" stroke-width="1.3" opacity="0.24"/>
-      <path d="M35 42 A 16 16 0 0 1 19 42" fill="none" stroke="#6b7db3" stroke-width="1.1" opacity="0.20"/>
-      <path d="M35 42 A 10 10 0 0 1 25 42" fill="none" stroke="#6b7db3" stroke-width="0.9" opacity="0.16"/>
-      <circle cx="35" cy="42" r="1.5" fill="#8c9ecf" opacity="0.25"/>
-      <path d="M70 7 A 28 28 0 0 1 42 7" fill="none" stroke="#6b7db3" stroke-width="1.6" opacity="0.30"/>
-      <path d="M70 7 A 22 22 0 0 1 48 7" fill="none" stroke="#6b7db3" stroke-width="1.3" opacity="0.20"/>
-      <path d="M70 7 A 16 16 0 0 1 54 7" fill="none" stroke="#6b7db3" stroke-width="1.1" opacity="0.15"/>
-      <path d="M70 7 A 10 10 0 0 1 60 7" fill="none" stroke="#6b7db3" stroke-width="0.9" opacity="0.12"/>
-      <circle cx="70" cy="7" r="1.5" fill="#8c9ecf" opacity="0.25"/>
-      <path d="M0 7 A 28 28 0 0 1 -28 7" fill="none" stroke="#6b7db3" stroke-width="1.6" opacity="0.30"/>
-      <path d="M0 7 A 22 22 0 0 1 -22 7" fill="none" stroke="#6b7db3" stroke-width="1.3" opacity="0.20"/>
-      <path d="M0 7 A 16 16 0 0 1 -16 7" fill="none" stroke="#6b7db3" stroke-width="1.1" opacity="0.15"/>
-      <path d="M0 7 A 10 10 0 0 1 -10 7" fill="none" stroke="#6b7db3" stroke-width="0.9" opacity="0.12"/>
-    </pattern>
-
-    <!-- 青海波帶 mask：頂部漸現、底部保持（與下方海域 tile 無縫銜接） -->
-    <linearGradient id="wave-fade" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#fff" stop-opacity="0"/>
-      <stop offset="45%" stop-color="#fff" stop-opacity="0.85"/>
-      <stop offset="75%" stop-color="#fff" stop-opacity="1"/>
-      <stop offset="100%" stop-color="#fff" stop-opacity="0.9"/>
-    </linearGradient>
-    <mask id="wave-mask">
-      <rect x="0" y="280" width="1600" height="220" fill="url(#wave-fade)"/>
-    </mask>
-
     <!-- 櫻花五瓣 — 統一模板 -->
     <g id="sakura-flower">
       <circle cx="0" cy="-4.2" r="3.4" fill="currentColor"/>
@@ -58,17 +29,46 @@
       <rect width="1600" height="500" fill="url(#sakura-fade)"/>
     </mask>
 
-    <!-- 富士山 — 山體漸變（上亮下暗融夜色） -->
+    <!-- 富士山 — 山體漸變 -->
     <linearGradient id="fuji-body" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0%" stop-color="#39466f"/>
       <stop offset="45%" stop-color="#28315a"/>
       <stop offset="100%" stop-color="#1a2148"/>
     </linearGradient>
-    <!-- 山腳霧氣：向上透明 → 向下融底色 -->
+    <!-- 山體霧氣（弧形兩側下斜，無直角） -->
     <linearGradient id="fuji-mist" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0%" stop-color="#12162f" stop-opacity="0"/>
-      <stop offset="100%" stop-color="#12162f" stop-opacity="0.95"/>
+      <stop offset="100%" stop-color="#12162f" stop-opacity="0.9"/>
     </linearGradient>
+
+    <!-- 天空遮罩 v2（R8 無縫核心）：
+         1) 色帶 sky-cover-h = tile 底色疊 CSS 紗幕後嘅精確最終色（橫向 4 stops，同 CSS 紗幕同參數）
+         2) 縱向 sky-cover：y 0-55% 不透明（遮走背後 tile 波紋）→ 78% 全透明（海平線下放波紋）
+         ⚠️ 波浪全頁只由 sea-tile 渲染，場景自身零波紋 — 呢個係無接縫嘅根本保證 -->
+    <linearGradient id="sky-cover-h" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#0e111e"/>
+      <stop offset="38%" stop-color="#101428"/>
+      <stop offset="72%" stop-color="#12162e"/>
+      <stop offset="100%" stop-color="#12162e"/>
+    </linearGradient>
+    <linearGradient id="sky-cover" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#fff" stop-opacity="1"/>
+      <stop offset="55%" stop-color="#fff" stop-opacity="1"/>
+      <stop offset="78%" stop-color="#fff" stop-opacity="0"/>
+    </linearGradient>
+    <mask id="sky-cover-mask">
+      <rect width="1600" height="500" fill="url(#sky-cover)"/>
+    </mask>
+
+    <!-- 地面組（山+霧林+遠山+岸帶）垂直溶出：底部完全透明 → tile 波紋穿透 -->
+    <linearGradient id="ground-fade" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#fff" stop-opacity="1"/>
+      <stop offset="72%" stop-color="#fff" stop-opacity="1"/>
+      <stop offset="98%" stop-color="#fff" stop-opacity="0"/>
+    </linearGradient>
+    <mask id="ground-mask">
+      <rect width="1600" height="500" fill="url(#ground-fade)"/>
+    </mask>
 
     <!-- 朝燒：左紅 → 中紫 → 右藍 橫向霞光 -->
     <linearGradient id="sky-glow" x1="0" y1="0" x2="1" y2="0">
@@ -76,7 +76,7 @@
       <stop offset="45%" stop-color="#7a5cc8" stop-opacity="0.16"/>
       <stop offset="100%" stop-color="#3a4a9c" stop-opacity="0.28"/>
     </linearGradient>
-    <!-- 霞光縱向：長帶漸隱（延伸過 hero 界，氛圍連續落入海域） -->
+    <!-- 霞光縱向：長帶漸隱 -->
     <linearGradient id="sky-fade" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0%" stop-color="#fff" stop-opacity="1"/>
       <stop offset="55%" stop-color="#fff" stop-opacity="0.75"/>
@@ -84,6 +84,15 @@
     </linearGradient>
     <mask id="sky-mask">
       <rect x="0" y="0" width="1600" height="620" fill="url(#sky-fade)"/>
+    </mask>
+    <!-- 霞光底部歸零 mask：y 380→500 漸滅，交界帶零殘色（R8 實證：無呢層會有 3% 亮度跳變） -->
+    <linearGradient id="glow-kill" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#fff" stop-opacity="1"/>
+      <stop offset="62%" stop-color="#fff" stop-opacity="1"/>
+      <stop offset="100%" stop-color="#fff" stop-opacity="0"/>
+    </linearGradient>
+    <mask id="glow-kill-mask">
+      <rect x="0" y="0" width="1600" height="500" fill="url(#glow-kill)"/>
     </mask>
 
     <!-- 朝燒紅暈（radial 無硬邊） -->
@@ -99,19 +108,7 @@
       <stop offset="100%" stop-color="#f0a8c8" stop-opacity="0"/>
     </radialGradient>
 
-    <!-- 深海光暈（中段海域中央微光，避免過平） -->
-    <radialGradient id="deep-glow" cx="50%" cy="50%" r="50%">
-      <stop offset="0%" stop-color="#2a3560" stop-opacity="0.5"/>
-      <stop offset="100%" stop-color="#2a3560" stop-opacity="0"/>
-    </radialGradient>
-
-    <!-- 底緣收口：精確融入海域 tile 底色（無縫關鍵 — tile 頂就係呢隻色） -->
-    <linearGradient id="sea-merge" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#12162f" stop-opacity="0"/>
-      <stop offset="100%" stop-color="#12162f" stop-opacity="1"/>
-    </linearGradient>
-
-    <!-- 山腳霧林：針葉樹剪影模板 -->
+    <!-- 針葉樹 -->
     <g id="pine-tree">
       <path d="M 0 0 L -14 0 L 0 -26 L 14 0 Z" fill="currentColor"/>
       <path d="M 0 -10 L -11 -10 L 0 -34 L 11 -10 Z" fill="currentColor"/>
@@ -120,13 +117,16 @@
     </g>
   </defs>
 
-  <!-- 全場景統一底色 = 海域色（上下同色，任何橫向界面都無色差） -->
-  <rect width="1600" height="500" fill="#12162f"/>
+  <!-- 天空遮罩：色帶（=tile+紗幕精確色）× 縱向漸隱 mask -->
+  <g mask="url(#sky-cover-mask)">
+    <rect width="1600" height="500" fill="url(#sky-cover-h)"/>
+  </g>
 
-  <!-- 霞光長帶（620px 高，mask 漸隱 — 覆蓋場景並向海域延伸氛圍） -->
-  <rect width="1600" height="620" fill="url(#sky-glow)" mask="url(#sky-mask)"/>
-  <!-- 左上紅日方向大光暈（radial 無邊，縱向拉長） -->
-  <ellipse cx="200" cy="120" rx="560" ry="420" fill="url(#dawn-glow)"/>
+  <!-- 頂部朝燒霞光（y>500 段完全歸零 — 交界帶零殘色） -->
+  <g mask="url(#glow-kill-mask)">
+    <rect width="1600" height="620" fill="url(#sky-glow)" mask="url(#sky-mask)"/>
+    <ellipse cx="200" cy="120" rx="560" ry="420" fill="url(#dawn-glow)"/>
+  </g>
 
   <!-- 右上月光暈 + 月亮 -->
   <circle cx="1400" cy="90" r="170" fill="url(#moon-glow)"/>
@@ -135,61 +135,54 @@
   <circle cx="1411" cy="97" r="5.5" fill="#e8c8d8" opacity="0.38"/>
   <circle cx="1402" cy="76" r="4" fill="#e8c8d8" opacity="0.3"/>
 
-  <!-- 海鷗（月中剪影 V 形） -->
+  <!-- 海鷗（月中剪影） -->
   <g stroke="#d8e0f0" stroke-width="2.2" fill="none" stroke-linecap="round" opacity="0.5">
     <path d="M 1150 150 Q 1158 142 1166 150 Q 1174 142 1182 150"/>
     <path d="M 1195 130 Q 1201 124 1207 130 Q 1213 124 1219 130" opacity="0.7"/>
     <path d="M 1108 120 Q 1113 115 1118 120 Q 1123 115 1128 120" opacity="0.6"/>
   </g>
 
-  <!-- 遠處小山（左側低調） -->
-  <path d="M -60 500 L 180 396 Q 192 388 204 396 L 470 500 Z" fill="#1a2145" opacity="0.65"/>
-
-  <!-- 富士山主體（右側大景） -->
-  <g>
+  <!-- 地面組：遠山+富士山+霧林+岸帶（整組垂直溶出，底部透明放出 tile 波紋） -->
+  <g mask="url(#ground-mask)">
+    <!-- 遠處小山（左側） -->
+    <path d="M -60 500 L 180 396 Q 192 388 204 396 L 470 500 Z" fill="#1a2145" opacity="0.65"/>
+    <!-- 富士山主體 -->
     <path d="M 990 500
              L 1238 206
              Q 1252 190 1266 206
              L 1514 500 Z"
           fill="url(#fuji-body)"/>
-    <!-- 山頂雪冠（鋸齒緣） -->
     <path d="M 1238 206
              L 1212 238 L 1226 231 L 1240 251 L 1254 233 L 1268 249 L 1284 232 L 1292 240
              L 1266 206 Q 1252 190 1238 206 Z"
           fill="#e8ecf8" opacity="0.92"/>
-    <!-- 山體霧氣融合（弧形兩側下斜，無直角硬邊） -->
     <path d="M 985 500 Q 1150 388 1252 386 Q 1355 388 1519 500 Z" fill="url(#fuji-mist)"/>
+    <!-- 山腳霧林（兩層） -->
+    <g color="#141b3a" opacity="0.85">
+      <use href="#pine-tree" transform="translate(560,470) scale(1.1)"/>
+      <use href="#pine-tree" transform="translate(610,476) scale(0.8)"/>
+      <use href="#pine-tree" transform="translate(655,472) scale(1.0)"/>
+      <use href="#pine-tree" transform="translate(710,478) scale(0.75)"/>
+      <use href="#pine-tree" transform="translate(920,476) scale(0.85)"/>
+      <use href="#pine-tree" transform="translate(965,474) scale(1.05)"/>
+      <use href="#pine-tree" transform="translate(1015,478) scale(0.8)"/>
+    </g>
+    <g color="#1c2547" opacity="0.9">
+      <use href="#pine-tree" transform="translate(530,484) scale(0.9)"/>
+      <use href="#pine-tree" transform="translate(585,488) scale(0.7)"/>
+      <use href="#pine-tree" transform="translate(680,486) scale(0.85)"/>
+      <use href="#pine-tree" transform="translate(895,488) scale(0.75)"/>
+      <use href="#pine-tree" transform="translate(945,486) scale(0.95)"/>
+    </g>
+    <!-- 山腳遠景岸帶（弧形，無直角） -->
+    <path d="M 1000 500 Q 1120 452 1260 478 Q 1420 502 1600 480 L 1600 500 Z" fill="#182043" opacity="0.6"/>
+    <path d="M -60 500 Q 200 458 460 488 T 980 470 L 980 500 Z" fill="#161d3e" opacity="0.6"/>
+    <path d="M 860 500 Q 1120 452 1360 486 T 1600 470 L 1600 500 Z" fill="#141b3a" opacity="0.65"/>
   </g>
 
-  <!-- 山腳霧林（左中右三簇針葉樹剪影，前後兩層深淺） -->
-  <g color="#141b3a" opacity="0.85">
-    <use href="#pine-tree" transform="translate(560,470) scale(1.1)"/>
-    <use href="#pine-tree" transform="translate(610,476) scale(0.8)"/>
-    <use href="#pine-tree" transform="translate(655,472) scale(1.0)"/>
-    <use href="#pine-tree" transform="translate(710,478) scale(0.75)"/>
-    <use href="#pine-tree" transform="translate(920,476) scale(0.85)"/>
-    <use href="#pine-tree" transform="translate(965,474) scale(1.05)"/>
-    <use href="#pine-tree" transform="translate(1015,478) scale(0.8)"/>
-  </g>
-  <g color="#1c2547" opacity="0.9">
-    <use href="#pine-tree" transform="translate(530,484) scale(0.9)"/>
-    <use href="#pine-tree" transform="translate(585,488) scale(0.7)"/>
-    <use href="#pine-tree" transform="translate(680,486) scale(0.85)"/>
-    <use href="#pine-tree" transform="translate(895,488) scale(0.75)"/>
-    <use href="#pine-tree" transform="translate(945,486) scale(0.95)"/>
-  </g>
-
-  <!-- 山腳遠景波浪帶（延伸出畫面避免接縫） -->
-  <!-- 山腳遠景波浪帶（右帶弧頂下降收窄，避免矩形硬邊） -->
-  <path d="M 1000 500 Q 1120 452 1260 478 Q 1420 502 1600 480 L 1600 500 Z" fill="#182043" opacity="0.6"/>
-  <path d="M -60 500 Q 200 458 460 488 T 980 470 L 980 500 Z" fill="#161d3e" opacity="0.6"/>
-  <path d="M 860 500 Q 1120 452 1360 486 T 1600 470 L 1600 500 Z" fill="#141b3a" opacity="0.65"/>
-
-  <!-- 燈籠串（左側，山腳漁村感） -->
+  <!-- 燈籠串（左側，海平線上） -->
   <g>
-    <!-- 燈籠繩 -->
     <path d="M 60 300 Q 130 330 200 306" stroke="#8a6a5c" stroke-width="1.5" fill="none" opacity="0.6"/>
-    <!-- 燈籠本體（橢圓+上下箍） -->
     <g opacity="0.9">
       <ellipse cx="95" cy="316" rx="9" ry="11" fill="#e8a04a" opacity="0.75"/>
       <ellipse cx="95" cy="316" rx="4" ry="11" fill="none" stroke="#c07830" stroke-width="1" opacity="0.5"/>
@@ -207,38 +200,38 @@
       <line x1="200" y1="312" x2="200" y2="309" stroke="#8a6a5c" stroke-width="1.2"/>
       <line x1="200" y1="331" x2="200" y2="335" stroke="#8a6a5c" stroke-width="1.2"/>
     </g>
-    <!-- 燈籠光暈 -->
     <circle cx="95" cy="316" r="26" fill="url(#moon-glow)" opacity="0.5"/>
     <circle cx="150" cy="326" r="22" fill="url(#moon-glow)" opacity="0.45"/>
     <circle cx="200" cy="322" r="20" fill="url(#moon-glow)" opacity="0.45"/>
   </g>
 
-  <!-- 海面燈籠倒影（拉長光斑） -->
-  <g opacity="0.35">
+  <!-- 海面燈籠倒影（拉長光斑，疊喺 tile 波紋上）— 漸隱融入避免底緣殘色 -->
+  <linearGradient id="reflection-fade" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0%" stop-color="#fff" stop-opacity="1"/>
+    <stop offset="100%" stop-color="#fff" stop-opacity="0"/>
+  </linearGradient>
+  <mask id="reflection-mask">
+    <rect x="0" y="330" width="600" height="170" fill="url(#reflection-fade)"/>
+  </mask>
+  <g opacity="0.35" mask="url(#reflection-mask)">
     <ellipse cx="95" cy="360" rx="5" ry="18" fill="#e8a04a" opacity="0.5"/>
     <ellipse cx="150" cy="372" rx="4" ry="16" fill="#e8a04a" opacity="0.4"/>
     <ellipse cx="200" cy="366" rx="4" ry="14" fill="#e8a04a" opacity="0.35"/>
   </g>
 
-  <!-- 海上孤舟剪影（右下） -->
+  <!-- 海上孤舟剪影 -->
   <g opacity="0.55">
     <path d="M 480 442 Q 500 452 520 442 L 514 450 Q 500 458 486 450 Z" fill="#0c0f20"/>
     <line x1="505" y1="440" x2="505" y2="414" stroke="#0c0f20" stroke-width="1.5"/>
     <path d="M 505 414 L 517 434 L 505 434 Z" fill="#12162f" opacity="0.9"/>
   </g>
 
-  <!-- 錦鯉躍出（中海域，弧形剪影） -->
+  <!-- 錦鯉躍出 -->
   <g opacity="0.4">
     <path d="M 760 430 Q 780 408 800 424 Q 790 414 776 418 Q 764 422 760 430 Z" fill="#d8e0f0"/>
     <path d="M 800 424 Q 806 420 810 424 Q 804 426 800 424 Z" fill="#d8e0f0" opacity="0.7"/>
   </g>
 
-  <!-- 青海波紋（場景內海面帶，與下方 tile 波紋同 opacity 相銜接） -->
-  <rect y="280" width="1600" height="220" fill="url(#seigaiha)" mask="url(#wave-mask)"/>
-
   <!-- 散落櫻花（空中，向下漸隱） -->
   <rect width="1600" height="500" fill="url(#sakura-scatter)" mask="url(#sakura-mask)"/>
-
-  <!-- 底緣 80px 漸入海域底色（tile 頂 = #12162f，無縫數學保證） -->
-  <rect y="420" width="1600" height="80" fill="url(#sea-merge)"/>
 </svg>
