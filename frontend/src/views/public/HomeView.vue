@@ -371,13 +371,15 @@ onMounted(() => {
     pointer-events: none;
     z-index: 1;
 
-    // 手機：滿寬等比得 ~122px 高，富士山/月光全部縮細擠頂 — 改 cover 高度制
-    // （以高度為準 300px，background-position 右下保留富士山+月光主體，左側融入海域色）
+    // 手機：滿寬等比得 ~122px 高，富士山/月光全部縮細擠頂 — 改直幅專用場景
+    // （hero-ukiyo-mobile.svg 800x1000：元素垂直重組 — 山置中、月光右上、
+    //   燈籠/孤舟/錦鯉全部保留；cover 高度制 300px，無縫銜接海域 tile 同款底色）
     @media (max-width: 640px) {
       aspect-ratio: auto;
       height: 300px;
+      background-image: url('@/assets/home/hero-ukiyo-mobile.svg');
       background-size: cover;
-      background-position: right center;
+      background-position: center top;
     }
   }
 

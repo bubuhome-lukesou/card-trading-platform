@@ -1,0 +1,219 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="1000" viewBox="0 0 800 1000" preserveAspectRatio="xMidYMid slice">
+  <defs>
+    <!-- 青海波 (Seigaiha) — 浮世繪經典波紋 -->
+    <pattern id="m-seigaiha" x="0" y="0" width="70" height="70" patternUnits="userSpaceOnUse">
+      <path d="M35 42 A 28 28 0 0 1 7 42" fill="none" stroke="#6b7db3" stroke-width="1.6" opacity="0.30"/>
+      <path d="M35 42 A 22 22 0 0 1 13 42" fill="none" stroke="#6b7db3" stroke-width="1.3" opacity="0.24"/>
+      <path d="M35 42 A 16 16 0 0 1 19 42" fill="none" stroke="#6b7db3" stroke-width="1.1" opacity="0.20"/>
+      <path d="M35 42 A 10 10 0 0 1 25 42" fill="none" stroke="#6b7db3" stroke-width="0.9" opacity="0.16"/>
+      <circle cx="35" cy="42" r="1.5" fill="#8c9ecf" opacity="0.25"/>
+      <path d="M70 7 A 28 28 0 0 1 42 7" fill="none" stroke="#6b7db3" stroke-width="1.6" opacity="0.30"/>
+      <path d="M70 7 A 22 22 0 0 1 48 7" fill="none" stroke="#6b7db3" stroke-width="1.3" opacity="0.20"/>
+      <path d="M70 7 A 16 16 0 0 1 54 7" fill="none" stroke="#6b7db3" stroke-width="1.1" opacity="0.15"/>
+      <path d="M70 7 A 10 10 0 0 1 60 7" fill="none" stroke="#6b7db3" stroke-width="0.9" opacity="0.12"/>
+      <circle cx="70" cy="7" r="1.5" fill="#8c9ecf" opacity="0.25"/>
+      <path d="M0 7 A 28 28 0 0 1 -28 7" fill="none" stroke="#6b7db3" stroke-width="1.6" opacity="0.30"/>
+      <path d="M0 7 A 22 22 0 0 1 -22 7" fill="none" stroke="#6b7db3" stroke-width="1.3" opacity="0.20"/>
+      <path d="M0 7 A 16 16 0 0 1 -16 7" fill="none" stroke="#6b7db3" stroke-width="1.1" opacity="0.15"/>
+      <path d="M0 7 A 10 10 0 0 1 -10 7" fill="none" stroke="#6b7db3" stroke-width="0.9" opacity="0.12"/>
+    </pattern>
+
+    <!-- 青海波帶 mask：頂部漸現 -->
+    <linearGradient id="m-wave-fade" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#fff" stop-opacity="0"/>
+      <stop offset="30%" stop-color="#fff" stop-opacity="0.85"/>
+      <stop offset="60%" stop-color="#fff" stop-opacity="1"/>
+      <stop offset="100%" stop-color="#fff" stop-opacity="0.9"/>
+    </linearGradient>
+    <mask id="m-wave-mask">
+      <rect x="0" y="560" width="800" height="440" fill="url(#m-wave-fade)"/>
+    </mask>
+
+    <!-- 櫻花五瓣 -->
+    <g id="m-sakura-flower">
+      <circle cx="0" cy="-4.2" r="3.4" fill="currentColor"/>
+      <circle cx="4.0" cy="-1.3" r="3.4" fill="currentColor"/>
+      <circle cx="2.5" cy="3.4" r="3.4" fill="currentColor"/>
+      <circle cx="-2.5" cy="3.4" r="3.4" fill="currentColor"/>
+      <circle cx="-4.0" cy="-1.3" r="3.4" fill="currentColor"/>
+      <circle cx="0" cy="0" r="1.4" fill="#f5d5e8"/>
+    </g>
+    <pattern id="m-sakura-scatter" x="0" y="0" width="380" height="240" patternUnits="userSpaceOnUse">
+      <use href="#m-sakura-flower" transform="translate(60,42) scale(1.05) rotate(15)" color="#f0a8c8" opacity="0.5"/>
+      <use href="#m-sakura-flower" transform="translate(180,105) scale(0.72) rotate(55)" color="#f0a8c8" opacity="0.32"/>
+      <use href="#m-sakura-flower" transform="translate(295,38) scale(0.9) rotate(-20)" color="#f0a8c8" opacity="0.42"/>
+      <use href="#m-sakura-flower" transform="translate(345,145) scale(0.6) rotate(70)" color="#e898bc" opacity="0.28"/>
+      <use href="#m-sakura-flower" transform="translate(125,190) scale(0.55) rotate(-40)" color="#e898bc" opacity="0.22"/>
+    </pattern>
+    <linearGradient id="m-sakura-fade" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#fff" stop-opacity="1"/>
+      <stop offset="38%" stop-color="#fff" stop-opacity="0.55"/>
+      <stop offset="62%" stop-color="#fff" stop-opacity="0.1"/>
+      <stop offset="100%" stop-color="#fff" stop-opacity="0"/>
+    </linearGradient>
+    <mask id="m-sakura-mask">
+      <rect width="800" height="1000" fill="url(#m-sakura-fade)"/>
+    </mask>
+
+    <!-- 富士山 -->
+    <linearGradient id="m-fuji-body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#39466f"/>
+      <stop offset="45%" stop-color="#28315a"/>
+      <stop offset="100%" stop-color="#1a2148"/>
+    </linearGradient>
+    <linearGradient id="m-fuji-mist" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#12162f" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#12162f" stop-opacity="0.95"/>
+    </linearGradient>
+
+    <!-- 朝燒霞光（頂部橫帶 + 縱向漸隱） -->
+    <linearGradient id="m-sky-glow" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#e0507a" stop-opacity="0.30"/>
+      <stop offset="45%" stop-color="#7a5cc8" stop-opacity="0.15"/>
+      <stop offset="100%" stop-color="#3a4a9c" stop-opacity="0.26"/>
+    </linearGradient>
+    <linearGradient id="m-sky-fade" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#fff" stop-opacity="1"/>
+      <stop offset="55%" stop-color="#fff" stop-opacity="0.7"/>
+      <stop offset="100%" stop-color="#fff" stop-opacity="0"/>
+    </linearGradient>
+    <mask id="m-sky-mask">
+      <rect x="0" y="0" width="800" height="480" fill="url(#m-sky-fade)"/>
+    </mask>
+
+    <radialGradient id="m-dawn-glow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#e0507a" stop-opacity="0.28"/>
+      <stop offset="55%" stop-color="#c04870" stop-opacity="0.11"/>
+      <stop offset="100%" stop-color="#c04870" stop-opacity="0"/>
+    </radialGradient>
+
+    <radialGradient id="m-moon-glow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#ffd9e8" stop-opacity="0.85"/>
+      <stop offset="55%" stop-color="#f0a8c8" stop-opacity="0.22"/>
+      <stop offset="100%" stop-color="#f0a8c8" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- 底緣收口 -->
+    <linearGradient id="m-sea-merge" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#12162f" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#12162f" stop-opacity="1"/>
+    </linearGradient>
+
+    <!-- 針葉樹 -->
+    <g id="m-pine-tree">
+      <path d="M 0 0 L -14 0 L 0 -26 L 14 0 Z" fill="currentColor"/>
+      <path d="M 0 -10 L -11 -10 L 0 -34 L 11 -10 Z" fill="currentColor"/>
+      <path d="M 0 -20 L -8 -20 L 0 -40 L 8 -20 Z" fill="currentColor"/>
+      <rect x="-1.5" y="0" width="3" height="8" fill="currentColor"/>
+    </g>
+  </defs>
+
+  <!-- 全場景統一底色 = 海域色 -->
+  <rect width="800" height="1000" fill="#12162f"/>
+
+  <!-- 頂部朝燒霞光 -->
+  <rect width="800" height="480" fill="url(#m-sky-glow)" mask="url(#m-sky-mask)"/>
+  <ellipse cx="120" cy="100" rx="320" ry="240" fill="url(#m-dawn-glow)"/>
+
+  <!-- 月亮（右上） -->
+  <circle cx="620" cy="120" r="120" fill="url(#m-moon-glow)"/>
+  <circle cx="620" cy="120" r="30" fill="#ffe8f2" opacity="0.88"/>
+  <circle cx="610" cy="112" r="7" fill="#e8c8d8" opacity="0.45"/>
+  <circle cx="629" cy="126" r="5" fill="#e8c8d8" opacity="0.38"/>
+  <circle cx="622" cy="108" r="3.5" fill="#e8c8d8" opacity="0.3"/>
+
+  <!-- 海鷗（月旁） -->
+  <g stroke="#d8e0f0" stroke-width="2.2" fill="none" stroke-linecap="round" opacity="0.5">
+    <path d="M 430 170 Q 437 163 444 170 Q 451 163 458 170"/>
+    <path d="M 465 150 Q 470 145 475 150 Q 480 145 485 150" opacity="0.7"/>
+    <path d="M 400 128 Q 404 124 408 128 Q 412 124 416 128" opacity="0.6"/>
+  </g>
+
+  <!-- 富士山（置中，直幅構圖主體） -->
+  <g>
+    <path d="M 130 640
+             L 368 330
+             Q 380 316 392 330
+             L 630 640 Z"
+          fill="url(#m-fuji-body)"/>
+    <!-- 山頂雪冠 -->
+    <path d="M 368 330
+             L 344 361 L 357 354 L 370 373 L 383 356 L 396 371 L 411 355 L 420 362
+             L 392 330 Q 380 316 368 330 Z"
+          fill="#e8ecf8" opacity="0.92"/>
+    <!-- 山體霧氣（弧形兩側下斜，無直角） -->
+    <path d="M 125 640 Q 300 520 380 518 Q 462 520 635 640 Z" fill="url(#m-fuji-mist)"/>
+  </g>
+
+  <!-- 山腳霧林（兩層） -->
+  <g color="#141b3a" opacity="0.85">
+    <use href="#m-pine-tree" transform="translate(90,625) scale(1.05)"/>
+    <use href="#m-pine-tree" transform="translate(135,630) scale(0.75)"/>
+    <use href="#m-pine-tree" transform="translate(175,627) scale(0.95)"/>
+    <use href="#m-pine-tree" transform="translate(590,628) scale(0.9)"/>
+    <use href="#m-pine-tree" transform="translate(635,626) scale(1.0)"/>
+    <use href="#m-pine-tree" transform="translate(680,630) scale(0.75)"/>
+  </g>
+  <g color="#1c2547" opacity="0.9">
+    <use href="#m-pine-tree" transform="translate(65,638) scale(0.85)"/>
+    <use href="#m-pine-tree" transform="translate(112,642) scale(0.68)"/>
+    <use href="#m-pine-tree" transform="translate(155,640) scale(0.8)"/>
+    <use href="#m-pine-tree" transform="translate(610,642) scale(0.72)"/>
+    <use href="#m-pine-tree" transform="translate(655,640) scale(0.9)"/>
+  </g>
+
+  <!-- 山腳過渡波浪帶（弧形，無直角） -->
+  <path d="M -40 660 Q 160 610 380 640 Q 610 668 840 618 L 840 700 L -40 700 Z" fill="#161d3e" opacity="0.55"/>
+
+  <!-- 燈籠串（左上空中，山腰飄） -->
+  <g>
+    <path d="M 30 300 Q 90 326 150 304" stroke="#8a6a5c" stroke-width="1.5" fill="none" opacity="0.6"/>
+    <g opacity="0.9">
+      <ellipse cx="62" cy="315" rx="8" ry="10" fill="#e8a04a" opacity="0.75"/>
+      <ellipse cx="62" cy="315" rx="3.5" ry="10" fill="none" stroke="#c07830" stroke-width="1" opacity="0.5"/>
+      <line x1="62" y1="304" x2="62" y2="301" stroke="#8a6a5c" stroke-width="1.2"/>
+      <line x1="62" y1="325" x2="62" y2="329" stroke="#8a6a5c" stroke-width="1.2"/>
+    </g>
+    <g opacity="0.85">
+      <ellipse cx="108" cy="324" rx="7" ry="9" fill="#e8a04a" opacity="0.7"/>
+      <line x1="108" y1="314" x2="108" y2="311" stroke="#8a6a5c" stroke-width="1.2"/>
+      <line x1="108" y1="333" x2="108" y2="337" stroke="#8a6a5c" stroke-width="1.2"/>
+    </g>
+    <g opacity="0.8">
+      <ellipse cx="150" cy="318" rx="6" ry="8" fill="#e8a04a" opacity="0.65"/>
+      <line x1="150" y1="309" x2="150" y2="306" stroke="#8a6a5c" stroke-width="1.2"/>
+      <line x1="150" y1="326" x2="150" y2="330" stroke="#8a6a5c" stroke-width="1.2"/>
+    </g>
+    <circle cx="62" cy="315" r="24" fill="url(#m-moon-glow)" opacity="0.5"/>
+    <circle cx="108" cy="324" r="20" fill="url(#m-moon-glow)" opacity="0.45"/>
+    <circle cx="150" cy="318" r="18" fill="url(#m-moon-glow)" opacity="0.45"/>
+  </g>
+
+  <!-- 海上孤舟（左中） -->
+  <g opacity="0.55">
+    <path d="M 130 780 Q 152 792 174 780 L 166 790 Q 150 799 134 790 Z" fill="#0c0f20"/>
+    <line x1="152" y1="778" x2="152" y2="748" stroke="#0c0f20" stroke-width="1.5"/>
+    <path d="M 152 748 L 166 772 L 152 772 Z" fill="#12162f" opacity="0.9"/>
+  </g>
+
+  <!-- 錦鯉躍出（右中海域） -->
+  <g opacity="0.45">
+    <path d="M 560 800 Q 582 776 604 794 Q 593 784 577 788 Q 564 792 560 800 Z" fill="#d8e0f0"/>
+    <path d="M 604 794 Q 610 790 615 794 Q 608 796 604 794 Z" fill="#d8e0f0" opacity="0.7"/>
+  </g>
+
+  <!-- 燈籠倒影（海面拉長光斑） -->
+  <g opacity="0.3">
+    <ellipse cx="62" cy="860" rx="4.5" ry="16" fill="#e8a04a" opacity="0.5"/>
+    <ellipse cx="108" cy="878" rx="4" ry="14" fill="#e8a04a" opacity="0.4"/>
+  </g>
+
+  <!-- 青海波紋（下半海面帶） -->
+  <rect y="560" width="800" height="440" fill="url(#m-seigaiha)" mask="url(#m-wave-mask)"/>
+
+  <!-- 散落櫻花（上部，向下漸隱） -->
+  <rect width="800" height="1000" fill="url(#m-sakura-scatter)" mask="url(#m-sakura-mask)"/>
+
+  <!-- 底緣漸入海域 tile 色 -->
+  <rect y="940" width="800" height="60" fill="url(#m-sea-merge)"/>
+</svg>
