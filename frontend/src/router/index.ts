@@ -238,18 +238,14 @@ router.beforeEach(async (to, _from, next) => {
     return
   }
 
-  // If already logged in as admin/seller, redirect away from public pages
-  if (authStore.isAuthenticated && (authStore.isAdmin || authStore.isSeller)) {
+  // If already logged in as admin, redirect away from public pages
+  // O2 修復（2026-09-27）：賣家可自由瀏覽公開頁（marketplace/拍賣/詳情/聯絡）—
+  // 賣家都係平台用戶，可以行商場、出價、預約；只有 admin 維持跳轉自己 Dashboard
+  if (authStore.isAuthenticated && authStore.isAdmin) {
     // If trying to access a public page (no requiresAuth, no requiresSeller, no requiresAdmin)
     if (!to.meta.requiresAuth && !to.meta.requiresSeller && !to.meta.requiresAdmin) {
-      if (authStore.isAdmin) {
-        next({ name: 'AdminDashboard' })
-        return
-      }
-      if (authStore.isSeller) {
-        next({ name: 'SellerDashboard' })
-        return
-      }
+      next({ name: 'AdminDashboard' })
+      return
     }
   }
 

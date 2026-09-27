@@ -432,13 +432,37 @@ const sortedRows = computed(() => {
 })
 
 // ===== 頂部統計條（當前 tab）=====
+// O3（2026-09-27）：補計「已下架商品」歷史訂單 — 商品列表只列現存商品，
+// 已軟刪/已下架商品嘅訂單唔會喺任何 row 出現，令「已收款」同訂單管理對唔上
+// （實例：列表 $0 vs 訂單管理 $1,320，差額全為 removed 商品訂單）。
+// 每個 tab 按訂單類型分帳：auction=auction_win/buy_now；reservation=reservation_deposit/full；sale=direct_purchase
+const TAB_ORDER_TYPES: Record<TabKey, string[]> = {
+  auction: ['auction_win', 'buy_now'],
+  reservation: ['reservation_deposit', 'reservation_full'],
+  sale: ['direct_purchase'],
+}
+
 const summary = computed(() => {
   const rs = filteredRows.value
+  // 已下架商品 = 訂單類型屬當前 tab、唔係 cancelled、且 productId 唔喺任何現存商品 row
+  const onList = new Set(rows.value.map(r => r.productId))
+  const tabTypes = TAB_ORDER_TYPES[activeTab.value]
+  const delisted = orders.value.filter(
+    o => tabTypes.includes(o.type) && o.status !== 'cancelled' && !onList.has(o.productId)
+  )
   return {
     products: rs.length,
-    orders: rs.reduce((s, r) => s + r.orderCount, 0),
-    pending: rs.reduce((s, r) => s + r.pendingCount, 0),
-    received: rs.reduce((s, r) => s + r.receivedValue, 0),
+    orders: rs.reduce((s, r) => s + r.orderCount, 0) + delisted.length,
+    pending:
+      rs.reduce((s, r) => s + r.pendingCount, 0) +
+      delisted.filter(o => PENDING_ACTION_STATUSES.includes(o.status)).length,
+    received:
+      rs.reduce((s, r) => s + r.receivedValue, 0) +
+      delisted.filter(o => DONE_STATUSES.includes(o.status)).reduce((s, o) => s + o.amount, 0),
+    delistedOrders: delisted.length,
+    delistedReceived: delisted
+      .filter(o => DONE_STATUSES.includes(o.status))
+      .reduce((s, o) => s + o.amount, 0),
   }
 })
 
@@ -761,6 +785,7 @@ const goOrdersPage = (pid: string) => router.push(`/seller/orders?productId=${pi
       <div class="stat-item">
         <span class="stat-label">已收款</span>
         <span class="stat-value money">{{ formatPrice(summary.received) }}</span>
+        <span v-if="summary.delistedOrders > 0" class="stat-sub">含已下架商品 {{ summary.delistedOrders }} 筆</span>
       </div>
     </div>
 
@@ -1316,6 +1341,12 @@ const goOrdersPage = (pid: string) => router.push(`/seller/orders?productId=${pi
 .stat-label {
   font-size: var(--text-xs);
   color: var(--text-secondary);
+}
+
+/* 已下架商品後綴（O3：同預訂 tab 失效筆數淡色慣例一致） */
+.stat-sub {
+  font-size: var(--text-xs);
+  opacity: 0.55;
 }
 
 .stat-value {

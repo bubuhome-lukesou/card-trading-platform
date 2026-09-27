@@ -117,7 +117,14 @@ export class ProductsService {
         queryBuilder.orderBy('product.viewCount', 'DESC')
         break
       default:
-        queryBuilder.orderBy('product.createdAt', 'DESC')
+        // O1 殘餘修復（2026-09-27）：預設排序時，冇活躍拍賣嘅商品（ended/cancelled/無記錄）
+        // 一律排尾，唔再同進行中拍賣按 createdAt 混排 — 開關開（過濾）或關（顯示）都一致
+        queryBuilder
+          .addOrderBy(
+            "CASE WHEN product.listingType = 'auction' AND EXISTS (SELECT 1 FROM auctions a WHERE a.productId = product.id AND a.status IN ('active','pending')) THEN 0 ELSE 1 END",
+            'ASC'
+          )
+          .addOrderBy('product.createdAt', 'DESC')
     }
 
     const page = filters.page || 1
