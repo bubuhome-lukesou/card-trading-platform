@@ -24,10 +24,21 @@ const loadingAuctions = ref(false)
 const loadingProducts = ref(false)
 const loadingReservations = ref(false)
 
-// ===== 首頁 Hero + 統計條（管理員可編輯，GET /home-settings/public；null fallback 預設值）=====
-interface StatItem { value: string; labelZh: string; labelEn: string }
+// ===== 首頁 Hero（管理員可編輯，GET /home-settings/public；null fallback 預設值）=====
 const homeSettings = ref<any>(null)
 const isZh = computed(() => locale.value === 'zh')
+
+// 數字格式化：12,345（千分位）
+const fmtNum = (n: number) => n.toLocaleString('en-US')
+
+// 統計條四項（後台真實數據 liveStats）
+const statItems = computed(() => [
+  { value: fmtNum(liveStats.value.todayViews), labelZh: '本日瀏覽數', labelEn: 'Views Today' },
+  { value: fmtNum(liveStats.value.totalViews), labelZh: '總瀏覽數', labelEn: 'Total Views' },
+  { value: fmtNum(liveStats.value.totalUsers), labelZh: '用戶數', labelEn: 'Users' },
+  { value: fmtNum(liveStats.value.activeProducts), labelZh: '在售商品', labelEn: 'On Sale' },
+  { value: fmtNum(liveStats.value.completedOrders), labelZh: '已完成訂單', labelEn: 'Completed Orders' },
+])
 
 const heroTitle = computed(() => {
   const s = homeSettings.value
@@ -56,33 +67,25 @@ const heroSecondaryBtn = computed(() => {
 })
 const heroSecondaryLink = computed(() => homeSettings.value?.heroSecondaryLink || '/marketplace')
 
-// 統計條：DB statsJson 優先，fallback i18n 預設
-const stats = computed<StatItem[]>(() => {
-  const raw = homeSettings.value?.statsJson
-  if (raw) {
-    try {
-      const parsed = JSON.parse(raw)
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed.map((s: any) => ({
-          value: String(s.value ?? ''),
-          labelZh: String(s.labelZh ?? s.label ?? ''),
-          labelEn: String(s.labelEn ?? s.label ?? ''),
-        }))
-      }
-    } catch { /* JSON 壞 → fallback */ }
-  }
-  // 預設三項（label 對應 i18n key）
-  return [
-    { value: '10,000+', labelZh: '拍賣總數', labelEn: 'Total Auctions' },
-    { value: '5,000+', labelZh: '用戶總數', labelEn: 'Total Users' },
-    { value: '98%', labelZh: '滿意度', labelEn: 'Satisfaction' },
-  ]
+// ===== 統計條（後台真實數據 liveStats，9/28 Luke 定案）=====
+// GET /home-settings/public 返回 liveStats：本日瀏覽/總瀏覽/用戶/在售商品/已完成訂單
+const liveStats = ref<Record<string, number>>({
+  todayViews: 0, totalViews: 0, totalUsers: 0, activeProducts: 0, completedOrders: 0,
 })
 
 const fetchHomeSettings = async () => {
   try {
     const res = await api.get('/home-settings/public')
     homeSettings.value = res.data || null
+    if (res.data?.liveStats) {
+      liveStats.value = {
+        todayViews: Number(res.data.liveStats.todayViews) || 0,
+        totalViews: Number(res.data.liveStats.totalViews) || 0,
+        totalUsers: Number(res.data.liveStats.totalUsers) || 0,
+        activeProducts: Number(res.data.liveStats.activeProducts) || 0,
+        completedOrders: Number(res.data.liveStats.completedOrders) || 0,
+      }
+    }
   } catch {
     homeSettings.value = null // 靜默 fallback 預設
   }
@@ -206,11 +209,11 @@ onMounted(() => {
       </div>
     </section>
 
-    <!-- Stats（內容管理員可編輯） -->
+    <!-- Stats（後台真實數據 liveStats：本日/總瀏覽、用戶、在售商品、已完成訂單） -->
     <section class="stats-bar">
       <div class="container">
         <div class="stats-grid">
-          <div v-for="(stat, i) in stats" :key="i" class="stat-item">
+          <div v-for="(stat, i) in statItems" :key="i" class="stat-item">
             <span class="stat-value">{{ stat.value }}</span>
             <span class="stat-label">{{ isZh ? stat.labelZh : (stat.labelEn || stat.labelZh) }}</span>
           </div>
@@ -393,6 +396,8 @@ onMounted(() => {
   position: relative;
   z-index: 2;
   max-width: 640px;
+  margin: 0 auto;
+  text-align: center;
   padding: var(--space-8) 0 var(--space-10);
 }
 
@@ -412,6 +417,7 @@ onMounted(() => {
 
 .banner-actions {
   display: flex;
+  justify-content: center;
   gap: var(--space-3);
   flex-wrap: wrap;
 
@@ -426,7 +432,7 @@ onMounted(() => {
   }
 }
 
-// 手機：文字置中（富士山喺右側會被裁走大半，左對齊佈局唔成立）
+// 手機：同樣置中（富士山喺右側會被裁走大半，統一置中佈局）
 @media (max-width: 640px) {
   .banner-content {
     max-width: 100%;
@@ -474,6 +480,28 @@ onMounted(() => {
 .stat-label {
   font-size: var(--text-sm);
   color: var(--text-muted);
+}
+
+// 手機統計條：四項收緊 — 兩行兩列網格，字級縮小、間距收緊
+@media (max-width: 640px) {
+  .stats-bar {
+    padding: var(--space-3) 0 var(--space-4);
+  }
+
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--space-2) var(--space-3);
+    justify-items: center;
+  }
+
+  .stat-value {
+    font-size: var(--text-lg);
+  }
+
+  .stat-label {
+    font-size: var(--text-xs);
+  }
 }
 
 // Sections — 緊湊節奏

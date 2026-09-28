@@ -2,6 +2,9 @@ import { Injectable, NotFoundException } from '@nestjs/common'
 import { InjectRepository } from '@nestjs/typeorm'
 import { Repository } from 'typeorm'
 import { HomeSettings } from '../../entities/home-settings.entity'
+import { User } from '../../entities/user.entity'
+import { Product, ProductStatus } from '../../entities/product.entity'
+import { Order, OrderStatus } from '../../entities/order.entity'
 
 /**
  * 首頁 Hero + 統計條內容（id=1 單行）
@@ -24,9 +27,41 @@ export class HomeSettingsService {
     return row
   }
 
-  // 公開：首頁讀取（全部欄位返回，前端 fallback 預設值）
-  async getPublic(): Promise<HomeSettings> {
-    return this.ensureRow()
+  /**
+   * 後台真實數據統計（首頁統計條 liveStats）：
+   * - 本日瀏覽數 / 總瀏覽數：site_daily_views（商品詳情瀏覽累計，UTC+8 分日）
+   * - 用戶數：users 全部
+   * - 在售商品數：products status=active（軟刪 removed 已過濾）
+   * - 已完成訂單數：orders status=delivered
+   */
+  async getLiveStats() {
+    const ds = this.repo.manager
+    const [viewsRows, totalUsers, activeProducts, completedOrders] = await Promise.all([
+      ds.query(
+        `SELECT
+           COALESCE(SUM(views), 0) AS totalViews,
+           COALESCE(SUM(CASE WHEN date = DATE_FORMAT(CONVERT_TZ(NOW(), '+00:00', '+08:00'), '%Y-%m-%d') THEN views ELSE 0 END), 0) AS todayViews
+         FROM site_daily_views`
+      ),
+      ds.query('SELECT COUNT(*) AS c FROM users'),
+      ds.query(`SELECT COUNT(*) AS c FROM products WHERE status = '${ProductStatus.ACTIVE}'`),
+      ds.query(`SELECT COUNT(*) AS c FROM orders WHERE status = '${OrderStatus.DELIVERED}'`),
+    ])
+
+    return {
+      todayViews: Number(viewsRows?.[0]?.todayViews || 0),
+      totalViews: Number(viewsRows?.[0]?.totalViews || 0),
+      totalUsers: Number(totalUsers?.[0]?.c || 0),
+      activeProducts: Number(activeProducts?.[0]?.c || 0),
+      completedOrders: Number(completedOrders?.[0]?.c || 0),
+    }
+  }
+
+  // 公開：首頁讀取（全部欄位返回 + liveStats 附加）
+  async getPublic() {
+    const row = await this.ensureRow()
+    const liveStats = await this.getLiveStats()
+    return { ...row, liveStats }
   }
 
   // Admin 讀取（同一形）

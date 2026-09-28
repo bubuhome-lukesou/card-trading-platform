@@ -217,6 +217,13 @@ export class ProductsService {
       [id]
     )
 
+    // 全站每日瀏覽累計（首頁統計條口徑：商品詳情瀏覽；UTC+8 日期分日）
+    await this.productRepo.query(
+      `INSERT INTO site_daily_views (date, views, updatedAt)
+       VALUES (DATE_FORMAT(CONVERT_TZ(NOW(), '+00:00', '+08:00'), '%Y-%m-%d'), 1, NOW())
+       ON DUPLICATE KEY UPDATE views = views + 1, updatedAt = NOW()`
+    )
+
     // Parse images for response (original string is unchanged in DB)
     if (product.images && typeof product.images === 'string') {
       try {

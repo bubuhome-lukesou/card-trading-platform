@@ -350,41 +350,46 @@ const handleDeleteBanner = async (banner: BannerItem) => {
   }
 }
 
-// ===== 首頁 Hero + 統計條編輯（GET/PATCH /home-settings）=====
-interface HomeStatsRow { value: string; labelZh: string; labelEn: string }
-
+// ===== 首頁 Hero 編輯（GET/PATCH /home-settings）=====
+// 統計條已改為後台真實數據（liveStats 唯讀顯示），只有 Hero 文字按鈕可編輯
 const heroForm = ref({
   heroTitleZh: '', heroTitleEn: '',
   heroSubtitleZh: '', heroSubtitleEn: '',
   heroPrimaryBtnZh: '', heroPrimaryBtnEn: '', heroPrimaryLink: '',
   heroSecondaryBtnZh: '', heroSecondaryBtnEn: '', heroSecondaryLink: '',
-  statsRows: [
-    { value: '10,000+', labelZh: '拍賣總數', labelEn: 'Total Auctions' },
-    { value: '5,000+', labelZh: '用戶總數', labelEn: 'Total Users' },
-    { value: '98%', labelZh: '滿意度', labelEn: 'Satisfaction' },
-  ] as HomeStatsRow[],
 })
 const heroLoading = ref(false)
 const heroSaving = ref(false)
+
+// 統計條真實數據（唯讀展示）
+const liveStats = ref({ todayViews: 0, totalViews: 0, totalUsers: 0, activeProducts: 0, completedOrders: 0 })
+const liveStatsLoading = ref(false)
+const fmtNum = (n: number) => Number(n || 0).toLocaleString('en-US')
+
+const loadLiveStats = async () => {
+  liveStatsLoading.value = true
+  try {
+    const res = await api.get('/home-settings/public')
+    const s = res.data?.liveStats || {}
+    liveStats.value = {
+      todayViews: Number(s.todayViews) || 0,
+      totalViews: Number(s.totalViews) || 0,
+      totalUsers: Number(s.totalUsers) || 0,
+      activeProducts: Number(s.activeProducts) || 0,
+      completedOrders: Number(s.completedOrders) || 0,
+    }
+  } catch (e) {
+    console.error('Failed to load live stats', e)
+  } finally {
+    liveStatsLoading.value = false
+  }
+}
 
 const loadHomeSettings = async () => {
   heroLoading.value = true
   try {
     const res = await api.get('/home-settings')
     const d = res.data || {}
-    let rows: HomeStatsRow[] = []
-    if (d.statsJson) {
-      try {
-        const parsed = JSON.parse(d.statsJson)
-        if (Array.isArray(parsed)) {
-          rows = parsed.map((s: any) => ({
-            value: String(s.value ?? ''),
-            labelZh: String(s.labelZh ?? s.label ?? ''),
-            labelEn: String(s.labelEn ?? s.label ?? ''),
-          }))
-        }
-      } catch { /* fallback 預設 */ }
-    }
     heroForm.value = {
       heroTitleZh: d.heroTitleZh || '',
       heroTitleEn: d.heroTitleEn || '',
@@ -396,7 +401,6 @@ const loadHomeSettings = async () => {
       heroSecondaryBtnZh: d.heroSecondaryBtnZh || '',
       heroSecondaryBtnEn: d.heroSecondaryBtnEn || '',
       heroSecondaryLink: d.heroSecondaryLink || '/marketplace',
-      statsRows: rows.length > 0 ? rows : heroForm.value.statsRows,
     }
   } catch (e) {
     console.error('Failed to load home settings', e)
@@ -405,19 +409,7 @@ const loadHomeSettings = async () => {
   }
 }
 
-const addStatRow = () => {
-  if (heroForm.value.statsRows.length >= 6) return
-  heroForm.value.statsRows.push({ value: '', labelZh: '', labelEn: '' })
-}
-
-const removeStatRow = (i: number) => {
-  heroForm.value.statsRows.splice(i, 1)
-}
-
 const saveHomeSettings = async () => {
-  // 必填：至少一項統計（value 非空）
-  const rows = heroForm.value.statsRows.filter(r => r.value.trim())
-  if (rows.length === 0) { alert('請至少填一項統計（數值）'); return }
   heroSaving.value = true
   try {
     await api.patch('/home-settings', {
@@ -431,7 +423,6 @@ const saveHomeSettings = async () => {
       heroSecondaryBtnZh: heroForm.value.heroSecondaryBtnZh || null,
       heroSecondaryBtnEn: heroForm.value.heroSecondaryBtnEn || null,
       heroSecondaryLink: heroForm.value.heroSecondaryLink || null,
-      statsJson: JSON.stringify(rows),
     })
     alert('首頁內容已保存，刷新首頁即見')
   } catch (e: any) {
@@ -465,7 +456,7 @@ onMounted(async () => {
       <button class="tab-btn" :class="{ active: activeTab === 'general' }" @click="activeTab = 'general'">
         ⚙️ 平台設定
       </button>
-      <button class="tab-btn" :class="{ active: activeTab === 'banners' }" @click="activeTab === 'banners' || (loadBanners(), loadHomeSettings()); activeTab = 'banners'">
+      <button class="tab-btn" :class="{ active: activeTab === 'banners' }" @click="activeTab === 'banners' || (loadBanners(), loadHomeSettings(), loadLiveStats()); activeTab = 'banners'">
         📢 廣告設置
       </button>
       <button class="tab-btn" :class="{ active: activeTab === 'pages' }" @click="activeTab === 'pages' || loadPages(); activeTab = 'pages'">
@@ -564,16 +555,34 @@ onMounted(async () => {
             </div>
           </div>
 
-          <div class="hero-stats-editor">
+          <!-- 統計條：後台真實數據（唯讀，自動更新） -->
+          <div class="hero-stats-live">
             <div class="stats-rows-header">
-              <span class="stats-rows-title">統計條項目（{{ heroForm.statsRows.length }}/6）</span>
-              <button class="banner-btn" :disabled="heroForm.statsRows.length >= 6" @click="addStatRow">+ 添加項目</button>
+              <span class="stats-rows-title">下方統計條（自動統計，無需手動填寫）</span>
+              <button class="banner-btn" :disabled="liveStatsLoading" @click="loadLiveStats">🔄 刷新</button>
             </div>
-            <div v-for="(row, i) in heroForm.statsRows" :key="i" class="stats-row">
-              <input v-model="row.value" type="text" placeholder="數值（例：98%）" maxlength="20" class="stats-input-value" />
-              <input v-model="row.labelZh" type="text" placeholder="標籤中文（例：滿意度）" maxlength="30" />
-              <input v-model="row.labelEn" type="text" placeholder="Label EN" maxlength="30" />
-              <button class="banner-btn-delete" :disabled="heroForm.statsRows.length <= 1" @click="removeStatRow(i)">🗑️</button>
+            <div v-if="liveStatsLoading" class="pages-loading">加載中...</div>
+            <div v-else class="stats-live-grid">
+              <div class="stats-live-item">
+                <span class="stats-live-value">{{ fmtNum(liveStats.todayViews) }}</span>
+                <span class="stats-live-label">本日瀏覽數</span>
+              </div>
+              <div class="stats-live-item">
+                <span class="stats-live-value">{{ fmtNum(liveStats.totalViews) }}</span>
+                <span class="stats-live-label">總瀏覽數</span>
+              </div>
+              <div class="stats-live-item">
+                <span class="stats-live-value">{{ fmtNum(liveStats.totalUsers) }}</span>
+                <span class="stats-live-label">用戶數</span>
+              </div>
+              <div class="stats-live-item">
+                <span class="stats-live-value">{{ fmtNum(liveStats.activeProducts) }}</span>
+                <span class="stats-live-label">在售商品</span>
+              </div>
+              <div class="stats-live-item">
+                <span class="stats-live-value">{{ fmtNum(liveStats.completedOrders) }}</span>
+                <span class="stats-live-label">已完成訂單</span>
+              </div>
             </div>
           </div>
 
@@ -897,15 +906,18 @@ onMounted(async () => {
 /* ===== 廣告走馬燈管理 ===== */
 .banner-form { margin-top: var(--space-4); display: flex; flex-direction: column; gap: var(--space-4); }
 
-/* ===== 首頁 Hero + 統計條編輯 ===== */
-.hero-stats-editor { margin-top: var(--space-4); display: flex; flex-direction: column; gap: var(--space-3); }
+/* ===== 首頁 Hero + 統計條（真實數據唯讀） ===== */
 .stats-rows-header { display: flex; justify-content: space-between; align-items: center; }
 .stats-rows-title { font-weight: 600; font-size: var(--text-sm); }
-.stats-row { display: grid; grid-template-columns: 140px 1fr 1fr 44px; gap: var(--space-2); align-items: center; }
-.stats-row .stats-input-value { font-weight: 600; }
-.stats-row button:disabled { opacity: 0.4; cursor: not-allowed; }
+.hero-stats-live { margin-top: var(--space-4); display: flex; flex-direction: column; gap: var(--space-3); }
+.stats-live-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: var(--space-2); }
+.stats-live-item { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: var(--space-2) var(--space-1); background: var(--bg-elevated); border: 1px solid var(--border); border-radius: var(--radius-lg); }
+.stats-live-value { font-size: var(--text-base); font-weight: 700; font-family: var(--font-num); color: var(--text-primary); }
+.stats-live-label { font-size: var(--text-xs); color: var(--text-muted); white-space: nowrap; }
+
 @media (max-width: 767px) {
-  .stats-row { grid-template-columns: 1fr 1fr; }
+  .stats-live-grid { grid-template-columns: repeat(2, 1fr); }
+  .stats-live-item:nth-child(5) { grid-column: span 2; }
 }
 .banner-preview { margin-top: var(--space-2); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; max-width: 400px; }
 .banner-preview img { width: 100%; display: block; }
