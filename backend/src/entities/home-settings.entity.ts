@@ -11,7 +11,7 @@ export class HomeSettings {
 
   // ===== Hero 區塊 =====
   @Column({ type: 'varchar', length: 200, nullable: true })
-  heroTitleZh: string | null    // 預設：珍稀卡牌 限時競拍
+  heroTitleZh: string | null    // 預設：珍稀卡牌 等你來拍
 
   @Column({ type: 'varchar', length: 200, nullable: true })
   heroTitleEn: string | null

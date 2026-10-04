@@ -520,7 +520,7 @@ onMounted(async () => {
           <div class="form-grid">
             <div class="form-group">
               <label>主標題（中文）</label>
-              <input v-model="heroForm.heroTitleZh" type="text" placeholder="珍稀卡牌 限時競拍" maxlength="200" />
+              <input v-model="heroForm.heroTitleZh" type="text" placeholder="珍稀卡牌 等你來拍" maxlength="200" />
             </div>
             <div class="form-group">
               <label>主標題（英文）</label>
