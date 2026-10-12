@@ -49,8 +49,8 @@ const publicRoutes: RouteRecordRaw[] = [
   {
     path: '/register',
     name: 'Register',
-    component: () => import('@/views/public/RegisterView.vue'),
-    meta: { guest: true }
+    // 註冊已併入 /login（手機驗證碼自動註冊 + Google）— 舊連結重定向
+    redirect: (to: any) => ({ path: '/login', query: to.query })
   }
 ]
 
@@ -113,10 +113,9 @@ const sellerRoutes: RouteRecordRaw[] = [
     component: () => import('@/views/public/SellerApplyView.vue'),
   },
   {
+    // 商家登入已併入 /admin/login 後台統一入口（2026-10-12）— 舊連結重定向，保留 query
     path: '/seller/login',
-    name: 'SellerLogin',
-    component: () => import('@/views/seller/SellerLoginView.vue'),
-    meta: { guest: true }
+    redirect: (to: any) => ({ path: '/admin/login', query: to.query })
   },
   {
     path: '/seller',

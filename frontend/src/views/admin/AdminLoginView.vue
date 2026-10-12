@@ -6,6 +6,8 @@ import { useAuthStore } from '@/stores/auth'
 const router = useRouter()
 const authStore = useAuthStore()
 
+// 後台統一入口（2026-10-12 定案）：商家 + 管理員都喺呢頁登入
+// 普通用戶帳號喺呢頁登入 / seller 喺 admin 位登入等錯配，一律只提示「賬號或密碼錯誤」
 const loginForm = ref({
   email: '',
   password: ''
@@ -14,8 +16,8 @@ const loading = ref(false)
 const errorMsg = ref('')
 
 onMounted(() => {
-  if (authStore.isAuthenticated && authStore.isAdmin) {
-    router.push('/admin')
+  if (authStore.isAuthenticated && (authStore.isAdmin || authStore.isSeller)) {
+    router.push(authStore.isAdmin ? '/admin' : '/seller')
   }
 })
 
@@ -28,19 +30,16 @@ const handleLogin = async () => {
 
   loading.value = true
   try {
-    const success = await authStore.login({ email: loginForm.value.email, password: loginForm.value.password })
-    if (success) {
-      if (authStore.isAdmin) {
-        router.push('/admin')
-      } else {
-        errorMsg.value = '您不是管理員，無權訪問後台'
-        authStore.logout()
-      }
+    const success = await authStore.login({ email: loginForm.value.email.trim(), password: loginForm.value.password })
+    if (success && (authStore.isAdmin || authStore.isSeller)) {
+      router.push(authStore.isAdmin ? '/admin' : '/seller')
     } else {
-      errorMsg.value = '登入失敗，請檢查郵箱和密碼'
+      // 角色唔對（普通用戶）或憑證錯 — 統一口徑，唔透露帳號存在與角色
+      if (success) authStore.logout()
+      errorMsg.value = '賬號或密碼錯誤'
     }
   } catch (error: any) {
-    errorMsg.value = error?.response?.data?.message || '登入失敗'
+    errorMsg.value = error?.response?.data?.message || '賬號或密碼錯誤'
   } finally {
     loading.value = false
   }
@@ -54,7 +53,7 @@ const handleLogin = async () => {
         <div class="logo">
           <img src="@/assets/logo-128.png" alt="PicardChu" class="login-logo-img" />
         </div>
-        <h1>管理員登錄</h1>
+        <h1>商家 / 管理員登入</h1>
         <p>PicardChu 後台管理系統</p>
       </div>
 
@@ -62,11 +61,11 @@ const handleLogin = async () => {
         <p v-if="errorMsg" class="error-msg">{{ errorMsg }}</p>
 
         <div class="form-group">
-          <label>管理員郵箱</label>
+          <label>郵箱</label>
           <input
             v-model="loginForm.email"
             type="email"
-            placeholder="admin@example.com"
+            placeholder="name@example.com"
             autocomplete="username"
           />
         </div>

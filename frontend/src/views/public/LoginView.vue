@@ -1,43 +1,35 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { RouterLink, useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { LogIn, KeyRound } from 'lucide-vue-next'
 import api from '@/api'
 
-const { t, locale } = useI18n()
+const { locale } = useI18n()
 const authStore = useAuthStore()
 const router = useRouter()
 const route = useRoute()
 
-// Redirect after login: use redirect query or default by role
+// 用戶端登入只開放：手機驗證碼 + Google（2026-10-12 定案）
+// 商家 / 管理員帳號一律喺 /admin/login 後台入口登入，喺呢頁登入統一提示「賬號或密碼錯誤」
 const redirectAfterLogin = () => {
   const redirect = route.query.redirect as string
   if (redirect) {
     router.push(redirect)
-  } else if (authStore.isAdmin) {
-    router.push('/admin')
-  } else if (authStore.isSeller) {
-    router.push('/seller')
   } else {
     router.push('/user')
   }
 }
 
-// ===== 淘寶式智能登入：一個帳號框自動識別郵箱 / 手機 =====
-// 帳號框輸入含 "@" → 電郵登入（顯示密碼欄）
-// 純數字/區號 → 手機登入（顯示區號選擇 + 驗證碼欄）
-const account = ref('')
-const isEmailMode = computed(() => account.value.includes('@'))
-const isPhoneMode = computed(() => !account.value.includes('@') && account.value.trim().length > 0)
+const isAllowedRole = (user: { role?: string } | null | undefined) => user?.role === 'user'
 
-// 電郵登入
-const password = ref('')
-const loading = ref(false)
-const error = ref('')
+const rejectWrongPortal = () => {
+  authStore.logout()
+  error.value = locale.value === 'zh' ? '賬號或密碼錯誤' : 'Invalid account or password'
+}
 
-// 手機登入
+// ===== 手機驗證碼登入（未註冊號碼自動創建帳號）=====
 const regions = [
   { code: '+853', label: locale.value === 'zh' ? '澳門 +853' : 'Macao +853' },
   { code: '+852', label: locale.value === 'zh' ? '香港 +852' : 'Hong Kong +852' },
@@ -45,23 +37,14 @@ const regions = [
   { code: '+86',  label: locale.value === 'zh' ? '大陸 +86' : 'Mainland China +86' },
 ]
 const selectedRegion = ref('+853')
-// 帳號框直出：手機模式時帳號框就是純手機號（區號由左邊選單控制，不剝離）
-// 用戶輸入純數字（如 66161315）時 getter 若把前綴當區號剝掉會剩 66161315-前綴 → 格式錯誤
-const phone = computed({
-  get: () => {
-    // 只在用戶明確輸入了「+區號」開頭時才剝離（如 +85366161315 → 66161315）
-    const m = account.value.match(/^\+\d{1,4}(.*)$/)
-    return m ? m[1] : account.value
-  },
-  set: (val: string) => { account.value = val },
-})
+const phone = ref('')
 const code = ref('')
 const codeSent = ref(false)
 const countdown = ref(0)
 const sendingCode = ref(false)
-const phoneLoading = ref(false)
-const phoneError = ref('')
-const phoneSuccess = ref('')
+const loading = ref(false)
+const error = ref('')
+const success = ref('')
 
 // 倒計時
 let countdownTimer: ReturnType<typeof setInterval> | null = null
@@ -78,11 +61,11 @@ const startCountdown = () => {
 
 // 發送驗證碼
 const handleSendCode = async () => {
-  phoneError.value = ''
-  phoneSuccess.value = ''
+  error.value = ''
+  success.value = ''
 
   if (!phone.value || phone.value.length < 7) {
-    phoneError.value = locale.value === 'zh' ? '請輸入正確的手機號碼' : 'Please enter a valid phone number'
+    error.value = locale.value === 'zh' ? '請輸入正確的手機號碼' : 'Please enter a valid phone number'
     return
   }
 
@@ -94,9 +77,9 @@ const handleSendCode = async () => {
     })
     codeSent.value = true
     startCountdown()
-    phoneSuccess.value = res.data?.message || (locale.value === 'zh' ? '驗證碼已發送' : 'Code sent')
+    success.value = res.data?.message || (locale.value === 'zh' ? '驗證碼已發送' : 'Code sent')
   } catch (err: any) {
-    phoneError.value = err.response?.data?.message || (locale.value === 'zh' ? '發送失敗，請重試' : 'Failed to send code')
+    error.value = err.response?.data?.message || (locale.value === 'zh' ? '發送失敗，請重試' : 'Failed to send code')
   } finally {
     sendingCode.value = false
   }
@@ -104,19 +87,19 @@ const handleSendCode = async () => {
 
 // 手機登入
 const handlePhoneLogin = async () => {
-  phoneError.value = ''
-  phoneSuccess.value = ''
+  error.value = ''
+  success.value = ''
 
   if (!phone.value || phone.value.length < 7) {
-    phoneError.value = locale.value === 'zh' ? '請輸入手機號碼' : 'Please enter phone number'
+    error.value = locale.value === 'zh' ? '請輸入手機號碼' : 'Please enter phone number'
     return
   }
   if (!code.value || code.value.length < 4) {
-    phoneError.value = locale.value === 'zh' ? '請輸入驗證碼' : 'Please enter verification code'
+    error.value = locale.value === 'zh' ? '請輸入驗證碼' : 'Please enter verification code'
     return
   }
 
-  phoneLoading.value = true
+  loading.value = true
   try {
     const res = await api.post('/auth/phone-login', {
       regionCode: selectedRegion.value,
@@ -126,30 +109,18 @@ const handlePhoneLogin = async () => {
 
     const result = res.data
     if (result.accessToken) {
+      if (!isAllowedRole(result.user)) {
+        rejectWrongPortal()
+        return
+      }
       authStore.setPhoneLogin(result)
       redirectAfterLogin()
     }
   } catch (err: any) {
-    phoneError.value = err.response?.data?.message || (locale.value === 'zh' ? '登入失敗' : 'Login failed')
+    error.value = err.response?.data?.message || (locale.value === 'zh' ? '登入失敗' : 'Login failed')
   } finally {
-    phoneLoading.value = false
+    loading.value = false
   }
-}
-
-// 電郵登入
-const handleSubmit = async () => {
-  error.value = ''
-  loading.value = true
-
-  const success = await authStore.login({ email: account.value.trim(), password: password.value })
-
-  if (!success) {
-    error.value = authStore.error || 'Login failed'
-  } else {
-    redirectAfterLogin()
-  }
-
-  loading.value = false
 }
 
 // ===== Google 登入（GIS SDK）=====
@@ -165,6 +136,10 @@ const handleGoogleCredential = async (response: any) => {
     const res = await api.post('/auth/google', { credential: response.credential })
     const result = res.data
     if (result.accessToken) {
+      if (!isAllowedRole(result.user)) {
+        rejectWrongPortal()
+        return
+      }
       authStore.setPhoneLogin(result) // 同樣格式：{user, accessToken}，復用 setter
       redirectAfterLogin()
     }
@@ -224,46 +199,34 @@ onMounted(() => {
   <div class="login-page">
     <div class="login-card">
       <div class="login-header">
-        <h1 class="login-title">{{ t('auth.login.title') }}</h1>
-        <p class="login-subtitle">{{ t('app.tagline') }}</p>
+        <h1 class="login-title">{{ $t('auth.login.title') }}</h1>
+        <p class="login-subtitle">{{ $t('app.tagline') }}</p>
       </div>
 
-      <!-- ===== 淘寶式智能登入：一個帳號框自動識別 ===== -->
-      <form class="login-form" @submit.prevent="isEmailMode ? handleSubmit() : handlePhoneLogin()">
+      <form class="login-form" @submit.prevent="handlePhoneLogin">
         <div v-if="error" class="error-alert">{{ error }}</div>
-        <div v-if="phoneError" class="error-alert">{{ phoneError }}</div>
-        <div v-if="phoneSuccess" class="success-alert">{{ phoneSuccess }}</div>
+        <div v-if="success" class="success-alert">{{ success }}</div>
 
-        <!-- 帳號輸入框（email 或手機號，自動識別） -->
+        <!-- 區號 + 手機號 -->
         <div class="input-group">
-          <label class="input-label">{{ locale === 'zh' ? '帳號' : 'Account' }}</label>
+          <label class="input-label">{{ locale === 'zh' ? '手機號碼' : 'Phone Number' }}</label>
           <div class="account-row">
-            <select
-              v-if="isPhoneMode"
-              v-model="selectedRegion"
-              class="input region-select"
-            >
+            <select v-model="selectedRegion" class="input region-select">
               <option v-for="r in regions" :key="r.code" :value="r.code">{{ r.code }}</option>
             </select>
             <input
-              v-model="account"
-              :type="isEmailMode ? 'email' : 'tel'"
+              v-model="phone"
+              type="tel"
               class="input account-input"
-              :placeholder="locale === 'zh' ? '手機號或電郵' : 'Phone or email'"
-              autocomplete="username"
+              :placeholder="locale === 'zh' ? '請輸入手機號碼' : 'Enter phone number'"
+              autocomplete="tel"
               required
             />
           </div>
-          <p v-if="isPhoneMode" class="mode-hint">
-            {{ locale === 'zh' ? '📱 手機登入：將發送短信驗證碼' : '📱 Phone login: SMS code will be sent' }}
-          </p>
-          <p v-else-if="isEmailMode" class="mode-hint">
-            {{ locale === 'zh' ? '📧 電郵登入' : '📧 Email login' }}
-          </p>
         </div>
 
-        <!-- 手機模式：驗證碼 -->
-        <div v-if="isPhoneMode" class="input-group">
+        <!-- 驗證碼 -->
+        <div class="input-group">
           <label class="input-label">{{ locale === 'zh' ? '驗證碼' : 'Verification Code' }}</label>
           <div class="code-row">
             <input
@@ -286,35 +249,18 @@ onMounted(() => {
           </div>
         </div>
 
-        <!-- 電郵模式：密碼 -->
-        <div v-if="isEmailMode" class="input-group">
-          <label class="input-label">{{ t('auth.login.password') }}</label>
-          <input
-            v-model="password"
-            type="password"
-            class="input"
-            :placeholder="t('auth.login.password')"
-            autocomplete="current-password"
-            required
-          />
-        </div>
-
         <button
           type="submit"
           class="btn btn-primary btn-lg"
-          :disabled="isEmailMode ? loading : phoneLoading"
+          :disabled="loading"
         >
-          <LogIn v-if="!(isEmailMode ? loading : phoneLoading)" class="icon" />
-          <span v-if="isEmailMode ? loading : phoneLoading">Loading...</span>
-          <span v-else-if="isEmailMode">{{ t('auth.login.submit') }}</span>
+          <LogIn v-if="!loading" class="icon" />
+          <span v-if="loading">Loading...</span>
           <span v-else>{{ locale === 'zh' ? '登入 / 註冊' : 'Login / Register' }}</span>
         </button>
 
-        <p v-if="!account" class="phone-hint">
-          {{ locale === 'zh' ? '輸入手機號或電郵，系統自動識別登入方式' : 'Enter phone number or email — we detect the login method automatically' }}
-        </p>
-        <p v-else-if="isPhoneMode" class="phone-hint">
-          {{ locale === 'zh' ? '未註冊的手機號將自動創建帳號' : 'New phone numbers will be auto-registered' }}
+        <p class="phone-hint">
+          {{ locale === 'zh' ? '📱 未註冊的手機號將自動創建帳號' : '📱 New phone numbers will be auto-registered' }}
         </p>
       </form>
 
@@ -333,10 +279,9 @@ onMounted(() => {
 
       <div class="login-footer">
         <p>
-          {{ t('auth.login.noAccount') }}
-          <RouterLink to="/register" class="link">
-            {{ t('auth.login.registerNow') }}
-          </RouterLink>
+          {{ locale === 'zh' ? '商家 / 管理員請從' : 'Merchants & admins: use the' }}
+          <RouterLink to="/admin/login" class="link">{{ locale === 'zh' ? '後台入口' : 'staff portal' }}</RouterLink>
+          {{ locale === 'zh' ? '登入' : 'to sign in' }}
         </p>
       </div>
     </div>
@@ -381,43 +326,6 @@ onMounted(() => {
   font-size: var(--text-sm);
 }
 
-/* Tabs（已改為智能帳號框，樣式保留備用） */
-.login-tabs {
-  display: flex;
-  gap: 8px;
-  margin-bottom: var(--space-6);
-  background: var(--bg-elevated);
-  border-radius: var(--radius-lg);
-  padding: 4px;
-}
-
-.login-tab {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  padding: 10px 16px;
-  border: none;
-  background: transparent;
-  color: var(--text-muted);
-  font-size: var(--text-sm);
-  font-weight: 500;
-  border-radius: var(--radius-md);
-  cursor: pointer;
-  transition: all 0.2s;
-
-  &:hover {
-    color: var(--text-secondary);
-  }
-
-  &.active {
-    background: var(--bg-card);
-    color: var(--primary);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-  }
-}
-
 .login-form {
   display: flex;
   flex-direction: column;
@@ -454,7 +362,7 @@ onMounted(() => {
   color: var(--text-secondary);
 }
 
-/* Account row — 區號選單 + 帳號輸入框（淘寶式） */
+/* Account row — 區號選單 + 手機號輸入框 */
 .account-row {
   display: flex;
   gap: 10px;
@@ -469,12 +377,6 @@ onMounted(() => {
 .account-input {
   flex: 1;
   min-width: 0;
-}
-
-.mode-hint {
-  font-size: var(--text-xs);
-  color: var(--text-muted);
-  margin-top: 6px;
 }
 
 /* Code row — 驗證碼輸入框占大部分，按鈕固定寬度 */

@@ -32,11 +32,13 @@ export class AuthService {
     }
 
     const hashedPassword = await bcrypt.hash(dto.password, 10)
+    // 2026-10-12：公開註冊一律 user 角色 — seller 經入駐申請審批、admin 手動建
+    // （DTO role 欄位唔再信任，防 API 直打提權）
     const user = this.userRepo.create({
       email: dto.email,
       nickname: dto.nickname,
       password: hashedPassword,
-      role: dto.role as UserRole || UserRole.USER,
+      role: UserRole.USER,
       status: UserStatus.ACTIVE
     })
 
@@ -135,6 +137,12 @@ export class AuthService {
       await this.userRepo.save(user)
     }
 
+    // 2026-10-12：商家/管理員帳號唔可以經用戶端手機登入（須從後台入口登入）
+    // 統一回「無效憑證」，不透露帳號存在與角色
+    if (user.role === UserRole.SELLER || user.role === UserRole.ADMIN) {
+      throw new UnauthorizedException('Invalid credentials')
+    }
+
     if (user.status !== UserStatus.ACTIVE) {
       throw new UnauthorizedException('帳號已停用')
     }
@@ -195,7 +203,7 @@ export class AuthService {
       }
 
       user = this.userRepo.create({
-        email, // Google email 已驗證，直接用（nullable email 架構下真實填入）
+        email, // Google email 已驗證，直接用（nullable email 架构下真實填入）
         googleId,
         nickname: uniqueNickname,
         avatar: picture,
@@ -205,6 +213,12 @@ export class AuthService {
         emailVerified: true, // Google 已驗證
       })
       await this.userRepo.save(user)
+    }
+
+    // 2026-10-12：商家/管理員帳號唔可以經用戶端 Google 登入（須從後台入口登入）
+    // 統一回「無效憑證」，不透露帳號存在與角色
+    if (user.role === UserRole.SELLER || user.role === UserRole.ADMIN) {
+      throw new UnauthorizedException('Invalid credentials')
     }
 
     if (user.status !== UserStatus.ACTIVE) {

@@ -149,7 +149,7 @@ onMounted(() => {
         <h2>申請已通過</h2>
         <p>恭喜！您的商家申請已通過審批</p>
         <p>使用註冊的電郵和密碼登入賣家帳號</p>
-        <RouterLink to="/seller/login" class="btn btn-primary">前往登入</RouterLink>
+        <RouterLink to="/admin/login" class="btn btn-primary">前往登入</RouterLink>
       </div>
 
       <!-- Rejected Status -->
