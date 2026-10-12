@@ -61,6 +61,12 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials')
     }
 
+    // 2026-10-12：/auth/login 只開俾商家/管理員（後台入口專用）
+    // 普通用戶改用手機驗證碼 / Google 登入；喺後台入口打 user 帳號統一回無效憑證（不透露角色）
+    if (user.role === UserRole.USER) {
+      throw new UnauthorizedException('Invalid credentials')
+    }
+
     if (user.status !== UserStatus.ACTIVE) {
       throw new UnauthorizedException('Account suspended')
     }

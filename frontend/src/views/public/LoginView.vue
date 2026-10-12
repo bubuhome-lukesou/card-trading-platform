@@ -117,7 +117,10 @@ const handlePhoneLogin = async () => {
       redirectAfterLogin()
     }
   } catch (err: any) {
-    error.value = err.response?.data?.message || (locale.value === 'zh' ? '登入失敗' : 'Login failed')
+    // 401（含 seller/admin 帳號被後端拒絕）統一口徑：賬號或密碼錯誤
+    error.value = err.response?.status === 401
+      ? (locale.value === 'zh' ? '賬號或密碼錯誤' : 'Invalid account or password')
+      : (err.response?.data?.message || (locale.value === 'zh' ? '登入失敗' : 'Login failed'))
   } finally {
     loading.value = false
   }
@@ -144,7 +147,10 @@ const handleGoogleCredential = async (response: any) => {
       redirectAfterLogin()
     }
   } catch (err: any) {
-    googleError.value = err.response?.data?.message || 'Google 登入失敗，請重試'
+    // 401（含 seller/admin 帳號被後端拒絕）統一口徑：賬號或密碼錯誤
+    googleError.value = err.response?.status === 401
+      ? (locale.value === 'zh' ? '賬號或密碼錯誤' : 'Invalid account or password')
+      : (err.response?.data?.message || 'Google 登入失敗，請重試')
   }
 }
 
