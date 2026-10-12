@@ -42,10 +42,17 @@ api.interceptors.request.use(
 )
 
 // Response interceptor - handle 401
+// ⚠️ 排除登入/註冊端點自身嘅 401（憑證錯誤屬預期回應，交由登入頁顯示「賬號或密碼錯誤」；
+// 冇排除嘅話 interceptor 會即時 logout + 跳 /login，令後台入口嘅錯誤提示顯示唔到 —— 2026-10-12 實證）
 api.interceptors.response.use(
   (response) => response,
   (error: AxiosError) => {
-    if (error.response?.status === 401) {
+    const url = error.config?.url || ''
+    const isAuthAttempt = url.includes('/auth/login')
+      || url.includes('/auth/phone-login')
+      || url.includes('/auth/google')
+      || url.includes('/auth/register')
+    if (error.response?.status === 401 && !isAuthAttempt) {
       // Use auth store logout to properly clear all state
       const authStore = useAuthStore()
       authStore.logout()
