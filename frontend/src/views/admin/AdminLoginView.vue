@@ -53,7 +53,7 @@ const handleLogin = async () => {
         <div class="logo">
           <img src="@/assets/logo-128.png" alt="PicardChu" class="login-logo-img" />
         </div>
-        <h1>商家 / 管理員登入</h1>
+        <h1>管理後台登錄</h1>
         <p>PicardChu 後台管理系統</p>
       </div>
 

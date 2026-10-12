@@ -285,9 +285,7 @@ onMounted(() => {
 
       <div class="login-footer">
         <p>
-          {{ locale === 'zh' ? '商家 / 管理員請從' : 'Merchants & admins: use the' }}
-          <RouterLink to="/admin/login" class="link">{{ locale === 'zh' ? '後台入口' : 'staff portal' }}</RouterLink>
-          {{ locale === 'zh' ? '登入' : 'to sign in' }}
+          {{ locale === 'zh' ? '輸入手機號即可登入或註冊' : 'Sign in or register with your phone number' }}
         </p>
       </div>
     </div>
