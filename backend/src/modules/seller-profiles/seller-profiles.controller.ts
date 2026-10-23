@@ -1,18 +1,24 @@
 import { Controller, Get, Patch, Body, Param, Query, UseGuards, Request, ForbiddenException } from '@nestjs/common'
 import { Transform } from 'class-transformer'
+import { IsOptional } from 'class-validator'
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard'
 import { SellerProfilesService } from './seller-profiles.service'
 
 // 布林 query 參數解析（2026-09-24 實證陷阱：Type(Boolean) 先於 Transform 執行，Boolean('false')=true — 只可用 Transform；勿加 @Type(() => Boolean)）
+// ⚠️ 2026-10-23 實證第二陷阱：global ValidationPipe whitelist:true 會剝走只有 @Transform 冇 validation decorator 嘅欄位
+// （class-validator 視之為 unknown property）→ filters 靜默變 {} stats 無過濾。必須加 @IsOptional() 令 whitelist 保留
 const boolParam = () => Transform(({ value }) => value === true || value === 'true' || value === '1')
 
 class StatsFiltersDto {
+  @IsOptional()
   @boolParam()
   hideSold?: boolean
 
+  @IsOptional()
   @boolParam()
   hideExpired?: boolean
 
+  @IsOptional()
   @boolParam()
   hideEndedAuction?: boolean
 }
