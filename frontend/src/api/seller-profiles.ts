@@ -1,6 +1,13 @@
 // 商家介紹頁 API
 import api from './index'
 
+// profile API stats 口徑過濾參數（與 products fetch 三參數一致，防 tab 計數同列表錯位）
+export interface SellerStatsFilters {
+  hideSold?: boolean
+  hideExpired?: boolean
+  hideEndedAuction?: boolean
+}
+
 export interface SellerProfileData {
   user: {
     id: string
@@ -29,8 +36,8 @@ export interface SellerProfileData {
 
 export const sellerProfilesApi = {
   // 公開：商家介紹頁
-  async getPublicProfile(sellerId: string): Promise<SellerProfileData> {
-    const res = await api.get(`/sellers/${sellerId}/profile`)
+  async getPublicProfile(sellerId: string, statsFilters?: SellerStatsFilters): Promise<SellerProfileData> {
+    const res = await api.get(`/sellers/${sellerId}/profile`, { params: statsFilters })
     return res.data
   },
 

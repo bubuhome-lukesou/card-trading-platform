@@ -33,7 +33,12 @@ const loadProfile = async () => {
   loading.value = true
   error.value = false
   try {
-    data.value = await sellerProfilesApi.getPublicProfile(sellerId.value)
+    // stats 口徑與商品 fetch 的三個 hide 參數一致（全局「隱藏已結束」開關）
+    data.value = await sellerProfilesApi.getPublicProfile(sellerId.value, {
+      hideSold: hideEnded.value,
+      hideExpired: hideEnded.value,
+      hideEndedAuction: hideEnded.value
+    })
   } catch (e) {
     console.error('Failed to load seller profile:', e)
     error.value = true

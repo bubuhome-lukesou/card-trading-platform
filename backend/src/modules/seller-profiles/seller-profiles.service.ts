@@ -35,7 +35,13 @@ export class SellerProfilesService {
   ) {}
 
   // 公開：商家介紹頁數據（user 基本資料 + profile + 商品統計）
-  async getPublicProfile(sellerId: string) {
+  // ⚠️ stats 口徑必須同前端商品 fetch 一致：hideSold/hideExpired/hideEndedAuction
+  // 三參數由前端（全局「隱藏已結束」開關）傳入，條件與 products.service findAll 相同 —
+  // 唔同步會出現「tab 計數 N 但列表空」嘅錯位（2026-10-23 上線首日實證）
+  async getPublicProfile(
+    sellerId: string,
+    filters?: { hideSold?: boolean; hideExpired?: boolean; hideEndedAuction?: boolean }
+  ) {
     const user = await this.userRepo
       .createQueryBuilder('user')
       .select(PUBLIC_USER_FIELDS)
@@ -47,8 +53,22 @@ export class SellerProfilesService {
 
     const profile = await this.profileRepo.findOne({ where: { userId: sellerId } })
 
-    // 商品統計：在售（active，唔計 removed/sold）/ 拍賣中 / 預訂中
-    // 排序口徑：加總三項做 header 徽章同 marketplace 口徑一致（active 全計，唔分 listingType）
+    // 商品統計：在售（active，唔計 removed/sold）/ 拍賣中 / 預訂中 / 銷售中
+    // 條件與 products.service findAll 三個 hide 參數一致：
+    // - hideSold: quantity > 0
+    // - hideExpired: 非預約 OR deadline 未過
+    // - hideEndedAuction: 非拍賣 OR EXISTS active/pending auction
+    const conds: string[] = []
+    const params: unknown[] = [sellerId]
+    if (filters?.hideSold) conds.push('quantity > 0')
+    if (filters?.hideExpired) {
+      conds.push("(listingType != 'reservation' OR (reservationDeadline IS NOT NULL AND reservationDeadline > NOW()))")
+    }
+    if (filters?.hideEndedAuction) {
+      conds.push("(listingType != 'auction' OR EXISTS(SELECT 1 FROM auctions a WHERE a.productId = products.id AND a.status IN ('active','pending')))")
+    }
+    const whereExtra = conds.length ? ` AND ${conds.join(' AND ')}` : ''
+
     const statsRows = await this.userRepo.query(
       `SELECT
          COUNT(*) AS total,
@@ -56,8 +76,8 @@ export class SellerProfilesService {
          SUM(CASE WHEN listingType = 'reservation' THEN 1 ELSE 0 END) AS reservation,
          SUM(CASE WHEN listingType = 'sale' THEN 1 ELSE 0 END) AS sale
        FROM products
-       WHERE sellerId = ? AND status = 'active'`,
-      [sellerId]
+       WHERE sellerId = ? AND status = 'active'${whereExtra}`,
+      params
     )
     const raw = (statsRows && statsRows[0]) || {}
     const num = (v: unknown) => (v === null || v === undefined ? 0 : Number(v))
