@@ -4,6 +4,7 @@ import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
 import api from '@/api'
 import { uploadApi } from '@/api/upload'
+import { sellerProfilesApi } from '@/api/seller-profiles'
 
 const { t, locale } = useI18n()
 const authStore = useAuthStore()
@@ -34,6 +35,80 @@ const notificationSettings = ref({
 const pickupData = ref({
   pickupInfo: '',
 })
+
+// ===== 商家介紹頁資料（2026-10-23） =====
+const profileData = ref({
+  logo: '' as string,
+  banner: '' as string,
+  descriptionZh: '' as string,
+  descriptionEn: '' as string,
+  businessHours: '' as string,
+  wechatId: '' as string,
+  wechatQrCode: '' as string,
+  location: '' as string,
+})
+const logoFile = ref<File | null>(null)
+const logoPreview = ref('')
+const bannerFile = ref<File | null>(null)
+const bannerPreview = ref('')
+const qrFile = ref<File | null>(null)
+const qrPreview = ref('')
+const profileLoading = ref(false)
+
+const loadSellerProfile = async () => {
+  try {
+    const res = await sellerProfilesApi.getMyProfile()
+    const p = res.profile || {}
+    profileData.value = {
+      logo: p.logo || '',
+      banner: p.banner || '',
+      descriptionZh: p.descriptionZh || '',
+      descriptionEn: p.descriptionEn || '',
+      businessHours: p.businessHours || '',
+      wechatId: p.wechatId || '',
+      wechatQrCode: p.wechatQrCode || '',
+      location: p.location || '',
+    }
+  } catch {
+    // 首次使用未建行 — 保持空表單
+  }
+}
+
+const handleImageSelect = (e: Event, kind: 'logo' | 'banner' | 'qr') => {
+  const file = (e.target as HTMLInputElement).files?.[0]
+  if (!file) return
+  const preview = URL.createObjectURL(file)
+  if (kind === 'logo') { logoFile.value = file; logoPreview.value = preview }
+  if (kind === 'banner') { bannerFile.value = file; bannerPreview.value = preview }
+  if (kind === 'qr') { qrFile.value = file; qrPreview.value = preview }
+}
+
+const clearImage = (kind: 'logo' | 'banner' | 'qr') => {
+  if (kind === 'logo') { logoFile.value = null; logoPreview.value = ''; profileData.value.logo = '' }
+  if (kind === 'banner') { bannerFile.value = null; bannerPreview.value = ''; profileData.value.banner = '' }
+  if (kind === 'qr') { qrFile.value = null; qrPreview.value = ''; profileData.value.wechatQrCode = '' }
+}
+
+const handleProfileUpdate = async () => {
+  profileLoading.value = true
+  errorMessage.value = ''
+  try {
+    const payload: any = { ...profileData.value }
+    if (logoFile.value) payload.logo = (await uploadApi.uploadImage(logoFile.value)).data.url
+    if (bannerFile.value) payload.banner = (await uploadApi.uploadImage(bannerFile.value)).data.url
+    if (qrFile.value) payload.wechatQrCode = (await uploadApi.uploadImage(qrFile.value)).data.url
+    await sellerProfilesApi.updateMyProfile(payload)
+    loadSellerProfile()
+    logoFile.value = null; logoPreview.value = ''
+    bannerFile.value = null; bannerPreview.value = ''
+    qrFile.value = null; qrPreview.value = ''
+    showSuccess('商家資料已更新')
+  } catch (error: any) {
+    showError(error.response?.data?.message || '更新失敗')
+  } finally {
+    profileLoading.value = false
+  }
+}
 
 const qrCodeFile = ref<File | null>(null)
 const qrCodePreview = ref('')
@@ -182,6 +257,7 @@ const toggleLanguage = () => {
 
 onMounted(() => {
   loadProfile()
+  loadSellerProfile()
 })
 </script>
 
@@ -315,6 +391,84 @@ onMounted(() => {
             <span class="toggle-slider"></span>
           </label>
         </div>
+      </div>
+    </div>
+
+    <!-- Store Profile Section — 商家介紹頁資料（公開 /seller/:id） -->
+    <div class="settings-section">
+      <h3 class="section-title">🏬 商家介紹頁</h3>
+      <p class="section-desc">這些資料會顯示在你的公開商家頁（商品詳情「商鋪」卡可點入）。</p>
+      <div class="settings-card">
+        <!-- Logo + Banner -->
+        <div class="media-row">
+          <div class="media-item">
+            <label class="media-label">商家 Logo</label>
+            <div class="media-preview logo-box" v-if="logoPreview || profileData.logo">
+              <img :src="logoPreview || resolveImageUrl(profileData.logo)" alt="logo" />
+              <button class="media-remove" @click="clearImage('logo')">✕</button>
+            </div>
+            <label v-else class="media-upload">
+              <input type="file" accept="image/*" @change="handleImageSelect($event, 'logo')" />
+              <span>上傳 Logo</span>
+            </label>
+          </div>
+          <div class="media-item media-item-wide">
+            <label class="media-label">封面橫幅（選填）</label>
+            <div class="media-preview banner-box" v-if="bannerPreview || profileData.banner">
+              <img :src="bannerPreview || resolveImageUrl(profileData.banner)" alt="banner" />
+              <button class="media-remove" @click="clearImage('banner')">✕</button>
+            </div>
+            <label v-else class="media-upload">
+              <input type="file" accept="image/*" @change="handleImageSelect($event, 'banner')" />
+              <span>上傳橫幅圖</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- 簡介 -->
+        <div class="form-grid">
+          <div class="form-group">
+            <label>商家簡介（中文）</label>
+            <textarea v-model="profileData.descriptionZh" rows="4" placeholder="介紹你的店鋪、專營類別、服務特色…"></textarea>
+          </div>
+          <div class="form-group">
+            <label>商家簡介（English，選填）</label>
+            <textarea v-model="profileData.descriptionEn" rows="4" placeholder="Store description in English (optional)"></textarea>
+          </div>
+        </div>
+
+        <!-- 營業時間 / 地區 / 微信 -->
+        <div class="form-grid">
+          <div class="form-group">
+            <label>營業時間</label>
+            <input v-model="profileData.businessHours" type="text" placeholder="例：週一至週五 14:00-20:00；週六日 12:00-18:00" />
+          </div>
+          <div class="form-group">
+            <label>所在地區</label>
+            <input v-model="profileData.location" type="text" placeholder="例：澳門" />
+          </div>
+          <div class="form-group">
+            <label>微信號</label>
+            <input v-model="profileData.wechatId" type="text" placeholder="例：your_wechat_id" />
+          </div>
+        </div>
+
+        <!-- WeChat QR -->
+        <div class="qr-section">
+          <label class="qr-label">WeChat 二維碼（買家可長按識別）</label>
+          <div class="media-preview qr-box" v-if="qrPreview || profileData.wechatQrCode">
+            <img :src="qrPreview || resolveImageUrl(profileData.wechatQrCode)" alt="WeChat QR" />
+            <button class="media-remove" @click="clearImage('qr')">✕</button>
+          </div>
+          <label v-else class="media-upload">
+            <input type="file" accept="image/*" @change="handleImageSelect($event, 'qr')" />
+            <span>上傳二維碼</span>
+          </label>
+        </div>
+
+        <button @click="handleProfileUpdate" class="btn-save" :disabled="profileLoading">
+          {{ profileLoading ? '儲存中...' : '儲存商家資料' }}
+        </button>
       </div>
     </div>
 
@@ -489,6 +643,101 @@ onMounted(() => {
   font-size: var(--text-sm);
   resize: vertical;
   font-family: inherit;
+}
+
+/* ===== 商家介紹頁 media 上傳（logo/banner/QR） ===== */
+.media-row {
+  display: flex;
+  gap: var(--space-4);
+  margin-bottom: var(--space-6);
+  flex-wrap: wrap;
+}
+.media-item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  flex: 0 0 auto;
+}
+.media-item-wide {
+  flex: 1 1 260px;
+  min-width: 0;
+}
+.media-label {
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+.media-upload {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-5);
+  background: var(--bg-elevated);
+  border: 2px dashed var(--border);
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  min-height: 84px;
+}
+.media-upload:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+.media-upload input[type="file"] {
+  display: none;
+}
+.media-preview {
+  position: relative;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  border: 1px solid var(--border);
+  background: var(--bg-elevated);
+}
+.media-preview img {
+  display: block;
+  object-fit: cover;
+  width: 100%;
+  height: 100%;
+}
+.logo-box {
+  width: 96px;
+  height: 96px;
+}
+.banner-box {
+  height: 96px;
+  width: 100%;
+}
+.banner-box img {
+  object-fit: cover;
+}
+.qr-box {
+  width: 140px;
+  height: 140px;
+}
+.qr-box img {
+  object-fit: contain;
+  background: #fff;
+}
+.media-remove {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(0, 0, 0, 0.6);
+  color: #fff;
+  font-size: 11px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.media-remove:hover {
+  background: rgba(239, 68, 68, 0.8);
 }
 
 .qr-section {

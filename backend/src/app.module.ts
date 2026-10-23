@@ -41,6 +41,8 @@ import { SiteDailyViews } from './entities/site-daily-views.entity'
 import { HomeSettingsModule } from './modules/home-settings/home-settings.module'
 import { ContactMessage } from './entities/contact-message.entity'
 import { ContactMessagesModule } from './modules/contact-messages/contact-messages.module'
+import { SellerProfile } from './entities/seller-profile.entity'
+import { SellerProfilesModule } from './modules/seller-profiles/seller-profiles.module'
 
 @Module({
   imports: [
@@ -51,7 +53,7 @@ import { ContactMessagesModule } from './modules/contact-messages/contact-messag
       username: process.env.DB_USERNAME || 'card_admin',
       password: process.env.DB_PASSWORD || 'CardAuction2026!',
       database: process.env.DB_DATABASE || 'card_auction',
-      entities: [User, Product, Auction, Bid, Order, Favorite, WalletTransaction, Page, Tag, CartItem, Settings, SellerApplication, Reservation, AppNotification, Banner, HomeSettings, SiteDailyViews, ContactMessage],
+      entities: [User, Product, Auction, Bid, Order, Favorite, WalletTransaction, Page, Tag, CartItem, Settings, SellerApplication, Reservation, AppNotification, Banner, HomeSettings, SiteDailyViews, ContactMessage, SellerProfile],
       synchronize: process.env.NODE_ENV === 'development',
       logging: process.env.NODE_ENV === 'development'
     }),
@@ -76,7 +78,8 @@ import { ContactMessagesModule } from './modules/contact-messages/contact-messag
     ReservationsModule,
     BannersModule,
     HomeSettingsModule,
-    ContactMessagesModule
+    ContactMessagesModule,
+    SellerProfilesModule
   ],
   controllers: [AppController],
   providers: [AppService]

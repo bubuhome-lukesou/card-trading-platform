@@ -19,6 +19,11 @@ const publicRoutes: RouteRecordRaw[] = [
     component: () => import('@/views/public/ProductDetailView.vue')
   },
   {
+    path: '/seller/:id',
+    name: 'SellerProfile',
+    component: () => import('@/views/public/SellerProfileView.vue')
+  },
+  {
     path: '/auctions',
     name: 'Auctions',
     // 統一佈局：拍賣頁直接用 MarketplaceView（與銷售/預訂頁同一套篩選欄佈局），鎖定 listing=auction

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // 詳情頁共用賣家卡 — 抽自 ProductDetailView/AuctionDetailView（T7 組件抽離 2026-09-21）
-// 可點擊 → 跳轉該商家 marketplace 篩選頁
+// 2026-10-23 起跳轉公開商家介紹頁 /seller/:id（原跳 marketplace?sellers=id）
 // ⚠️ 樣式自帶完整 scoped CSS（host scoped CSS 命中唔到子組件內部元素 — Vue scoped 原理）
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
@@ -12,16 +12,19 @@ const props = defineProps<{
 const { locale } = useI18n()
 const router = useRouter()
 
-const goToSellerMarketplace = () => {
+const goToSellerProfile = () => {
   const sellerId = props.seller?.id
-  if (sellerId) router.push({ path: '/marketplace', query: { sellers: sellerId } })
+  if (sellerId) router.push({ path: `/seller/${sellerId}` })
 }
 </script>
 
 <template>
-  <div v-if="seller" class="d-seller" @click="goToSellerMarketplace" :title="locale === 'zh' ? '查看此商家全部商品' : 'View all products from this seller'">
+  <div v-if="seller" class="d-seller" @click="goToSellerProfile" :title="locale === 'zh' ? '查看商家介紹頁' : 'View seller profile'">
     <span class="seller-label">{{ locale === 'zh' ? '商鋪' : 'Seller' }}</span>
-    <div class="seller-avatar-sm">{{ (seller.nickname || '?').charAt(0) }}</div>
+    <div class="seller-avatar-sm">
+      <img v-if="seller.avatar" :src="seller.avatar" :alt="seller.nickname" class="seller-avatar-img" />
+      <template v-else>{{ (seller.nickname || '?').charAt(0) }}</template>
+    </div>
     <span class="seller-name-text">{{ seller.nickname || (locale === 'zh' ? '未知商家' : 'Unknown Seller') }}</span>
     <span class="seller-arrow">→</span>
   </div>
@@ -73,6 +76,12 @@ const goToSellerMarketplace = () => {
   font-size: 13px;
   font-weight: 600;
   flex-shrink: 0;
+  overflow: hidden;
+}
+.seller-avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 .seller-name-text {
   font-size: 0.9rem;

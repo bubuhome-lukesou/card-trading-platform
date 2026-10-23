@@ -624,6 +624,14 @@ watch(hideEnded, () => {
                   <span class="seller-avatar">{{ (s.nickname || '?').charAt(0) }}</span>
                   <span class="seller-option-name">{{ s.nickname }}</span>
                   <span class="seller-option-count">{{ s.productCount }}</span>
+                  <!-- 商家主頁入口：開新分頁去介紹頁，唔影響篩選點擊 -->
+                  <a
+                    class="seller-home-link"
+                    :href="`/seller/${s.id}`"
+                    target="_blank"
+                    :title="locale === 'zh' ? '商家主頁' : 'Seller page'"
+                    @click.stop
+                  >🏠</a>
                 </button>
                 <div v-if="filteredSellerOptions.length === 0" class="seller-empty">
                   {{ locale === 'zh' ? '沒有符合的商家' : 'No sellers found' }}
@@ -1002,6 +1010,18 @@ watch(hideEnded, () => {
       font-size: 11px;
       color: var(--text-muted);
       flex-shrink: 0;
+    }
+
+    .seller-home-link {
+      font-size: 12px;
+      text-decoration: none;
+      flex-shrink: 0;
+      opacity: 0.55;
+      transition: opacity var(--transition-fast);
+      padding: 2px;
+    }
+    .seller-home-link:hover {
+      opacity: 1;
     }
   }
 
