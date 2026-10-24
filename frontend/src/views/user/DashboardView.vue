@@ -45,9 +45,9 @@ const recentOrders = computed(() =>
     } catch {}
     return {
       id: o.id,
-      productTitle: o.product?.titleZh || o.product?.titleEn || '未知商品',
+      productTitle: o.product?.titleZh || o.product?.titleEn || t('orders.unknownProduct'),
       productImage: images[0] || '',
-      sellerNickname: o.seller?.nickname || '未知商家',
+      sellerNickname: o.seller?.nickname || t('orders.unknownSeller'),
       amount: Number(o.totalPrice) || 0,
       status: o.status,
       type: o.type,
@@ -71,7 +71,7 @@ const recentBids = computed(() =>
     return {
       id: b.id,
       auctionId: b.auctionId,
-      title: product.titleZh || product.titleEn || '拍賣商品',
+      title: product.titleZh || product.titleEn || t('user.bidAuctionFallback'),
       yourBid: Number(b.amount) || 0,
       currentBid: Number(auction.currentPrice || b.amount) || 0,
       status: bidStatus,

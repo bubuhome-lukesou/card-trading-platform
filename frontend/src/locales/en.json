@@ -230,7 +230,8 @@
     "bidWinning": "Winning",
     "bidWon": "Won",
     "bidEnded": "Ended",
-    "roleCollectorFallback": "Collector"
+    "roleCollectorFallback": "Collector",
+    "bidAuctionFallback": "Auction Item"
   },
   "cart": {
     "title": "My Cart",

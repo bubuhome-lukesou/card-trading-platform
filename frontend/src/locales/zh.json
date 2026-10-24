@@ -224,7 +224,8 @@
     "bidWinning": "領先中",
     "bidWon": "已中標",
     "bidEnded": "已結束",
-    "roleCollectorFallback": "收藏家"
+    "roleCollectorFallback": "收藏家",
+    "bidAuctionFallback": "拍賣商品"
   },
   "cart": {
     "title": "我的購物車",
