@@ -29,9 +29,9 @@ const getTransactionIcon = (type: string) => {
 
 // ===== 狀態 tabs（類型篩選） =====
 const TAB_DEFS: { key: string; label: string }[] = [
-  { key: 'all', label: '全部' },
-  { key: 'income', label: '收入' },
-  { key: 'expense', label: '支出' },
+  { key: 'all', label: 'wallet.tabAll' },
+  { key: 'income', label: 'wallet.tabIncome' },
+  { key: 'expense', label: 'wallet.tabExpense' },
 ]
 const filterType = ref('all')
 const TAB_TYPES: Record<string, string[]> = {
@@ -48,9 +48,9 @@ const sortKey = ref('')
 const sortDir = ref<'asc' | 'desc'>('desc')
 
 const sortableColumns = [
-  { key: 'description', label: '項目', type: 'text' },
-  { key: 'amount', label: '金額', type: 'number' },
-  { key: 'createdAt', label: '日期', type: 'time' },
+  { key: 'description', label: 'wallet.colDescription', type: 'text' },
+  { key: 'amount', label: 'wallet.colAmount', type: 'number' },
+  { key: 'createdAt', label: 'wallet.colDate', type: 'time' },
 ] as const
 
 const toggleSort = (key: string) => {
@@ -149,14 +149,14 @@ onMounted(() => {
 
 <template>
   <div class="wallet-page">
-    <h1 class="page-title">{{ locale === 'zh' ? '我的帳戶' : 'My Wallet' }}</h1>
+    <h1 class="page-title">{{ t('wallet.title') }}</h1>
 
     <!-- Balance Cards -->
     <div class="balance-grid">
       <div class="balance-card primary">
-        <div class="balance-label">總餘額</div>
+        <div class="balance-label">{{ t('wallet.totalBalance') }}</div>
         <div class="balance-value">{{ formatPriceExact(balance) }}</div>
-        <div class="balance-hint">充值及提現功能即將推出</div>
+        <div class="balance-hint">{{ t('wallet.balanceHint') }}</div>
       </div>
     </div>
 
@@ -165,13 +165,13 @@ onMounted(() => {
     <div class="action-buttons maintenance-notice">
       <div class="notice-card">
         <span class="notice-icon">🔒</span>
-        <span class="notice-text">{{ locale === 'zh' ? '充值及提現功能即將推出，目前訂單交易透過銀行轉帳進行，不影響買賣流程。' : 'Deposit & withdrawal coming soon. Orders are settled via bank transfer.' }}</span>
+        <span class="notice-text">{{ t('wallet.notice') }}</span>
       </div>
     </div>
 
     <!-- Transaction History -->
     <div class="transactions-section">
-      <h3 class="section-title">💳 交易記錄</h3>
+      <h3 class="section-title">{{ t('wallet.transactions') }}</h3>
 
       <!-- 類型 tabs -->
       <div class="list-tabs">
@@ -182,7 +182,7 @@ onMounted(() => {
           :class="{ active: filterType === tab.key }"
           @click="filterType = tab.key"
         >
-          {{ tab.label }}
+          {{ t(tab.label) }}
           <span class="tab-count">{{ tabCount(tab.key) }}</span>
         </button>
       </div>
@@ -193,14 +193,14 @@ onMounted(() => {
           v-model="searchQuery"
           type="text"
           class="search-input"
-          placeholder="🔍 搜尋項目..."
+          :placeholder="t('wallet.searchPlaceholder')"
         />
-        <button v-if="searchQuery" class="btn-clear-search" @click="searchQuery = ''">✕ 清除</button>
+        <button v-if="searchQuery" class="btn-clear-search" @click="searchQuery = ''">{{ t('wallet.clear') }}</button>
       </div>
 
       <StateView v-if="loading" state="loading" />
 
-      <StateView v-else-if="filteredTx.length === 0" state="empty" icon="💳" title="暫無交易記錄" />
+      <StateView v-else-if="filteredTx.length === 0" state="empty" icon="💳" :title="t('wallet.empty')" />
 
       <div v-else class="transactions-list">
         <div v-for="tx in pagedTx" :key="tx.id" class="transaction-item">
@@ -219,9 +219,9 @@ onMounted(() => {
 
       <!-- 分頁 -->
       <div v-if="!loading && filteredTx.length > PAGE_SIZE" class="pagination">
-        <button class="page-btn" :disabled="currentPage <= 1" @click="goToPage(currentPage - 1)">‹ 上一頁</button>
-        <span class="page-info">第 {{ currentPage }} / {{ totalPages }} 頁 · 共 {{ filteredTx.length }} 筆</span>
-        <button class="page-btn" :disabled="currentPage >= totalPages" @click="goToPage(currentPage + 1)">下一頁 ›</button>
+        <button class="page-btn" :disabled="currentPage <= 1" @click="goToPage(currentPage - 1)">{{ t('wallet.prevPage') }}</button>
+        <span class="page-info">{{ t('wallet.page', { page: currentPage, pages: totalPages, total: filteredTx.length }) }}</span>
+        <button class="page-btn" :disabled="currentPage >= totalPages" @click="goToPage(currentPage + 1)">{{ t('wallet.nextPage') }}</button>
       </div>
     </div>
   </div>

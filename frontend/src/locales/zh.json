@@ -337,6 +337,25 @@
     "confirmingReserve": "確認中...",
     "receiptAlt": "轉帳憑證"
   },
+  "wallet": {
+    "title": "我的帳戶",
+    "totalBalance": "總餘額",
+    "balanceHint": "充值及提現功能即將推出",
+    "notice": "充值及提現功能即將推出，目前訂單交易透過銀行轉帳進行，不影響買賣流程。",
+    "transactions": "💳 交易記錄",
+    "tabAll": "全部",
+    "tabIncome": "收入",
+    "tabExpense": "支出",
+    "colDescription": "項目",
+    "colAmount": "金額",
+    "colDate": "日期",
+    "searchPlaceholder": "🔍 搜尋項目...",
+    "clear": "✕ 清除",
+    "empty": "暫無交易記錄",
+    "prevPage": "‹ 上一頁",
+    "nextPage": "下一頁 ›",
+    "page": "第 {page} / {pages} 頁 · 共 {total} 筆"
+  },
   "seller": {
     "dashboard": "賣家中心",
     "auctions": "商品列表",

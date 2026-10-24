@@ -343,6 +343,25 @@
     "confirmingReserve": "Confirming...",
     "receiptAlt": "Transfer receipt"
   },
+  "wallet": {
+    "title": "My Wallet",
+    "totalBalance": "Total Balance",
+    "balanceHint": "Deposit & withdrawal coming soon",
+    "notice": "Deposit & withdrawal coming soon. Orders are settled via bank transfer.",
+    "transactions": "💳 Transactions",
+    "tabAll": "All",
+    "tabIncome": "Income",
+    "tabExpense": "Expense",
+    "colDescription": "Description",
+    "colAmount": "Amount",
+    "colDate": "Date",
+    "searchPlaceholder": "🔍 Search transactions...",
+    "clear": "✕ Clear",
+    "empty": "No transactions yet",
+    "prevPage": "‹ Prev",
+    "nextPage": "Next ›",
+    "page": "Page {page} / {pages} · {total} records"
+  },
   "seller": {
     "dashboard": "Seller Center",
     "auctions": "Product Management",
