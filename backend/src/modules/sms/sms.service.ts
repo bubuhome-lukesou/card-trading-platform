@@ -86,10 +86,13 @@ export class SmsService {
           const status = response.SendStatusSet[0]
           if (status.Code === 'Ok') {
             return { success: true, message: '驗證碼已發送' }
-          } else {
-            console.error('[SMS] Send failed:', status.Code, status.Message)
-            // 開發環境仍然返回成功，讓前端可以測試
-            return { success: true, message: `驗證碼已發送（開發模式：${code}）` }
+          }
+          // 2026-10-24 修：以前呢度 catch 都返 success 掩住失敗（AuthFailure.SignatureFailure 嗰陣
+          // 用戶以為已發送，其實一條都冇出）。而家失敗如實回，前端會顯示「發送失敗，請重試」。
+          console.error('[SMS] Send failed:', status.Code, status.Message)
+          return {
+            success: false,
+            message: `短信發送失敗（${status.Code}），請稍後重試或聯絡客服`,
           }
         }
       } else {
@@ -101,9 +104,8 @@ export class SmsService {
       return { success: true, message: '驗證碼已發送' }
     } catch (err) {
       console.error('[SMS] Send error:', err)
-      // 開發環境仍然返回成功
-      console.log(`[SMS DEV FALLBACK] 驗證碼 for ${phoneNumber}: ${code}`)
-      return { success: true, message: '驗證碼已發送' }
+      // 2026-10-24 修：SDK 異常如實回失敗，唔好再報成功掩飾
+      return { success: false, message: '短信發送失敗，請稍後重試或聯絡客服' }
     }
   }
 

@@ -272,35 +272,72 @@ const loadOrders = async () => {
   }
 }
 
-// ===== 操作（全部保留原有流程） =====
-const handlePay = async (orderId: string) => {
-  processingPay.value = orderId
-  try {
-    const fileInput = document.createElement('input')
-    fileInput.type = 'file'
-    fileInput.accept = 'image/*'
-    fileInput.onchange = async (e: any) => {
-      const file = e.target.files[0]
-      if (!file) {
-        processingPay.value = null
-        return
-      }
-      try {
-        await ordersApi.uploadTransferReceipt(orderId, file)
-        await loadOrders()
-      } catch (error) {
-        console.error('Payment receipt upload failed:', error)
-        showToast('上傳憑證失敗，請重試', 'error')
-      } finally {
-        processingPay.value = null
-      }
-    }
-    fileInput.click()
-  } catch (error) {
-    console.error('Payment failed:', error)
-    showToast('支付失敗，請重試', 'error')
-    processingPay.value = null
+// ===== File picker（帶取消偵測，2026-10-24 修 X 關閉卡死）=====
+// 瀏覽器取消檔案選擇（X／Esc）唔會觸發 change 事件 — 結合 input 'cancel' 事件
+// （Chrome 113+/Safari 16.4+ 原生）＋ window focus fallback（300ms 後檢查 files 冇貨＝取消）
+const openFilePicker = (onResult: (file: File | null) => void) => {
+  const input = document.createElement('input')
+  input.type = 'file'
+  input.accept = 'image/*'
+  let settled = false
+  const cleanup = () => {
+    input.removeEventListener('cancel', onCancel)
+    window.removeEventListener('focus', onWindowFocus)
   }
+  const finish = (file: File | null) => {
+    if (settled) return
+    settled = true
+    cleanup()
+    onResult(file)
+  }
+  const onCancel = () => finish(null)
+  const onWindowFocus = () => {
+    setTimeout(() => {
+      if (settled) return
+      // 已揀檔案 → 交由 change 事件繼續（change 會觸發 finish）
+      if (input.files && input.files.length > 0) return
+      finish(null)
+    }, 300)
+  }
+  input.addEventListener('cancel', onCancel)
+  window.addEventListener('focus', onWindowFocus)
+  input.onchange = () => {
+    finish(input.files?.[0] || null)
+  }
+  input.click()
+}
+
+// ===== 支付（暫不支持線上支付）：先彈提示 → 確認後再上傳轉賬憑證 =====
+const handlePay = (orderId: string) => {
+  processingPay.value = orderId
+  const isDeposit = orders.value.find(o => o.id === orderId)?.type === 'reservation_deposit'
+  const confirmed = window.confirm(
+    isDeposit
+      ? '暫不支持線上支付，請上傳訂金轉賬憑證'
+      : '暫不支持線上支付，請上傳轉賬憑證或預約拿貨'
+  )
+  if (!confirmed) {
+    processingPay.value = null
+    return
+  }
+  openFilePicker(async (file) => {
+    if (!file) {
+      // X 關閉／取消 → 按鈕復原，唔好卡死「處理中」
+      processingPay.value = null
+      return
+    }
+    try {
+      await ordersApi.uploadTransferReceipt(orderId, file)
+      closeDetail()
+      await loadOrders()
+      showToast('付款憑證上傳成功！請等待商家確認')
+    } catch (error) {
+      console.error('Payment receipt upload failed:', error)
+      showToast('上傳憑證失敗，請重試', 'error')
+    } finally {
+      processingPay.value = null
+    }
+  })
 }
 
 // 預約攞貨彈窗
@@ -327,29 +364,25 @@ const confirmReserve = async () => {
   if (!pendingReserveOrderId.value) return
   submittingReserve.value = true
   try {
-    const input = document.createElement('input')
-    input.type = 'file'
-    input.accept = 'image/*'
-    input.onchange = async (e: Event) => {
-      const target = e.target as HTMLInputElement
-      if (target.files?.[0]) {
-        try {
-          await ordersApi.uploadTransferReceipt(pendingReserveOrderId.value!, target.files[0])
-          await loadOrders()
-          showPickupModal.value = false
-          pendingReserveOrderId.value = null
-          showToast('預約拿貨成功！請等待商家確認')
-        } catch (error) {
-          console.error('Upload receipt failed:', error)
-          showToast('上傳憑證失敗，請重試', 'error')
-        } finally {
-          submittingReserve.value = false
-        }
-      } else {
+    openFilePicker(async (file) => {
+      if (!file) {
+        // 取消選擇 → 復原提交狀態
+        submittingReserve.value = false
+        return
+      }
+      try {
+        await ordersApi.uploadTransferReceipt(pendingReserveOrderId.value!, file)
+        await loadOrders()
+        showPickupModal.value = false
+        pendingReserveOrderId.value = null
+        showToast('預約拿貨成功！請等待商家確認')
+      } catch (error) {
+        console.error('Upload receipt failed:', error)
+        showToast('上傳憑證失敗，請重試', 'error')
+      } finally {
         submittingReserve.value = false
       }
-    }
-    input.click()
+    })
   } catch (error) {
     console.error('Reserve failed:', error)
     showToast('操作失敗，請重試', 'error')
@@ -363,29 +396,11 @@ const cancelReserve = () => {
 }
 
 const triggerReceiptUpload = (orderId: string) => {
-  const input = document.createElement('input')
-  input.type = 'file'
-  input.accept = 'image/*'
-  input.onchange = (e: Event) => {
-    const target = e.target as HTMLInputElement
-    if (target.files?.[0]) {
-      handleUploadReceipt(orderId, target.files[0])
-    }
-  }
-  input.click()
+  openFilePicker((file) => { if (file) handleUploadReceipt(orderId, file) })
 }
 
 const triggerBalanceUpload = (orderId: string) => {
-  const input = document.createElement('input')
-  input.type = 'file'
-  input.accept = 'image/*'
-  input.onchange = (e: Event) => {
-    const target = e.target as HTMLInputElement
-    if (target.files?.[0]) {
-      handleUploadBalance(orderId, target.files[0])
-    }
-  }
-  input.click()
+  openFilePicker((file) => { if (file) handleUploadBalance(orderId, file) })
 }
 
 const handleUploadBalance = async (orderId: string, file: File) => {
@@ -688,8 +703,10 @@ onMounted(() => {
           </div>
 
           <div class="detail-product">
-            <img v-if="detailOrder.productImage" :src="resolveImageUrl(detailOrder.productImage)" class="detail-thumb" :alt="detailOrder.productTitle" />
-            <span v-else class="card-emoji">🃏</span>
+            <div class="dp-thumb-wrap">
+              <img v-if="detailOrder.productImage" :src="resolveImageUrl(detailOrder.productImage)" class="detail-thumb" :alt="detailOrder.productTitle" @click="detailOrder.productImage && viewReceipt(detailOrder.productImage)" />
+              <span v-else class="card-emoji">🃏</span>
+            </div>
             <div class="dp-info">
               <span class="dp-title">{{ detailOrder.productTitle }}</span>
               <span class="dp-sub">x{{ detailOrder.quantity }} · 商家 {{ detailOrder.sellerNickname }}</span>
@@ -1062,6 +1079,19 @@ tr:last-child td { border-bottom: none; }
   display: flex; align-items: center; justify-content: center;
   background: var(--bg-card); border-radius: var(--radius-md); flex-shrink: 0;
 }
+/* 訂單詳情商品縮圖（2026-10-24 修：此前無任何定義，原圖直出爆版） */
+.dp-thumb-wrap { position: relative; flex-shrink: 0; width: 56px; height: 56px; }
+.dp-thumb-wrap .card-emoji { position: absolute; inset: 0; width: 100%; height: 100%; }
+.detail-thumb {
+  width: 56px; height: 56px;
+  border-radius: var(--radius-md);
+  object-fit: cover;
+  flex-shrink: 0;
+  border: 1px solid var(--border);
+  display: block;
+  max-width: 100%;
+  cursor: pointer;
+}
 .dp-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
 .dp-title { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .dp-sub { font-size: var(--text-xs); color: var(--text-secondary); }
@@ -1246,6 +1276,15 @@ tr:last-child td { border-bottom: none; }
   .list-tabs { gap: var(--space-1); }
   .list-tab { padding: var(--space-1) var(--space-3); font-size: var(--text-xs); }
   .detail-grid { grid-template-columns: 1fr; }
+  /* 訂單詳情商品圖（<768px）：46px 縮圖＋唔准超屏寬 */
+  .detail-product { flex-wrap: nowrap; min-width: 0; }
+  .detail-product .dp-info { min-width: 0; }
+  .detail-thumb {
+    width: 46px; height: 46px;
+    max-width: 46px;
+    max-height: 46px;
+  }
+  .dp-thumb-wrap { width: 46px; height: 46px; }
   .modal-overlay { align-items: flex-end; padding: 0; }
   .detail-modal, .receipt-modal, .pickup-modal {
     width: 100%;
