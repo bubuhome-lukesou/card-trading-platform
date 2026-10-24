@@ -17,7 +17,7 @@ const navItems = [
   { path: '/seller/auctions', name: 'auctions', icon: '🔨', label: 'seller.auctions' },
   { path: '/seller/orders', name: 'orders', icon: '📋', label: 'seller.orders' },
   { path: '/seller/earnings', name: 'earnings', icon: '💰', label: 'seller.earnings' },
-  { path: '/seller/notifications', name: 'notifications', icon: '🔔', label: '通知中心' },
+  { path: '/seller/notifications', name: 'notifications', icon: '🔔', label: 'seller.notifications' },
   { path: '/seller/settings', name: 'settings', icon: '⚙️', label: 'seller.settings' },
 ]
 
@@ -70,7 +70,7 @@ onUnmounted(() => {
     <nav class="mobile-nav">
       <button class="mobile-nav-toggle" @click="sidebarOpen = !sidebarOpen" :class="{ active: sidebarOpen }">
         <span class="toggle-icon">{{ sidebarOpen ? '✕' : '☰' }}</span>
-        <span class="toggle-label">{{ sidebarOpen ? '關閉' : '選單' }}</span>
+        <span class="toggle-label">{{ sidebarOpen ? t('user.closeMenu') : t('user.menu') }}</span>
       </button>
       <div class="mobile-nav-icons">
         <router-link v-for="item in navItems" :key="item.path" :to="item.path" class="mobile-nav-icon" :class="{ active: isActive(item.path) }">

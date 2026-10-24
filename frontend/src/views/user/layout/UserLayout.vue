@@ -17,10 +17,10 @@ const sidebarOpen = ref(false)
 const navItems = [
   { path: '/user', name: 'dashboard', icon: '👤', label: 'user.dashboard' },
   { path: '/user/orders', name: 'orders', icon: '📦', label: 'user.myOrders' },
-  { path: '/user/cart', name: 'cart', icon: '🛒', label: '購物車' },
+  { path: '/user/cart', name: 'cart', icon: '🛒', label: 'user.cart' },
   { path: '/user/favorites', name: 'favorites', icon: '❤️', label: 'user.myFavorites' },
   { path: '/user/wallet', name: 'wallet', icon: '💳', label: 'user.wallet' },
-  { path: '/user/notifications', name: 'notifications', icon: '🔔', label: '通知中心' },
+  { path: '/user/notifications', name: 'notifications', icon: '🔔', label: 'user.notifications' },
   { path: '/user/settings', name: 'settings', icon: '⚙️', label: 'user.settings' },
 ]
 
@@ -89,7 +89,7 @@ watch(() => route.path, (p) => {
     <nav class="mobile-nav">
       <button class="mobile-nav-toggle" @click="sidebarOpen = !sidebarOpen" :class="{ active: sidebarOpen }">
         <span class="toggle-icon">{{ sidebarOpen ? '✕' : '☰' }}</span>
-        <span class="toggle-label">{{ sidebarOpen ? '關閉' : '選單' }}</span>
+        <span class="toggle-label">{{ sidebarOpen ? t('user.closeMenu') : t('user.menu') }}</span>
       </button>
       <div class="mobile-nav-icons">
         <router-link v-for="item in navItems" :key="item.path" :to="item.path" class="mobile-nav-icon" :class="{ active: isActive(item.path) }">

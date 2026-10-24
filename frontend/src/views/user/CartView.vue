@@ -75,7 +75,7 @@ const updateQuantity = async (item: CartItem, newQuantity: number) => {
   // Check stock limit
   const maxStock = item.product?.quantity ?? 0
   if (newQuantity > maxStock) {
-    alert(`庫存不足！當前最多只能購買 ${maxStock} 件`)
+    alert(t('cart.insufficientStock', { max: maxStock }))
     return
   }
 
@@ -86,14 +86,14 @@ const updateQuantity = async (item: CartItem, newQuantity: number) => {
   } catch (error: any) {
     console.error('Failed to update quantity:', error)
     const msg = error?.response?.data?.message || error?.message || ''
-    alert(msg || '修改數量失敗')
+    alert(msg || t('cart.qtyUpdateFailed'))
   } finally {
     processing.value = false
   }
 }
 
 const removeItem = async (itemId: string) => {
-  if (!confirm('確定要從購物車移除這件商品嗎？')) return
+  if (!confirm(t('cart.removeConfirm'))) return
   
   processing.value = true
   try {
@@ -101,7 +101,7 @@ const removeItem = async (itemId: string) => {
     cartItems.value = cartItems.value.filter(i => i.id !== itemId)
   } catch (error) {
     console.error('Failed to remove item:', error)
-    alert('移除失敗，請重試')
+    alert(t('cart.removeFailed'))
   } finally {
     processing.value = false
   }
@@ -115,7 +115,7 @@ const handleCheckout = async () => {
     // Create orders for each cart item
     for (const item of cartItems.value) {
       if (item.product?.quantity === 0) {
-        alert(`商品「${item.product.titleZh || item.product.titleEn}」已售罄，請先移除`)
+        alert(t('cart.soldOutRemove', { title: item.product.titleZh || item.product.titleEn }))
         processing.value = false
         return
       }
@@ -133,11 +133,11 @@ const handleCheckout = async () => {
     await cartApi.clearCart()
     cartItems.value = []
     
-    alert('下單成功！即將跳轉到訂單頁面...')
+    alert(t('cart.checkoutSuccess'))
     router.push('/user/orders')
   } catch (error: any) {
     console.error('Checkout failed:', error)
-    alert(error?.response?.data?.message || '結算失敗，請重試')
+    alert(error?.response?.data?.message || t('cart.checkoutFailed'))
   } finally {
     processing.value = false
   }
@@ -147,11 +147,11 @@ const handleUploadReceipt = async (orderId: string, file: File) => {
   receiptUploadLoading.value = orderId
   try {
     await cartApi.uploadTransferReceipt(orderId, file)
-    alert('上傳成功！')
+    alert(t('cart.uploadSuccess'))
     await loadCart()
   } catch (error) {
     console.error('Upload failed:', error)
-    alert('上傳失敗，請重試')
+    alert(t('cart.uploadFailed'))
   } finally {
     receiptUploadLoading.value = null
   }
@@ -183,17 +183,17 @@ onMounted(() => {
 <template>
   <div class="cart-page">
     <div class="page-header">
-      <h1 class="page-title">我的購物車</h1>
+      <h1 class="page-title">{{ t('cart.title') }}</h1>
       <span class="item-count" v-if="cartItems.length > 0">
-        ({{ cartItems.length }} 件商品)
+        ({{ t('cart.itemCount', { count: cartItems.length }) }})
       </span>
     </div>
 
     <StateView v-if="loading" state="loading" />
 
-    <StateView v-else-if="cartItems.length === 0" state="empty" icon="🛒" title="購物車是空的" message="快去挑選心儀的卡牌吧！">
+    <StateView v-else-if="cartItems.length === 0" state="empty" icon="🛒" :title="t('cart.empty')" :message="t('cart.emptyHint')">
       <router-link to="/marketplace" class="btn-primary">
-        去逛逛
+        {{ t('cart.browse') }}
       </router-link>
     </StateView>
 
@@ -210,7 +210,7 @@ onMounted(() => {
               Out of Stock
             </div>
             <div v-if="isProductSuspended(item.product)" class="suspended-badge">
-              已下架
+              {{ t('cart.removed') }}
             </div>
           </div>
 
@@ -240,7 +240,7 @@ onMounted(() => {
           </div>
 
           <div class="item-subtotal">
-            <span class="subtotal-label">小計</span>
+            <span class="subtotal-label">{{ t('cart.subtotal') }}</span>
             <span class="subtotal-value">
               {{ formatPrice((item.product?.price || 0) * item.quantity) }}
             </span>
@@ -259,7 +259,7 @@ onMounted(() => {
       <!-- Order Summary -->
       <div class="order-summary">
         <div class="summary-row total">
-          <span>商品總價</span>
+          <span>{{ t('cart.total') }}</span>
           <span class="total-amount">{{ formatPrice(totalAmount) }}</span>
         </div>
         
@@ -269,7 +269,7 @@ onMounted(() => {
           :disabled="processing || cartItems.some(i => isOutOfStock(i) || isProductSuspended(i.product))"
         >
           <Loader2 v-if="processing" class="animate-spin" />
-          {{ processing ? '處理中...' : '結算' }}
+          {{ processing ? t('cart.processing') : t('cart.checkout') }}
         </button>
       </div>
     </div>

@@ -80,37 +80,38 @@ const recentBids = computed(() =>
   })
 )
 
-const BID_STATUS: Record<string, { cls: string; text: string }> = {
-  outbid: { cls: 'st-cancelled', text: '已出局' },
-  winning: { cls: 'st-confirmed', text: '領先中' },
-  won: { cls: 'st-delivered', text: '已中標' },
-  ended: { cls: 'st-default', text: '已結束' },
+const BID_STATUS: Record<string, { cls: string; key: string }> = {
+  outbid: { cls: 'st-cancelled', key: 'user.bidOutbid' },
+  winning: { cls: 'st-confirmed', key: 'user.bidWinning' },
+  won: { cls: 'st-delivered', key: 'user.bidWon' },
+  ended: { cls: 'st-default', key: 'user.bidEnded' },
 }
-const bidStatus = (s: string) => BID_STATUS[s] || { cls: 'st-default', text: s }
+const bidStatus = (s: string) => BID_STATUS[s] || { cls: 'st-default', key: s }
 
 // ===== 徽章（同訂單頁一致） =====
-const ORDER_TYPE: Record<string, { text: string; cls: string }> = {
-  direct_purchase: { text: '直購', cls: 't-sale' },
-  buy_now: { text: '拍賣直購', cls: 't-auction' },
-  auction_win: { text: '拍賣得標', cls: 't-auction' },
-  reservation_deposit: { text: '預約訂金', cls: 't-reserve' },
-  reservation_full: { text: '預約尾款', cls: 't-reserve' },
+const ORDER_TYPE: Record<string, { key: string; cls: string }> = {
+  direct_purchase: { key: 'user.typeDirect', cls: 't-sale' },
+  buy_now: { key: 'user.typeBuyNow', cls: 't-auction' },
+  auction_win: { key: 'user.typeAuctionWin', cls: 't-auction' },
+  reservation_deposit: { key: 'user.typeReserveDeposit', cls: 't-reserve' },
+  reservation_full: { key: 'user.typeReserveFull', cls: 't-reserve' },
 }
-const typeTag = (type: string) => ORDER_TYPE[type] || { text: type, cls: 't-sale' }
+const typeTag = (type: string) => ORDER_TYPE[type] || { key: '', cls: 't-sale' }
 
-const ORDER_STATUS: Record<string, { cls: string; text: string }> = {
-  pending: { cls: 'st-pending', text: '待付款' },
-  pending_paid: { cls: 'st-pending-paid', text: '待商家確認' },
-  confirmed: { cls: 'st-confirmed', text: '待收貨' },
-  shipped: { cls: 'st-shipped', text: '已發貨' },
-  delivered: { cls: 'st-delivered', text: '已完成' },
-  cancelled: { cls: 'st-cancelled', text: '已取消' },
-  refunded: { cls: 'st-cancelled', text: '已退款' },
+const ORDER_STATUS: Record<string, { cls: string; key: string }> = {
+  pending: { cls: 'st-pending', key: 'user.stPending' },
+  pending_paid: { cls: 'st-pending-paid', key: 'user.stPendingMerchant' },
+  confirmed: { cls: 'st-confirmed', key: 'user.stConfirmed' },
+  shipped: { cls: 'st-shipped', key: 'user.stShipped' },
+  delivered: { cls: 'st-delivered', key: 'user.stDelivered' },
+  cancelled: { cls: 'st-cancelled', key: 'user.stCancelled' },
+  refunded: { cls: 'st-cancelled', key: 'user.stRefunded' },
 }
 const orderStatus = (s: string, type?: string) => {
-  if (type === 'reservation_deposit' && s === 'confirmed') return { cls: 'st-confirmed', text: '待付尾款' }
-  if (type === 'reservation_deposit' && s === 'pending') return { cls: 'st-pending', text: '待付訂金' }
-  return ORDER_STATUS[s] || { cls: 'st-default', text: s }
+  if (type === 'reservation_deposit' && s === 'confirmed') return { cls: 'st-confirmed', key: 'user.stPendingBalance' }
+  if (type === 'reservation_deposit' && s === 'pending') return { cls: 'st-pending', key: 'user.stPendingDeposit' }
+  const found = ORDER_STATUS[s] || { cls: 'st-default', key: '' }
+  return found.key ? { cls: found.cls, text: t(found.key) } : { cls: found.cls, text: s }
 }
 
 const apiBaseUrl = import.meta.env.VITE_API_URL || ''
@@ -144,26 +145,26 @@ onMounted(() => loadData())
   <div class="user-dashboard">
     <!-- 歡迎 -->
     <div class="welcome-section">
-      <h1>歡迎回來，{{ authStore.user?.nickname || '收藏家' }}！</h1>
-      <p>發現珍稀卡牌，參與精彩競拍</p>
+      <h1>{{ t('user.welcomeBack', { name: authStore.user?.nickname || t('user.roleCollectorFallback') }) }}</h1>
+      <p>{{ t('user.welcomeSub') }}</p>
     </div>
 
     <!-- 統計條（同四分頁 summary-bar/stat-item 風格） -->
     <div v-if="!loading" class="summary-bar">
       <div class="stat-item" :class="{ alert: stats.todoOrders > 0 }">
-        <span class="stat-label">進行中訂單</span>
-        <span class="stat-value">{{ stats.todoOrders }} <small>筆</small></span>
+        <span class="stat-label">{{ t('user.statActiveOrders') }}</span>
+        <span class="stat-value">{{ stats.todoOrders }} <small>{{ t('user.unitOrders') }}</small></span>
       </div>
       <div class="stat-item">
-        <span class="stat-label">訂單</span>
-        <span class="stat-value">{{ stats.totalOrders }} <small>筆</small></span>
+        <span class="stat-label">{{ t('user.statOrders') }}</span>
+        <span class="stat-value">{{ stats.totalOrders }} <small>{{ t('user.unitOrders') }}</small></span>
       </div>
       <div class="stat-item">
-        <span class="stat-label">出價中</span>
-        <span class="stat-value">{{ stats.activeBids }} <small>/ 全部 {{ stats.totalBids }}</small></span>
+        <span class="stat-label">{{ t('user.statActiveBids') }}</span>
+        <span class="stat-value">{{ stats.activeBids }} <small>/ {{ t('user.unitAll', { total: stats.totalBids }) }}</small></span>
       </div>
       <div class="stat-item primary">
-        <span class="stat-label">累計消費</span>
+        <span class="stat-label">{{ t('user.statTotalSpent') }}</span>
         <span class="stat-value money">{{ formatPrice(stats.totalSpent) }}</span>
       </div>
     </div>
@@ -172,19 +173,19 @@ onMounted(() => loadData())
     <div class="quick-actions">
       <router-link to="/auctions" class="action-card">
         <span class="action-icon">🔨</span>
-        <span class="action-text">參與拍賣</span>
+        <span class="action-text">{{ t('user.actAuctions') }}</span>
       </router-link>
       <router-link to="/marketplace" class="action-card">
         <span class="action-icon">🛒</span>
-        <span class="action-text">商品市場</span>
+        <span class="action-text">{{ t('user.actMarketplace') }}</span>
       </router-link>
       <router-link to="/user/favorites" class="action-card">
         <span class="action-icon">❤️</span>
-        <span class="action-text">我的收藏</span>
+        <span class="action-text">{{ t('user.myFavorites') }}</span>
       </router-link>
       <router-link to="/user/wallet" class="action-card">
         <span class="action-icon">💳</span>
-        <span class="action-text">我的錢包</span>
+        <span class="action-text">{{ t('user.wallet') }}</span>
       </router-link>
     </div>
 
@@ -193,12 +194,12 @@ onMounted(() => loadData())
       <!-- 我的訂單（行結構同「我的訂單」列表） -->
       <div class="card">
         <div class="card-header">
-          <h3 class="card-title">📦 最新訂單</h3>
-          <router-link to="/user/orders" class="see-all">查看全部</router-link>
+          <h3 class="card-title">{{ t('user.latestOrders') }}</h3>
+          <router-link to="/user/orders" class="see-all">{{ t('user.viewAll') }}</router-link>
         </div>
         <div class="card-body">
-          <StateView v-if="loading" state="loading" title="加載中..." />
-          <StateView v-else-if="!recentOrders.length" state="empty" icon="📦" title="暫無訂單" />
+          <StateView v-if="loading" state="loading" :title="t('user.loadingShort')" />
+          <StateView v-else-if="!recentOrders.length" state="empty" icon="📦" :title="t('user.noOrders')" />
           <div v-else class="order-list">
             <div v-for="order in recentOrders" :key="order.id" class="order-item">
               <img v-if="order.productImage" :src="resolveImageUrl(order.productImage)" class="row-thumb" :alt="order.productTitle" />
@@ -206,7 +207,7 @@ onMounted(() => loadData())
               <div class="oi-info">
                 <div class="oi-title">{{ order.productTitle }}</div>
                 <div class="oi-meta">
-                  <span class="type-tag" :class="typeTag(order.type).cls">{{ typeTag(order.type).text }}</span>
+                  <span class="type-tag" :class="typeTag(order.type).cls">{{ typeTag(order.type).key ? t(typeTag(order.type).key) : order.type }}</span>
                   <span class="status-badge" :class="orderStatus(order.status, order.type).cls">{{ orderStatus(order.status, order.type).text }}</span>
                 </div>
               </div>
@@ -222,11 +223,11 @@ onMounted(() => loadData())
       <!-- 我的出價 -->
       <div class="card">
         <div class="card-header">
-          <h3 class="card-title">🎯 我的出價</h3>
+          <h3 class="card-title">🎯 {{ t('user.myBids') }}</h3>
         </div>
         <div class="card-body">
-          <StateView v-if="loading" state="loading" title="加載中..." />
-          <StateView v-else-if="!recentBids.length" state="empty" icon="🎯" title="暫無出價記錄" />
+          <StateView v-if="loading" state="loading" :title="t('user.loadingShort')" />
+          <StateView v-else-if="!recentBids.length" state="empty" icon="🎯" :title="t('user.noBids')" />
           <div v-else class="order-list">
             <div
               v-for="bid in recentBids"
@@ -238,12 +239,12 @@ onMounted(() => loadData())
               <div class="oi-info">
                 <div class="oi-title">{{ bid.title }}</div>
                 <div class="oi-meta">
-                  <span class="status-badge" :class="bidStatus(bid.status).cls">{{ bidStatus(bid.status).text }}</span>
+                  <span class="status-badge" :class="bidStatus(bid.status).cls">{{ t(bidStatus(bid.status).key) }}</span>
                 </div>
               </div>
               <div class="oi-right">
                 <div class="oi-amount">{{ formatPrice(bid.yourBid) }}</div>
-                <div class="oi-date">當前 {{ formatPrice(bid.currentBid) }}</div>
+                <div class="oi-date">{{ t('user.currentBid', { price: formatPrice(bid.currentBid) }) }}</div>
               </div>
             </div>
           </div>
