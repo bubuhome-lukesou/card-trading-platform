@@ -134,6 +134,20 @@
       "timeLeft": "Time Left",
       "bids": "bids",
       "noBids": "No bids yet"
+    },
+    "favorites": {
+      "title": "My Favorites",
+      "empty": "No favorites yet",
+      "emptyHint": "Save the cards you love!",
+      "browse": "Browse Products",
+      "delisted": "Delisted",
+      "metaItem": "Item",
+      "bidNow": "Bid Now",
+      "reserveNow": "Reserve Now",
+      "processing": "Processing...",
+      "buyNow": "Buy Now",
+      "addToCart": "Add to Cart",
+      "reserveOk": "Reservation successful!"
     }
   },
   "auction": {

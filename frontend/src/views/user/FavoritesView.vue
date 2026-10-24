@@ -70,7 +70,7 @@ const handleReserve = async (item: any) => {
   try {
     await reservationApi.createReservation(item.productId)
     processing.value = null
-    alert(locale.value === 'zh' ? '預約成功！' : 'Reservation successful!')
+    alert(t('product.favorites.reserveOk'))
   } catch (error) {
     console.error('Reserve failed:', error)
     processing.value = null
@@ -98,15 +98,15 @@ onMounted(() => {
 
 <template>
   <div class="favorites-page">
-    <h1 class="page-title">我的收藏</h1>
+    <h1 class="page-title">{{ t('product.favorites.title') }}</h1>
 
     <StateView v-if="loading" state="loading" />
 
     <StateView
       v-else-if="favorites.length === 0"
-      state="empty" icon="❤️" title="暫無收藏" message="快去收藏您喜歡的卡牌吧！"
+      state="empty" icon="❤️" :title="t('product.favorites.empty')" :message="t('product.favorites.emptyHint')"
     >
-      <router-link to="/marketplace" class="btn-primary">瀏覽商品</router-link>
+      <router-link to="/marketplace" class="btn-primary">{{ t('product.favorites.browse') }}</router-link>
     </StateView>
 
     <div v-else class="favorites-grid">
@@ -121,12 +121,12 @@ onMounted(() => {
           <button class="remove-btn" @click.stop="handleRemove(item.productId)">✕</button>
           <!-- 已下架標記 -->
           <div v-if="isProductSuspended(item.product)" class="suspended-overlay">
-            <span>已下架</span>
+            <span>{{ t('product.favorites.delisted') }}</span>
           </div>
         </div>
         <div class="card-info">
           <h3 class="card-title">{{ item.product?.titleZh || item.product?.titleEn }}</h3>
-          <div class="card-meta">{{ item.product?.category ? (locale === 'zh' ? '商品' : 'Item') : '' }}</div>
+          <div class="card-meta">{{ item.product?.category ? t('product.favorites.metaItem') : '' }}</div>
           <div class="card-price">
             <span class="price-value">{{ formatPrice(item.product?.price || 0) }}</span>
           </div>
@@ -138,7 +138,7 @@ onMounted(() => {
             :disabled="processing === item.productId || isProductSuspended(item.product)"
             @click="handleCardClick(item)"
           >
-            立即出價
+            {{ t('product.favorites.bidNow') }}
           </button>
         </div>
         <!-- 預約商品：顯示立即預約按鈕 -->
@@ -148,7 +148,7 @@ onMounted(() => {
             :disabled="processing === item.productId || isProductSuspended(item.product)"
             @click="handleReserve(item)"
           >
-            {{ processing === item.productId ? '處理中...' : '立即預約' }}
+            {{ processing === item.productId ? t('product.favorites.processing') : t('product.favorites.reserveNow') }}
           </button>
         </div>
         <!-- 一般商品：顯示立即購買 + 加入購物車 -->
@@ -158,14 +158,14 @@ onMounted(() => {
             :disabled="processing === item.productId || isProductSuspended(item.product)"
             @click="handleBuyNow(item)"
           >
-            {{ processing === item.productId ? '處理中...' : '立即購買' }}
+            {{ processing === item.productId ? t('product.favorites.processing') : t('product.favorites.buyNow') }}
           </button>
           <button
             class="btn-cart"
             :disabled="processing === item.productId || isProductSuspended(item.product)"
             @click="handleAddToCart(item)"
           >
-            加入購物車
+            {{ t('product.favorites.addToCart') }}
           </button>
         </div>
       </div>
