@@ -2,8 +2,11 @@
 import { formatPrice, formatDate, formatDateTime } from '@/utils/format'
 import StateView from '@/components/common/StateView.vue'
 import { ref, computed, watch, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { ordersApi } from '@/api/orders'
 import api from '@/api/index'
+
+const { t } = useI18n()
 
 interface Order {
   id: string
@@ -69,15 +72,15 @@ const resolveImageUrl = (url: string) => {
 }
 
 // ===== 狀態 tabs（同 seller 訂單管理樣式；口徑按買家視角） =====
-const TAB_DEFS: { key: string; label: string }[] = [
-  { key: 'todo', label: '進行中' },
-  { key: 'all', label: '全部' },
-  { key: 'pending', label: '待付款' },
-  { key: 'pending_paid', label: '待確認' },
-  { key: 'confirmed', label: '待收貨' },
-  { key: 'shipped', label: '已發貨' },
-  { key: 'delivered', label: '已完成' },
-  { key: 'cancelled', label: '已取消' },
+const TAB_DEFS: { key: string; labelKey: string }[] = [
+  { key: 'todo', labelKey: 'orders.tabTodo' },
+  { key: 'all', labelKey: 'orders.tabAll' },
+  { key: 'pending', labelKey: 'orders.tabPending' },
+  { key: 'pending_paid', labelKey: 'orders.tabPendingConfirm' },
+  { key: 'confirmed', labelKey: 'orders.tabConfirmed' },
+  { key: 'shipped', labelKey: 'orders.tabShipped' },
+  { key: 'delivered', labelKey: 'orders.tabDelivered' },
+  { key: 'cancelled', labelKey: 'orders.tabCancelled' },
 ]
 const TAB_STATUSES: Record<string, string[]> = {
   todo: ['pending', 'pending_paid', 'confirmed', 'shipped'],
@@ -121,11 +124,11 @@ const sortKey = ref('')
 const sortDir = ref<'asc' | 'desc'>('desc')
 
 const sortableColumns = [
-  { key: 'productTitle', label: '商品', type: 'text' },
-  { key: 'sellerNickname', label: '商家', type: 'text' },
-  { key: 'amount', label: '金額', type: 'number' },
-  { key: 'status', label: '狀態', type: 'text' },
-  { key: 'createdAt', label: '時間', type: 'time' },
+  { key: 'productTitle', labelKey: 'orders.colProduct', type: 'text' },
+  { key: 'sellerNickname', labelKey: 'orders.colSeller', type: 'text' },
+  { key: 'amount', labelKey: 'orders.colAmount', type: 'number' },
+  { key: 'status', labelKey: 'orders.colStatus', type: 'text' },
+  { key: 'createdAt', labelKey: 'orders.colTime', type: 'time' },
 ] as const
 
 const toggleSort = (key: string) => {
@@ -201,47 +204,52 @@ const summary = computed(() => {
 })
 
 // ===== 類型 tag（色制同 seller：直購綠/拍賣粉/預約琥珀） =====
-const ORDER_TYPE: Record<string, { text: string; cls: string }> = {
-  direct_purchase: { text: '直購', cls: 't-sale' },
-  buy_now: { text: '拍賣直購', cls: 't-auction' },
-  auction_win: { text: '拍賣得標', cls: 't-auction' },
-  reservation_deposit: { text: '預約訂金', cls: 't-reserve' },
-  reservation_full: { text: '預約尾款', cls: 't-reserve' },
+const ORDER_TYPE: Record<string, { key: string; cls: string }> = {
+  direct_purchase: { key: 'orders.typeDirect', cls: 't-sale' },
+  buy_now: { key: 'orders.typeBuyNow', cls: 't-auction' },
+  auction_win: { key: 'orders.typeAuctionWin', cls: 't-auction' },
+  reservation_deposit: { key: 'orders.typeReserveDeposit', cls: 't-reserve' },
+  reservation_full: { key: 'orders.typeReserveFull', cls: 't-reserve' },
 }
-const typeTag = (type: string) => ORDER_TYPE[type] || { text: type, cls: 't-sale' }
+const typeTag = (type: string) => {
+  const found = ORDER_TYPE[type]
+  return found ? { key: found.key, cls: found.cls } : { key: '', cls: 't-sale' }
+}
 
 // ===== 狀態徽章（買家視角：confirmed=待收貨/待付尾款） =====
 const getStatusBadge = (status: string, orderType?: string) => {
   if (orderType === 'reservation_deposit') {
-    const map: Record<string, { class: string; text: string }> = {
-      pending: { class: 'st-pending', text: '待付訂金' },
-      pending_paid: { class: 'st-pending-paid', text: '待商家確認' },
-      confirmed: { class: 'st-confirmed', text: '待付尾款' },
-      delivered: { class: 'st-delivered', text: '已完成' },
-      cancelled: { class: 'st-cancelled', text: '已取消' },
+    const map: Record<string, { class: string; key: string }> = {
+      pending: { class: 'st-pending', key: 'orders.stPendingDeposit' },
+      pending_paid: { class: 'st-pending-paid', key: 'orders.stPendingMerchant' },
+      confirmed: { class: 'st-confirmed', key: 'orders.stPendingBalance' },
+      delivered: { class: 'st-delivered', key: 'orders.stDelivered' },
+      cancelled: { class: 'st-cancelled', key: 'orders.stCancelled' },
     }
-    return map[status] || { class: 'st-default', text: status }
+    const found = map[status]
+    return found ? { class: found.class, text: t(found.key) } : { class: 'st-default', text: status }
   }
-  const map: Record<string, { class: string; text: string }> = {
-    pending: { class: 'st-pending', text: '待付款' },
-    pending_paid: { class: 'st-pending-paid', text: '待商家確認' },
-    confirmed: { class: 'st-confirmed', text: '待收貨' },
-    shipped: { class: 'st-shipped', text: '已發貨' },
-    delivered: { class: 'st-delivered', text: '已完成' },
-    cancelled: { class: 'st-cancelled', text: '已取消' },
-    refunded: { class: 'st-cancelled', text: '已退款' },
+  const map: Record<string, { class: string; key: string }> = {
+    pending: { class: 'st-pending', key: 'orders.stPending' },
+    pending_paid: { class: 'st-pending-paid', key: 'orders.stPendingMerchant' },
+    confirmed: { class: 'st-confirmed', key: 'orders.stConfirmed' },
+    shipped: { class: 'st-shipped', key: 'orders.stShipped' },
+    delivered: { class: 'st-delivered', key: 'orders.stDelivered' },
+    cancelled: { class: 'st-cancelled', key: 'orders.stCancelled' },
+    refunded: { class: 'st-cancelled', key: 'orders.stRefunded' },
   }
-  return map[status] || { class: 'st-default', text: status }
+  const found = map[status]
+  return found ? { class: found.class, text: t(found.key) } : { class: 'st-default', text: status }
 }
 
 // ===== 下一步提示（買家視角） =====
 const nextStepFor = (o: Order): string => {
-  if (o.status === 'pending') return o.type === 'reservation_deposit' ? '請上傳訂金憑證' : '請上傳付款憑證'
-  if (o.status === 'pending_paid') return '等待商家確認收款'
+  if (o.status === 'pending') return o.type === 'reservation_deposit' ? t('orders.nextUploadDeposit') : t('orders.nextUploadPayment')
+  if (o.status === 'pending_paid') return t('orders.nextAwaitConfirm')
   if (o.status === 'confirmed') {
-    return o.type === 'reservation_deposit' ? '請到店支付尾款' : '待商家發貨'
+    return o.type === 'reservation_deposit' ? t('orders.nextPayBalance') : t('orders.nextAwaitShip')
   }
-  if (o.status === 'shipped') return '請確認收貨'
+  if (o.status === 'shipped') return t('orders.nextConfirmReceive')
   return ''
 }
 
@@ -259,11 +267,11 @@ const loadOrders = async () => {
       } catch {}
       return {
         id: o.id,
-        productTitle: o.product?.titleZh || o.product?.titleEn || '未知商品',
+        productTitle: o.product?.titleZh || o.product?.titleEn || t('orders.unknownProduct'),
         productImage: images[0] || '',
         productImages: images, // 訂單詳情圖片檢視器用（2026-10-24）
         sellerId: o.sellerId || '',
-        sellerNickname: o.seller?.nickname || '未知商家',
+        sellerNickname: o.seller?.nickname || t('orders.unknownSeller'),
         amount: Number(o.totalPrice) || 0,
         quantity: o.quantity || 1,
         status: o.status,
@@ -331,8 +339,8 @@ const handlePay = (orderId: string) => {
   const isDeposit = orders.value.find(o => o.id === orderId)?.type === 'reservation_deposit'
   const confirmed = window.confirm(
     isDeposit
-      ? '暫不支持線上支付，請上傳訂金轉賬憑證'
-      : '暫不支持線上支付，請上傳轉賬憑證或預約拿貨'
+      ? t('orders.confirmPayDeposit')
+      : t('orders.confirmPayOnlineDisabled')
   )
   if (!confirmed) {
     processingPay.value = null
@@ -348,10 +356,10 @@ const handlePay = (orderId: string) => {
       await ordersApi.uploadTransferReceipt(orderId, file)
       closeDetail()
       await loadOrders()
-      showToast('付款憑證上傳成功！請等待商家確認')
+      showToast(t('orders.uploadOk'))
     } catch (error) {
       console.error('Payment receipt upload failed:', error)
-      showToast('上傳憑證失敗，請重試', 'error')
+      showToast(t('orders.uploadFailedReceipt'), 'error')
     } finally {
       processingPay.value = null
     }
@@ -393,17 +401,17 @@ const confirmReserve = async () => {
         await loadOrders()
         showPickupModal.value = false
         pendingReserveOrderId.value = null
-        showToast('預約拿貨成功！請等待商家確認')
+        showToast(t('orders.reserveOk'))
       } catch (error) {
         console.error('Upload receipt failed:', error)
-        showToast('上傳憑證失敗，請重試', 'error')
+        showToast(t('orders.uploadFailedReceipt'), 'error')
       } finally {
         submittingReserve.value = false
       }
     })
   } catch (error) {
     console.error('Reserve failed:', error)
-    showToast('操作失敗，請重試', 'error')
+    showToast(t('orders.operationFailed'), 'error')
     submittingReserve.value = false
   }
 }
@@ -425,11 +433,11 @@ const handleUploadBalance = async (orderId: string, file: File) => {
   uploadingReceipt.value = orderId
   try {
     await ordersApi.uploadBalanceReceipt(orderId, file)
-    showToast('尾款憑證上傳成功！')
+    showToast(t('orders.uploadBalanceOk'))
     await loadOrders()
   } catch (error) {
     console.error('Upload failed:', error)
-    showToast('上傳失敗，請重試', 'error')
+    showToast(t('orders.uploadFailed'), 'error')
   } finally {
     uploadingReceipt.value = null
   }
@@ -439,11 +447,11 @@ const handleUploadReceipt = async (orderId: string, file: File) => {
   uploadingReceipt.value = orderId
   try {
     await ordersApi.uploadTransferReceipt(orderId, file)
-    showToast('上傳成功！')
+    showToast(t('orders.uploadOkShort'))
     await loadOrders()
   } catch (error) {
     console.error('Upload failed:', error)
-    showToast('上傳失敗，請重試', 'error')
+    showToast(t('orders.uploadFailed'), 'error')
   } finally {
     uploadingReceipt.value = null
   }
@@ -453,10 +461,10 @@ const handleReceive = async (orderId: string) => {
   try {
     await ordersApi.updateStatus(orderId, 'delivered')
     await loadOrders()
-    showToast('已確認收貨')
+    showToast(t('orders.receiveOk'))
   } catch (error) {
     console.error('Confirm failed:', error)
-    showToast('操作失敗，請重試', 'error')
+    showToast(t('orders.operationFailed'), 'error')
   }
 }
 
@@ -474,14 +482,14 @@ const detailTimeline = computed(() => {
   const o = detailOrder.value
   if (!o) return []
   const items: { label: string; time: string; done: boolean }[] = [
-    { label: '訂單建立', time: o.createdAt, done: true },
-    { label: o.type === 'reservation_deposit' ? '訂金憑證上傳' : '付款憑證上傳', time: o.transferTime || '', done: !!o.transferTime },
-    { label: '商家確認收款', time: o.paymentTime || o.balanceTime || '', done: !!(o.paymentTime || o.balanceTime) },
-    { label: '發貨', time: o.shippingTime || '', done: !!o.shippingTime },
-    { label: '完成', time: o.deliveryTime || '', done: !!o.deliveryTime },
+    { label: t('orders.tlCreated'), time: o.createdAt, done: true },
+    { label: o.type === 'reservation_deposit' ? t('orders.tlDepositUpload') : t('orders.tlReceiptUpload'), time: o.transferTime || '', done: !!o.transferTime },
+    { label: t('orders.tlMerchantConfirm'), time: o.paymentTime || o.balanceTime || '', done: !!(o.paymentTime || o.balanceTime) },
+    { label: t('orders.tlShipped'), time: o.shippingTime || '', done: !!o.shippingTime },
+    { label: t('orders.tlCompleted'), time: o.deliveryTime || '', done: !!o.deliveryTime },
   ]
   if (o.type === 'reservation_deposit' && o.balanceTime) {
-    items[2] = { label: '商家確認收款（含尾款）', time: o.balanceTime, done: true }
+    items[2] = { label: t('orders.tlMerchantConfirmBalance'), time: o.balanceTime, done: true }
   }
   return items
 })
@@ -503,19 +511,19 @@ onMounted(() => {
     <!-- 頂部統計條（同 seller summary-bar） -->
     <div v-if="!loading" class="summary-bar">
       <div class="stat-item">
-        <span class="stat-label">訂單</span>
-        <span class="stat-value">{{ summary.total }} <small>筆</small></span>
+        <span class="stat-label">{{ t('orders.statOrders') }}</span>
+        <span class="stat-value">{{ summary.total }} <small>{{ t('orders.unitOrders') }}</small></span>
       </div>
       <div class="stat-item" :class="{ alert: summary.todo > 0 }">
-        <span class="stat-label">進行中</span>
-        <span class="stat-value">{{ summary.todo }} <small>筆</small></span>
+        <span class="stat-label">{{ t('orders.statTodo') }}</span>
+        <span class="stat-value">{{ summary.todo }} <small>{{ t('orders.unitOrders') }}</small></span>
       </div>
       <div class="stat-item">
-        <span class="stat-label">待收貨</span>
-        <span class="stat-value">{{ summary.shipped }} <small>筆</small></span>
+        <span class="stat-label">{{ t('orders.statToReceive') }}</span>
+        <span class="stat-value">{{ summary.shipped }} <small>{{ t('orders.unitOrders') }}</small></span>
       </div>
       <div class="stat-item">
-        <span class="stat-label">累計消費</span>
+        <span class="stat-label">{{ t('orders.statTotalSpent') }}</span>
         <span class="stat-value money">{{ formatPrice(summary.totalSpent) }}</span>
       </div>
     </div>
@@ -529,7 +537,7 @@ onMounted(() => {
         :class="{ active: filterStatus === tab.key }"
         @click="filterStatus = tab.key"
       >
-        {{ tab.label }}
+        {{ t(tab.labelKey) }}
         <span class="tab-count">{{ tabCount(tab.key) }}</span>
       </button>
     </div>
@@ -540,18 +548,18 @@ onMounted(() => {
         v-model="searchQuery"
         type="text"
         class="search-input"
-        placeholder="🔍 搜尋商品或商家，按 Enter 搜尋..."
+        :placeholder="t('orders.searchPlaceholder')"
         @keyup.enter="applySearch"
       />
-      <button v-if="searchQuery || appliedSearch" class="btn-clear-search" @click="clearSearch">✕ 清除</button>
+      <button v-if="searchQuery || appliedSearch" class="btn-clear-search" @click="clearSearch">{{ t('orders.clear') }}</button>
     </div>
 
     <StateView v-if="loading" state="loading" />
     <StateView
       v-else-if="!filteredOrders.length"
-      state="empty" icon="📦" title="暫無訂單" message="快去參與競拍或購買吧！"
+      state="empty" icon="📦" :title="t('orders.empty')" :message="t('orders.emptyHint')"
     >
-      <router-link to="/auctions" class="btn-primary">瀏覽拍賣</router-link>
+      <router-link to="/auctions" class="btn-primary">{{ t('orders.browseAuctions') }}</router-link>
     </StateView>
 
     <!-- ===== 桌面表格（≥768px） ===== -->
@@ -559,7 +567,7 @@ onMounted(() => {
       <table class="desktop-table">
         <thead>
           <tr>
-            <th>商品</th>
+            <th>{{ t('orders.colProduct') }}</th>
             <th
               v-for="col in sortableColumns.filter(c => c.key !== 'productTitle')"
               :key="col.key"
@@ -567,11 +575,11 @@ onMounted(() => {
               :class="{ sorted: sortKey === col.key }"
               @click="toggleSort(col.key)"
             >
-              <span class="th-label">{{ col.label }}</span>
+              <span class="th-label">{{ t(col.labelKey) }}</span>
               <span class="sort-arrow" :class="{ active: sortKey === col.key, desc: sortKey === col.key && sortDir === 'desc' }">↕</span>
             </th>
-            <th>下一步</th>
-            <th>操作</th>
+            <th>{{ t('orders.colNext') }}</th>
+            <th>{{ t('orders.colActions') }}</th>
           </tr>
         </thead>
         <tbody>
@@ -582,7 +590,7 @@ onMounted(() => {
                 <span v-else class="placeholder-emoji">🃏</span>
                 <div class="product-info">
                   <span class="product-name">{{ order.productTitle }}</span>
-                  <span class="type-tag" :class="ORDER_TYPE[order.type]?.cls">{{ ORDER_TYPE[order.type]?.text || order.type }}</span>
+                  <span class="type-tag" :class="typeTag(order.type).cls">{{ typeTag(order.type).key ? t(typeTag(order.type).key) : order.type }}</span>
                 </div>
               </div>
             </td>
@@ -592,8 +600,8 @@ onMounted(() => {
             </td>
             <td>
               <template v-if="order.type === 'reservation_deposit'">
-                <div class="amount">訂金 {{ formatPrice(order.amount) }}</div>
-                <div v-if="order.fullPrice" class="cell-sub">尾款 {{ formatPrice(order.fullPrice - order.amount) }}</div>
+                <div class="amount">{{ t('orders.deposit', { price: formatPrice(order.amount) }) }}</div>
+                <div v-if="order.fullPrice" class="cell-sub">{{ t('orders.balance', { price: formatPrice(order.fullPrice - order.amount) }) }}</div>
               </template>
               <template v-else>
                 <div class="amount">{{ formatPrice(order.amount) }}</div>
@@ -617,26 +625,26 @@ onMounted(() => {
                   class="btn-action confirm"
                   :disabled="uploadingReceipt === order.id || processingPay === order.id"
                   @click="handlePay(order.id)"
-                >{{ processingPay === order.id ? '處理中...' : (order.type === 'reservation_deposit' ? '上傳訂金憑證' : '立即支付') }}</button>
+                >{{ processingPay === order.id ? t('orders.processing') : (order.type === 'reservation_deposit' ? t('orders.uploadDeposit') : t('orders.payNow')) }}</button>
                 <!-- 待付尾款 -->
                 <button
                   v-if="order.status === 'confirmed' && order.type === 'reservation_deposit'"
                   class="btn-action confirm"
                   :disabled="uploadingReceipt === order.id"
                   @click="triggerBalanceUpload(order.id)"
-                >{{ uploadingReceipt === order.id ? '上傳中...' : '上傳尾款憑證' }}</button>
+                >{{ uploadingReceipt === order.id ? t('orders.uploading') : t('orders.uploadBalance') }}</button>
                 <!-- 已發貨 -->
                 <button
                   v-if="order.status === 'shipped' && order.type !== 'reservation_deposit'"
                   class="btn-action confirm"
                   @click="handleReceive(order.id)"
-                >確認收貨</button>
+                >{{ t('orders.confirmReceive') }}</button>
                 <button
                   v-if="order.status === 'pending' && order.type !== 'reservation_deposit'"
                   class="btn-action detail"
                   @click="handleReserve(order.id, order.sellerId)"
-                >預約拿貨</button>
-                <button class="btn-action detail" @click="openDetail(order)">詳情</button>
+                >{{ t('orders.reservePickup') }}</button>
+                <button class="btn-action detail" @click="openDetail(order)">{{ t('orders.detail') }}</button>
               </div>
             </td>
           </tr>
@@ -653,14 +661,14 @@ onMounted(() => {
           <div class="card-main">
             <div class="card-title">{{ order.productTitle }}</div>
             <div class="card-meta">
-              <span class="type-tag" :class="ORDER_TYPE[order.type]?.cls">{{ ORDER_TYPE[order.type]?.text || order.type }}</span>
+              <span class="type-tag" :class="typeTag(order.type).cls">{{ typeTag(order.type).key ? t(typeTag(order.type).key) : order.type }}</span>
               <span class="status-badge" :class="getStatusBadge(order.status, order.type).class">{{ getStatusBadge(order.status, order.type).text }}</span>
             </div>
           </div>
           <div class="card-amount">
             <template v-if="order.type === 'reservation_deposit'">
-              <div class="amount">訂金 {{ formatPrice(order.amount) }}</div>
-              <div v-if="order.fullPrice" class="cell-sub">尾款 {{ formatPrice(order.fullPrice - order.amount) }}</div>
+              <div class="amount">{{ t('orders.deposit', { price: formatPrice(order.amount) }) }}</div>
+              <div v-if="order.fullPrice" class="cell-sub">{{ t('orders.balance', { price: formatPrice(order.fullPrice - order.amount) }) }}</div>
             </template>
             <template v-else>
               <div class="amount">{{ formatPrice(order.amount) }}</div>
@@ -678,45 +686,45 @@ onMounted(() => {
             class="btn-action confirm"
             :disabled="uploadingReceipt === order.id || processingPay === order.id"
             @click="handlePay(order.id)"
-          >{{ order.type === 'reservation_deposit' ? '上傳訂金憑證' : '立即支付' }}</button>
+          >{{ order.type === 'reservation_deposit' ? t('orders.uploadDeposit') : t('orders.payNow') }}</button>
           <button
             v-if="order.status === 'confirmed' && order.type === 'reservation_deposit'"
             class="btn-action confirm"
             :disabled="uploadingReceipt === order.id"
             @click="triggerBalanceUpload(order.id)"
-          >上傳尾款憑證</button>
+          >{{ t('orders.uploadBalance') }}</button>
           <button
             v-if="order.status === 'shipped' && order.type !== 'reservation_deposit'"
             class="btn-action confirm"
             @click="handleReceive(order.id)"
-          >確認收貨</button>
+          >{{ t('orders.confirmReceive') }}</button>
           <button
             v-if="order.status === 'pending' && order.type !== 'reservation_deposit'"
             class="btn-action detail"
             @click="handleReserve(order.id, order.sellerId)"
-          >預約拿貨</button>
-          <button class="btn-action detail" @click="openDetail(order)">詳情</button>
+          >{{ t('orders.reservePickup') }}</button>
+          <button class="btn-action detail" @click="openDetail(order)">{{ t('orders.detail') }}</button>
         </div>
       </div>
     </div>
 
     <!-- 分頁 -->
     <div v-if="!loading && filteredOrders.length" class="pagination">
-      <button class="page-btn" :disabled="currentPage <= 1" @click="goToPage(currentPage - 1)">‹ 上一頁</button>
-      <span class="page-info">第 {{ currentPage }} / {{ totalPages }} 頁 · 共 {{ filteredOrders.length }} 筆</span>
-      <button class="page-btn" :disabled="currentPage >= totalPages" @click="goToPage(currentPage + 1)">下一頁 ›</button>
+      <button class="page-btn" :disabled="currentPage <= 1" @click="goToPage(currentPage - 1)">{{ t('orders.prevPage') }}</button>
+      <span class="page-info">{{ t('orders.page', { page: currentPage, pages: totalPages, total: filteredOrders.length }) }}</span>
+      <button class="page-btn" :disabled="currentPage >= totalPages" @click="goToPage(currentPage + 1)">{{ t('orders.nextPage') }}</button>
     </div>
 
     <!-- 訂單詳情彈出層 -->
     <div v-if="detailOrder" class="modal-overlay" @click.self="closeDetail">
       <div class="detail-modal">
         <div class="modal-header">
-          <h3>訂單詳情</h3>
+          <h3>{{ t('orders.detailTitle') }}</h3>
           <button @click="closeDetail" class="modal-close">✕</button>
         </div>
         <div class="detail-body">
           <div class="detail-top">
-            <span class="type-tag" :class="ORDER_TYPE[detailOrder.type]?.cls">{{ ORDER_TYPE[detailOrder.type]?.text || detailOrder.type }}</span>
+            <span class="type-tag" :class="typeTag(detailOrder.type).cls">{{ typeTag(detailOrder.type).key ? t(typeTag(detailOrder.type).key) : detailOrder.type }}</span>
             <span class="status-badge" :class="getStatusBadge(detailOrder.status, detailOrder.type).class">{{ getStatusBadge(detailOrder.status, detailOrder.type).text }}</span>
           </div>
 
@@ -727,12 +735,12 @@ onMounted(() => {
             </div>
             <div class="dp-info">
               <span class="dp-title">{{ detailOrder.productTitle }}</span>
-              <span class="dp-sub">x{{ detailOrder.quantity }} · 商家 {{ detailOrder.sellerNickname }}</span>
+              <span class="dp-sub">x{{ detailOrder.quantity }} · {{ t('orders.seller') }} {{ detailOrder.sellerNickname }}</span>
             </div>
             <div class="dp-amount">
               <template v-if="detailOrder.type === 'reservation_deposit'">
-                <div class="amount">訂金 {{ formatPrice(detailOrder.amount) }}</div>
-                <div v-if="detailOrder.fullPrice" class="cell-sub">＋尾款 {{ formatPrice(detailOrder.fullPrice - detailOrder.amount) }}＝全價 {{ formatPrice(detailOrder.fullPrice) }}</div>
+                <div class="amount">{{ t('orders.deposit', { price: formatPrice(detailOrder.amount) }) }}</div>
+                <div v-if="detailOrder.fullPrice" class="cell-sub">{{ t('orders.balancePlus', { balance: formatPrice(detailOrder.fullPrice - detailOrder.amount), total: formatPrice(detailOrder.fullPrice) }) }}</div>
               </template>
               <template v-else>
                 <div class="amount">{{ formatPrice(detailOrder.amount) }}</div>
@@ -742,19 +750,19 @@ onMounted(() => {
 
           <div class="detail-grid">
             <div class="dg-item" v-if="detailOrder.shippingAddress">
-              <span class="dg-label">收件地址</span>
+              <span class="dg-label">{{ t('orders.shippingAddress') }}</span>
               <span class="dg-value">{{ detailOrder.shippingAddress }}</span>
             </div>
             <div class="dg-item" v-if="detailOrder.trackingNumber">
-              <span class="dg-label">快遞單號</span>
+              <span class="dg-label">{{ t('orders.trackingNumber') }}</span>
               <span class="dg-value mono">{{ detailOrder.trackingNumber }}</span>
             </div>
             <div class="dg-item" v-if="detailOrder.notes">
-              <span class="dg-label">備註</span>
+              <span class="dg-label">{{ t('orders.notes') }}</span>
               <span class="dg-value">{{ detailOrder.notes }}</span>
             </div>
             <div class="dg-item">
-              <span class="dg-label">下單時間</span>
+              <span class="dg-label">{{ t('orders.createdAt') }}</span>
               <span class="dg-value">{{ formatDateTime(detailOrder.createdAt) }}</span>
             </div>
           </div>
@@ -766,45 +774,45 @@ onMounted(() => {
               class="btn-action confirm"
               :disabled="uploadingReceipt === detailOrder.id || processingPay === detailOrder.id"
               @click="handlePay(detailOrder.id)"
-            >{{ detailOrder.type === 'reservation_deposit' ? '上傳訂金憑證' : '立即支付' }}</button>
+            >{{ detailOrder.type === 'reservation_deposit' ? t('orders.uploadDeposit') : t('orders.payNow') }}</button>
             <button
               v-if="detailOrder.status === 'confirmed' && detailOrder.type === 'reservation_deposit'"
               class="btn-action confirm"
               :disabled="uploadingReceipt === detailOrder.id"
               @click="triggerBalanceUpload(detailOrder.id)"
-            >上傳尾款憑證</button>
+            >{{ t('orders.uploadBalance') }}</button>
             <button
               v-if="detailOrder.status === 'shipped' && detailOrder.type !== 'reservation_deposit'"
               class="btn-action confirm"
               @click="handleReceive(detailOrder.id)"
-            >確認收貨</button>
+            >{{ t('orders.confirmReceive') }}</button>
           </div>
 
           <!-- 憑證 -->
           <div v-if="detailOrder.transferReceipt || detailOrder.balanceReceipt" class="detail-receipts">
             <div v-if="detailOrder.transferReceipt" class="dr-item">
-              <span class="dg-label">{{ detailOrder.type === 'reservation_deposit' ? '訂金憑證' : '付款憑證' }}</span>
-              <img :src="resolveImageUrl(detailOrder.transferReceipt)" class="receipt-thumb lg" @click="viewReceipt(detailOrder.transferReceipt!)" alt="付款憑證" />
+              <span class="dg-label">{{ detailOrder.type === 'reservation_deposit' ? t('orders.depositReceipt') : t('orders.paymentReceipt') }}</span>
+              <img :src="resolveImageUrl(detailOrder.transferReceipt)" class="receipt-thumb lg" @click="viewReceipt(detailOrder.transferReceipt!)" :alt="t('orders.receiptAlt')" />
             </div>
             <div v-if="detailOrder.balanceReceipt" class="dr-item">
-              <span class="dg-label">尾款憑證</span>
-              <img :src="resolveImageUrl(detailOrder.balanceReceipt)" class="receipt-thumb lg" @click="viewReceipt(detailOrder.balanceReceipt!)" alt="尾款憑證" />
+              <span class="dg-label">{{ t('orders.balanceReceipt') }}</span>
+              <img :src="resolveImageUrl(detailOrder.balanceReceipt)" class="receipt-thumb lg" @click="viewReceipt(detailOrder.balanceReceipt!)" :alt="t('orders.receiptAlt')" />
             </div>
           </div>
 
           <!-- 時間線 -->
           <div class="detail-timeline">
-            <span class="dg-label">進度</span>
+            <span class="dg-label">{{ t('orders.progress') }}</span>
             <div class="timeline">
               <div
-                v-for="(t, i) in detailTimeline"
+                v-for="(step, i) in detailTimeline"
                 :key="i"
                 class="tl-item"
-                :class="{ done: t.done, current: t.done && !(detailTimeline[i + 1] && detailTimeline[i + 1].done) }"
+                :class="{ done: step.done, current: step.done && !(detailTimeline[i + 1] && detailTimeline[i + 1].done) }"
               >
                 <span class="tl-dot"></span>
-                <span class="tl-label">{{ t.label }}</span>
-                <span class="tl-time">{{ t.time ? formatDateTime(t.time) : '待處理' }}</span>
+                <span class="tl-label">{{ step.label }}</span>
+                <span class="tl-time">{{ step.time ? formatDateTime(step.time) : t('orders.pending') }}</span>
               </div>
             </div>
           </div>
@@ -816,11 +824,11 @@ onMounted(() => {
     <div v-if="showReceiptModal" class="modal-overlay" @click.self="showReceiptModal = false">
       <div class="receipt-modal">
         <div class="modal-header">
-          <h3>{{ detailOrder?.transferReceipt === receiptImageUrl ? '轉帳憑證' : (detailOrder?.balanceReceipt === receiptImageUrl ? '尾款憑證' : '憑證') }}</h3>
+          <h3>{{ detailOrder?.transferReceipt === receiptImageUrl ? t('orders.transferReceiptTitle') : (detailOrder?.balanceReceipt === receiptImageUrl ? t('orders.balanceReceipt') : t('orders.paymentReceipt')) }}</h3>
           <button @click="showReceiptModal = false" class="modal-close">✕</button>
         </div>
         <div class="modal-body">
-          <img :src="resolveImageUrl(receiptImageUrl)" alt="轉帳憑證" class="receipt-image" />
+          <img :src="resolveImageUrl(receiptImageUrl)" :alt="t('orders.receiptAlt')" class="receipt-image" />
         </div>
       </div>
     </div>
@@ -829,15 +837,15 @@ onMounted(() => {
     <div v-if="showGalleryModal" class="modal-overlay" @click.self="showGalleryModal = false">
       <div class="receipt-modal gallery-modal">
         <div class="modal-header">
-          <h3>🖼️ 商品圖片</h3>
+          <h3>{{ t('orders.galleryTitle') }}</h3>
           <button @click="showGalleryModal = false" class="modal-close">✕</button>
         </div>
         <div class="modal-body">
           <div v-if="galleryTitle" class="gallery-title">{{ galleryTitle }}</div>
           <div class="gallery-stage">
-            <button v-if="galleryImages.length > 1 && galleryIndex > 0" class="gallery-nav prev" @click="galleryPrev" aria-label="上一張">‹</button>
-            <img :src="resolveImageUrl(galleryImages[galleryIndex])" alt="商品圖片" class="receipt-image" />
-            <button v-if="galleryImages.length > 1 && galleryIndex < galleryImages.length - 1" class="gallery-nav next" @click="galleryNext" aria-label="下一張">›</button>
+            <button v-if="galleryImages.length > 1 && galleryIndex > 0" class="gallery-nav prev" @click="galleryPrev" :aria-label="t('orders.galleryPrev')">‹</button>
+            <img :src="resolveImageUrl(galleryImages[galleryIndex])" :alt="t('orders.galleryAlt')" class="receipt-image" />
+            <button v-if="galleryImages.length > 1 && galleryIndex < galleryImages.length - 1" class="gallery-nav next" @click="galleryNext" :aria-label="t('orders.galleryNext')">›</button>
           </div>
           <div v-if="galleryImages.length > 1" class="gallery-hint">{{ galleryIndex + 1 }} / {{ galleryImages.length }}</div>
           <div v-if="galleryImages.length > 1" class="gallery-dots">
@@ -847,7 +855,7 @@ onMounted(() => {
               class="gallery-dot"
               :class="{ active: i === galleryIndex }"
               @click="galleryIndex = i"
-              :aria-label="`第 ${i + 1} 張`"
+              :aria-label="t('orders.galleryAt', { index: i + 1 })"
             />
           </div>
         </div>
@@ -858,18 +866,18 @@ onMounted(() => {
     <div v-if="showPickupModal" class="modal-overlay" @click.self="cancelReserve">
       <div class="pickup-modal">
         <div class="modal-header">
-          <h3>📦 預約攞貨</h3>
+          <h3>{{ t('orders.pickupTitle') }}</h3>
           <button @click="cancelReserve" class="modal-close">✕</button>
         </div>
         <div class="modal-body">
           <div v-if="pickupInfo" class="pickup-info">{{ pickupInfo }}</div>
-          <div v-else class="pickup-empty">商家尚未設定預約資訊</div>
+          <div v-else class="pickup-empty">{{ t('orders.pickupNoInfo') }}</div>
           <img v-if="pickupQrCode" :src="resolveImageUrl(pickupQrCode)" alt="WeChat 二維碼" class="qr-code" />
         </div>
         <div class="modal-footer">
-          <button @click="cancelReserve" class="btn-cancel">返回</button>
+          <button @click="cancelReserve" class="btn-cancel">{{ t('orders.back') }}</button>
           <button @click="confirmReserve" class="btn-confirm" :disabled="submittingReserve">
-            {{ submittingReserve ? '確認中...' : '確認預約' }}
+            {{ submittingReserve ? t('orders.confirmingReserve') : t('orders.confirmReserve') }}
           </button>
         </div>
       </div>
