@@ -38,7 +38,7 @@ export class AdminController {
   }
 
   @Patch('users/:id')
-  updateUser(@Param('id') id: string, @Body() body: { role?: string; status?: string; nickname?: string }) {
+  updateUser(@Param('id') id: string, @Body() body: { role?: string; status?: string; nickname?: string; unlock?: boolean }) {
     return this.adminService.updateUser(id, body);
   }
 

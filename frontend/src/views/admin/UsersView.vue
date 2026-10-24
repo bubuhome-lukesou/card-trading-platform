@@ -14,11 +14,31 @@ interface UserRow {
   phone: string | null
   role: string
   status: string
+  failedLoginAttempts?: number
+  lockedAt?: string | null
   balance: number
   totalSpend: number
   orderCount: number
   lastLoginAt?: string
   createdAt: string
+}
+
+// ===== 登入鎖定（2026-10-24）：users 表 failedLoginAttempts/lockedAt =====
+// 3 次錯密碼鎖定；seller 須 admin 解鎖、admin 30 分鐘自動解
+const isLocked = (u: UserRow): boolean => !!u.lockedAt
+const handleUnlock = async (u: UserRow) => {
+  if (!confirm(`確定要解鎖「${u.nickname}」嘅登入嗎？（清除密碼錯誤計數）`)) return
+  processingId.value = u.id
+  try {
+    await api.patch(`/admin/users/${u.id}`, { unlock: true })
+    await fetchUsers()
+    alert('已解鎖')
+  } catch (e) {
+    console.error('解鎖失敗', e)
+    alert('解鎖失敗，請重試')
+  } finally {
+    processingId.value = null
+  }
 }
 
 // ===== 統計條 + tabs =====
@@ -196,6 +216,8 @@ const STATUS_BADGE: Record<string, { cls: string; text: string }> = {
 }
 const statusBadge = (s: string) => STATUS_BADGE[s] || { cls: 's-active', text: s }
 
+const LOCK_BADGE = { cls: 's-locked', text: '已鎖定' }
+
 // ===== 詳情彈出層 =====
 const detailUser = ref<UserRow | null>(null)
 const openDetail = (u: UserRow) => { detailUser.value = u }
@@ -303,7 +325,8 @@ onMounted(() => {
               <span class="role-badge" :class="roleBadge(u.role).cls">{{ roleBadge(u.role).text }}</span>
             </td>
             <td>
-              <span class="status-badge" :class="statusBadge(u.status).cls">{{ statusBadge(u.status).text }}</span>
+              <span v-if="isLocked(u)" class="status-badge" :class="LOCK_BADGE.cls">🔒 {{ LOCK_BADGE.text }}</span>
+              <span v-else class="status-badge" :class="statusBadge(u.status).cls">{{ statusBadge(u.status).text }}</span>
             </td>
             <td class="date">{{ formatDate(u.createdAt) }}</td>
             <td>
@@ -318,6 +341,12 @@ onMounted(() => {
                   :disabled="processingId === u.id"
                   @click="handleSuspend(u)"
                 >{{ processingId === u.id ? '處理中...' : (u.status === 'active' ? '封禁' : '解封') }}</button>
+                <button
+                  v-if="isLocked(u)"
+                  class="btn-action activate"
+                  :disabled="processingId === u.id"
+                  @click="handleUnlock(u)"
+                >解鎖</button>
                 <button class="btn-action detail" :disabled="processingId === u.id" @click="handleChangeRole(u)">改角色</button>
                 <button class="btn-action detail" @click="openDetail(u)">詳情</button>
               </div>
@@ -336,7 +365,8 @@ onMounted(() => {
             <div class="card-title">{{ u.nickname }}</div>
             <div class="card-meta">
               <span class="role-badge" :class="roleBadge(u.role).cls">{{ roleBadge(u.role).text }}</span>
-              <span class="status-badge" :class="statusBadge(u.status).cls">{{ statusBadge(u.status).text }}</span>
+              <span v-if="isLocked(u)" class="status-badge" :class="LOCK_BADGE.cls">🔒 {{ LOCK_BADGE.text }}</span>
+              <span v-else class="status-badge" :class="statusBadge(u.status).cls">{{ statusBadge(u.status).text }}</span>
             </div>
           </div>
           <div class="card-amount">
@@ -355,6 +385,12 @@ onMounted(() => {
             :disabled="processingId === u.id"
             @click="handleSuspend(u)"
           >{{ u.status === 'active' ? '封禁' : '解封' }}</button>
+          <button
+            v-if="isLocked(u)"
+            class="btn-action activate"
+            :disabled="processingId === u.id"
+            @click="handleUnlock(u)"
+          >解鎖</button>
           <button class="btn-action detail" :disabled="processingId === u.id" @click="handleChangeRole(u)">改角色</button>
           <button class="btn-action detail" @click="openDetail(u)">詳情</button>
         </div>
@@ -559,6 +595,7 @@ tr:last-child td { border-bottom: none; }
 .status-badge { padding: 2px 10px; border-radius: var(--radius-full); font-size: var(--text-xs); font-weight: 600; white-space: nowrap; }
 .s-active { background: #10b9814d; color: #10b981; }
 .s-suspended { background: #ef44444d; color: #ef4444; }
+.s-locked { background: rgba(245, 158, 11, 0.18); color: #f59e0b; }
 
 .btn-action {
   padding: var(--space-1) var(--space-3);

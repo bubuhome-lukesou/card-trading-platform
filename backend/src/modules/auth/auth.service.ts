@@ -71,11 +71,48 @@ export class AuthService {
       throw new UnauthorizedException('Account suspended')
     }
 
-    const isPasswordValid = await bcrypt.compare(dto.password, user.password)
-    if (!isPasswordValid) {
-      throw new UnauthorizedException('Invalid credentials')
+    // ===== 登入鎖定（2026-10-24）=====
+    // 連續錯密碼 3 次 → seller 鎖定須 admin 解鎖；admin 臨時鎖 30 分鐘自動解
+    const LOCK_MAX_ATTEMPTS = 3
+    const LOCK_WINDOW_MS = 30 * 60 * 1000 // admin 臨時鎖時長
+
+    if (user.lockedAt) {
+      const lockedMs = Date.now() - new Date(user.lockedAt).getTime()
+      if (user.role === UserRole.ADMIN && lockedMs >= LOCK_WINDOW_MS) {
+        // admin 臨時鎖到期 → 自動解鎖（防唯一 admin 死鎖）
+        user.failedLoginAttempts = 0
+        user.lockedAt = null
+        await this.userRepo.save(user)
+      } else {
+        if (user.role === UserRole.ADMIN) {
+          const minsLeft = Math.ceil((LOCK_WINDOW_MS - lockedMs) / 60000)
+          throw new UnauthorizedException(`密碼錯誤次數過多，帳號臨時鎖定，請 ${minsLeft} 分鐘後再試`)
+        }
+        throw new UnauthorizedException('帳號已鎖定（密碼錯誤次數過多），請聯絡管理員解鎖')
+      }
     }
 
+    const isPasswordValid = await bcrypt.compare(dto.password, user.password)
+    if (!isPasswordValid) {
+      user.failedLoginAttempts = (user.failedLoginAttempts || 0) + 1
+      if (user.failedLoginAttempts >= LOCK_MAX_ATTEMPTS) {
+        user.lockedAt = new Date()
+        if (user.role === UserRole.ADMIN) {
+          const minsLeft = Math.ceil(LOCK_WINDOW_MS / 60000)
+          await this.userRepo.save(user)
+          throw new UnauthorizedException(`密碼錯誤次數過多，帳號臨時鎖定 ${minsLeft} 分鐘`)
+        }
+        await this.userRepo.save(user)
+        throw new UnauthorizedException('密碼錯誤次數過多，帳號已鎖定，請聯絡管理員解鎖')
+      }
+      await this.userRepo.save(user)
+      const left = LOCK_MAX_ATTEMPTS - user.failedLoginAttempts
+      throw new UnauthorizedException(`密碼錯誤，還剩 ${left} 次機會`)
+    }
+
+    // 密碼正確 → 清空失敗計數
+    user.failedLoginAttempts = 0
+    user.lockedAt = null
     user.lastLoginAt = new Date()
     await this.userRepo.save(user)
 

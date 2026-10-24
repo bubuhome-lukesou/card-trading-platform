@@ -77,6 +77,16 @@ export class User {
   @Column({ nullable: true })
   lastLoginAt: Date
 
+  // 登入鎖定（2026-10-24）：後台密碼登入連續錯 3 次
+  // seller → locked 須 admin 解鎖；admin → 30 分鐘自動解（防唯一 admin 死鎖）
+  @Column({ type: 'int', default: 0 })
+  @Exclude()
+  failedLoginAttempts: number
+
+  @Column({ type: 'datetime', nullable: true })
+  @Exclude()
+  lockedAt: Date
+
   // 通知設置（舊渠道欄位 — 保留相容，UI 已改為事件分組）
   @Column({ type: 'boolean', default: true })
   emailNotifications: boolean

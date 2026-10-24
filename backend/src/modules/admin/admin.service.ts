@@ -77,12 +77,17 @@ export class AdminService {
     return safe;
   }
 
-  async updateUser(id: string, data: { role?: string; status?: string; nickname?: string }) {
+  async updateUser(id: string, data: { role?: string; status?: string; nickname?: string; unlock?: boolean }) {
     const user = await this.userRepo.findOne({ where: { id } });
     if (!user) throw new Error('User not found');
     if (data.role) user.role = data.role as any;
     if (data.status) user.status = data.status as any;
     if (data.nickname) user.nickname = data.nickname;
+    // 解鎖登入（2026-10-24）：admin 清除鎖定狀態，比封禁獨立
+    if (data.unlock) {
+      user.failedLoginAttempts = 0;
+      user.lockedAt = null;
+    }
     return this.userRepo.save(user);
   }
 
