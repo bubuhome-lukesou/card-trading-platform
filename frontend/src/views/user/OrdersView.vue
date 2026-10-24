@@ -9,6 +9,7 @@ interface Order {
   id: string
   productTitle: string
   productImage?: string
+  productImages?: string[]
   sellerId: string
   sellerNickname: string
   amount: number
@@ -44,6 +45,22 @@ const showToast = (msg: string, type: 'success' | 'error' = 'success') => {
 }
 const showReceiptModal = ref(false)
 const receiptImageUrl = ref('')
+// ===== 商品圖片檢視器（2026-10-24）：訂單詳情小圖點擊 → 商品全部圖，正確標題「商品圖片」 =====
+const showGalleryModal = ref(false)
+const galleryImages = ref<string[]>([])
+const galleryIndex = ref(0)
+const galleryTitle = ref('')
+const openProductGallery = (o: Order) => {
+  const imgs = (o.productImages?.length ? o.productImages : (o.productImage ? [o.productImage] : []))
+    .filter(Boolean)
+  if (!imgs.length) return
+  galleryImages.value = imgs
+  galleryIndex.value = 0
+  galleryTitle.value = o.productTitle
+  showGalleryModal.value = true
+}
+const galleryPrev = () => { if (galleryIndex.value > 0) galleryIndex.value-- }
+const galleryNext = () => { if (galleryIndex.value < galleryImages.value.length - 1) galleryIndex.value++ }
 const apiBaseUrl = import.meta.env.VITE_API_URL || ''
 const resolveImageUrl = (url: string) => {
   if (!url) return '/placeholder-card.png'
@@ -244,6 +261,7 @@ const loadOrders = async () => {
         id: o.id,
         productTitle: o.product?.titleZh || o.product?.titleEn || '未知商品',
         productImage: images[0] || '',
+        productImages: images, // 訂單詳情圖片檢視器用（2026-10-24）
         sellerId: o.sellerId || '',
         sellerNickname: o.seller?.nickname || '未知商家',
         amount: Number(o.totalPrice) || 0,
@@ -704,7 +722,7 @@ onMounted(() => {
 
           <div class="detail-product">
             <div class="dp-thumb-wrap">
-              <img v-if="detailOrder.productImage" :src="resolveImageUrl(detailOrder.productImage)" class="detail-thumb" :alt="detailOrder.productTitle" @click="detailOrder.productImage && viewReceipt(detailOrder.productImage)" />
+              <img v-if="detailOrder.productImage" :src="resolveImageUrl(detailOrder.productImage)" class="detail-thumb" :alt="detailOrder.productTitle" @click="openProductGallery(detailOrder)" />
               <span v-else class="card-emoji">🃏</span>
             </div>
             <div class="dp-info">
@@ -798,11 +816,40 @@ onMounted(() => {
     <div v-if="showReceiptModal" class="modal-overlay" @click.self="showReceiptModal = false">
       <div class="receipt-modal">
         <div class="modal-header">
-          <h3>轉帳憑證</h3>
+          <h3>{{ detailOrder?.transferReceipt === receiptImageUrl ? '轉帳憑證' : (detailOrder?.balanceReceipt === receiptImageUrl ? '尾款憑證' : '憑證') }}</h3>
           <button @click="showReceiptModal = false" class="modal-close">✕</button>
         </div>
         <div class="modal-body">
           <img :src="resolveImageUrl(receiptImageUrl)" alt="轉帳憑證" class="receipt-image" />
+        </div>
+      </div>
+    </div>
+
+    <!-- 商品圖片檢視器（訂單詳情小圖點擊；2026-10-24） -->
+    <div v-if="showGalleryModal" class="modal-overlay" @click.self="showGalleryModal = false">
+      <div class="receipt-modal gallery-modal">
+        <div class="modal-header">
+          <h3>🖼️ 商品圖片</h3>
+          <button @click="showGalleryModal = false" class="modal-close">✕</button>
+        </div>
+        <div class="modal-body">
+          <div v-if="galleryTitle" class="gallery-title">{{ galleryTitle }}</div>
+          <div class="gallery-stage">
+            <button v-if="galleryImages.length > 1 && galleryIndex > 0" class="gallery-nav prev" @click="galleryPrev" aria-label="上一張">‹</button>
+            <img :src="resolveImageUrl(galleryImages[galleryIndex])" alt="商品圖片" class="receipt-image" />
+            <button v-if="galleryImages.length > 1 && galleryIndex < galleryImages.length - 1" class="gallery-nav next" @click="galleryNext" aria-label="下一張">›</button>
+          </div>
+          <div v-if="galleryImages.length > 1" class="gallery-hint">{{ galleryIndex + 1 }} / {{ galleryImages.length }}</div>
+          <div v-if="galleryImages.length > 1" class="gallery-dots">
+            <button
+              v-for="(img, i) in galleryImages"
+              :key="i"
+              class="gallery-dot"
+              :class="{ active: i === galleryIndex }"
+              @click="galleryIndex = i"
+              :aria-label="`第 ${i + 1} 張`"
+            />
+          </div>
         </div>
       </div>
     </div>
@@ -1153,6 +1200,60 @@ tr:last-child td { border-bottom: none; }
   border-radius: var(--radius-xl);
   border: 1px solid var(--border);
 }
+/* ===== 商品圖片檢視器（2026-10-24）===== */
+.gallery-title {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  margin-bottom: var(--space-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.gallery-stage {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.gallery-nav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: rgba(0, 0, 0, 0.35);
+  color: #fff;
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  z-index: 2;
+  display: flex; align-items: center; justify-content: center;
+}
+.gallery-nav.prev { left: 8px; }
+.gallery-nav.next { right: 8px; }
+.gallery-hint {
+  text-align: center;
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+  margin-top: var(--space-2);
+  font-family: var(--font-num);
+}
+.gallery-dots {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  margin-top: var(--space-2);
+}
+.gallery-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  border: none;
+  background: var(--border);
+  cursor: pointer;
+  padding: 0;
+}
+.gallery-dot.active { background: #10b981; width: 18px; border-radius: 4px; }
 .pickup-modal {
   width: min(480px, 100%);
   max-height: 85vh;
@@ -1168,7 +1269,9 @@ tr:last-child td { border-bottom: none; }
   align-items: center;
   gap: var(--space-4);
 }
-.receipt-image { max-width: 100%; max-height: 70vh; border-radius: var(--radius-lg); }
+.receipt-image { max-width: 100%; max-height: 70vh; border-radius: var(--radius-lg); object-fit: contain; }
+/* gallery 圖確保手機唔超屏寬 */
+.gallery-stage .receipt-image { max-width: min(100%, calc(100vw - 48px)); max-height: 60vh; width: auto; height: auto; object-fit: contain; display: block; }
 .pickup-info { font-size: var(--text-sm); color: var(--text-primary); white-space: pre-wrap; width: 100%; }
 .pickup-empty { font-size: var(--text-sm); color: var(--text-muted); }
 .qr-code { max-width: 180px; border-radius: var(--radius-lg); border: 1px solid var(--border); }
