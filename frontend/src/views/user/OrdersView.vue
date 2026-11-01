@@ -592,16 +592,24 @@ const closeDetail = () => { detailOrder.value = null }
 const detailTimeline = computed(() => {
   const o = detailOrder.value
   if (!o) return []
+  // 分支 A（2026-11-01）：預約拿貨路徑 — 訂金憑證 → 商家確認收款 → 商家確認攞貨時間 → 買家確認取貨（完成）
+  if (o.type === 'reservation_deposit' || o.type === 'reservation_full') {
+    return [
+      { label: t('orders.tlCreated'), time: o.createdAt, done: true },
+      { label: t('orders.tlDepositUpload'), time: o.transferTime || '', done: !!o.transferTime },
+      { label: t('orders.tlMerchantConfirm'), time: o.paymentTime || o.balanceTime || '', done: !!(o.paymentTime || o.balanceTime) },
+      { label: t('orders.tlPickupTime'), time: o.pickupTime || '', done: !!o.pickupTime },
+      { label: t('orders.tlPickupConfirm'), time: o.pickupConfirmedAt || o.deliveryTime || '', done: !!(o.pickupConfirmedAt || o.deliveryTime) },
+    ]
+  }
+  // 分支 B：一般訂單（直購/拍賣）— 憑證 → 確認收款 → 發貨 → 買家確認收貨
   const items: { label: string; time: string; done: boolean }[] = [
     { label: t('orders.tlCreated'), time: o.createdAt, done: true },
-    { label: o.type === 'reservation_deposit' ? t('orders.tlDepositUpload') : t('orders.tlReceiptUpload'), time: o.transferTime || '', done: !!o.transferTime },
+    { label: t('orders.tlReceiptUpload'), time: o.transferTime || '', done: !!o.transferTime },
     { label: t('orders.tlMerchantConfirm'), time: o.paymentTime || o.balanceTime || '', done: !!(o.paymentTime || o.balanceTime) },
     { label: t('orders.tlShipped'), time: o.shippingTime || '', done: !!o.shippingTime },
     { label: t('orders.tlCompleted'), time: o.deliveryTime || '', done: !!o.deliveryTime },
   ]
-  if (o.type === 'reservation_deposit' && o.balanceTime) {
-    items[2] = { label: t('orders.tlMerchantConfirmBalance'), time: o.balanceTime, done: true }
-  }
   return items
 })
 
@@ -687,7 +695,7 @@ onMounted(() => {
               @click="toggleSort(col.key)"
             >
               <span class="th-label">{{ t(col.labelKey) }}</span>
-              <span class="sort-arrow" :class="{ active: sortKey === col.key, desc: sortKey === col.key && sortDir === 'desc' }">↕</span>
+              <span class="sort-arrow" :class="{ active: sortKey === col.key, desc: sortKey === col.key && sortDir === 'desc' }">{{ sortKey === col.key ? (sortDir === 'desc' ? '↓' : '↑') : '' }}</span>
             </th>
             <th>{{ t('orders.colNext') }}</th>
             <th>{{ t('orders.colActions') }}</th>
@@ -701,13 +709,13 @@ onMounted(() => {
                 <span v-else class="placeholder-emoji">🃏</span>
                 <div class="product-info">
                   <span class="product-name">{{ order.productTitle }}</span>
+                  <span class="qty-chip">×{{ order.quantity }}</span>
                   <span class="type-tag" :class="typeTag(order.type).cls">{{ typeTag(order.type).key ? t(typeTag(order.type).key) : order.type }}</span>
                 </div>
               </div>
             </td>
             <td>
               <div class="buyer-name">{{ order.sellerNickname }}</div>
-              <div class="cell-sub">x{{ order.quantity }}</div>
             </td>
             <td>
               <template v-if="order.type === 'reservation_deposit'">
@@ -757,12 +765,12 @@ onMounted(() => {
                   :disabled="confirmingPickup === order.id"
                   @click="handleConfirmPickup(order.id)"
                 >{{ confirmingPickup === order.id ? t('orders.processing') : t('orders.confirmPickup') }}</button>
-                <!-- 預約攞貨 = 直接開訂單聊天（2026-11-01 Luke 定案：無額外聊天按鈕） -->
+                <!-- 預約攞貨 = 直接開訂單聊天（統一入口） -->
                 <button
                   v-if="['pending','pending_paid','confirmed'].includes(order.status)"
                   class="btn-action confirm"
                   @click="openChat(order)"
-                >{{ t('orders.reservePickup') }}</button>
+                >💬 {{ t('orders.chatReserve') }}</button>
                 <!-- 已完成 → 評價按鈕（未評先顯示） -->
                 <button
                   v-if="order.status === 'delivered' && !order.myReviewId"
@@ -784,7 +792,7 @@ onMounted(() => {
           <img v-if="order.productImage" :src="resolveImageUrl(order.productImage)" class="card-thumb" :alt="order.productTitle" />
           <span v-else class="card-emoji">🃏</span>
           <div class="card-main">
-            <div class="card-title">{{ order.productTitle }}</div>
+            <div class="card-title">{{ order.productTitle }} <span class="qty-chip">×{{ order.quantity }}</span></div>
             <div class="card-meta">
               <span class="type-tag" :class="typeTag(order.type).cls">{{ typeTag(order.type).key ? t(typeTag(order.type).key) : order.type }}</span>
               <span class="status-badge" :class="getStatusBadge(order.status, order.type).class">{{ getStatusBadge(order.status, order.type).text }}</span>
@@ -834,7 +842,7 @@ onMounted(() => {
             v-if="['pending','pending_paid','confirmed'].includes(order.status)"
             class="btn-action confirm"
             @click="openChat(order)"
-          >{{ t('orders.reservePickup') }}</button>
+          >💬 {{ t('orders.chatReserve') }}</button>
           <button
             v-if="order.status === 'delivered' && !order.myReviewId"
             class="btn-action confirm"
@@ -1149,8 +1157,10 @@ tr:last-child td { border-bottom: none; }
 .sortable-th { cursor: pointer; user-select: none; white-space: nowrap; }
 .sortable-th:hover { color: var(--text-primary); }
 .sortable-th .th-label { margin-right: 4px; }
+/* 排序單向箭頭（Luke 2026-11-01）：↓=降序 ↑=升序；未啟用時留空佔位 */
 .sort-arrow {
   display: inline-block;
+  width: 12px;
   font-size: var(--text-xs);
   color: var(--text-muted);
   opacity: 0.5;
@@ -1158,7 +1168,6 @@ tr:last-child td { border-bottom: none; }
 }
 .sortable-th:hover .sort-arrow { opacity: 1; }
 .sort-arrow.active { opacity: 1; color: var(--primary); font-weight: 700; }
-.sort-arrow.active.desc { transform: rotate(180deg); }
 
 .product-cell { display: flex; align-items: center; gap: var(--space-3); }
 .row-thumb {
@@ -1177,6 +1186,18 @@ tr:last-child td { border-bottom: none; }
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .buyer-name { font-weight: 500; }
+/* 數量小徽章（2026-11-01 Luke：數量喺商品名旁，唔喺商家名下） */
+.qty-chip {
+  display: inline-block;
+  padding: 0 6px;
+  border-radius: var(--radius-full);
+  background: var(--bg-elevated);
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 600;
+  font-family: var(--font-num);
+  vertical-align: middle;
+}
 .amount { font-family: var(--font-num); font-weight: 600; color: var(--primary); white-space: nowrap; }
 .cell-sub { font-size: var(--text-xs); color: var(--text-secondary); margin-top: 2px; font-family: var(--font-num); }
 .date { font-size: var(--text-xs); color: var(--text-muted); white-space: nowrap; }

@@ -43,6 +43,7 @@ interface Order {
   pickupProposalTime?: string | null
   pickupTime?: string | null
   pickupConfirmStatus?: string
+  pickupConfirmedAt?: string | null
   myReviewId?: string | null
 }
 
@@ -258,6 +259,7 @@ const loadOrders = async () => {
         pickupProposalTime: o.pickupProposalTime || null,
         pickupTime: o.pickupTime || null,
         pickupConfirmStatus: o.pickupConfirmStatus || 'none',
+        pickupConfirmedAt: o.pickupConfirmedAt || null,
         myReviewId,
       }
     }))
@@ -373,16 +375,24 @@ const closeDetail = () => { detailOrder.value = null }
 const detailTimeline = computed(() => {
   const o = detailOrder.value
   if (!o) return []
+  // 分支 A（2026-11-01）：預約拿貨路徑 — 訂金憑證 → 收款確認 → 確認攞貨時間 → 買家確認取貨（完成）
+  if (o.type === 'reservation_deposit' || o.type === 'reservation_full') {
+    return [
+      { label: '訂單建立', time: o.createdAt, done: true },
+      { label: '訂金憑證上傳', time: o.transferTime || '', done: !!o.transferTime },
+      { label: '收款確認', time: o.paymentTime || o.balanceTime || '', done: !!(o.paymentTime || o.balanceTime) },
+      { label: '確認攞貨時間', time: o.pickupTime || '', done: !!o.pickupTime },
+      { label: '買家確認取貨', time: o.pickupConfirmedAt || o.deliveryTime || '', done: !!(o.pickupConfirmedAt || o.deliveryTime) },
+    ]
+  }
+  // 分支 B：一般訂單（直購/拍賣）— 憑證 → 收款確認 → 發貨 → 買家確認收貨
   const items: { label: string; time: string; done: boolean }[] = [
     { label: '訂單建立', time: o.createdAt, done: true },
-    { label: o.type === 'reservation_deposit' ? '訂金憑證上傳' : '付款憑證上傳', time: o.transferTime || '', done: !!o.transferTime },
+    { label: '付款憑證上傳', time: o.transferTime || '', done: !!o.transferTime },
     { label: '收款確認', time: o.paymentTime || o.balanceTime || '', done: !!(o.paymentTime || o.balanceTime) },
     { label: '發貨', time: o.shippingTime || '', done: !!o.shippingTime },
     { label: '完成', time: o.deliveryTime || '', done: !!o.deliveryTime },
   ]
-  if (o.type === 'reservation_deposit' && o.balanceTime) {
-    items[2] = { label: '收款確認（含尾款）', time: o.balanceTime, done: true }
-  }
   return items
 })
 
@@ -522,7 +532,7 @@ onMounted(async () => {
               @click="toggleSort(col.key)"
             >
               <span class="th-label">{{ col.label }}</span>
-              <span class="sort-arrow" :class="{ active: sortKey === col.key, desc: sortKey === col.key && sortDir === 'desc' }">↕</span>
+              <span class="sort-arrow" :class="{ active: sortKey === col.key, desc: sortKey === col.key && sortDir === 'desc' }">{{ sortKey === col.key ? (sortDir === 'desc' ? '↓' : '↑') : '' }}</span>
             </th>
             <th>下一步</th>
             <th>操作</th>
@@ -536,6 +546,7 @@ onMounted(async () => {
                 <span v-else class="placeholder-emoji">🃏</span>
                 <div class="product-info">
                   <span class="product-name">{{ order.productTitle }}</span>
+                  <span class="qty-chip">×{{ order.quantity }}</span>
                   <span class="type-tag" :class="ORDER_TYPE[order.type]?.cls">{{ ORDER_TYPE[order.type]?.text || order.type }}</span>
                 </div>
               </div>
@@ -551,7 +562,6 @@ onMounted(async () => {
               </template>
               <template v-else>
                 <div class="amount">{{ formatPrice(order.amount) }}</div>
-                <div class="cell-sub">x{{ order.quantity }}</div>
               </template>
             </td>
             <td>
@@ -602,7 +612,7 @@ onMounted(async () => {
                   v-if="['pending','pending_paid','confirmed'].includes(order.status)"
                   class="btn-action detail"
                   @click="openChat(order)"
-                >💬 聊天</button>
+                >💬 聊天/預約拿貨</button>
                 <!-- 已完成 → 評價買家按鈕 -->
                 <button
                   v-if="order.status === 'delivered' && !order.myReviewId"
@@ -624,7 +634,7 @@ onMounted(async () => {
           <img v-if="order.productImage" :src="resolveImageUrl(order.productImage)" class="card-thumb" :alt="order.productTitle" />
           <span v-else class="card-emoji">🃏</span>
           <div class="card-main">
-            <div class="card-title">{{ order.productTitle }}</div>
+            <div class="card-title">{{ order.productTitle }} <span class="qty-chip">×{{ order.quantity }}</span></div>
             <div class="card-meta">
               <span class="type-tag" :class="ORDER_TYPE[order.type]?.cls">{{ ORDER_TYPE[order.type]?.text || order.type }}</span>
               <span class="status-badge" :class="getStatusBadge(order.status).class">{{ getStatusBadge(order.status).text }}</span>
@@ -680,7 +690,7 @@ onMounted(async () => {
             v-if="['pending','pending_paid','confirmed'].includes(order.status)"
             class="btn-action detail"
             @click="openChat(order)"
-          >💬 聊天</button>
+          >💬 聊天/預約拿貨</button>
           <button
             v-if="order.status === 'delivered' && !order.myReviewId"
             class="btn-action confirm"
@@ -1015,7 +1025,6 @@ tr:last-child td { border-bottom: none; }
 }
 .sortable-th:hover .sort-arrow { opacity: 1; }
 .sort-arrow.active { opacity: 1; color: var(--primary); font-weight: 700; }
-.sort-arrow.active.desc { transform: rotate(180deg); }
 
 .product-cell { display: flex; align-items: center; gap: var(--space-3); }
 .row-thumb {
@@ -1035,6 +1044,18 @@ tr:last-child td { border-bottom: none; }
 }
 .buyer-name { font-weight: 500; }
 .buyer-email { font-size: var(--text-xs); color: var(--text-muted); }
+/* 數量小徽章（2026-11-01 Luke：數量喺商品名旁） */
+.qty-chip {
+  display: inline-block;
+  padding: 0 6px;
+  border-radius: var(--radius-full);
+  background: var(--bg-elevated);
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 600;
+  font-family: var(--font-num);
+  vertical-align: middle;
+}
 .amount { font-family: var(--font-num); font-weight: 600; color: var(--primary); white-space: nowrap; }
 .cell-sub { font-size: var(--text-xs); color: var(--text-secondary); margin-top: 2px; font-family: var(--font-num); }
 .date { font-size: var(--text-xs); color: var(--text-muted); white-space: nowrap; }

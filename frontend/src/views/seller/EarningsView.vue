@@ -275,7 +275,7 @@ onMounted(() => loadData())
               @click="toggleSort(col.key)"
             >
               <span class="th-label">{{ col.label }}</span>
-              <span class="sort-arrow" :class="{ active: sortKey === col.key, desc: sortKey === col.key && sortDir === 'desc' }">↕</span>
+              <span class="sort-arrow" :class="{ active: sortKey === col.key, desc: sortKey === col.key && sortDir === 'desc' }">{{ sortKey === col.key ? (sortDir === 'desc' ? '↓' : '↑') : '' }}</span>
             </th>
             <th>操作</th>
           </tr>
@@ -531,7 +531,6 @@ tr:last-child td { border-bottom: none; }
 }
 .sortable-th:hover .sort-arrow { opacity: 1; }
 .sort-arrow.active { opacity: 1; color: var(--primary); font-weight: 700; }
-.sort-arrow.active.desc { transform: rotate(180deg); }
 
 .product-cell { display: flex; align-items: center; gap: var(--space-3); }
 .placeholder-emoji {

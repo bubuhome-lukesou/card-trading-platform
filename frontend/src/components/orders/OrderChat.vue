@@ -3,7 +3,7 @@
 // - 文字 + 圖片/影片附件（最多4個/條）
 // - 攞貨時間協調流程以系統消息顯示；買家可揀時間發出、商家可確認
 // - role 決定按鈕：buyer=揀時間＋發出＋確認取貨；seller=確認時間
-import { ref, onMounted, nextTick, computed } from 'vue'
+import { ref, onMounted, onUnmounted, nextTick, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { orderMessagesApi, uploadChatMedia, type OrderMessageDto, type ChatAttachment } from '@/api/order-messages'
 import { orderPickupApi } from '@/api/order-extended'
@@ -29,6 +29,8 @@ const emit = defineEmits<{
   /** 訂單狀態有變（提出時間/確認時間/完成取貨）— 外層 reload */
   (e: 'order-updated'): void
   (e: 'close'): void
+  /** 對方有新消息（未讀提示用，可選） */
+  (e: 'new-message'): void
 }>()
 
 const { t } = useI18n()
@@ -54,15 +56,39 @@ const isMine = (m: OrderMessageDto) => m.senderId && m.senderId === props.myUser
 const loadMessages = async () => {
   try {
     const res = await orderMessagesApi.list(props.orderId)
-    messages.value = Array.isArray(res.data) ? res.data : []
-    await nextTick()
-    scrollToBottom()
+    const fresh = Array.isArray(res.data) ? res.data : []
+    // 有新消息時先更新 + 自動滾底（即時感）；無則靜默
+    if (fresh.length !== messages.value.length || fresh[fresh.length - 1]?.id !== messages.value[messages.value.length - 1]?.id) {
+      const prevLen = messages.value.length
+      messages.value = fresh
+      if (fresh.length > prevLen) {
+        await nextTick()
+        scrollToBottom()
+        // 對方新消息 → 閃一下未讀提示（簡單處理：標題 emoji 提示交外層）
+        if (fresh[fresh.length - 1] && fresh[fresh.length - 1].senderId && fresh[fresh.length - 1].senderId !== props.myUserId) {
+          emit('new-message')
+        }
+      }
+    }
   } catch (e) {
     errorMsg.value = t('ordersChat.loadFailed')
   } finally {
     loading.value = false
   }
 }
+
+// ===== 即時化：5 秒輪詢（modal 開住先 poll；socket 無 user auth 支撐，poll 最穩陣）=====
+let pollTimer: ReturnType<typeof setInterval> | null = null
+onMounted(() => {
+  loadMessages()
+  pollTimer = setInterval(() => {
+    if (document.hidden) return // 分頁隱藏不耗 API
+    loadMessages()
+  }, 5000)
+})
+onUnmounted(() => {
+  if (pollTimer) clearInterval(pollTimer)
+})
 
 const scrollToBottom = () => {
   if (scrollBox.value) scrollBox.value.scrollTop = scrollBox.value.scrollHeight
@@ -93,9 +119,24 @@ const BUSINESS_DAYS = computed<DaySpec[]>(() => {
 
 // datetime-local 揀定後拆出日期/時間（一個 input 搞掂日期+時段起點）
 const selectedDate = ref('') // YYYY-MM-DDTHH:mm（datetime-local 原值）
-// 商家有冇設定任何營業時段（全空=未設定結構化時段 → datetime 自由選擇、唔擋）
+// 商家有冇設定任何營業時段（有 → 顯示時段列表提示；無 → 提示自由選擇）
 const BUSINESS_HAS_ANY = computed(() => BUSINESS_DAYS.value.length > 0)
 const hasStructuredHours = computed(() => !!props.businessHoursSpec && BUSINESS_HAS_ANY.value)
+// 時段外校驗（前端先行，後端再驗一次）— 有 spec 先擋
+const outsideHours = computed(() => {
+  if (!hasStructuredHours.value || !selectedDate.value) return false
+  try {
+    const d = new Date(selectedDate.value)
+    if (isNaN(d.getTime())) return false
+    const day = String(d.getDay() === 0 ? 7 : d.getDay())
+    const ranges = BUSINESS_DAYS.value.find((x) => x.day === Number(day))?.ranges || []
+    if (!ranges.length) return true // 有 spec 但該日無時段 = 不營業
+    const hhmm = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+    return !ranges.some(([s, e]) => hhmm >= s && hhmm <= e)
+  } catch {
+    return false
+  }
+})
 
 const canPropose = computed(() => props.role === 'buyer' && ['pending', 'pending_paid'].includes(props.orderStatus) && props.pickupConfirmStatus !== 'confirmed')
 const canConfirmTime = computed(() => props.role === 'seller' && props.pickupConfirmStatus === 'proposed')
@@ -213,8 +254,6 @@ const fmtProposal = (iso: string | null) => {
 }
 
 defineExpose({ loadMessages })
-
-onMounted(loadMessages)
 </script>
 
 <template>
@@ -236,10 +275,11 @@ onMounted(loadMessages)
           class="ochat-input-date"
           :min="MIN_DATETIME"
         />
-        <button class="ochat-btn primary" :disabled="!selectedDate || !BUSINESS_HAS_ANY" @click="submitProposal">
+        <button class="ochat-btn primary" :disabled="!selectedDate || outsideHours" @click="submitProposal">
           {{ pickupProposalTime ? t('ordersChat.repropose') : t('ordersChat.propose') }}
         </button>
       </div>
+      <div v-if="selectedDate && outsideHours" class="ochat-err">{{ t('ordersChat.outsideHours') }}</div>
       <div v-if="proposeError" class="ochat-err">{{ proposeError }}</div>
       <div class="ochat-pickup-note">{{ t('ordersChat.proposeNote') }}</div>
     </div>

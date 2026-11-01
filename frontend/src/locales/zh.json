@@ -359,7 +359,10 @@
     "reviewBtn": "評價",
     "reviewTitle": "評價",
     "reviewDone": "已評價",
-    "orderLimitReached": "您有 5 筆未付款或未確認的訂單，請先處理後再下單"
+    "orderLimitReached": "您有 5 筆未付款或未確認的訂單，請先處理後再下單",
+    "chatReserve": "聊天/預約拿貨",
+    "tlPickupTime": "確認攞貨時間",
+    "tlPickupConfirm": "買家確認取貨"
   },
   "wallet": {
     "title": "我的帳戶",
@@ -468,7 +471,8 @@
     "videoTooLarge": "影片不可以超過 60MB",
     "imageTooLarge": "圖片不可以超過 20MB",
     "uploadFailed": "附件上傳失敗，請重試",
-    "tooManyFiles": "每條消息最多 {max} 個附件"
+    "tooManyFiles": "每條消息最多 {max} 個附件",
+    "outsideHours": "超出營業時間（該時段唔喺時段列表內），請重新揀"
   },
   "reviews": {
     "star1": "非常差",

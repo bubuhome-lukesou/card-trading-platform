@@ -874,7 +874,7 @@ const goOrdersPage = (pid: string) => router.push(`/seller/orders?productId=${pi
               @click="toggleSort(col.key)"
             >
               <span class="th-label">{{ col.label }}</span>
-              <span class="sort-arrow" :class="{ active: sortKey === col.key, desc: sortKey === col.key && sortDir === 'desc' }">↕</span>
+              <span class="sort-arrow" :class="{ active: sortKey === col.key, desc: sortKey === col.key && sortDir === 'desc' }">{{ sortKey === col.key ? (sortDir === 'desc' ? '↓' : '↑') : '' }}</span>
             </th>
             <th>操作</th>
           </tr>
@@ -1431,6 +1431,7 @@ const goOrdersPage = (pid: string) => router.push(`/seller/orders?productId=${pi
 
 .sort-arrow {
   display: inline-block;
+  width: 12px;
   font-size: var(--text-xs);
   color: var(--text-muted);
   opacity: 0.5;

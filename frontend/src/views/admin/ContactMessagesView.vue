@@ -256,7 +256,7 @@ onMounted(() => {
               @click="toggleSort(col.key)"
             >
               <span class="th-label">{{ col.label }}</span>
-              <span class="sort-arrow" :class="{ active: sortKey === col.key, desc: sortKey === col.key && sortDir === 'desc' }">↕</span>
+              <span class="sort-arrow" :class="{ active: sortKey === col.key, desc: sortKey === col.key && sortDir === 'desc' }">{{ sortKey === col.key ? (sortDir === 'desc' ? '↓' : '↑') : '' }}</span>
             </th>
             <th>操作</th>
           </tr>
@@ -465,6 +465,7 @@ tr:last-child td { border-bottom: none; }
 .sortable-th .th-label { margin-right: 4px; }
 .sort-arrow {
   display: inline-block;
+  width: 12px;
   font-size: var(--text-xs);
   color: var(--text-muted);
   opacity: 0.5;
@@ -472,7 +473,6 @@ tr:last-child td { border-bottom: none; }
 }
 .sortable-th:hover .sort-arrow { opacity: 1; }
 .sort-arrow.active { opacity: 1; color: var(--primary); font-weight: 700; }
-.sort-arrow.active.desc { transform: rotate(180deg); }
 
 .sender-name { font-weight: 500; }
 .msg-email { font-size: var(--text-xs); color: var(--text-muted); }

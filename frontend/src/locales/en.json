@@ -365,7 +365,10 @@
     "reviewBtn": "Review",
     "reviewTitle": "Review",
     "reviewDone": "Reviewed",
-    "orderLimitReached": "You have 5 unpaid/unconfirmed orders — please handle them before placing new ones"
+    "orderLimitReached": "You have 5 unpaid/unconfirmed orders — please handle them before placing new ones",
+    "chatReserve": "Chat / Pickup",
+    "tlPickupTime": "Pickup Time Confirmed",
+    "tlPickupConfirm": "Buyer Confirmed Pickup"
   },
   "wallet": {
     "title": "My Wallet",
@@ -474,7 +477,8 @@
     "videoTooLarge": "Video cannot exceed 60MB",
     "imageTooLarge": "Image cannot exceed 20MB",
     "uploadFailed": "Attachment upload failed, please retry",
-    "tooManyFiles": "Up to {max} attachments per message"
+    "tooManyFiles": "Up to {max} attachments per message",
+    "outsideHours": "Outside business hours — please pick a time within the listed slots"
   },
   "reviews": {
     "star1": "Terrible",
