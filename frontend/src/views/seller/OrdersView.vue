@@ -597,7 +597,7 @@ onMounted(async () => {
                   :disabled="processingId === order.id"
                   @click="handleConfirmPickupTime(order.id)"
                 >{{ processingId === order.id ? '處理中...' : '確認時間' }}</button>
-                <!-- 訂單聊天入口 -->
+                <!-- 訂單聊天入口（同買家約定：預約拿貨統一入口） -->
                 <button
                   v-if="['pending','pending_paid','confirmed'].includes(order.status)"
                   class="btn-action detail"

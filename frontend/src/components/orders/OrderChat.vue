@@ -91,19 +91,11 @@ const BUSINESS_DAYS = computed<DaySpec[]>(() => {
   }
 })
 
-// 揀定日期後該日邊啲時段可揀（營業時間內）
-const selectedDate = ref('')
-const selectedTime = ref('')
-const selectedDayRanges = computed<[string, string][] | null>(() => {
-  if (!selectedDate.value) return null
-  try {
-    const day = new Date(selectedDate.value + 'T12:00:00').getDay()
-    const d = day === 0 ? 7 : day
-    return BUSINESS_DAYS.value.find((x) => x.day === d)?.ranges || []
-  } catch {
-    return null
-  }
-})
+// datetime-local 揀定後拆出日期/時間（一個 input 搞掂日期+時段起點）
+const selectedDate = ref('') // YYYY-MM-DDTHH:mm（datetime-local 原值）
+// 商家有冇設定任何營業時段（全空=未設定結構化時段 → datetime 自由選擇、唔擋）
+const BUSINESS_HAS_ANY = computed(() => BUSINESS_DAYS.value.length > 0)
+const hasStructuredHours = computed(() => !!props.businessHoursSpec && BUSINESS_HAS_ANY.value)
 
 const canPropose = computed(() => props.role === 'buyer' && ['pending', 'pending_paid'].includes(props.orderStatus) && props.pickupConfirmStatus !== 'confirmed')
 const canConfirmTime = computed(() => props.role === 'seller' && props.pickupConfirmStatus === 'proposed')
@@ -112,10 +104,10 @@ const canConfirmPickup = computed(() => props.role === 'buyer' && props.pickupCo
 const proposeError = ref('')
 
 const submitProposal = async () => {
-  if (!selectedDate.value || !selectedTime.value) return
+  if (!selectedDate.value) return
   proposeError.value = ''
   try {
-    await orderPickupApi.proposePickupTime(props.orderId, `${selectedDate.value}T${selectedTime.value}:00`)
+    await orderPickupApi.proposePickupTime(props.orderId, `${selectedDate.value}:00`)
     emit('order-updated')
     await loadMessages()
   } catch (e: any) {
@@ -229,9 +221,8 @@ onMounted(loadMessages)
   <div class="ochat">
     <!-- 攞貨時間流程操作區（有權限先顯示） -->
     <div v-if="canPropose" class="ochat-pickup">
-      <!-- 商家未設定結構化營業時間時：顯示提示 + 自由 datetime 選擇 -->
-      <div v-if="!businessHoursSpec" class="ochat-hours-warn">⚠️ {{ t('ordersChat.hoursNotSet') }}</div>
-      <div v-else-if="businessHoursText" class="ochat-hours-text">🕐 {{ businessHoursText }}</div>
+      <!-- 商家有結構化營業時間 → 顯示時段列表；無 → 顯示提示（自由選擇） -->
+      <div v-if="!hasStructuredHours" class="ochat-hours-warn">⚠️ {{ t('ordersChat.hoursNotSet') }}</div>
       <div v-else class="ochat-hours-list">
         <div v-for="d in BUSINESS_DAYS" :key="d.day" class="ochat-hours-row">
           <span class="ochat-hours-day">{{ DAY_LABELS[d.day - 1] }}</span>
@@ -244,9 +235,8 @@ onMounted(loadMessages)
           type="datetime-local"
           class="ochat-input-date"
           :min="MIN_DATETIME"
-          :step="1800"
         />
-        <button class="ochat-btn primary" :disabled="!selectedDate" @click="submitProposal">
+        <button class="ochat-btn primary" :disabled="!selectedDate || !BUSINESS_HAS_ANY" @click="submitProposal">
           {{ pickupProposalTime ? t('ordersChat.repropose') : t('ordersChat.propose') }}
         </button>
       </div>

@@ -757,23 +757,18 @@ onMounted(() => {
                   :disabled="confirmingPickup === order.id"
                   @click="handleConfirmPickup(order.id)"
                 >{{ confirmingPickup === order.id ? t('orders.processing') : t('orders.confirmPickup') }}</button>
-                <!-- 訂單聊天入口（pending/pending_paid/confirmed 且非普通直購已發貨） -->
+                <!-- 預約攞貨 = 直接開訂單聊天（2026-11-01 Luke 定案：無額外聊天按鈕） -->
                 <button
                   v-if="['pending','pending_paid','confirmed'].includes(order.status)"
-                  class="btn-action detail"
+                  class="btn-action confirm"
                   @click="openChat(order)"
-                >💬 {{ t('orders.chatBtn') }}</button>
+                >{{ t('orders.reservePickup') }}</button>
                 <!-- 已完成 → 評價按鈕（未評先顯示） -->
                 <button
                   v-if="order.status === 'delivered' && !order.myReviewId"
                   class="btn-action confirm"
                   @click="openReview(order)"
                 >⭐ {{ t('orders.reviewBtn') }}</button>
-                <button
-                  v-if="order.status === 'pending' && order.type !== 'reservation_deposit'"
-                  class="btn-action detail"
-                  @click="openChat(order)"
-                >{{ t('orders.reservePickupChat') }}</button>
                 <button class="btn-action detail" @click="openDetail(order)">{{ t('orders.detail') }}</button>
               </div>
             </td>
@@ -834,21 +829,17 @@ onMounted(() => {
             :disabled="confirmingPickup === order.id"
             @click="handleConfirmPickup(order.id)"
           >{{ confirmingPickup === order.id ? t('orders.processing') : t('orders.confirmPickup') }}</button>
+          <!-- 預約攞貨 = 直接開訂單聊天 -->
           <button
             v-if="['pending','pending_paid','confirmed'].includes(order.status)"
-            class="btn-action detail"
+            class="btn-action confirm"
             @click="openChat(order)"
-          >💬 {{ t('orders.chatBtn') }}</button>
+          >{{ t('orders.reservePickup') }}</button>
           <button
             v-if="order.status === 'delivered' && !order.myReviewId"
             class="btn-action confirm"
             @click="openReview(order)"
           >⭐ {{ t('orders.reviewBtn') }}</button>
-          <button
-            v-if="order.status === 'pending' && order.type !== 'reservation_deposit'"
-            class="btn-action detail"
-            @click="openChat(order)"
-          >{{ t('orders.reservePickupChat') }}</button>
           <button class="btn-action detail" @click="openDetail(order)">{{ t('orders.detail') }}</button>
         </div>
       </div>
