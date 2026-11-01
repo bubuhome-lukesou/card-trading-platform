@@ -2,11 +2,17 @@ import { Controller, Get, Post, Patch, Param, Body, Query, UseGuards, UseInterce
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { OrdersService } from './orders.service';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { ReviewsService } from '../reviews/reviews.service';
+
+const PICKUP_TIME_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/
 
 @Controller('orders')
 @UseGuards(JwtAuthGuard)
 export class OrdersController {
-  constructor(private ordersService: OrdersService) {}
+  constructor(
+    private ordersService: OrdersService,
+    private reviewsService: ReviewsService,
+  ) {}
 
   @Get()
   getMyOrders(@Request() req, @Query('page') page = '1', @Query('limit') limit = '20', @Query('search') search?: string) {
@@ -68,4 +74,55 @@ export class OrdersController {
     const receiptUrl = `/uploads/${file.filename}`;
     return this.ordersService.updateBalanceReceipt(id, receiptUrl, req.user.id);
   }
+
+  // ===== 攞貨時間協調（2026-11-01）=====
+  // 買家提出/重提攞貨時間 → 訂單 pending→pending_paid（待商家確認），憑證可後補
+  @Post(':id/pickup-time')
+  proposePickupTime(@Param('id') id: string, @Request() req, @Body() body: { pickupTime: string }) {
+    return this.ordersService.proposePickupTime(id, req.user.id, body?.pickupTime);
+  }
+
+  // 商家確認攞貨時間 → pickupConfirmStatus=confirmed
+  @Post(':id/pickup-time/confirm')
+  confirmPickupTime(@Param('id') id: string, @Request() req) {
+    return this.ordersService.confirmPickupTime(id, req.user.id);
+  }
+
+  // 買家確認取貨 → delivered（完成訂單）
+  @Post(':id/pickup-confirm')
+  confirmPickup(@Param('id') id: string, @Request() req) {
+    return this.ordersService.confirmPickup(id, req.user.id);
+  }
+
+  // ===== 互評（2026-11-01）=====
+  @Post(':id/review')
+  createReview(
+    @Param('id') id: string,
+    @Request() req,
+    @Body() body: { rating: number; content?: string; images?: string[] },
+  ) {
+    return this.reviewsService.createForOrder(id, req.user.id, {
+      rating: body?.rating,
+      content: body?.content,
+      images: Array.isArray(body?.images) ? body.images : [],
+    });
+  }
+
+  @Get(':id/review')
+  getOrderReviews(@Param('id') id: string, @Request() req) {
+    return this.reviewsService.findByOrder(id);
+  }
+
+  @Post(':id/receipt')
+  @UseInterceptors(FileInterceptor('receipt'))
+  uploadAnyReceipt(@Param('id') id: string, @UploadedFile() file: Express.Multer.File, @Request() req) {
+    if (!file) {
+      return { success: false, error: 'No file uploaded' };
+    }
+    const receiptUrl = `/uploads/${file.filename}`;
+    return this.ordersService.updateTransferReceipt(id, receiptUrl, req.user.id);
+  }
 }
+
+// 驗證營業時間格式 helper re-export（service 用）
+export { PICKUP_TIME_RE };

@@ -43,6 +43,10 @@ import { ContactMessage } from './entities/contact-message.entity'
 import { ContactMessagesModule } from './modules/contact-messages/contact-messages.module'
 import { SellerProfile } from './entities/seller-profile.entity'
 import { SellerProfilesModule } from './modules/seller-profiles/seller-profiles.module'
+import { OrderMessage } from './entities/order-message.entity'
+import { OrderMessagesModule } from './modules/order-messages/order-messages.module'
+import { Review } from './entities/review.entity'
+import { ReviewsModule } from './modules/reviews/reviews.module'
 
 @Module({
   imports: [
@@ -53,7 +57,7 @@ import { SellerProfilesModule } from './modules/seller-profiles/seller-profiles.
       username: process.env.DB_USERNAME || 'card_admin',
       password: process.env.DB_PASSWORD || 'CardAuction2026!',
       database: process.env.DB_DATABASE || 'card_auction',
-      entities: [User, Product, Auction, Bid, Order, Favorite, WalletTransaction, Page, Tag, CartItem, Settings, SellerApplication, Reservation, AppNotification, Banner, HomeSettings, SiteDailyViews, ContactMessage, SellerProfile],
+      entities: [User, Product, Auction, Bid, Order, Favorite, WalletTransaction, Page, Tag, CartItem, Settings, SellerApplication, Reservation, AppNotification, Banner, HomeSettings, SiteDailyViews, ContactMessage, SellerProfile, OrderMessage, Review],
       synchronize: process.env.NODE_ENV === 'development',
       logging: process.env.NODE_ENV === 'development'
     }),
@@ -79,7 +83,9 @@ import { SellerProfilesModule } from './modules/seller-profiles/seller-profiles.
     BannersModule,
     HomeSettingsModule,
     ContactMessagesModule,
-    SellerProfilesModule
+    SellerProfilesModule,
+    OrderMessagesModule,
+    ReviewsModule
   ],
   controllers: [AppController],
   providers: [AppService]

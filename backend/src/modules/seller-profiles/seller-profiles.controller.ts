@@ -53,6 +53,7 @@ export class SellerProfilesController {
       wechatId?: string
       wechatQrCode?: string
       location?: string
+      businessHoursSpec?: string
     }
   ) {
     if (req.user?.role !== 'seller') throw new ForbiddenException('只有商家可以管理商家資料')

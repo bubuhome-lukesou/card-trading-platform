@@ -96,7 +96,23 @@ watch(sellerId, () => {
 onMounted(() => {
   loadProfile()
   fetchProducts()
+  loadReviewStats()
 })
+
+// ===== 評價統計（2026-11-01 互評系統）=====
+import { reviewApi } from '@/api/order-extended'
+import ReviewList from '@/components/orders/ReviewList.vue'
+const reviewStats = ref({ avg: 0, count: 0 })
+const loadReviewStats = async () => {
+  if (!sellerId.value) return
+  try {
+    const res = await reviewApi.stats(sellerId.value, 'seller_review')
+    reviewStats.value = { avg: Number(res.data?.avg || 0), count: Number(res.data?.count || 0) }
+  } catch {
+    reviewStats.value = { avg: 0, count: 0 }
+  }
+}
+watch(sellerId, () => { loadReviewStats() })
 
 // ===== 顯示 helpers =====
 const displayName = computed(() => data.value?.user?.nickname || '')
@@ -222,6 +238,22 @@ const goMarketplace = () => {
           </button>
         </div>
       </template>
+    </div>
+
+    <!-- 評價區（2026-11-01 互評系統） -->
+    <div class="sp-reviews">
+      <div class="sp-reviews-header">
+        <h2 class="sp-reviews-title">{{ locale === 'zh' ? '⭐ 商品評價' : '⭐ Reviews' }}</h2>
+        <span v-if="reviewStats.count" class="sp-reviews-stats">
+          {{ reviewStats.avg }} / 5 · {{ reviewStats.count }} {{ locale === 'zh' ? '則' : 'reviews' }}
+        </span>
+      </div>
+      <ReviewList
+        v-if="sellerId"
+        :target-user-id="sellerId"
+        role="seller_review"
+        :limit="5"
+      />
     </div>
 
     <!-- QR 燈箱 -->
@@ -480,6 +512,31 @@ const goMarketplace = () => {
   display: flex;
   justify-content: center;
   margin-top: 20px;
+}
+
+/* ===== 評價區（2026-11-01）===== */
+.sp-reviews {
+  margin-top: 32px;
+  padding: 24px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+}
+.sp-reviews-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.sp-reviews-title {
+  font-size: 1.05rem;
+  margin: 0;
+  color: #f0f0f5;
+}
+.sp-reviews-stats {
+  font-size: 0.85rem;
+  color: rgba(200, 200, 214, 0.7);
+  font-family: var(--font-num, monospace);
 }
 .sp-more-btn {
   padding: 10px 28px;

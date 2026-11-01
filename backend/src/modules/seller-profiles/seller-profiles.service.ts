@@ -23,6 +23,8 @@ export interface UpdateSellerProfileDto {
   wechatId?: string
   wechatQrCode?: string
   location?: string
+  // 結構化營業時間 JSON（2026-11-01 攞貨時間選擇用）：{"1":[["14:00","20:00"]],...}
+  businessHoursSpec?: string
 }
 
 @Injectable()
@@ -122,7 +124,7 @@ export class SellerProfilesService {
 
     const allowed: (keyof SellerProfile)[] = [
       'logo', 'banner', 'descriptionZh', 'descriptionEn',
-      'businessHours', 'wechatId', 'wechatQrCode', 'location'
+      'businessHours', 'wechatId', 'wechatQrCode', 'location', 'businessHoursSpec'
     ]
     for (const key of allowed) {
       if (dto[key] !== undefined) {

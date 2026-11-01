@@ -111,6 +111,23 @@ export class Order {
   @Column({ nullable: true })
   balanceTime: Date
 
+  // ===== 攞貨協調聊天流程（2026-11-01）=====
+  // 買家提出嘅攞貨時間（ISO 串，pending/pending_paid 階段買家可改選重提）
+  @Column({ name: 'pickupProposalTime', type: 'varchar', length: 50, nullable: true })
+  pickupProposalTime: string | null
+
+  // 商家確認時間後寫入；確認前買家可重新選時間
+  @Column({ name: 'pickupTime', type: 'datetime', nullable: true })
+  pickupTime: Date | null
+
+  // 'none' | 'proposed' | 'confirmed' — 決定買家視角「待確認取貨」階段
+  @Column({ name: 'pickupConfirmStatus', type: 'varchar', length: 20, default: 'none' })
+  pickupConfirmStatus: string
+
+  // 買家「確認取貨」時間 — 訂單完成節點
+  @Column({ name: 'pickupConfirmedAt', type: 'datetime', nullable: true })
+  pickupConfirmedAt: Date | null
+
   @CreateDateColumn()
   createdAt: Date
 

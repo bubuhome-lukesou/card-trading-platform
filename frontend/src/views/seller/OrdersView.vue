@@ -6,6 +6,11 @@ import { useRoute } from 'vue-router'
 import { ordersApi } from '@/api/orders'
 import { cartApi } from '@/api/cart'
 import { productApi } from '@/api/products'
+import { useAuthStore } from '@/stores/auth'
+import OrderChat from '@/components/orders/OrderChat.vue'
+import ReviewModal from '@/components/orders/ReviewModal.vue'
+import { orderPickupApi } from '@/api/order-extended'
+import { reviewApi } from '@/api/order-extended'
 
 const route = useRoute()
 
@@ -33,6 +38,12 @@ interface Order {
   shippingTime?: string
   deliveryTime?: string
   notes?: string
+  // 攞貨協調（2026-11-01）
+  buyerId?: string
+  pickupProposalTime?: string | null
+  pickupTime?: string | null
+  pickupConfirmStatus?: string
+  myReviewId?: string | null
 }
 
 const orders = ref<Order[]>([])
@@ -197,7 +208,9 @@ const loadOrders = async () => {
   try {
     // limit=200：確保商品篩選能看到該商品所有訂單
     const res = await ordersApi.getSellerOrders(1, 200)
-    orders.value = (res.data?.data || []).map((o: any) => {
+    // 互評：delivered 單查已評（用 reviewApi.findByOrder；myReviewId=自己寫嘅 buyer_review）
+    const reviewCache: Record<string, string | null> = {}
+    orders.value = await Promise.all((res.data?.data || []).map(async (o: any) => {
       let images: string[] = []
       try {
         images = typeof o.product?.images === 'string'
@@ -205,6 +218,18 @@ const loadOrders = async () => {
           : (Array.isArray(o.product?.images) ? o.product.images : [])
       } catch {}
       const isReservation = o.type === 'reservation_deposit'
+      let myReviewId: string | null = null
+      if (o.status === 'delivered' && !(o.id in reviewCache)) {
+        try {
+          const rr = await reviewApi.findByOrder(o.id)
+          const list = Array.isArray(rr.data) ? rr.data : []
+          const mine = list.find((r: any) => r.targetRole === 'buyer_review')
+          reviewCache[o.id] = mine ? mine.id : null
+        } catch {
+          reviewCache[o.id] = null
+        }
+      }
+      if (o.status === 'delivered') myReviewId = reviewCache[o.id] ?? null
       return {
         id: o.id,
         productIdKey: o.productId || '',
@@ -229,8 +254,13 @@ const loadOrders = async () => {
         shippingTime: o.shippingTime || undefined,
         deliveryTime: o.deliveryTime || undefined,
         notes: o.notes || undefined,
+        buyerId: o.buyerId || '',
+        pickupProposalTime: o.pickupProposalTime || null,
+        pickupTime: o.pickupTime || null,
+        pickupConfirmStatus: o.pickupConfirmStatus || 'none',
+        myReviewId,
       }
-    })
+    }))
   } catch (e) {
     console.error('Failed to load orders', e)
     orders.value = []
@@ -357,6 +387,60 @@ const detailTimeline = computed(() => {
 })
 
 const clearProductFilter = () => { filterProductId.value = '' }
+
+// ===== 訂單聊天 + 攞貨協調（2026-11-01，賣家視角）=====
+const showChatModal = ref(false)
+const chatOrder = ref<Order | null>(null)
+
+const openChat = (o: Order) => {
+  chatOrder.value = o
+  showChatModal.value = true
+}
+const closeChat = () => {
+  showChatModal.value = false
+  chatOrder.value = null
+}
+
+const onChatOrderUpdated = async () => {
+  await loadOrders()
+  const updated = orders.value.find(o => o.id === chatOrder.value?.id)
+  if (updated) chatOrder.value = updated
+}
+
+const authStore = useAuthStore()
+const myUserId = computed(() => String((authStore.user as any)?.id || ''))
+
+// 商家確認攞貨時間（行內按鈕）
+const handleConfirmPickupTime = async (orderId: string) => {
+  processingId.value = orderId
+  try {
+    await orderPickupApi.confirmPickupTime(orderId)
+    alert('已確認取貨時間！')
+    await loadOrders()
+  } catch (e: any) {
+    alert(e?.response?.data?.message || '操作失敗，請重試')
+  } finally {
+    processingId.value = null
+  }
+}
+
+// ===== 互評 modal（2026-11-01）=====
+const showReviewModal = ref(false)
+const reviewOrder = ref<Order | null>(null)
+
+const openReview = (o: Order) => {
+  reviewOrder.value = o
+  showReviewModal.value = true
+}
+const closeReview = () => {
+  showReviewModal.value = false
+  reviewOrder.value = null
+}
+const onReviewSubmitted = async () => {
+  closeReview()
+  alert('評價已提交！')
+  await loadOrders()
+}
 
 onMounted(async () => {
   // 從商品列表「完整訂單頁」跳入：/seller/orders?productId=xxx
@@ -506,6 +590,25 @@ onMounted(async () => {
                   :disabled="processingId === order.id"
                   @click="handleUpdateStatus(order.id, 'shipped')"
                 >{{ processingId === order.id ? '處理中...' : '發貨' }}</button>
+                <!-- 提出時間待確認 → 確認時間按鈕 -->
+                <button
+                  v-if="order.pickupConfirmStatus === 'proposed'"
+                  class="btn-action confirm"
+                  :disabled="processingId === order.id"
+                  @click="handleConfirmPickupTime(order.id)"
+                >{{ processingId === order.id ? '處理中...' : '確認時間' }}</button>
+                <!-- 訂單聊天入口 -->
+                <button
+                  v-if="['pending','pending_paid','confirmed'].includes(order.status)"
+                  class="btn-action detail"
+                  @click="openChat(order)"
+                >💬 聊天</button>
+                <!-- 已完成 → 評價買家按鈕 -->
+                <button
+                  v-if="order.status === 'delivered' && !order.myReviewId"
+                  class="btn-action confirm"
+                  @click="openReview(order)"
+                >⭐ 評價</button>
                 <button class="btn-action detail" @click="openDetail(order)">詳情</button>
               </div>
             </td>
@@ -567,6 +670,22 @@ onMounted(async () => {
             :disabled="processingId === order.id"
             @click="handleUpdateStatus(order.id, 'shipped')"
           >{{ processingId === order.id ? '處理中...' : '發貨' }}</button>
+          <button
+            v-if="order.pickupConfirmStatus === 'proposed'"
+            class="btn-action confirm"
+            :disabled="processingId === order.id"
+            @click="handleConfirmPickupTime(order.id)"
+          >{{ processingId === order.id ? '處理中...' : '確認時間' }}</button>
+          <button
+            v-if="['pending','pending_paid','confirmed'].includes(order.status)"
+            class="btn-action detail"
+            @click="openChat(order)"
+          >💬 聊天</button>
+          <button
+            v-if="order.status === 'delivered' && !order.myReviewId"
+            class="btn-action confirm"
+            @click="openReview(order)"
+          >⭐ 評價</button>
           <button class="btn-action detail" @click="openDetail(order)">詳情</button>
         </div>
       </div>
@@ -673,11 +792,93 @@ onMounted(async () => {
         </div>
       </div>
     </div>
+
+    <!-- 訂單聊天 modal（2026-11-01） -->
+    <div v-if="showChatModal && chatOrder" class="modal-overlay" @click.self="closeChat">
+      <div class="chat-modal">
+        <div class="modal-header">
+          <h3>💬 訂單聊天</h3>
+          <button @click="closeChat" class="modal-close">✕</button>
+        </div>
+        <div class="chat-order-brief">
+          <img v-if="chatOrder.productImage" :src="resolveImageUrl(chatOrder.productImage)" class="cb-thumb" :alt="chatOrder.productTitle" />
+          <span v-else class="cb-emoji">🃏</span>
+          <span class="cb-title">{{ chatOrder.productTitle }}</span>
+          <span class="cb-sub">買家: {{ chatOrder.buyerNickname }}</span>
+        </div>
+        <div class="chat-body">
+          <OrderChat
+            :order-id="chatOrder.id"
+            role="seller"
+            :order-status="chatOrder.status"
+            :pickup-confirm-status="chatOrder.pickupConfirmStatus || 'none'"
+            :pickup-proposal-time="chatOrder.pickupProposalTime || null"
+            :pickup-time="chatOrder.pickupTime || null"
+            :business-hours-spec="null"
+            :business-hours-text="null"
+            :my-user-id="myUserId"
+            @order-updated="onChatOrderUpdated"
+          />
+        </div>
+      </div>
+    </div>
+
+    <!-- 互評 modal（2026-11-01） -->
+    <div v-if="showReviewModal && reviewOrder" class="modal-overlay" @click.self="closeReview">
+      <div class="review-modal">
+        <div class="modal-header">
+          <h3>⭐ 評價買家</h3>
+          <button @click="closeReview" class="modal-close">✕</button>
+        </div>
+        <div class="modal-body">
+          <ReviewModal
+            :order-id="reviewOrder.id"
+            :target-name="reviewOrder.buyerNickname"
+            @submitted="onReviewSubmitted"
+            @cancel="closeReview"
+          />
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <style scoped>
 .orders-management { display: flex; flex-direction: column; gap: var(--space-4); }
+
+/* ===== 訂單聊天 modal（2026-11-01）===== */
+.chat-modal {
+  width: min(680px, 100%);
+  height: min(720px, 90vh);
+  display: flex; flex-direction: column;
+  background: var(--bg-card);
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--border);
+}
+.chat-order-brief {
+  display: flex; align-items: center; gap: var(--space-3);
+  padding: var(--space-3) var(--space-5);
+  border-bottom: 1px solid var(--border);
+}
+.cb-thumb { width: 40px; height: 40px; border-radius: var(--radius-md); object-fit: cover; }
+.cb-emoji {
+  width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;
+  background: var(--bg-elevated); border-radius: var(--radius-md);
+}
+.cb-title { font-weight: 600; font-size: var(--text-sm); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cb-sub { font-size: var(--text-xs); color: var(--text-secondary); flex-shrink: 0; }
+.chat-body { flex: 1; min-height: 0; overflow: hidden; display: flex; flex-direction: column; padding: var(--space-4); }
+.chat-body :deep(.ochat) { height: 100%; }
+.chat-body :deep(.ochat-stream) { flex: 1; min-height: 0; overflow-y: auto; }
+
+.review-modal {
+  width: min(560px, 100%);
+  max-height: 85vh;
+  overflow-y: auto;
+  background: var(--bg-card);
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--border);
+}
 
 /* ===== 商品篩選提示條 ===== */
 .product-filter-banner {

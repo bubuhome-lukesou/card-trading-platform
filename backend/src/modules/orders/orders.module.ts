@@ -11,12 +11,16 @@ import { OrdersController } from './orders.controller';
 import { OrdersService } from './orders.service';
 import { ProductsModule } from '../products/products.module';
 import { NotificationModule } from '../notification/notification.module';
+import { OrderMessagesModule } from '../order-messages/order-messages.module';
+import { ReviewsModule } from '../reviews/reviews.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Order, User, Product]),
     ProductsModule,
     NotificationModule,
+    OrderMessagesModule,
+    ReviewsModule,
     MulterModule.register({
       storage: diskStorage({
         destination: '/var/www/card-trading-platform/backend/uploads',

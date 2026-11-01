@@ -47,6 +47,50 @@ const profileData = ref({
   wechatQrCode: '' as string,
   location: '' as string,
 })
+
+// ===== 結構化營業時間（2026-11-01 攞貨時間選擇用）=====
+// businessHoursSpec JSON：{ "1": [["14:00","20:00"]], ... } key=星期幾 1~7
+// 每日最多兩段（簡單好用）；空=該日不營業
+interface HourRange { start: string; end: string }
+const WEEK_DAYS = ['週一', '週二', '週三', '週四', '週五', '週六', '週日']
+const hoursSpec = ref<Record<string, HourRange[]>>(
+  Object.fromEntries([1, 2, 3, 4, 5, 6, 7].map((d) => [String(d), []]))
+)
+const parseHoursSpec = (raw: string | null | undefined) => {
+  const init: Record<string, HourRange[]> = Object.fromEntries([1, 2, 3, 4, 5, 6, 7].map((d) => [String(d), []]))
+  if (!raw) return init
+  try {
+    const parsed = JSON.parse(raw)
+    for (const d of [1, 2, 3, 4, 5, 6, 7]) {
+      const ranges = parsed?.[String(d)]
+      if (Array.isArray(ranges)) {
+        init[String(d)] = ranges
+          .filter((r: any) => Array.isArray(r) && r.length === 2)
+          .slice(0, 2)
+          .map((r: any) => ({ start: String(r[0]), end: String(r[1]) }))
+      }
+    }
+  } catch { /* 預設全空 */ }
+  return init
+}
+const addHourRange = (day: string) => {
+  if (hoursSpec.value[day].length < 2) hoursSpec.value[day].push({ start: '10:00', end: '18:00' })
+}
+const removeHourRange = (day: string, idx: number) => {
+  hoursSpec.value[day].splice(idx, 1)
+}
+const buildHoursSpecJson = () => {
+  const out: Record<string, [string, string][]> = {}
+  let anySet = false
+  for (const d of [1, 2, 3, 4, 5, 6, 7]) {
+    const ranges = hoursSpec.value[String(d)]
+      .filter((r) => r.start && r.end)
+      .map((r) => [r.start, r.end] as [string, string])
+    out[String(d)] = ranges
+    if (ranges.length) anySet = true
+  }
+  return anySet ? JSON.stringify(out) : null
+}
 const logoFile = ref<File | null>(null)
 const logoPreview = ref('')
 const bannerFile = ref<File | null>(null)
@@ -69,6 +113,7 @@ const loadSellerProfile = async () => {
       wechatQrCode: p.wechatQrCode || '',
       location: p.location || '',
     }
+    hoursSpec.value = parseHoursSpec((p as any).businessHoursSpec)
   } catch {
     // 首次使用未建行 — 保持空表單
   }
@@ -94,6 +139,7 @@ const handleProfileUpdate = async () => {
   errorMessage.value = ''
   try {
     const payload: any = { ...profileData.value }
+    payload.businessHoursSpec = buildHoursSpecJson() || ''
     if (logoFile.value) payload.logo = (await uploadApi.uploadImage(logoFile.value)).data.url
     if (bannerFile.value) payload.banner = (await uploadApi.uploadImage(bannerFile.value)).data.url
     if (qrFile.value) payload.wechatQrCode = (await uploadApi.uploadImage(qrFile.value)).data.url
@@ -472,6 +518,29 @@ onMounted(() => {
       </div>
     </div>
 
+    <!-- 營業時間（結構化，2026-11-01 攞貨時間選擇用） -->
+    <div class="settings-section">
+      <h3 class="section-title">🕐 營業時間（攞貨時段）</h3>
+      <p class="section-desc">買家預約攞貨時只可以揀呢啲時段；留空＝嗰日不營業。每日最多兩段。</p>
+      <div class="settings-card">
+        <div v-for="(label, i) in WEEK_DAYS" :key="i" class="hours-day-row">
+          <span class="hours-day-label">{{ label }}</span>
+          <div class="hours-ranges">
+            <div v-for="(r, idx) in hoursSpec[String(i + 1)]" :key="idx" class="hours-range">
+              <input type="time" v-model="r.start" class="hours-time" />
+              <span class="hours-sep">–</span>
+              <input type="time" v-model="r.end" class="hours-time" />
+              <button type="button" class="hours-remove" @click="removeHourRange(String(i + 1), idx)">✕</button>
+            </div>
+            <button v-if="hoursSpec[String(i + 1)].length < 2" type="button" class="hours-add" @click="addHourRange(String(i + 1))">＋ 加時段</button>
+          </div>
+        </div>
+        <button @click="handleProfileUpdate" class="btn-save" :disabled="profileLoading">
+          {{ profileLoading ? '儲存中...' : '儲存營業時間' }}
+        </button>
+      </div>
+    </div>
+
     <!-- Pickup Info Section -->
     <div class="settings-section">
       <h3 class="section-title">📦 預約取貨資訊</h3>
@@ -574,6 +643,58 @@ onMounted(() => {
   color: var(--text-secondary);
   margin-top: -8px;
 }
+
+/* ===== 營業時間編輯器（2026-11-01）===== */
+.hours-day-row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-4);
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--border);
+}
+.hours-day-row:last-of-type { border-bottom: none; }
+.hours-day-label {
+  min-width: 48px;
+  font-size: var(--text-sm);
+  color: var(--text-primary);
+  font-weight: 500;
+  padding-top: 6px;
+  flex-shrink: 0;
+}
+.hours-ranges { display: flex; flex-direction: column; gap: 6px; flex: 1; min-width: 0; }
+.hours-range { display: flex; align-items: center; gap: var(--space-2); }
+.hours-time {
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-card);
+  color: var(--text-primary);
+  font-size: var(--text-sm);
+  font-family: var(--font-num);
+  outline: none;
+  width: 110px;
+}
+.hours-time:focus { border-color: var(--primary); }
+.hours-sep { color: var(--text-secondary); font-size: var(--text-xs); }
+.hours-remove {
+  width: 24px; height: 24px;
+  border: none; border-radius: 50%;
+  background: rgba(239, 68, 68, 0.15); color: #ef4444;
+  cursor: pointer; font-size: 12px; line-height: 24px; padding: 0;
+  flex-shrink: 0;
+}
+.hours-remove:hover { background: rgba(239, 68, 68, 0.3); }
+.hours-add {
+  align-self: flex-start;
+  padding: 4px 12px;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-elevated);
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: var(--text-xs);
+}
+.hours-add:hover { color: var(--text-primary); border-color: var(--primary); }
 
 .notif-group-title {
   font-size: var(--text-xs);

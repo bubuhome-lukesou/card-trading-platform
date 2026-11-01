@@ -50,6 +50,13 @@ export class SellerProfile {
   @Column({ type: 'boolean', default: false })
   verified: boolean
 
+  // ===== 結構化營業時間（2026-11-01 攞貨時間選擇用）=====
+  // JSON：{ "1": [["14:00","20:00"]], "2":[["14:00","20:00"]], ..., "7": [] }
+  // key=星期幾 1(週一)~7(週日)；空陣列=該日不營業；同日可有多段
+  // 舊 businessHours 自由文字保留（介紹頁展示用），新欄位冇值時前端 fallback 舊欄位顯示
+  @Column({ name: 'businessHoursSpec', type: 'text', nullable: true })
+  businessHoursSpec: string | null
+
   @CreateDateColumn()
   createdAt: Date
 
