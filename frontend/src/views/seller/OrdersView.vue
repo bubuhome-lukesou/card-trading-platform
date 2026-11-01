@@ -16,6 +16,7 @@ const route = useRoute()
 
 interface Order {
   id: string
+  orderNumber: string // 訂單號（2026-11-01 Luke：商家訂單頁要顯示）
   productIdKey: string
   productTitle: string
   productImage?: string
@@ -233,6 +234,7 @@ const loadOrders = async () => {
       if (o.status === 'delivered') myReviewId = reviewCache[o.id] ?? null
       return {
         id: o.id,
+        orderNumber: o.orderNumber || '',
         productIdKey: o.productId || '',
         productTitle: o.product?.titleZh || o.product?.titleEn || '未知商品',
         productImage: images[0] || '',
@@ -405,6 +407,8 @@ const chatOrder = ref<Order | null>(null)
 const openChat = (o: Order) => {
   chatOrder.value = o
   showChatModal.value = true
+  // 從詳情層進入時收起詳情，避免雙 modal 疊羅
+  if (detailOrder.value) closeDetail()
 }
 const closeChat = () => {
   showChatModal.value = false
@@ -548,6 +552,7 @@ onMounted(async () => {
                   <span class="product-name">{{ order.productTitle }}</span>
                   <span class="qty-chip">×{{ order.quantity }}</span>
                   <span class="type-tag" :class="ORDER_TYPE[order.type]?.cls">{{ ORDER_TYPE[order.type]?.text || order.type }}</span>
+                  <span v-if="order.orderNumber" class="order-no">{{ order.orderNumber }}</span>
                 </div>
               </div>
             </td>
@@ -636,6 +641,7 @@ onMounted(async () => {
           <div class="card-main">
             <div class="card-title">{{ order.productTitle }} <span class="qty-chip">×{{ order.quantity }}</span></div>
             <div class="card-meta">
+              <span v-if="order.orderNumber" class="order-no">{{ order.orderNumber }}</span>
               <span class="type-tag" :class="ORDER_TYPE[order.type]?.cls">{{ ORDER_TYPE[order.type]?.text || order.type }}</span>
               <span class="status-badge" :class="getStatusBadge(order.status).class">{{ getStatusBadge(order.status).text }}</span>
             </div>
@@ -725,8 +731,8 @@ onMounted(async () => {
             <img v-if="detailOrder.productImage" :src="resolveImageUrl(detailOrder.productImage)" class="detail-thumb" :alt="detailOrder.productTitle" />
             <span v-else class="card-emoji">🃏</span>
             <div class="dp-info">
-              <span class="dp-title">{{ detailOrder.productTitle }}</span>
-              <span class="dp-sub">x{{ detailOrder.quantity }} · 單價 {{ formatPrice(detailOrder.unitPrice) }}</span>
+              <span class="dp-title">{{ detailOrder.productTitle }} <span class="qty-chip">×{{ detailOrder.quantity }}</span></span>
+              <span class="dp-sub">單價 {{ formatPrice(detailOrder.unitPrice) }}</span>
             </div>
             <div class="dp-amount">
               <template v-if="detailOrder.type === 'reservation_deposit'">
@@ -741,8 +747,16 @@ onMounted(async () => {
 
           <div class="detail-grid">
             <div class="dg-item">
+              <span class="dg-label">訂單號</span>
+              <span class="dg-value mono">{{ detailOrder.orderNumber }}</span>
+            </div>
+            <div class="dg-item">
               <span class="dg-label">買家</span>
               <span class="dg-value">{{ detailOrder.buyerNickname }}<small>{{ detailOrder.buyerEmail }}</small></span>
+            </div>
+            <div class="dg-item" v-if="detailOrder.pickupTime">
+              <span class="dg-label">確認攞貨時間</span>
+              <span class="dg-value">{{ formatDateTime(detailOrder.pickupTime) }}</span>
             </div>
             <div class="dg-item" v-if="detailOrder.shippingAddress">
               <span class="dg-label">收件地址</span>
@@ -785,6 +799,26 @@ onMounted(async () => {
                 <span class="tl-time">{{ t.time ? formatDateTime(t.time) : '待處理' }}</span>
               </div>
             </div>
+          </div>
+
+          <!-- 操作（詳情層內重複入口；2026-11-01 同買家端同步） -->
+          <div class="detail-actions">
+            <button
+              v-if="detailOrder.pickupConfirmStatus === 'proposed'"
+              class="btn-action confirm"
+              :disabled="processingId === detailOrder.id"
+              @click="handleConfirmPickupTime(detailOrder.id)"
+            >{{ processingId === detailOrder.id ? '處理中...' : '確認時間' }}</button>
+            <button
+              v-if="detailOrder.pickupConfirmStatus === 'confirmed' && detailOrder.pickupTime && !['delivered','cancelled'].includes(detailOrder.status)"
+              class="btn-action detail"
+              @click="openChat(detailOrder)"
+            >💬 聊天/預約拿貨</button>
+            <button
+              v-if="detailOrder.status === 'delivered' && !detailOrder.myReviewId"
+              class="btn-action confirm"
+              @click="openReview(detailOrder)"
+            >⭐ 評價</button>
           </div>
         </div>
       </div>
@@ -1044,6 +1078,14 @@ tr:last-child td { border-bottom: none; }
 }
 .buyer-name { font-weight: 500; }
 .buyer-email { font-size: var(--text-xs); color: var(--text-muted); }
+/* 訂單號（2026-11-01 Luke：商家訂單頁要顯示） */
+.order-no {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-family: var(--font-num);
+  letter-spacing: 0.3px;
+  white-space: nowrap;
+}
 /* 數量小徽章（2026-11-01 Luke：數量喺商品名旁） */
 .qty-chip {
   display: inline-block;
