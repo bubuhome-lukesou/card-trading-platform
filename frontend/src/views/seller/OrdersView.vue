@@ -112,6 +112,7 @@ const sortDir = ref<'asc' | 'desc'>('desc')
 
 const sortableColumns = [
   { key: 'productTitle', label: '商品', type: 'text' },
+  { key: 'orderNumber', label: '訂單號', type: 'text' },
   { key: 'buyerNickname', label: '買家', type: 'text' },
   { key: 'amount', label: '金額', type: 'number' },
   { key: 'status', label: '狀態', type: 'text' },
