@@ -32,6 +32,8 @@ const searchQuery = ref('')
 
 const toggleLocale = () => {
   locale.value = locale.value === 'zh' ? 'en' : 'zh'
+  // D7 修復（11/2）：切換語言同步 <html lang>（無障礙/SEO；index.html 預設 zh-Hant）
+  document.documentElement.lang = locale.value === 'zh' ? 'zh-Hant' : 'en'
 }
 
 const handleSearch = () => {

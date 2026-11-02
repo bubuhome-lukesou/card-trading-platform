@@ -130,6 +130,8 @@ const handlePasswordChange = async () => {
 
 const toggleLanguage = () => {
   locale.value = locale.value === 'zh' ? 'en' : 'zh'
+  // D7 修復（11/2）：切換語言同步 <html lang>
+  document.documentElement.lang = locale.value === 'zh' ? 'zh-Hant' : 'en'
 }
 
 // 通知設置 — 切換時自動保存（事件分組，純站內通知）

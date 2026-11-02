@@ -251,7 +251,8 @@ const fetchRelatedProducts = async () => {
     const res = await productApi.getProducts({
       category: auction.value.product.category,
       limit: 20,
-      sortBy: 'newest'
+      sortBy: 'newest',
+      withAuction: true
     } as any)
     const matches = (res.data.data || [])
       .filter((p: any) => p.id !== auction.value.product.id && p.quantity > 0)
@@ -333,7 +334,8 @@ onUnmounted(() => {
         </div>
       </div>
       <div v-else class="bid-bar-section bid-bar-empty">
-        <span>{{ locale === 'zh' ? '暫無出價記錄，成為第一個出價者！' : 'No bids yet. Be the first!' }}</span>
+        <span v-if="!isEnded">{{ locale === 'zh' ? '暫無出價記錄，成為第一個出價者！' : 'No bids yet. Be the first!' }}</span>
+        <span v-else>{{ locale === 'zh' ? '此拍賣已結束，沒有出價記錄' : 'This auction ended with no bids' }}</span>
       </div>
 
       <!-- ===== 雙列區：PDV 佈局 — 左=圖片庫  右=資訊卡（價格/規則/出價） ===== -->

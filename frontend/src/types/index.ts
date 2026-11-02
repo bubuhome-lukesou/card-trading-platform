@@ -161,6 +161,11 @@ export interface ProductFilters {
   productTypes?: string[]
   page?: number
   limit?: number
+  // 後端 query 擴充（products API）：全域隱藏開關 + 拍賣摘要附帶
+  hideSold?: boolean
+  hideExpired?: boolean
+  hideEndedAuction?: boolean
+  withAuction?: boolean
 }
 
 export interface PaginationMeta {

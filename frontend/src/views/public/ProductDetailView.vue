@@ -85,10 +85,12 @@ const fetchRelatedProducts = async () => {
   relatedLoading.value = true
   try {
     // Fetch products with same category, limit 10 to compute match score
+    // withAuction:true — 拍賣相關品帶 auctionSummary，ProductCard 先顯示到拍賣價（D5 修復 11/2）
     const res = await productApi.getProducts({
       category: product.value.category,
       limit: 20,
-      sortBy: 'newest'
+      sortBy: 'newest',
+      withAuction: true
     })
     // Filter out current product and score by matching attributes
     const matches = (res.data.data || [])

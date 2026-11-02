@@ -242,9 +242,22 @@ router.beforeEach(async (to, _from, next) => {
     return
   }
 
+  // 11/2 Luke 定案：seller/admin 唔可以入買家後台（/user/*）— seller 改跳賣家後台
+  if (authStore.isAuthenticated && (authStore.isSeller || authStore.isAdmin) && to.path.startsWith('/user')) {
+    next(authStore.isSeller ? '/seller' : '/admin')
+    return
+  }
+
   // If already logged in as admin, redirect away from public pages
-  // O2 修復（2026-09-27）：賣家可自由瀏覽公開頁（marketplace/拍賣/詳情/聯絡）—
-  // 賣家都係平台用戶，可以行商場、出價、預約；只有 admin 維持跳轉自己 Dashboard
+  // O2 修復（2026-09-27）→ 11/2 Luke 新定案取代：商家同 admin 一樣，登入後只可以去後台，
+  // 開任何其他頁（首頁/商城/詳情）一律 redirect 去 /seller Dashboard
+  if (authStore.isAuthenticated && authStore.isSeller) {
+    if (!to.path.startsWith('/seller')) {
+      next('/seller')
+      return
+    }
+  }
+  // Admin 同款限制（原邏輯保留）
   if (authStore.isAuthenticated && authStore.isAdmin) {
     // If trying to access a public page (no requiresAuth, no requiresSeller, no requiresAdmin)
     if (!to.meta.requiresAuth && !to.meta.requiresSeller && !to.meta.requiresAdmin) {

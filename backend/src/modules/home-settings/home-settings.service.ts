@@ -31,7 +31,8 @@ export class HomeSettingsService {
    * 後台真實數據統計（首頁統計條 liveStats）：
    * - 本日瀏覽數 / 總瀏覽數：site_daily_views（商品詳情瀏覽累計，UTC+8 分日）
    * - 用戶數：users 全部
-   * - 在售商品數：products status=active（軟刪 removed 已過濾）
+   * - 在售商品數：products status=active 且 qty>0；拍賣品須有 active/pending 拍賣；
+   *   預訂品須截單未過（對齊 marketplace hideEnded 口徑，11/2 D2 修復）
    * - 已完成訂單數：orders status=delivered
    */
   async getLiveStats() {
@@ -44,7 +45,13 @@ export class HomeSettingsService {
          FROM site_daily_views`
       ),
       ds.query('SELECT COUNT(*) AS c FROM users'),
-      ds.query(`SELECT COUNT(*) AS c FROM products WHERE status = '${ProductStatus.ACTIVE}'`),
+      ds.query(
+        `SELECT COUNT(*) AS c FROM products p
+         WHERE p.status = '${ProductStatus.ACTIVE}'
+           AND (p.listingType = 'sale' AND p.quantity > 0
+                OR p.listingType = 'auction' AND EXISTS (SELECT 1 FROM auctions a WHERE a.productId = p.id AND a.status IN ('active','pending'))
+                OR p.listingType = 'reservation' AND p.reservationDeadline IS NOT NULL AND p.reservationDeadline > NOW())`
+      ),
       ds.query(`SELECT COUNT(*) AS c FROM orders WHERE status = '${OrderStatus.DELIVERED}'`),
     ])
 

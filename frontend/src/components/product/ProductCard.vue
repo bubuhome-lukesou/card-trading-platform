@@ -26,14 +26,16 @@ const router = useRouter()
 
 const handleCardClick = async (e: Event) => {
   // For auction products, navigate to auction detail page
+  // ProductCard 點擊 auction 商品 → auction 詳情頁；有拍賣記錄先跳，
+  // 冇記錄（拍賣未開場/被取消）顯示唔到任何嘢 — fallback 一樣跳拍賣列表
+  // （唔好 fallback /product/:id — 拍賣品定價 $0 會顯示錯誤購買入口，Luke 11/2 D1）
   if (props.product.listingType === 'auction') {
     e.preventDefault()
     try {
       const res = await auctionApi.getAuctionByProductId(props.product.id)
       router.push(`/auction/${res.data.id}`)
     } catch {
-      // Fallback to product detail if no auction found
-      router.push(`/product/${props.product.id}`)
+      router.push('/auctions')
     }
   }
 }

@@ -5,10 +5,15 @@ import { RouterView } from 'vue-router'
 import AppLayout from '@/components/layout/AppLayout.vue'
 
 const route = useRoute()
-// 商家/管理員/用戶後台唔顯示公共頂部導覽列同底部資訊框（後台自有 sidebar 導航；Luke 2026-11-02 用戶後台同款）
-const hideChrome = computed(
-  () => route.path.startsWith('/seller') || route.path.startsWith('/admin') || route.path.startsWith('/user')
-)
+// 後台路徑唔顯示公共頂部導覽列同底部資訊框（後台自有 sidebar 導航；Luke 2026-11-02 用戶後台同款）
+// ❗ 公開頁豁免（D10 修復 11/2）：/seller/:id 商家介紹頁、/seller/apply 商家申請 — 佢哋以 /seller 開頭但係公開頁，要有 header/footer
+const isSellerPublicPage = (p: string) =>
+  p === '/seller/apply' || /^\/seller\/[^/]+$/.test(p)
+const hideChrome = computed(() => {
+  if (route.path.startsWith('/admin') || route.path.startsWith('/user')) return true
+  if (route.path.startsWith('/seller')) return !isSellerPublicPage(route.path)
+  return false
+})
 </script>
 
 <template>
