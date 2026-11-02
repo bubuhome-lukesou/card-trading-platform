@@ -362,7 +362,9 @@
     "orderLimitReached": "您有 5 筆未付款或未確認的訂單，請先處理後再下單",
     "chatReserve": "聊天/預約拿貨",
     "tlPickupTime": "確認攞貨時間",
-    "tlPickupConfirm": "買家確認取貨"
+    "tlPickupConfirm": "買家確認取貨",
+    "colOrderNo": "訂單號",
+    "nextConfirmPickup": "攞貨時間已確認，取貨後按「確認取貨」"
   },
   "wallet": {
     "title": "我的帳戶",

@@ -20,6 +20,7 @@ interface Order {
   productIdKey: string
   productTitle: string
   productImage?: string
+  productImages?: string[]
   quantity: number
   unitPrice: number
   fullPrice?: number
@@ -238,6 +239,7 @@ const loadOrders = async () => {
         productIdKey: o.productId || '',
         productTitle: o.product?.titleZh || o.product?.titleEn || '未知商品',
         productImage: images[0] || '',
+        productImages: images, // 訂單詳情圖片檢視器用（2026-11-02 與買家端同步）
         quantity: o.quantity || 1,
         unitPrice: o.product?.price ? Number(o.product.price) : (o.totalPrice ? Number(o.totalPrice) / (o.quantity || 1) : 0),
         fullPrice: isReservation ? Number(o.product?.price) || 0 : undefined,
@@ -331,6 +333,23 @@ const viewReceipt = (url: string) => {
   receiptImageUrl.value = url
   showReceiptModal.value = true
 }
+
+// ===== 商品圖片檢視器（2026-11-02 與買家端同步：詳情小圖點擊 → 商品全部圖） =====
+const showGalleryModal = ref(false)
+const galleryImages = ref<string[]>([])
+const galleryIndex = ref(0)
+const galleryTitle = ref('')
+const openProductGallery = (o: Order) => {
+  const imgs = (o.productImages?.length ? o.productImages : (o.productImage ? [o.productImage] : []))
+    .filter(Boolean)
+  if (!imgs.length) return
+  galleryImages.value = imgs
+  galleryIndex.value = 0
+  galleryTitle.value = o.productTitle
+  showGalleryModal.value = true
+}
+const galleryPrev = () => { if (galleryIndex.value > 0) galleryIndex.value-- }
+const galleryNext = () => { if (galleryIndex.value < galleryImages.value.length - 1) galleryIndex.value++ }
 
 const getStatusBadge = (status: string) => {
   const map: Record<string, { class: string; text: string }> = {
@@ -552,9 +571,12 @@ onMounted(async () => {
                   <span class="product-name">{{ order.productTitle }}</span>
                   <span class="qty-chip">×{{ order.quantity }}</span>
                   <span class="type-tag" :class="ORDER_TYPE[order.type]?.cls">{{ ORDER_TYPE[order.type]?.text || order.type }}</span>
-                  <span v-if="order.orderNumber" class="order-no">{{ order.orderNumber }}</span>
                 </div>
               </div>
+            </td>
+            <td>
+              <span v-if="order.orderNumber" class="order-no">{{ order.orderNumber }}</span>
+              <span v-else class="cell-muted">—</span>
             </td>
             <td>
               <div class="buyer-name">{{ order.buyerNickname }}</div>
@@ -641,8 +663,8 @@ onMounted(async () => {
           <div class="card-main">
             <div class="card-title">{{ order.productTitle }} <span class="qty-chip">×{{ order.quantity }}</span></div>
             <div class="card-meta">
-              <span v-if="order.orderNumber" class="order-no">{{ order.orderNumber }}</span>
               <span class="type-tag" :class="ORDER_TYPE[order.type]?.cls">{{ ORDER_TYPE[order.type]?.text || order.type }}</span>
+              <span v-if="order.orderNumber" class="order-no">{{ order.orderNumber }}</span>
               <span class="status-badge" :class="getStatusBadge(order.status).class">{{ getStatusBadge(order.status).text }}</span>
             </div>
           </div>
@@ -728,10 +750,13 @@ onMounted(async () => {
           </div>
 
           <div class="detail-product">
-            <img v-if="detailOrder.productImage" :src="resolveImageUrl(detailOrder.productImage)" class="detail-thumb" :alt="detailOrder.productTitle" />
-            <span v-else class="card-emoji">🃏</span>
+            <div class="dp-thumb-wrap">
+              <img v-if="detailOrder.productImage" :src="resolveImageUrl(detailOrder.productImage)" class="detail-thumb" :alt="detailOrder.productTitle" @click="openProductGallery(detailOrder)" />
+              <span v-else class="card-emoji">🃏</span>
+            </div>
             <div class="dp-info">
               <span class="dp-title">{{ detailOrder.productTitle }} <span class="qty-chip">×{{ detailOrder.quantity }}</span></span>
+              <span v-if="detailOrder.orderNumber" class="order-no dp-order-no">{{ detailOrder.orderNumber }}</span>
               <span class="dp-sub">單價 {{ formatPrice(detailOrder.unitPrice) }}</span>
             </div>
             <div class="dp-amount">
@@ -747,12 +772,12 @@ onMounted(async () => {
 
           <div class="detail-grid">
             <div class="dg-item">
-              <span class="dg-label">訂單號</span>
-              <span class="dg-value mono">{{ detailOrder.orderNumber }}</span>
-            </div>
-            <div class="dg-item">
               <span class="dg-label">買家</span>
               <span class="dg-value">{{ detailOrder.buyerNickname }}<small>{{ detailOrder.buyerEmail }}</small></span>
+            </div>
+            <div class="dg-item">
+              <span class="dg-label">下單時間</span>
+              <span class="dg-value">{{ formatDateTime(detailOrder.createdAt) }}</span>
             </div>
             <div class="dg-item" v-if="detailOrder.pickupTime">
               <span class="dg-label">確認攞貨時間</span>
@@ -833,6 +858,35 @@ onMounted(async () => {
         </div>
         <div class="modal-body">
           <img :src="resolveImageUrl(receiptImageUrl)" alt="轉帳憑證" class="receipt-image" />
+        </div>
+      </div>
+    </div>
+
+    <!-- 商品圖片檢視器（2026-11-02 與買家端同步：詳情小圖點擊 → 商品全部圖） -->
+    <div v-if="showGalleryModal" class="modal-overlay" @click.self="showGalleryModal = false">
+      <div class="receipt-modal gallery-modal">
+        <div class="modal-header">
+          <h3>🖼️ 商品圖片</h3>
+          <button @click="showGalleryModal = false" class="modal-close">✕</button>
+        </div>
+        <div class="modal-body">
+          <div v-if="galleryTitle" class="gallery-title">{{ galleryTitle }}</div>
+          <div class="gallery-stage">
+            <button v-if="galleryImages.length > 1 && galleryIndex > 0" class="gallery-nav prev" @click="galleryPrev" aria-label="上一張">‹</button>
+            <img :src="resolveImageUrl(galleryImages[galleryIndex])" alt="商品圖片" class="receipt-image" />
+            <button v-if="galleryImages.length > 1 && galleryIndex < galleryImages.length - 1" class="gallery-nav next" @click="galleryNext" aria-label="下一張">›</button>
+          </div>
+          <div v-if="galleryImages.length > 1" class="gallery-hint">{{ galleryIndex + 1 }} / {{ galleryImages.length }}</div>
+          <div v-if="galleryImages.length > 1" class="gallery-dots">
+            <button
+              v-for="(img, i) in galleryImages"
+              :key="i"
+              class="gallery-dot"
+              :class="{ active: i === galleryIndex }"
+              @click="galleryIndex = i"
+              :aria-label="`第 ${i + 1} 張`"
+            />
+          </div>
         </div>
       </div>
     </div>
@@ -1078,7 +1132,7 @@ tr:last-child td { border-bottom: none; }
 }
 .buyer-name { font-weight: 500; }
 .buyer-email { font-size: var(--text-xs); color: var(--text-muted); }
-/* 訂單號（2026-11-01 Luke：商家訂單頁要顯示） */
+/* 訂單號（2026-11-01 Luke）：獨立欄位 + 詳情商品名下 */
 .order-no {
   font-size: 11px;
   color: var(--text-muted);
@@ -1086,6 +1140,8 @@ tr:last-child td { border-bottom: none; }
   letter-spacing: 0.3px;
   white-space: nowrap;
 }
+.dp-order-no { align-self: flex-start; }
+.cell-muted { color: var(--text-secondary); opacity: 0.5; }
 /* 數量小徽章（2026-11-01 Luke：數量喺商品名旁） */
 .qty-chip {
   display: inline-block;
@@ -1226,6 +1282,20 @@ tr:last-child td { border-bottom: none; }
   display: flex; align-items: center; justify-content: center;
   background: var(--bg-card); border-radius: var(--radius-md); flex-shrink: 0;
 }
+/* 訂單詳情商品縮圖（2026-11-02 修：此前 seller 版無任何定義，原圖直出爆版 — Luke 報「圖片太大」根因）
+   與買家端同款：56px + dp-thumb-wrap + 點擊開商品圖 gallery */
+.dp-thumb-wrap { position: relative; flex-shrink: 0; width: 56px; height: 56px; }
+.dp-thumb-wrap .card-emoji { position: absolute; inset: 0; width: 100%; height: 100%; }
+.detail-thumb {
+  width: 56px; height: 56px;
+  border-radius: var(--radius-md);
+  object-fit: cover;
+  flex-shrink: 0;
+  border: 1px solid var(--border);
+  display: block;
+  max-width: 100%;
+  cursor: pointer;
+}
 .dp-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
 .dp-title { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .dp-sub { font-size: var(--text-xs); color: var(--text-secondary); }
@@ -1291,6 +1361,62 @@ tr:last-child td { border-bottom: none; }
   justify-content: center;
 }
 .receipt-image { max-width: 100%; max-height: 70vh; border-radius: var(--radius-lg); }
+
+/* ===== 商品圖片檢視器（2026-11-02 與買家端同步）===== */
+.gallery-title {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  margin-bottom: var(--space-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.gallery-stage {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.gallery-nav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: rgba(0, 0, 0, 0.35);
+  color: #fff;
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  z-index: 2;
+  display: flex; align-items: center; justify-content: center;
+}
+.gallery-nav.prev { left: 8px; }
+.gallery-nav.next { right: 8px; }
+.gallery-hint {
+  text-align: center;
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+  margin-top: var(--space-2);
+  font-family: var(--font-num);
+}
+.gallery-dots {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  margin-top: var(--space-2);
+}
+.gallery-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  border: none;
+  background: var(--border);
+  cursor: pointer;
+  padding: 0;
+}
+.gallery-dot.active { background: #10b981; width: 18px; border-radius: 4px; }
+.gallery-stage .receipt-image { max-width: min(100%, calc(100vw - 48px)); max-height: 60vh; width: auto; height: auto; object-fit: contain; display: block; }
 
 /* ===== 手機版適配（<768px：表格收起，顯示卡片）===== */
 @media (max-width: 767px) {
@@ -1359,6 +1485,15 @@ tr:last-child td { border-bottom: none; }
   .list-tabs { gap: var(--space-1); }
   .list-tab { padding: var(--space-1) var(--space-3); font-size: var(--text-xs); }
   .detail-grid { grid-template-columns: 1fr; }
+  /* 訂單詳情商品圖（<768px）：46px 縮圖＋唔准超屏寬 — 與買家端同款 */
+  .detail-product { flex-wrap: nowrap; min-width: 0; }
+  .detail-product .dp-info { min-width: 0; }
+  .detail-thumb {
+    width: 46px; height: 46px;
+    max-width: 46px;
+    max-height: 46px;
+  }
+  .dp-thumb-wrap { width: 46px; height: 46px; }
   .modal-overlay { align-items: flex-end; padding: 0; }
   .detail-modal {
     width: 100%;

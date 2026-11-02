@@ -5,8 +5,10 @@ import { RouterView } from 'vue-router'
 import AppLayout from '@/components/layout/AppLayout.vue'
 
 const route = useRoute()
-// 商家/管理員後台唔顯示公共頂部導覽列同底部資訊框（後台自有 sidebar 導航）
-const hideChrome = computed(() => route.path.startsWith('/seller') || route.path.startsWith('/admin'))
+// 商家/管理員/用戶後台唔顯示公共頂部導覽列同底部資訊框（後台自有 sidebar 導航；Luke 2026-11-02 用戶後台同款）
+const hideChrome = computed(
+  () => route.path.startsWith('/seller') || route.path.startsWith('/admin') || route.path.startsWith('/user')
+)
 </script>
 
 <template>

@@ -368,7 +368,9 @@
     "orderLimitReached": "You have 5 unpaid/unconfirmed orders — please handle them before placing new ones",
     "chatReserve": "Chat / Pickup",
     "tlPickupTime": "Pickup Time Confirmed",
-    "tlPickupConfirm": "Buyer Confirmed Pickup"
+    "tlPickupConfirm": "Buyer Confirmed Pickup",
+    "colOrderNo": "Order No.",
+    "nextConfirmPickup": "Pickup time confirmed — tap Confirm after pickup"
   },
   "wallet": {
     "title": "My Wallet",

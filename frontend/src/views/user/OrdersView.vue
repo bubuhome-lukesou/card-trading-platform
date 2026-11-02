@@ -14,6 +14,7 @@ const { t } = useI18n()
 
 interface Order {
   id: string
+  orderNumber: string
   productTitle: string
   productImage?: string
   productImages?: string[]
@@ -139,6 +140,7 @@ const sortDir = ref<'asc' | 'desc'>('desc')
 
 const sortableColumns = [
   { key: 'productTitle', labelKey: 'orders.colProduct', type: 'text' },
+  { key: 'orderNumber', labelKey: 'orders.colOrderNo', type: 'text' },
   { key: 'sellerNickname', labelKey: 'orders.colSeller', type: 'text' },
   { key: 'amount', labelKey: 'orders.colAmount', type: 'number' },
   { key: 'status', labelKey: 'orders.colStatus', type: 'text' },
@@ -259,6 +261,7 @@ const getStatusBadge = (status: string, orderType?: string) => {
 // ===== 下一步提示（買家視角） =====
 const nextStepFor = (o: Order): string => {
   if (o.status === 'pending') return o.type === 'reservation_deposit' ? t('orders.nextUploadDeposit') : t('orders.nextUploadPayment')
+  if (o.pickupConfirmStatus === 'confirmed' && o.pickupTime && !['delivered','cancelled'].includes(o.status)) return t('orders.nextConfirmPickup')
   if (o.status === 'pending_paid') return t('orders.nextAwaitConfirm')
   if (o.status === 'confirmed') {
     return o.type === 'reservation_deposit' ? t('orders.nextPayBalance') : t('orders.nextAwaitShip')
@@ -313,6 +316,7 @@ const loadOrders = async () => {
       if (o.status === 'delivered') myReviewId = await loadMyReview(o.id)
       return {
         id: o.id,
+        orderNumber: o.orderNumber || '',
         productTitle: o.product?.titleZh || o.product?.titleEn || t('orders.unknownProduct'),
         productImage: images[0] || '',
         productImages: images, // 訂單詳情圖片檢視器用（2026-10-24）
@@ -499,19 +503,29 @@ const onChatOrderUpdated = async () => {
 const authStore = useAuthStore()
 const myUserId = computed(() => (authStore.user as any)?.id || '')
 
-// ===== 買家確認取貨（行內按鈕）=====
+// ===== 買家確認收貨/取貨（Luke 11/2 統一：只留一個按鈕）=====
+// 攞貨時間已確認 → 走 pickup API；已發貨 → updateStatus delivered。兩者都係「確認收到商品」
 const confirmingPickup = ref<string | null>(null)
-const handleConfirmPickup = async (orderId: string) => {
-  confirmingPickup.value = orderId
-  try {
-    await orderPickupApi.confirmPickup(orderId)
-    showToast(t('orders.pickupConfirmOk'))
-    await loadOrders()
-  } catch (e: any) {
-    showToast(e?.response?.data?.message || t('orders.operationFailed'), 'error')
-  } finally {
-    confirmingPickup.value = null
+const canConfirmReceive = (o: Order) =>
+  (o.pickupConfirmStatus === 'confirmed' && !!o.pickupTime && !['delivered','cancelled'].includes(o.status)) ||
+  (o.status === 'shipped' && o.type !== 'reservation_deposit')
+const confirmReceiveLabel = (o: Order) =>
+  (o.pickupConfirmStatus === 'confirmed' && o.pickupTime) ? t('orders.confirmPickup') : t('orders.confirmReceive')
+const handleConfirmReceive = async (o: Order) => {
+  if (o.pickupConfirmStatus === 'confirmed' && o.pickupTime) {
+    confirmingPickup.value = o.id
+    try {
+      await orderPickupApi.confirmPickup(o.id)
+      showToast(t('orders.pickupConfirmOk'))
+      await loadOrders()
+    } catch (e: any) {
+      showToast(e?.response?.data?.message || t('orders.operationFailed'), 'error')
+    } finally {
+      confirmingPickup.value = null
+    }
+    return
   }
+  await handleReceive(o.id)
 }
 
 // ===== 互評 modal（2026-11-01）=====
@@ -715,6 +729,10 @@ onMounted(() => {
               </div>
             </td>
             <td>
+              <span v-if="order.orderNumber" class="order-no">{{ order.orderNumber }}</span>
+              <span v-else class="cell-muted">—</span>
+            </td>
+            <td>
               <div class="buyer-name">{{ order.sellerNickname }}</div>
             </td>
             <td>
@@ -752,19 +770,13 @@ onMounted(() => {
                   :disabled="uploadingReceipt === order.id"
                   @click="triggerBalanceUpload(order.id)"
                 >{{ uploadingReceipt === order.id ? t('orders.uploading') : t('orders.uploadBalance') }}</button>
-                <!-- 已發貨 -->
+                <!-- 已發貨/攞貨時間已確認 → 統一確認按鈕（取貨/收貨只留一個） -->
                 <button
-                  v-if="order.status === 'shipped' && order.type !== 'reservation_deposit'"
-                  class="btn-action confirm"
-                  @click="handleReceive(order.id)"
-                >{{ t('orders.confirmReceive') }}</button>
-                <!-- 攞貨時間已確認（未完成）→ 確認取貨按鈕 -->
-                <button
-                  v-if="order.pickupConfirmStatus === 'confirmed' && order.pickupTime && !['delivered','cancelled'].includes(order.status)"
+                  v-if="canConfirmReceive(order)"
                   class="btn-action confirm"
                   :disabled="confirmingPickup === order.id"
-                  @click="handleConfirmPickup(order.id)"
-                >{{ confirmingPickup === order.id ? t('orders.processing') : t('orders.confirmPickup') }}</button>
+                  @click="handleConfirmReceive(order)"
+                >{{ confirmingPickup === order.id ? t('orders.processing') : confirmReceiveLabel(order) }}</button>
                 <!-- 預約攞貨 = 直接開訂單聊天（統一入口） -->
                 <button
                   v-if="['pending','pending_paid','confirmed'].includes(order.status)"
@@ -794,6 +806,7 @@ onMounted(() => {
           <div class="card-main">
             <div class="card-title">{{ order.productTitle }} <span class="qty-chip">×{{ order.quantity }}</span></div>
             <div class="card-meta">
+              <span v-if="order.orderNumber" class="order-no">{{ order.orderNumber }}</span>
               <span class="type-tag" :class="typeTag(order.type).cls">{{ typeTag(order.type).key ? t(typeTag(order.type).key) : order.type }}</span>
               <span class="status-badge" :class="getStatusBadge(order.status, order.type).class">{{ getStatusBadge(order.status, order.type).text }}</span>
             </div>
@@ -827,16 +840,11 @@ onMounted(() => {
             @click="triggerBalanceUpload(order.id)"
           >{{ t('orders.uploadBalance') }}</button>
           <button
-            v-if="order.status === 'shipped' && order.type !== 'reservation_deposit'"
-            class="btn-action confirm"
-            @click="handleReceive(order.id)"
-          >{{ t('orders.confirmReceive') }}</button>
-          <button
-            v-if="order.pickupConfirmStatus === 'confirmed' && order.pickupTime && !['delivered','cancelled'].includes(order.status)"
+            v-if="canConfirmReceive(order)"
             class="btn-action confirm"
             :disabled="confirmingPickup === order.id"
-            @click="handleConfirmPickup(order.id)"
-          >{{ confirmingPickup === order.id ? t('orders.processing') : t('orders.confirmPickup') }}</button>
+            @click="handleConfirmReceive(order)"
+          >{{ confirmingPickup === order.id ? t('orders.processing') : confirmReceiveLabel(order) }}</button>
           <!-- 預約攞貨 = 直接開訂單聊天 -->
           <button
             v-if="['pending','pending_paid','confirmed'].includes(order.status)"
@@ -894,6 +902,14 @@ onMounted(() => {
           </div>
 
           <div class="detail-grid">
+            <div class="dg-item">
+              <span class="dg-label">{{ t('orders.colOrderNo') }}</span>
+              <span class="dg-value mono">{{ detailOrder.orderNumber || '—' }}</span>
+            </div>
+            <div class="dg-item">
+              <span class="dg-label">{{ t('orders.createdAt') }}</span>
+              <span class="dg-value">{{ formatDateTime(detailOrder.createdAt) }}</span>
+            </div>
             <div class="dg-item" v-if="detailOrder.shippingAddress">
               <span class="dg-label">{{ t('orders.shippingAddress') }}</span>
               <span class="dg-value">{{ detailOrder.shippingAddress }}</span>
@@ -905,10 +921,6 @@ onMounted(() => {
             <div class="dg-item" v-if="detailOrder.notes">
               <span class="dg-label">{{ t('orders.notes') }}</span>
               <span class="dg-value">{{ detailOrder.notes }}</span>
-            </div>
-            <div class="dg-item">
-              <span class="dg-label">{{ t('orders.createdAt') }}</span>
-              <span class="dg-value">{{ formatDateTime(detailOrder.createdAt) }}</span>
             </div>
           </div>
 
@@ -927,10 +939,16 @@ onMounted(() => {
               @click="triggerBalanceUpload(detailOrder.id)"
             >{{ t('orders.uploadBalance') }}</button>
             <button
-              v-if="detailOrder.status === 'shipped' && detailOrder.type !== 'reservation_deposit'"
+              v-if="canConfirmReceive(detailOrder)"
               class="btn-action confirm"
-              @click="handleReceive(detailOrder.id)"
-            >{{ t('orders.confirmReceive') }}</button>
+              :disabled="confirmingPickup === detailOrder.id"
+              @click="handleConfirmReceive(detailOrder)"
+            >{{ confirmingPickup === detailOrder.id ? t('orders.processing') : confirmReceiveLabel(detailOrder) }}</button>
+            <button
+              v-if="['pending','pending_paid','confirmed'].includes(detailOrder.status)"
+              class="btn-action confirm"
+              @click="openChat(detailOrder); closeDetail()"
+            >💬 {{ t('orders.chatReserve') }}</button>
           </div>
 
           <!-- 憑證 -->
@@ -1186,6 +1204,14 @@ tr:last-child td { border-bottom: none; }
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .buyer-name { font-weight: 500; }
+/* 訂單號（2026-11-02 Luke：買賣兩端統一，訂單號獨立欄位唔擠喺商品名） */
+.order-no {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-family: var(--font-num);
+  letter-spacing: 0.3px;
+  white-space: nowrap;
+}
 /* 數量小徽章（2026-11-01 Luke：數量喺商品名旁，唔喺商家名下） */
 .qty-chip {
   display: inline-block;
