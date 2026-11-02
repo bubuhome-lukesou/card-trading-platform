@@ -151,8 +151,8 @@ onMounted(() => {
             {{ processing === item.productId ? t('product.favorites.processing') : t('product.favorites.reserveNow') }}
           </button>
         </div>
-        <!-- 一般商品：顯示立即購買 + 加入購物車 -->
-        <div v-else class="card-actions">
+        <!-- 一般商品（sale）：顯示立即購買 + 加入購物車（拍賣/預約商品唔可以加入購物車，Luke 2026-11-02） -->
+        <div v-else-if="item.product?.listingType === 'sale' || !item.product?.listingType" class="card-actions">
           <button
             class="btn-buy"
             :disabled="processing === item.productId || isProductSuspended(item.product)"

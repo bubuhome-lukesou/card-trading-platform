@@ -1,8 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { CartItem } from '../../entities/cart-item.entity';
-import { Product } from '../../entities/product.entity';
+import { Product, ListingType } from '../../entities/product.entity';
 
 @Injectable()
 export class CartService {
@@ -25,6 +25,14 @@ export class CartService {
     const product = await this.productRepo.findOne({ where: { id: productId } });
     if (!product) {
       throw new NotFoundException('Product not found');
+    }
+
+    // 拍賣/預約商品唔可以加入購物車（Luke 2026-11-02）：拍賣要出價、預約要行訂金流程
+    if (product.listingType === ListingType.AUCTION) {
+      throw new BadRequestException('拍賣商品不可加入購物車，請前往拍賣頁出價');
+    }
+    if (product.listingType === ListingType.RESERVATION) {
+      throw new BadRequestException('預約商品不可加入購物車，請使用「立即預約」');
     }
 
     // Check stock limit
@@ -88,6 +96,11 @@ export class CartService {
     }
     if (item.user.id !== userId) {
       throw new NotFoundException('Cart item not found');
+    }
+
+    // 商品下架/轉拍賣防護：數量更新同樣唔可以係拍賣品
+    if (item.product.listingType === ListingType.AUCTION) {
+      throw new BadRequestException('拍賣商品不可加入購物車，請前往拍賣頁出價');
     }
 
     const currentQty = item.product.quantity ?? 0;

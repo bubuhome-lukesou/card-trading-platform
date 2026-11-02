@@ -2,7 +2,7 @@
 import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
-import { Heart, Loader2 } from 'lucide-vue-next'
+import { Heart, Loader2, Gavel } from 'lucide-vue-next'
 import { productApi } from '@/api/products'
 import { cartApi } from '@/api/cart'
 import { favoritesApi } from '@/api/favorites'
@@ -297,6 +297,18 @@ const handleReserve = async () => {
   }
 }
 
+// 拍賣商品（fallback 落商品頁）→ 跳拍賣詳情頁（同 ProductCard 跳轉邏輯一致）
+const goAuction = async () => {
+  if (!product.value) return
+  try {
+    const { auctionApi } = await import('@/api/auctions')
+    const res = await auctionApi.getAuctionByProductId(product.value.id)
+    router.push(`/auction/${res.data.id}`)
+  } catch {
+    router.push('/auctions')
+  }
+}
+
 // Check if reservation is still open (deadline not passed and spots available)
 const isReservationOpen = computed(() => {
   if (!product.value || product.value.listingType !== 'reservation') return false
@@ -478,8 +490,8 @@ const isProductSuspended = computed(() => {
               </div>
             </template>
 
-            <!-- Normal purchase UI -->
-            <template v-else>
+            <!-- Normal purchase UI（sale only：拍賣商品唔可以加入購物車/直接購買，Luke 2026-11-02） -->
+            <template v-else-if="product.listingType === 'sale' || !product.listingType">
               <div class="action-row">
                 <button
                   class="btn btn-primary"
@@ -496,6 +508,25 @@ const isProductSuspended = computed(() => {
                   @click="handleAddToCart"
                 >
                   {{ locale === 'zh' ? '加到購物車' : 'Add to Cart' }}
+                </button>
+                <button
+                  v-if="authStore.isAuthenticated"
+                  class="btn btn-fav"
+                  :class="{ active: isFavorited }"
+                  :disabled="favoriteLoading"
+                  @click="handleToggleFavorite"
+                >
+                  <Heart class="fav-icon" :class="{ 'icon-filled': isFavorited }" />
+                </button>
+              </div>
+            </template>
+
+            <!-- 拍賣商品（fallback 落商品頁）：唔可以加入購物車，提示去拍賣頁出價（Luke 2026-11-02） -->
+            <template v-else-if="product.listingType === 'auction'">
+              <div class="action-row">
+                <button class="btn btn-primary" @click="goAuction">
+                  <Gavel v-if="!processing" class="btn-spinner" />
+                  {{ locale === 'zh' ? '前往拍賣頁出價' : 'Go to Auction' }}
                 </button>
                 <button
                   v-if="authStore.isAuthenticated"
