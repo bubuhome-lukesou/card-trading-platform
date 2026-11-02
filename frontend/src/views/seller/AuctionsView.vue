@@ -1046,12 +1046,12 @@ const goOrdersPage = (pid: string) => router.push(`/seller/orders?productId=${pi
       <button class="page-btn" :disabled="currentPage >= totalPages" @click="goToPage(currentPage + 1)">下一頁 ›</button>
     </div>
 
-    <!-- 訂單詳情彈出層 -->
-    <div v-if="detailOrder" class="modal-overlay" @click.self="closeDetail">
+    <!-- 訂單詳情彈出層（✕ 用 closeOrderDetail — 之前誤用商品詳情嘅 closeDetail，按 X 唔閂，Luke 11/2 實測） -->
+    <div v-if="detailOrder" class="modal-overlay" @click.self="closeOrderDetail">
       <div class="detail-modal">
         <div class="modal-header">
           <h3>訂單詳情</h3>
-          <button @click="closeDetail" class="modal-close">✕</button>
+          <button @click="closeOrderDetail" class="modal-close">✕</button>
         </div>
         <div class="detail-body">
           <div class="detail-top">
