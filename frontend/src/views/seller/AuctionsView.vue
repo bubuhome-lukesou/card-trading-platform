@@ -1874,6 +1874,58 @@ tr.row-expanded td {
   overflow: hidden;
 }
 
+/* 商品詳情頂部商品行＋縮圖（2026-11-03 修：此前成段 CSS 漏寫，detail-thumb 原圖直出爆版 — 與商家訂單詳情同款） */
+.product-detail-modal .detail-number {
+  font-family: var(--font-num);
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+  letter-spacing: 0.5px;
+}
+.product-detail-modal .detail-product {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  background: var(--bg-elevated);
+  border-radius: var(--radius-lg);
+  flex-wrap: nowrap;
+  min-width: 0;
+}
+.product-detail-modal .detail-thumb {
+  width: 56px; height: 56px;
+  border-radius: var(--radius-md);
+  object-fit: cover;
+  flex-shrink: 0;
+  border: 1px solid var(--border);
+  display: block;
+  max-width: 100%;
+  background: var(--bg-card);
+}
+.product-detail-modal .dp-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
+.product-detail-modal .dp-title {
+  font-weight: 600;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.product-detail-modal .dp-sub {
+  font-size: var(--text-xs); color: var(--text-secondary);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.product-detail-modal .dp-amount { text-align: right; flex-shrink: 0; }
+.product-detail-modal .dp-amount .amount {
+  font-family: var(--font-num); font-weight: 700; color: var(--primary);
+  font-size: var(--text-base); white-space: nowrap;
+}
+.product-detail-modal .detail-desc p {
+  margin: 4px 0 0;
+  font-size: var(--text-sm);
+  color: var(--text-primary);
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.product-detail-modal .detail-actions { display: flex; gap: var(--space-3); flex-wrap: wrap; }
+.product-detail-modal .detail-actions .btn-action { padding: var(--space-2) var(--space-5); font-size: var(--text-sm); }
+
 /* ===== 手機卡片（<768px 顯示，同訂單管理卡片設計）===== */
 .product-cards { display: none; }
 
@@ -2439,6 +2491,14 @@ tr.row-expanded td {
     border-bottom: none;
   }
   .detail-body { padding: var(--space-4); }
+  /* 商品詳情商品圖（<768px）：46px 縮圖＋唔准超屏寬 — 與訂單詳情同款 */
+  .product-detail-modal .detail-product { flex-wrap: nowrap; }
+  .product-detail-modal .dp-info { min-width: 0; }
+  .product-detail-modal .detail-thumb {
+    width: 46px; height: 46px;
+    max-width: 46px;
+    max-height: 46px;
+  }
   .pagination { flex-wrap: wrap; gap: var(--space-2); }
   .page-info { font-size: var(--text-xs); }
 }
